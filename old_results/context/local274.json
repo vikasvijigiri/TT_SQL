@@ -1,0 +1,10 @@
+{
+  "relevant_tables": [
+    "orders",
+    "order_items",
+    "picks",
+    "products",
+    "inventory_batches"
+  ],
+  "reasoning": "The query needs to know which products were picked for a specific order (order_id = 421), so the **orders** table (to locate the order) and the **order_items** (or order_details) table (to list the products linked to that order) are required. The actual pick activity \u2013 quantity taken from stock \u2013 is stored in the **picks** (or pick_transactions) table, which records each pick event with product_id, order_id, and units picked. To compute the average units picked per product, the pick records must be aggregated. The FIFO logic depends on the receipt order of inventory, which is captured in the **inventory_batches** (or stock_receipts) table that holds batch/lot information, receipt dates, and quantities; this table is used to determine the order in which inventory was consumed. Finally, the **products** table provides product names or other descriptive attributes needed for the output."
+}

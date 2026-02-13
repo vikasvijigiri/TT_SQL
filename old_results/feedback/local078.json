@@ -1,0 +1,15 @@
+{
+  "is_valid": false,
+  "check_results": {
+    "columns": "PASS",
+    "syntax": "FAIL",
+    "joins": "PASS",
+    "group_by": "PASS",
+    "math_types": "PASS",
+    "logic": "FAIL"
+  },
+  "feedback": [
+    "Syntax error: The use of LIMIT with UNION ALL is incorrect. Each SELECT statement in a UNION must have its own ORDER BY and LIMIT clauses.",
+    "Logic error: The query does not correctly identify both the top 10 and bottom 10 interest categories. The LIMIT and ORDER BY clauses need to be applied separately to each part of the UNION."
+  ]
+}

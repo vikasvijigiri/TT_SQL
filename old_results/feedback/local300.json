@@ -1,0 +1,16 @@
+{
+  "is_valid": false,
+  "check_results": {
+    "columns": "PASS",
+    "syntax": "FAIL",
+    "joins": "PASS",
+    "group_by": "PASS",
+    "math_types": "PASS",
+    "logic": "FAIL"
+  },
+  "feedback": [
+    "Syntax error: The recursive CTE 'date_series' is not correctly defined. The base case and recursive case should have the same number of columns.",
+    "Logic error: The recursive CTE 'customer_balances_final' has a subquery in the WHERE clause that references 'cbcf' without aliasing it properly.",
+    "Logic error: The logic for carrying forward balances is incorrect. It should handle NULL balances by carrying forward the last known balance, but the current logic does not ensure this correctly."
+  ]
+}

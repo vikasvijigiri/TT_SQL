@@ -1,0 +1,15 @@
+{
+  "is_valid": false,
+  "check_results": {
+    "columns": "PASS",
+    "syntax": "PASS",
+    "joins": "PASS",
+    "group_by": "PASS",
+    "math_types": "PASS",
+    "logic": "FAIL"
+  },
+  "feedback": [
+    "The logic in the 'RankedDirectors' CTE does not correctly account for the top four directors within each of the top three genres. It aggregates across all genres instead of considering each genre separately.",
+    "The 'DirectorGenreCounts' CTE should rank directors within each genre separately to ensure the top four directors are identified for each of the top three genres."
+  ]
+}

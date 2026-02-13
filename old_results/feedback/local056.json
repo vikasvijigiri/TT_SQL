@@ -1,0 +1,14 @@
+{
+  "is_valid": false,
+  "check_results": {
+    "columns": "PASS",
+    "syntax": "PASS",
+    "joins": "PASS",
+    "group_by": "PASS",
+    "math_types": "FAIL",
+    "logic": "PASS"
+  },
+  "feedback": [
+    "The division operation in the calculation of 'monthly_change' could result in integer division if not properly cast to a floating-point number. Ensure that the division by 30.0 results in a floating-point number to avoid integer division issues."
+  ]
+}

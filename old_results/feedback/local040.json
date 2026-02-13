@@ -1,0 +1,16 @@
+{
+  "is_valid": false,
+  "check_results": {
+    "columns": "PASS",
+    "syntax": "PASS",
+    "joins": "FAIL",
+    "group_by": "FAIL",
+    "math_types": "PASS",
+    "logic": "FAIL"
+  },
+  "feedback": [
+    "The join condition in the final SELECT statement is incorrect. It should join on the boroname from the TopBoroughs and TreeCounts, not trees.",
+    "The GROUP BY clause in the final SELECT statement is incorrect. It should group by tb.boroname and i.zipcode to ensure correct aggregation of mean income.",
+    "The logic does not correctly calculate the average mean income for each of the top three boroughs. It should calculate the average mean income for each borough in the TopBoroughs, not for each tree record."
+  ]
+}

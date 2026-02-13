@@ -1,0 +1,537 @@
+{
+  "mst_users": {
+    "columns": [
+      {
+        "name": "user_id",
+        "type": "varchar(255)",
+        "pk": false
+      },
+      {
+        "name": "sex",
+        "type": "varchar(255)",
+        "pk": false
+      },
+      {
+        "name": "birth_date",
+        "type": "varchar(255)",
+        "pk": false
+      },
+      {
+        "name": "register_date",
+        "type": "varchar(255)",
+        "pk": false
+      },
+      {
+        "name": "register_device",
+        "type": "varchar(255)",
+        "pk": false
+      },
+      {
+        "name": "withdraw_date",
+        "type": "varchar(255)",
+        "pk": false
+      }
+    ],
+    "foreign_keys": []
+  },
+  "action_log": {
+    "columns": [
+      {
+        "name": "session",
+        "type": "varchar(255)",
+        "pk": false
+      },
+      {
+        "name": "user_id",
+        "type": "varchar(255)",
+        "pk": false
+      },
+      {
+        "name": "action",
+        "type": "varchar(255)",
+        "pk": false
+      },
+      {
+        "name": "category",
+        "type": "varchar(255)",
+        "pk": false
+      },
+      {
+        "name": "products",
+        "type": "varchar(255)",
+        "pk": false
+      },
+      {
+        "name": "amount",
+        "type": "INTEGER",
+        "pk": false
+      },
+      {
+        "name": "stamp",
+        "type": "varchar(255)",
+        "pk": false
+      }
+    ],
+    "foreign_keys": []
+  },
+  "activity_log": {
+    "columns": [
+      {
+        "name": "stamp",
+        "type": "varchar(255)",
+        "pk": false
+      },
+      {
+        "name": "session",
+        "type": "varchar(255)",
+        "pk": false
+      },
+      {
+        "name": "action",
+        "type": "varchar(255)",
+        "pk": false
+      },
+      {
+        "name": "option",
+        "type": "varchar(255)",
+        "pk": false
+      },
+      {
+        "name": "path",
+        "type": "varchar(255)",
+        "pk": false
+      },
+      {
+        "name": "search_type",
+        "type": "varchar(255)",
+        "pk": false
+      }
+    ],
+    "foreign_keys": []
+  },
+  "read_log": {
+    "columns": [
+      {
+        "name": "stamp",
+        "type": "varchar(255)",
+        "pk": false
+      },
+      {
+        "name": "session",
+        "type": "varchar(255)",
+        "pk": false
+      },
+      {
+        "name": "action",
+        "type": "varchar(255)",
+        "pk": false
+      },
+      {
+        "name": "url",
+        "type": "varchar(255)",
+        "pk": false
+      }
+    ],
+    "foreign_keys": []
+  },
+  "form_log": {
+    "columns": [
+      {
+        "name": "stamp",
+        "type": "varchar(255)",
+        "pk": false
+      },
+      {
+        "name": "session",
+        "type": "varchar(255)",
+        "pk": false
+      },
+      {
+        "name": "action",
+        "type": "varchar(255)",
+        "pk": false
+      },
+      {
+        "name": "path",
+        "type": "varchar(255)",
+        "pk": false
+      },
+      {
+        "name": "status",
+        "type": "varchar(255)",
+        "pk": false
+      }
+    ],
+    "foreign_keys": []
+  },
+  "form_error_log": {
+    "columns": [
+      {
+        "name": "stamp",
+        "type": "varchar(255)",
+        "pk": false
+      },
+      {
+        "name": "session",
+        "type": "varchar(255)",
+        "pk": false
+      },
+      {
+        "name": "form",
+        "type": "varchar(255)",
+        "pk": false
+      },
+      {
+        "name": "field",
+        "type": "varchar(255)",
+        "pk": false
+      },
+      {
+        "name": "error_type",
+        "type": "varchar(255)",
+        "pk": false
+      },
+      {
+        "name": "value",
+        "type": "varchar(255)",
+        "pk": false
+      }
+    ],
+    "foreign_keys": []
+  },
+  "action_log_with_ip": {
+    "columns": [
+      {
+        "name": "session",
+        "type": "varchar(255)",
+        "pk": false
+      },
+      {
+        "name": "user_id",
+        "type": "varchar(255)",
+        "pk": false
+      },
+      {
+        "name": "action",
+        "type": "varchar(255)",
+        "pk": false
+      },
+      {
+        "name": "ip",
+        "type": "varchar(255)",
+        "pk": false
+      },
+      {
+        "name": "stamp",
+        "type": "varchar(255)",
+        "pk": false
+      }
+    ],
+    "foreign_keys": []
+  },
+  "access_log": {
+    "columns": [
+      {
+        "name": "session",
+        "type": "varchar(255)",
+        "pk": false
+      },
+      {
+        "name": "user_id",
+        "type": "varchar(255)",
+        "pk": false
+      },
+      {
+        "name": "action",
+        "type": "varchar(255)",
+        "pk": false
+      },
+      {
+        "name": "stamp",
+        "type": "varchar(255)",
+        "pk": false
+      }
+    ],
+    "foreign_keys": []
+  },
+  "action_log_with_noise": {
+    "columns": [
+      {
+        "name": "stamp",
+        "type": "varchar(255)",
+        "pk": false
+      },
+      {
+        "name": "session",
+        "type": "varchar(255)",
+        "pk": false
+      },
+      {
+        "name": "action",
+        "type": "varchar(255)",
+        "pk": false
+      },
+      {
+        "name": "products",
+        "type": "varchar(255)",
+        "pk": false
+      },
+      {
+        "name": "url",
+        "type": "TEXT",
+        "pk": false
+      },
+      {
+        "name": "ip",
+        "type": "varchar(255)",
+        "pk": false
+      },
+      {
+        "name": "user_agent",
+        "type": "TEXT",
+        "pk": false
+      }
+    ],
+    "foreign_keys": []
+  },
+  "invalid_action_log": {
+    "columns": [
+      {
+        "name": "stamp",
+        "type": "varchar(255)",
+        "pk": false
+      },
+      {
+        "name": "session",
+        "type": "varchar(255)",
+        "pk": false
+      },
+      {
+        "name": "user_id",
+        "type": "varchar(255)",
+        "pk": false
+      },
+      {
+        "name": "action",
+        "type": "varchar(255)",
+        "pk": false
+      },
+      {
+        "name": "category",
+        "type": "varchar(255)",
+        "pk": false
+      },
+      {
+        "name": "products",
+        "type": "varchar(255)",
+        "pk": false
+      },
+      {
+        "name": "amount",
+        "type": "INTEGER",
+        "pk": false
+      }
+    ],
+    "foreign_keys": []
+  },
+  "mst_categories": {
+    "columns": [
+      {
+        "name": "id",
+        "type": "INTEGER",
+        "pk": false
+      },
+      {
+        "name": "name",
+        "type": "varchar(255)",
+        "pk": false
+      },
+      {
+        "name": "stamp",
+        "type": "varchar(255)",
+        "pk": false
+      }
+    ],
+    "foreign_keys": []
+  },
+  "dup_action_log": {
+    "columns": [
+      {
+        "name": "stamp",
+        "type": "varchar(255)",
+        "pk": false
+      },
+      {
+        "name": "session",
+        "type": "varchar(255)",
+        "pk": false
+      },
+      {
+        "name": "user_id",
+        "type": "varchar(255)",
+        "pk": false
+      },
+      {
+        "name": "action",
+        "type": "varchar(255)",
+        "pk": false
+      },
+      {
+        "name": "products",
+        "type": "varchar(255)",
+        "pk": false
+      }
+    ],
+    "foreign_keys": []
+  },
+  "mst_products_20161201": {
+    "columns": [
+      {
+        "name": "product_id",
+        "type": "varchar(255)",
+        "pk": false
+      },
+      {
+        "name": "name",
+        "type": "varchar(255)",
+        "pk": false
+      },
+      {
+        "name": "price",
+        "type": "INTEGER",
+        "pk": false
+      },
+      {
+        "name": "updated_at",
+        "type": "varchar(255)",
+        "pk": false
+      }
+    ],
+    "foreign_keys": []
+  },
+  "mst_products_20170101": {
+    "columns": [
+      {
+        "name": "product_id",
+        "type": "varchar(255)",
+        "pk": false
+      },
+      {
+        "name": "name",
+        "type": "varchar(255)",
+        "pk": false
+      },
+      {
+        "name": "price",
+        "type": "INTEGER",
+        "pk": false
+      },
+      {
+        "name": "updated_at",
+        "type": "varchar(255)",
+        "pk": false
+      }
+    ],
+    "foreign_keys": []
+  },
+  "app1_mst_users": {
+    "columns": [
+      {
+        "name": "user_id",
+        "type": "varchar(255)",
+        "pk": false
+      },
+      {
+        "name": "name",
+        "type": "varchar(255)",
+        "pk": false
+      },
+      {
+        "name": "email",
+        "type": "varchar(255)",
+        "pk": false
+      }
+    ],
+    "foreign_keys": []
+  },
+  "app2_mst_users": {
+    "columns": [
+      {
+        "name": "user_id",
+        "type": "varchar(255)",
+        "pk": false
+      },
+      {
+        "name": "name",
+        "type": "varchar(255)",
+        "pk": false
+      },
+      {
+        "name": "phone",
+        "type": "varchar(255)",
+        "pk": false
+      }
+    ],
+    "foreign_keys": []
+  },
+  "mst_users_with_card_number": {
+    "columns": [
+      {
+        "name": "user_id",
+        "type": "varchar(255)",
+        "pk": false
+      },
+      {
+        "name": "card_number",
+        "type": "varchar(255)",
+        "pk": false
+      }
+    ],
+    "foreign_keys": []
+  },
+  "purchase_log": {
+    "columns": [
+      {
+        "name": "purchase_id",
+        "type": "INTEGER",
+        "pk": false
+      },
+      {
+        "name": "user_id",
+        "type": "varchar(255)",
+        "pk": false
+      },
+      {
+        "name": "amount",
+        "type": "INTEGER",
+        "pk": false
+      },
+      {
+        "name": "stamp",
+        "type": "varchar(255)",
+        "pk": false
+      }
+    ],
+    "foreign_keys": []
+  },
+  "product_sales": {
+    "columns": [
+      {
+        "name": "category_name",
+        "type": "varchar(255)",
+        "pk": false
+      },
+      {
+        "name": "product_id",
+        "type": "varchar(255)",
+        "pk": false
+      },
+      {
+        "name": "sales",
+        "type": "INTEGER",
+        "pk": false
+      }
+    ],
+    "foreign_keys": []
+  }
+}

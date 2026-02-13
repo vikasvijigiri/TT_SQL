@@ -1,0 +1,14 @@
+{
+  "is_valid": false,
+  "check_results": {
+    "columns": "PASS",
+    "syntax": "PASS",
+    "joins": "PASS",
+    "group_by": "PASS",
+    "math_types": "PASS",
+    "logic": "FAIL"
+  },
+  "feedback": [
+    "The logic for excluding matches with 'title change' is incorrect. The condition 'm.title_change != 1' should be used to exclude matches where a title change occurred, but the request specifies excluding titles with 'title change' in their name, which is not addressed in the query."
+  ]
+}

@@ -1,0 +1,7 @@
+Table: player_match
+            Columns:
+            - match_id (INTEGER)
+- player_id (INTEGER)
+- role (TEXT)
+- team_id (INTEGER)
+        

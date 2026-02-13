@@ -1,0 +1,18 @@
+{
+  "is_valid": false,
+  "check_results": {
+    "columns": "PASS",
+    "syntax": "PASS",
+    "joins": "PASS",
+    "group_by": "PASS",
+    "math_types": "PASS",
+    "logic": "FAIL",
+    "step_logic": "FAIL"
+  },
+  "feedback": [
+    "The query aggregates inventory by product (total_inv) and does not reference inventory purchase dates or location-level quantities, thus it does not implement the required FIFO ordering by earliest purchase date and smallest available quantity.",
+    "Allocation logic uses cumulative order quantity against total inventory only, which does not reflect the per\u2011location overlapping allocation described in the Action Plan.",
+    "The inventory table is never joined, so the query cannot select inventory locations or apply the FIFO sorting step.",
+    "Consequently, the calculated pick_pct does not represent the overlapping range between each order's required quantity and the specific inventory quantities as required."
+  ]
+}

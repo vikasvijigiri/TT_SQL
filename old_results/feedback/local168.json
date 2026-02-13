@@ -1,0 +1,16 @@
+{
+  "is_valid": false,
+  "check_results": {
+    "columns": "PASS",
+    "syntax": "PASS",
+    "joins": "FAIL",
+    "group_by": "PASS",
+    "math_types": "PASS",
+    "logic": "FAIL",
+    "step_logic": "FAIL"
+  },
+  "feedback": [
+    "The query references a table named 'job_postings_skills' which does not exist in the provided schema; the correct linking table appears to be 'skills_job_dim'.",
+    "Because of the non\u2011existent table reference, the JOIN clause violates schema adherence and prevents correct execution."
+  ]
+}

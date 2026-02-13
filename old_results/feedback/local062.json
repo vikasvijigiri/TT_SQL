@@ -1,0 +1,17 @@
+{
+  "is_valid": false,
+  "check_results": {
+    "columns": "PASS",
+    "syntax": "FAIL",
+    "joins": "PASS",
+    "group_by": "FAIL",
+    "math_types": "FAIL",
+    "logic": "FAIL"
+  },
+  "feedback": [
+    "Syntax error: The use of 'CAST((icp.total_profit - pr.min_profit) AS REAL) / (pr.max_profit - pr.min_profit) * 10' in the CASE statement is incorrect for bucket calculation.",
+    "GROUP BY error: The 'GROUP BY b.bucket' in the 'Bucket_Intervals' CTE is incorrect as it should not group by bucket.",
+    "Math types error: Potential integer division issue in bucket calculation.",
+    "Logic error: The logic for dividing profits into buckets does not correctly handle cases where profits are equal, and the bucket calculation logic is flawed."
+  ]
+}

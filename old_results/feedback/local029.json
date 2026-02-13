@@ -1,0 +1,15 @@
+{
+  "is_valid": false,
+  "check_results": {
+    "columns": "PASS",
+    "syntax": "PASS",
+    "joins": "PASS",
+    "group_by": "FAIL",
+    "math_types": "PASS",
+    "logic": "FAIL"
+  },
+  "feedback": [
+    "GROUP BY clause in the final SELECT statement is incorrect. It should include all non-aggregated columns.",
+    "The logic does not correctly identify the top three customers by the number of delivered orders before calculating the average payment value."
+  ]
+}

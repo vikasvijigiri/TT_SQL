@@ -1,0 +1,14 @@
+{
+  "is_valid": false,
+  "check_results": {
+    "columns": "PASS",
+    "syntax": "PASS",
+    "joins": "PASS",
+    "group_by": "PASS",
+    "math_types": "PASS",
+    "logic": "FAIL"
+  },
+  "feedback": [
+    "The logic for identifying 'IndirectCoActors' is flawed. The query should ensure that 'IndirectCoActors' have acted in a movie with a 'DirectCoActor' but not in any movie that Shahrukh Khan has acted in. The current logic incorrectly excludes movies that Shahrukh Khan has acted in, rather than ensuring the actor has not acted directly with Shahrukh Khan."
+  ]
+}

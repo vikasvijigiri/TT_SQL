@@ -1,0 +1,10 @@
+{
+  "step_by_step_approach": [
+    "Collect all match records, including season, league, country, participating teams, and final scores.",
+    "Determine the outcome of each match for each team (win, tie, or loss).",
+    "Assign 3 points for a win, 1 point for a tie, and 0 points for a loss to the corresponding team.",
+    "Sum the points for each team within the same season, league, and country.",
+    "Identify the team with the highest total points for each season, league, and country.",
+    "Return the champion team name, the league, the country, and the total points earned."
+  ]
+}

@@ -1,0 +1,9 @@
+{
+  "relevant_tables": [
+    "drivers",
+    "driver_standings",
+    "constructors",
+    "constructor_standings"
+  ],
+  "reasoning": "The query needs the total points earned by each driver and each constructor per season. The `driver_standings` table (or an equivalent results table) contains the points a driver accumulated for a given year, while the `constructor_standings` table holds the points for each constructor per year. To display the driver\u2019s full name we need the `drivers` table, which stores first and last names (or a concatenated full name). The `constructors` table provides the constructor name. By joining the standings tables with the corresponding entity tables and grouping by year, we can determine the driver and constructor with the highest points for each season."
+}

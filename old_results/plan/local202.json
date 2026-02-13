@@ -1,0 +1,12 @@
+{
+  "step_by_step_approach": [
+    "Calculate the total alien population for each state.",
+    "Rank the states from highest to lowest population.",
+    "Select the ten states with the highest alien population.",
+    "Determine the proportion of friendly aliens and hostile aliens in each of those states.",
+    "Keep only the states where the friendly proportion is greater than the hostile proportion.",
+    "Find the average age of aliens in each remaining state.",
+    "Retain only the states where the average alien age exceeds 200.",
+    "Count how many states satisfy all the above conditions."
+  ]
+}

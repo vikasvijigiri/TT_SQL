@@ -1,0 +1,16 @@
+{
+  "is_valid": false,
+  "check_results": {
+    "columns": "PASS",
+    "syntax": "PASS",
+    "joins": "FAIL",
+    "group_by": "PASS",
+    "math_types": "PASS",
+    "logic": "FAIL"
+  },
+  "feedback": [
+    "The JOIN conditions in the final SELECT statement are incorrect. The streak_id is not unique across different city names, which can lead to incorrect matches.",
+    "The logic for identifying the shortest and longest streaks does not account for ties correctly. It assumes there is only one shortest and one longest streak, but there could be multiple streaks of the same length.",
+    "The logic does not ensure that only one record per date is returned for each streak, as requested."
+  ]
+}

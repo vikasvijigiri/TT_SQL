@@ -1,0 +1,582 @@
+{
+  "hardware_dim_customer": {
+    "columns": [
+      {
+        "name": "customer_code",
+        "type": "INTEGER",
+        "pk": false
+      },
+      {
+        "name": "customer",
+        "type": "TEXT",
+        "pk": false
+      },
+      {
+        "name": "platform",
+        "type": "TEXT",
+        "pk": false
+      },
+      {
+        "name": "channel",
+        "type": "TEXT",
+        "pk": false
+      },
+      {
+        "name": "market",
+        "type": "TEXT",
+        "pk": false
+      },
+      {
+        "name": "sub_zone",
+        "type": "TEXT",
+        "pk": false
+      },
+      {
+        "name": "region",
+        "type": "TEXT",
+        "pk": false
+      }
+    ],
+    "foreign_keys": []
+  },
+  "hardware_fact_pre_invoice_deductions": {
+    "columns": [
+      {
+        "name": "customer_code",
+        "type": "INTEGER",
+        "pk": false
+      },
+      {
+        "name": "fiscal_year",
+        "type": "INTEGER",
+        "pk": false
+      },
+      {
+        "name": "pre_invoice_discount_pct",
+        "type": "REAL",
+        "pk": false
+      }
+    ],
+    "foreign_keys": []
+  },
+  "web_sales_reps": {
+    "columns": [
+      {
+        "name": "id",
+        "type": "INTEGER",
+        "pk": false
+      },
+      {
+        "name": "name",
+        "type": "TEXT",
+        "pk": false
+      },
+      {
+        "name": "region_id",
+        "type": "INTEGER",
+        "pk": false
+      }
+    ],
+    "foreign_keys": []
+  },
+  "hardware_dim_product": {
+    "columns": [
+      {
+        "name": "product_code",
+        "type": "TEXT",
+        "pk": false
+      },
+      {
+        "name": "division",
+        "type": "TEXT",
+        "pk": false
+      },
+      {
+        "name": "segment",
+        "type": "TEXT",
+        "pk": false
+      },
+      {
+        "name": "category",
+        "type": "TEXT",
+        "pk": false
+      },
+      {
+        "name": "product",
+        "type": "TEXT",
+        "pk": false
+      },
+      {
+        "name": "variant",
+        "type": "TEXT",
+        "pk": false
+      }
+    ],
+    "foreign_keys": []
+  },
+  "web_orders": {
+    "columns": [
+      {
+        "name": "id",
+        "type": "INTEGER",
+        "pk": false
+      },
+      {
+        "name": "account_id",
+        "type": "INTEGER",
+        "pk": false
+      },
+      {
+        "name": "occurred_at",
+        "type": "TEXT",
+        "pk": false
+      },
+      {
+        "name": "standard_qty",
+        "type": "INTEGER",
+        "pk": false
+      },
+      {
+        "name": "gloss_qty",
+        "type": "INTEGER",
+        "pk": false
+      },
+      {
+        "name": "poster_qty",
+        "type": "INTEGER",
+        "pk": false
+      },
+      {
+        "name": "total",
+        "type": "INTEGER",
+        "pk": false
+      },
+      {
+        "name": "standard_amt_usd",
+        "type": "REAL",
+        "pk": false
+      },
+      {
+        "name": "gloss_amt_usd",
+        "type": "REAL",
+        "pk": false
+      },
+      {
+        "name": "poster_amt_usd",
+        "type": "REAL",
+        "pk": false
+      },
+      {
+        "name": "total_amt_usd",
+        "type": "REAL",
+        "pk": false
+      }
+    ],
+    "foreign_keys": []
+  },
+  "StaffHours": {
+    "columns": [
+      {
+        "name": "StaffMember",
+        "type": "TEXT",
+        "pk": false
+      },
+      {
+        "name": "EventDate",
+        "type": "TEXT",
+        "pk": false
+      },
+      {
+        "name": "EventTime",
+        "type": "TEXT",
+        "pk": false
+      },
+      {
+        "name": "EventType",
+        "type": "TEXT",
+        "pk": false
+      }
+    ],
+    "foreign_keys": []
+  },
+  "university_enrollment": {
+    "columns": [
+      {
+        "name": "OfferNo",
+        "type": "INTEGER",
+        "pk": false
+      },
+      {
+        "name": "StdNo",
+        "type": "INTEGER",
+        "pk": false
+      },
+      {
+        "name": "EnrGrade",
+        "type": "REAL",
+        "pk": false
+      }
+    ],
+    "foreign_keys": []
+  },
+  "university_faculty": {
+    "columns": [
+      {
+        "name": "FacNo",
+        "type": "INTEGER",
+        "pk": false
+      },
+      {
+        "name": "FacFirstName",
+        "type": "TEXT",
+        "pk": false
+      },
+      {
+        "name": "FacLastName",
+        "type": "TEXT",
+        "pk": false
+      },
+      {
+        "name": "FacCity",
+        "type": "TEXT",
+        "pk": false
+      },
+      {
+        "name": "FacState",
+        "type": "TEXT",
+        "pk": false
+      },
+      {
+        "name": "FacDept",
+        "type": "TEXT",
+        "pk": false
+      },
+      {
+        "name": "FacRank",
+        "type": "TEXT",
+        "pk": false
+      },
+      {
+        "name": "FacSalary",
+        "type": "INTEGER",
+        "pk": false
+      },
+      {
+        "name": "FacSupervisor",
+        "type": "REAL",
+        "pk": false
+      },
+      {
+        "name": "FacHireDate",
+        "type": "TEXT",
+        "pk": false
+      },
+      {
+        "name": "FacZipCode",
+        "type": "TEXT",
+        "pk": false
+      }
+    ],
+    "foreign_keys": []
+  },
+  "university_student": {
+    "columns": [
+      {
+        "name": "StdNo",
+        "type": "INTEGER",
+        "pk": false
+      },
+      {
+        "name": "StdFirstName",
+        "type": "TEXT",
+        "pk": false
+      },
+      {
+        "name": "StdLastName",
+        "type": "TEXT",
+        "pk": false
+      },
+      {
+        "name": "StdCity",
+        "type": "TEXT",
+        "pk": false
+      },
+      {
+        "name": "StdState",
+        "type": "TEXT",
+        "pk": false
+      },
+      {
+        "name": "StdZip",
+        "type": "TEXT",
+        "pk": false
+      },
+      {
+        "name": "StdMajor",
+        "type": "TEXT",
+        "pk": false
+      },
+      {
+        "name": "StdClass",
+        "type": "TEXT",
+        "pk": false
+      },
+      {
+        "name": "StdGPA",
+        "type": "REAL",
+        "pk": false
+      }
+    ],
+    "foreign_keys": []
+  },
+  "university_offering": {
+    "columns": [
+      {
+        "name": "OfferNo",
+        "type": "INTEGER",
+        "pk": false
+      },
+      {
+        "name": "CourseNo",
+        "type": "TEXT",
+        "pk": false
+      },
+      {
+        "name": "OffTerm",
+        "type": "TEXT",
+        "pk": false
+      },
+      {
+        "name": "OffYear",
+        "type": "INTEGER",
+        "pk": false
+      },
+      {
+        "name": "OffLocation",
+        "type": "TEXT",
+        "pk": false
+      },
+      {
+        "name": "OffTime",
+        "type": "TEXT",
+        "pk": false
+      },
+      {
+        "name": "FacNo",
+        "type": "REAL",
+        "pk": false
+      },
+      {
+        "name": "OffDays",
+        "type": "TEXT",
+        "pk": false
+      }
+    ],
+    "foreign_keys": []
+  },
+  "web_accounts": {
+    "columns": [
+      {
+        "name": "id",
+        "type": "INTEGER",
+        "pk": false
+      },
+      {
+        "name": "name",
+        "type": "TEXT",
+        "pk": false
+      },
+      {
+        "name": "website",
+        "type": "TEXT",
+        "pk": false
+      },
+      {
+        "name": "lat",
+        "type": "REAL",
+        "pk": false
+      },
+      {
+        "name": "long",
+        "type": "REAL",
+        "pk": false
+      },
+      {
+        "name": "primary_poc",
+        "type": "TEXT",
+        "pk": false
+      },
+      {
+        "name": "sales_rep_id",
+        "type": "INTEGER",
+        "pk": false
+      }
+    ],
+    "foreign_keys": []
+  },
+  "web_events": {
+    "columns": [
+      {
+        "name": "id",
+        "type": "INTEGER",
+        "pk": false
+      },
+      {
+        "name": "account_id",
+        "type": "INTEGER",
+        "pk": false
+      },
+      {
+        "name": "occurred_at",
+        "type": "TEXT",
+        "pk": false
+      },
+      {
+        "name": "channel",
+        "type": "TEXT",
+        "pk": false
+      }
+    ],
+    "foreign_keys": []
+  },
+  "SalaryDataset": {
+    "columns": [
+      {
+        "name": "index",
+        "type": "INTEGER",
+        "pk": false
+      },
+      {
+        "name": "CompanyName",
+        "type": "TEXT",
+        "pk": false
+      },
+      {
+        "name": "JobTitle",
+        "type": "TEXT",
+        "pk": false
+      },
+      {
+        "name": "SalariesReported",
+        "type": "REAL",
+        "pk": false
+      },
+      {
+        "name": "Location",
+        "type": "TEXT",
+        "pk": false
+      },
+      {
+        "name": "Salary",
+        "type": "TEXT",
+        "pk": false
+      }
+    ],
+    "foreign_keys": []
+  },
+  "web_region": {
+    "columns": [
+      {
+        "name": "id",
+        "type": "INTEGER",
+        "pk": false
+      },
+      {
+        "name": "name",
+        "type": "TEXT",
+        "pk": false
+      }
+    ],
+    "foreign_keys": []
+  },
+  "hardware_fact_gross_price": {
+    "columns": [
+      {
+        "name": "product_code",
+        "type": "TEXT",
+        "pk": false
+      },
+      {
+        "name": "fiscal_year",
+        "type": "INTEGER",
+        "pk": false
+      },
+      {
+        "name": "gross_price",
+        "type": "REAL",
+        "pk": false
+      }
+    ],
+    "foreign_keys": []
+  },
+  "hardware_fact_manufacturing_cost": {
+    "columns": [
+      {
+        "name": "product_code",
+        "type": "TEXT",
+        "pk": false
+      },
+      {
+        "name": "cost_year",
+        "type": "INTEGER",
+        "pk": false
+      },
+      {
+        "name": "manufacturing_cost",
+        "type": "REAL",
+        "pk": false
+      }
+    ],
+    "foreign_keys": []
+  },
+  "university_course": {
+    "columns": [
+      {
+        "name": "CourseNo",
+        "type": "TEXT",
+        "pk": false
+      },
+      {
+        "name": "CrsDesc",
+        "type": "TEXT",
+        "pk": false
+      },
+      {
+        "name": "CrsUnits",
+        "type": "INTEGER",
+        "pk": false
+      }
+    ],
+    "foreign_keys": []
+  },
+  "hardware_fact_sales_monthly": {
+    "columns": [
+      {
+        "name": "date",
+        "type": "TEXT",
+        "pk": false
+      },
+      {
+        "name": "product_code",
+        "type": "TEXT",
+        "pk": false
+      },
+      {
+        "name": "customer_code",
+        "type": "INTEGER",
+        "pk": false
+      },
+      {
+        "name": "sold_quantity",
+        "type": "INTEGER",
+        "pk": false
+      },
+      {
+        "name": "fiscal_year",
+        "type": "INTEGER",
+        "pk": false
+      }
+    ],
+    "foreign_keys": []
+  }
+}

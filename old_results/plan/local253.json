@@ -1,0 +1,11 @@
+{
+  "step_by_step_approach": [
+    "Remove any non-numeric characters from the salary values and convert them to numbers.",
+    "Limit the data to records from Mumbai, Pune, New Delhi, and Hyderabad.",
+    "Calculate the average salary for each company within each of those cities.",
+    "Calculate the overall average salary across all records in the dataset.",
+    "Identify the five companies with the highest average salary in each city.",
+    "For each of those companies, associate its city average salary with the overall national average salary.",
+    "Present the results with columns: Location, Company Name, Average Salary in State, and Average Salary in Country."
+  ]
+}

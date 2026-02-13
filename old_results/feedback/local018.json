@@ -1,0 +1,14 @@
+{
+  "is_valid": false,
+  "check_results": {
+    "columns": "PASS",
+    "syntax": "PASS",
+    "joins": "PASS",
+    "group_by": "PASS",
+    "math_types": "FAIL",
+    "logic": "PASS"
+  },
+  "feedback": [
+    "The query uses integer division when calculating the percentage share of incidents. This can lead to incorrect results if not handled properly. Ensure that division results in a floating-point number by using CAST or similar methods."
+  ]
+}

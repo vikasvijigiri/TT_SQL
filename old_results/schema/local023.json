@@ -1,0 +1,302 @@
+{
+  "player": {
+    "columns": [
+      {
+        "name": "player_id",
+        "type": "INTEGER",
+        "pk": true
+      },
+      {
+        "name": "player_name",
+        "type": "TEXT",
+        "pk": false
+      },
+      {
+        "name": "dob",
+        "type": "DATE",
+        "pk": false
+      },
+      {
+        "name": "batting_hand",
+        "type": "TEXT",
+        "pk": false
+      },
+      {
+        "name": "bowling_skill",
+        "type": "TEXT",
+        "pk": false
+      },
+      {
+        "name": "country_name",
+        "type": "TEXT",
+        "pk": false
+      }
+    ],
+    "foreign_keys": []
+  },
+  "team": {
+    "columns": [
+      {
+        "name": "team_id",
+        "type": "INTEGER",
+        "pk": true
+      },
+      {
+        "name": "name",
+        "type": "TEXT",
+        "pk": false
+      }
+    ],
+    "foreign_keys": []
+  },
+  "match": {
+    "columns": [
+      {
+        "name": "match_id",
+        "type": "INTEGER",
+        "pk": true
+      },
+      {
+        "name": "team_1",
+        "type": "INTEGER",
+        "pk": false
+      },
+      {
+        "name": "team_2",
+        "type": "INTEGER",
+        "pk": false
+      },
+      {
+        "name": "match_date",
+        "type": "DATE",
+        "pk": false
+      },
+      {
+        "name": "season_id",
+        "type": "INTEGER",
+        "pk": false
+      },
+      {
+        "name": "venue",
+        "type": "TEXT",
+        "pk": false
+      },
+      {
+        "name": "toss_winner",
+        "type": "INTEGER",
+        "pk": false
+      },
+      {
+        "name": "toss_decision",
+        "type": "TEXT",
+        "pk": false
+      },
+      {
+        "name": "win_type",
+        "type": "TEXT",
+        "pk": false
+      },
+      {
+        "name": "win_margin",
+        "type": "INTEGER",
+        "pk": false
+      },
+      {
+        "name": "outcome_type",
+        "type": "TEXT",
+        "pk": false
+      },
+      {
+        "name": "match_winner",
+        "type": "INTEGER",
+        "pk": false
+      },
+      {
+        "name": "man_of_the_match",
+        "type": "INTEGER",
+        "pk": false
+      }
+    ],
+    "foreign_keys": []
+  },
+  "player_match": {
+    "columns": [
+      {
+        "name": "match_id",
+        "type": "INTEGER",
+        "pk": true
+      },
+      {
+        "name": "player_id",
+        "type": "INTEGER",
+        "pk": true
+      },
+      {
+        "name": "role",
+        "type": "TEXT",
+        "pk": false
+      },
+      {
+        "name": "team_id",
+        "type": "INTEGER",
+        "pk": false
+      }
+    ],
+    "foreign_keys": []
+  },
+  "ball_by_ball": {
+    "columns": [
+      {
+        "name": "match_id",
+        "type": "INTEGER",
+        "pk": true
+      },
+      {
+        "name": "over_id",
+        "type": "INTEGER",
+        "pk": true
+      },
+      {
+        "name": "ball_id",
+        "type": "INTEGER",
+        "pk": true
+      },
+      {
+        "name": "innings_no",
+        "type": "INTEGER",
+        "pk": true
+      },
+      {
+        "name": "team_batting",
+        "type": "INTEGER",
+        "pk": false
+      },
+      {
+        "name": "team_bowling",
+        "type": "INTEGER",
+        "pk": false
+      },
+      {
+        "name": "striker_batting_position",
+        "type": "INTEGER",
+        "pk": false
+      },
+      {
+        "name": "striker",
+        "type": "INTEGER",
+        "pk": false
+      },
+      {
+        "name": "non_striker",
+        "type": "INTEGER",
+        "pk": false
+      },
+      {
+        "name": "bowler",
+        "type": "INTEGER",
+        "pk": false
+      }
+    ],
+    "foreign_keys": []
+  },
+  "batsman_scored": {
+    "columns": [
+      {
+        "name": "match_id",
+        "type": "INTEGER",
+        "pk": true
+      },
+      {
+        "name": "over_id",
+        "type": "INTEGER",
+        "pk": true
+      },
+      {
+        "name": "ball_id",
+        "type": "INTEGER",
+        "pk": true
+      },
+      {
+        "name": "runs_scored",
+        "type": "INTEGER",
+        "pk": false
+      },
+      {
+        "name": "innings_no",
+        "type": "INTEGER",
+        "pk": true
+      }
+    ],
+    "foreign_keys": []
+  },
+  "wicket_taken": {
+    "columns": [
+      {
+        "name": "match_id",
+        "type": "INTEGER",
+        "pk": true
+      },
+      {
+        "name": "over_id",
+        "type": "INTEGER",
+        "pk": true
+      },
+      {
+        "name": "ball_id",
+        "type": "INTEGER",
+        "pk": true
+      },
+      {
+        "name": "player_out",
+        "type": "INTEGER",
+        "pk": false
+      },
+      {
+        "name": "kind_out",
+        "type": "TEXT",
+        "pk": false
+      },
+      {
+        "name": "innings_no",
+        "type": "INTEGER",
+        "pk": true
+      }
+    ],
+    "foreign_keys": []
+  },
+  "extra_runs": {
+    "columns": [
+      {
+        "name": "match_id",
+        "type": "INTEGER",
+        "pk": true
+      },
+      {
+        "name": "over_id",
+        "type": "INTEGER",
+        "pk": true
+      },
+      {
+        "name": "ball_id",
+        "type": "INTEGER",
+        "pk": true
+      },
+      {
+        "name": "extra_type",
+        "type": "TEXT",
+        "pk": false
+      },
+      {
+        "name": "extra_runs",
+        "type": "INTEGER",
+        "pk": false
+      },
+      {
+        "name": "innings_no",
+        "type": "INTEGER",
+        "pk": true
+      }
+    ],
+    "foreign_keys": []
+  }
+}

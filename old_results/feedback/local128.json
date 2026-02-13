@@ -1,0 +1,14 @@
+{
+  "is_valid": false,
+  "check_results": {
+    "columns": "PASS",
+    "syntax": "PASS",
+    "joins": "PASS",
+    "group_by": "PASS",
+    "math_types": "PASS",
+    "logic": "FAIL"
+  },
+  "feedback": [
+    "The logic does not ensure that the bowler has won games with a handicap score of 190 or less at all three specified venues. The subquery checks for the presence of wins at each location but does not ensure that the wins are with a handicap score of 190 or less at each location."
+  ]
+}

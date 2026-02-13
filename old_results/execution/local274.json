@@ -1,0 +1,19 @@
+{
+  "columns": [
+    "product_name",
+    "avg_qty"
+  ],
+  "rows": [
+    [
+      "Hoppy Crude Oil",
+      36.666666666666664
+    ],
+    [
+      "Der Helle Kumpel",
+      23.333333333333332
+    ]
+  ],
+  "row_count": 2,
+  "execution_time_ms": 1.3689994812011719,
+  "error_message": null
+}

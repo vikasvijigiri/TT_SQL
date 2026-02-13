@@ -1,0 +1,7 @@
+{
+  "relevant_tables": [
+    "veg_whsle",
+    "items"
+  ],
+  "reasoning": "The query explicitly references \"veg whsle data\" and asks for a summary of loss rates per item. The table that stores the vegetable wholesale records (e.g., `veg_whsle`) is expected to contain the loss_rate column needed to compute the average and standard deviation. If item metadata (such as item name, category, or ID) is stored separately, the `items` table would be joined to provide the item count and any additional item attributes. These two tables together allow calculation of the average loss rate and classification of items as below, above, or within one standard deviation of that average."
+}

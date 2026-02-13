@@ -1,0 +1,15 @@
+{
+  "is_valid": false,
+  "check_results": {
+    "columns": "PASS",
+    "syntax": "PASS",
+    "joins": "PASS",
+    "group_by": "PASS",
+    "math_types": "PASS",
+    "logic": "FAIL"
+  },
+  "feedback": [
+    "The logic for identifying the bowler for the highest scoring over is incorrect. The subquery in MaxOverPerMatch should ensure it retrieves the correct bowler for the specific over with the highest total runs, but using LIMIT 1 without an ORDER BY clause can lead to incorrect results.",
+    "The logic does not account for ties in the highest scoring over within a match. If multiple overs have the same highest total runs, the query should handle this scenario."
+  ]
+}

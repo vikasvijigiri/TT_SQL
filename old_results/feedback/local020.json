@@ -1,0 +1,14 @@
+{
+  "is_valid": false,
+  "check_results": {
+    "columns": "PASS",
+    "syntax": "PASS",
+    "joins": "PASS",
+    "group_by": "FAIL",
+    "math_types": "PASS",
+    "logic": "PASS"
+  },
+  "feedback": [
+    "GROUP BY clause should use 'p.player_name' instead of 'bb.bowler' to match the SELECT clause."
+  ]
+}

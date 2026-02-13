@@ -1,0 +1,6 @@
+{
+  "relevant_tables": [
+    "legislators_terms"
+  ],
+  "reasoning": "The retention calculation depends on each legislator's start and end dates for their terms. The `legislators_terms` table contains the fields `id_bioguide`, `term_number`, `term_start`, and `term_end`, which allow us to identify the first term of each legislator (by selecting the earliest `term_start` per `id_bioguide`), filter those whose first term began between 1917\u201101\u201101 and 1999\u201112\u201131, and then determine whether they were still in office on each December 31st for the subsequent 20 years. No other tables provide term date information, so `legislators_terms` is the only required source for this query."
+}

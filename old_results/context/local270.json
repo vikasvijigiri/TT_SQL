@@ -1,0 +1,7 @@
+{
+  "relevant_tables": [
+    "packaging",
+    "packaging_relations"
+  ],
+  "reasoning": "The query is about hierarchical packaging containers. The `packaging` table provides the names (and IDs) of each container/item, while `packaging_relations` defines the parent\u2011child relationships between containers (packaging_id) and the items they contain (contains_id) together with the quantity (qty). To identify top\u2011level containers (those that never appear as a `contains_id`) and to sum quantities across all nested levels, we need to work with these two tables, possibly using a recursive CTE that traverses `packaging_relations` and aggregates the `qty` values. No other tables in the schema contain packaging hierarchy or quantity information relevant to this question."
+}

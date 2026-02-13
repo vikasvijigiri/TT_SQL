@@ -1,0 +1,98 @@
+[
+  {
+    "sub_question": "step 1: Identify the matches played by each player in season 5.",
+    "sub_sql": "WITH player_match_data AS (\n  SELECT pm.player_id, m.match_id, m.season_id\n  FROM player_match pm\n  JOIN match m ON pm.match_id = m.match_id\n)\nSELECT player_match_data.player_id, player_match_data.match_id\nFROM player_match_data\nWHERE player_match_data.season_id = 5;",
+    "intermediate_rows": [
+      [
+        20,
+        548311
+      ],
+      [
+        21,
+        548311
+      ],
+      [
+        23,
+        548311
+      ],
+      [
+        35,
+        548311
+      ],
+      [
+        50,
+        548311
+      ]
+    ],
+    "columns": [
+      "player_id",
+      "match_id"
+    ],
+    "critic_feedback": "No issues found.",
+    "iteration_count": 1,
+    "is_valid": true
+  },
+  {
+    "sub_question": "step 2: Calculate the total runs scored by each player in season 5.",
+    "sub_sql": "WITH player_match_data AS (\n  SELECT pm.player_id, m.match_id, m.season_id\n  FROM player_match pm\n  JOIN match m ON pm.match_id = m.match_id\n)\nSELECT player_match_data.player_id, SUM(bs.runs_scored) as total_runs\nFROM player_match_data\nJOIN batsman_scored bs ON player_match_data.match_id = bs.match_id AND player_match_data.player_id = bs.striker\nWHERE player_match_data.season_id = 5\nGROUP BY player_match_data.player_id;",
+    "intermediate_rows": [],
+    "columns": [],
+    "critic_feedback": "No issues found.",
+    "iteration_count": 1,
+    "is_valid": true
+  },
+  {
+    "sub_question": "step 3: Determine the number of matches each player played in season 5.",
+    "sub_sql": "WITH player_match_data AS (\n  SELECT pm.player_id, m.match_id, m.season_id\n  FROM player_match pm\n  JOIN match m ON pm.match_id = m.match_id\n)\nSELECT player_match_data.player_id, COUNT(DISTINCT bs.match_id) as matches_played\nFROM player_match_data\nJOIN batsman_scored bs ON (player_match_data.match_id = bs.match_id AND player_match_data.player_id = bs.striker) OR (player_match_data.match_id = bs.match_id AND player_match_data.player_id = bs.non_striker)\nWHERE player_match_data.season_id = 5\nGROUP BY player_match_data.player_id;",
+    "intermediate_rows": [],
+    "columns": [],
+    "critic_feedback": "No issues found.",
+    "iteration_count": 2,
+    "is_valid": true
+  },
+  {
+    "sub_question": "step 4: Calculate the average runs per match for each player in season 5 by dividing the total runs by the number of matches.",
+    "sub_sql": "WITH player_match_data AS (\n  SELECT pm.player_id, m.match_id, m.season_id\n  FROM player_match pm\n  JOIN match m ON pm.match_id = m.match_id\n)\nSELECT\n  player_match_data.player_id,\n  SUM(bs.runs_scored) / COUNT(DISTINCT bs.match_id) AS average_runs_per_match\nFROM\n  player_match_data\n  JOIN batsman_scored bs ON (player_match_data.match_id = bs.match_id AND player_match_data.player_id = bs.striker) OR (player_match_data.match_id = bs.match_id AND player_match_data.player_id = bs.non_striker)\nWHERE\n  player_match_data.season_id = 5\nGROUP BY\n  player_match_data.player_id;",
+    "intermediate_rows": [],
+    "columns": [],
+    "critic_feedback": "No issues found.",
+    "iteration_count": 2,
+    "is_valid": true
+  },
+  {
+    "sub_question": "step 5: Sort the players based on their average runs per match in descending order.",
+    "sub_sql": "WITH player_match_data AS (\n  SELECT pm.player_id, m.match_id, m.season_id\n  FROM player_match pm\n  JOIN match m ON pm.match_id = m.match_id\n)\nSELECT\n  player_match_data.player_id,\n  SUM(bs.runs_scored) / COUNT(DISTINCT bs.match_id) AS average_runs_per_match\nFROM\n  player_match_data\n  JOIN batsman_scored bs ON (player_match_data.match_id = bs.match_id AND player_match_data.player_id = bs.striker_batting_position) OR (player_match_data.match_id = bs.match_id AND player_match_data.player_id = bs.non_striker_batting_position)\nWHERE\n  player_match_data.season_id = 5\nGROUP BY\n  player_match_data.player_id;",
+    "intermediate_rows": [],
+    "columns": [],
+    "critic_feedback": "No issues found.",
+    "iteration_count": 1,
+    "is_valid": true
+  },
+  {
+    "sub_question": "step 6: Select the top 5 players from the sorted list.",
+    "sub_sql": "WITH player_match_data AS (\n  SELECT pm.player_id, m.match_id, m.season_id\n  FROM player_match pm\n  JOIN match m ON pm.match_id = m.match_id\n)\nSELECT\n  player_match_data.player_id,\n  SUM(bs.runs_scored) / CAST(COUNT(DISTINCT bs.match_id) AS REAL) AS average_runs_per_match\nFROM\n  player_match_data\n  JOIN batsman_scored bs ON (player_match_data.match_id = bs.match_id AND player_match_data.player_id = bs.striker) OR (player_match_data.match_id = bs.match_id AND player_match_data.player_id = bs.non_striker)\nWHERE\n  player_match_data.season_id = 5\nGROUP BY\n  player_match_data.player_id\nORDER BY\n  average_runs_per_match DESC\nLIMIT 5;",
+    "intermediate_rows": [],
+    "columns": [],
+    "critic_feedback": "No issues found.",
+    "iteration_count": 1,
+    "is_valid": true
+  },
+  {
+    "sub_question": "step 7: For each of these top 5 players, find their batting averages.",
+    "sub_sql": "WITH player_match_data AS (\n  SELECT pm.player_id, m.match_id, m.season_id\n  FROM player_match pm\n  JOIN match m ON pm.match_id = m.match_id\n)\nSELECT\n  player_match_data.player_id,\n  SUM(bs.runs_scored) / CAST(COUNT(DISTINCT bs.match_id) AS REAL) AS average_runs_per_match,\n  COUNT(wt.ball_id) AS times_out\nFROM\n  player_match_data\n  JOIN batsman_scored bs ON (player_match_data.match_id = bs.match_id AND player_match_data.player_id = bs.striker AND player_match_data.innings_no = bs.innings_no)\n  LEFT JOIN wicket_taken wt ON (player_match_data.match_id = wt.match_id AND player_match_data.player_id = wt.player_out AND player_match_data.innings_no = wt.innings_no)\nWHERE\n  player_match_data.season_id = 5\nGROUP BY\n  player_match_data.player_id\nORDER BY\n  average_runs_per_match DESC\nLIMIT 5;",
+    "intermediate_rows": [],
+    "columns": [],
+    "critic_feedback": "The SQL query does not return the expected result for the Action Plan (Sub-Task) and Ultimate Goal.; The query calculates the average runs per match and the number of times a player is out, but it does not provide the batting average as required by the Ultimate Goal.; The batting average is calculated as the total runs scored by a batsman divided by the number of times he is out.; The current query does not divide the total runs scored by the number of times the player is out.; The query should be modified to calculate the batting average correctly.",
+    "iteration_count": 3,
+    "is_valid": false
+  },
+  {
+    "sub_question": "step 8: Return the names of these top 5 players along with their batting averages.",
+    "sub_sql": "WITH player_match_data AS (\n  SELECT pm.player_id, m.match_id, m.season_id\n  FROM player_match pm\n  JOIN match m ON pm.match_id = m.match_id\n)\nSELECT\n  p.player_name,\n  player_match_data.average_runs_per_match\nFROM\n  player_match_data\n  JOIN (\n    SELECT\n      player_id,\n      SUM(bs.runs_scored) / CAST(COUNT(DISTINCT bs.match_id) AS REAL) AS average_runs_per_match\n    FROM\n      player_match_data\n      JOIN batsman_scored bs ON (player_match_data.match_id = bs.match_id AND player_match_data.player_id = bs.striker) OR (player_match_data.match_id = bs.match_id AND player_match_data.player_id = bs.non_striker)\n    WHERE\n      player_match_data.season_id = 5\n    GROUP BY\n      player_id\n  ) AS p ON player_match_data.player_id = p.player_id\nORDER BY\n  player_match_data.average_runs_per_match DESC\nLIMIT 5;",
+    "intermediate_rows": [],
+    "columns": [],
+    "critic_feedback": "The SQL query does not return the player_name column in the outermost SELECT statement. The player_name column is not present in the player_match_data CTE, and it should be joined with the player table to retrieve the player names.; The SQL query does not filter the results by the season_id in the outermost SELECT statement. The season_id filter is only applied in the subquery, which may not return the correct results for the Ultimate Goal.",
+    "iteration_count": 3,
+    "is_valid": false
+  }
+]

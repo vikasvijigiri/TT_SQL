@@ -1,0 +1,38 @@
+{
+  "intent": "DATA_retrieval",
+  "complexity": "High",
+  "entities": [
+    "orders",
+    "order_items"
+  ],
+  "metrics": [
+    "5-day symmetric moving average",
+    "sum"
+  ],
+  "all_maths_operations": [
+    "filtering dates",
+    "grouping by dates",
+    "calculating moving average",
+    "summing moving averages"
+  ],
+  "quantities_to_be_estimated": [
+    "moving averages",
+    "sum of moving averages"
+  ],
+  "approach_to_calculate_quantities_to_be_estimated": "Filter the orders and order_items tables for the date range January 1, 2017, to August 29, 2018. Group the data by date and calculate the sum of toy sales for each day. Then, calculate the 5-day symmetric moving average for each day. Finally, sum the moving averages for December 5 to 8, 2018.",
+  "dimensions": [
+    "order_purchase_timestamp"
+  ],
+  "filters": [
+    "order_purchase_timestamp BETWEEN '2017-01-01' AND '2018-08-29'",
+    "product_category_name = 'toys'"
+  ],
+  "time_constraints": "None",
+  "joins": [
+    "INNER JOIN order_items ON orders.order_id = order_items.order_id"
+  ],
+  "sorting": "None",
+  "limits": "None",
+  "output_format": "float",
+  "output_precision": "2"
+}

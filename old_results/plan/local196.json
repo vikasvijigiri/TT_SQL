@@ -1,0 +1,13 @@
+{
+  "step_by_step_approach": [
+    "Identify, for each customer, the rental that has the earliest payment date.",
+    "Find the rating category of the movie linked to that earliest rental.",
+    "Count the total number of rentals made by each customer.",
+    "Sum the monetary amounts of all payments made by each customer.",
+    "Calculate the number of subsequent rentals for each customer by subtracting one from their total rental count.",
+    "Link each customer to the rating category of their earliest rented movie.",
+    "Group customers according to those rating categories.",
+    "Compute, within each rating group, the average of the customers' total spent amounts.",
+    "Compute, within each rating group, the average of the customers' subsequent rental counts."
+  ]
+}

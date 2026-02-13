@@ -1,0 +1,17 @@
+{
+  "is_valid": false,
+  "check_results": {
+    "columns": "FAIL",
+    "syntax": "PASS",
+    "joins": "FAIL",
+    "group_by": "PASS",
+    "math_types": "PASS",
+    "logic": "FAIL"
+  },
+  "feedback": [
+    "Column 'toppings' does not exist in 'pizza_customer_orders'.",
+    "The join condition in 'ParsedToppings' is incorrect; it should not use 'instr' on 'bo.toppings'.",
+    "The logic for calculating 'base_quantity', 'extra_quantity', and 'exclusion_quantity' is flawed; it assumes toppings are stored as comma-separated values, which is not specified in the schema.",
+    "The SQL does not correctly parse and calculate the total quantity of each ingredient as per the request."
+  ]
+}

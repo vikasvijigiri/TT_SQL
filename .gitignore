@@ -1,0 +1,14 @@
+/resources/
+# Large data and resources
+resources/
+
+
+# Environment and Virtual Env
+.env
+new_venv/
+venv/
+__pycache__/
+*.pyc
+
+# Local logs
+*.md

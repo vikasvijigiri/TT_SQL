@@ -1,0 +1,17 @@
+{
+  "is_valid": false,
+  "check_results": {
+    "columns": "FAIL",
+    "syntax": "PASS",
+    "joins": "PASS",
+    "group_by": "PASS",
+    "math_types": "PASS",
+    "logic": "PASS",
+    "step_logic": "PASS"
+  },
+  "feedback": [
+    "Table 'base' does not exist in the provided schema.",
+    "Column 'proportion' is not present in any table in the schema.",
+    "Columns 'state' and 'gender' are referenced without a valid source table, causing schema ambiguity."
+  ]
+}

@@ -1,0 +1,805 @@
+{
+  "countries": {
+    "columns": [
+      {
+        "name": "country_id",
+        "type": "INTEGER",
+        "pk": true
+      },
+      {
+        "name": "country_iso_code",
+        "type": "CHAR(2)",
+        "pk": false
+      },
+      {
+        "name": "country_name",
+        "type": "TEXT",
+        "pk": false
+      },
+      {
+        "name": "country_subregion",
+        "type": "TEXT",
+        "pk": false
+      },
+      {
+        "name": "country_subregion_id",
+        "type": "INTEGER",
+        "pk": false
+      },
+      {
+        "name": "country_region",
+        "type": "TEXT",
+        "pk": false
+      },
+      {
+        "name": "country_region_id",
+        "type": "INTEGER",
+        "pk": false
+      },
+      {
+        "name": "country_total",
+        "type": "TEXT",
+        "pk": false
+      },
+      {
+        "name": "country_total_id",
+        "type": "INTEGER",
+        "pk": false
+      }
+    ],
+    "foreign_keys": []
+  },
+  "customers": {
+    "columns": [
+      {
+        "name": "cust_id",
+        "type": "INTEGER",
+        "pk": true
+      },
+      {
+        "name": "cust_first_name",
+        "type": "TEXT",
+        "pk": false
+      },
+      {
+        "name": "cust_last_name",
+        "type": "TEXT",
+        "pk": false
+      },
+      {
+        "name": "cust_gender",
+        "type": "CHAR(1)",
+        "pk": false
+      },
+      {
+        "name": "cust_year_of_birth",
+        "type": "INTEGER",
+        "pk": false
+      },
+      {
+        "name": "cust_marital_status",
+        "type": "TEXT",
+        "pk": false
+      },
+      {
+        "name": "cust_street_address",
+        "type": "TEXT",
+        "pk": false
+      },
+      {
+        "name": "cust_postal_code",
+        "type": "TEXT",
+        "pk": false
+      },
+      {
+        "name": "cust_city",
+        "type": "TEXT",
+        "pk": false
+      },
+      {
+        "name": "cust_city_id",
+        "type": "INTEGER",
+        "pk": false
+      },
+      {
+        "name": "cust_state_province",
+        "type": "TEXT",
+        "pk": false
+      },
+      {
+        "name": "cust_state_province_id",
+        "type": "INTEGER",
+        "pk": false
+      },
+      {
+        "name": "country_id",
+        "type": "INTEGER",
+        "pk": false
+      },
+      {
+        "name": "cust_main_phone_number",
+        "type": "TEXT",
+        "pk": false
+      },
+      {
+        "name": "cust_income_level",
+        "type": "TEXT",
+        "pk": false
+      },
+      {
+        "name": "cust_credit_limit",
+        "type": "REAL",
+        "pk": false
+      },
+      {
+        "name": "cust_email",
+        "type": "TEXT",
+        "pk": false
+      },
+      {
+        "name": "cust_total",
+        "type": "TEXT",
+        "pk": false
+      },
+      {
+        "name": "cust_total_id",
+        "type": "INTEGER",
+        "pk": false
+      },
+      {
+        "name": "cust_src_id",
+        "type": "INTEGER",
+        "pk": false
+      },
+      {
+        "name": "cust_eff_from",
+        "type": "DATE",
+        "pk": false
+      },
+      {
+        "name": "cust_eff_to",
+        "type": "DATE",
+        "pk": false
+      },
+      {
+        "name": "cust_valid",
+        "type": "CHAR(1)",
+        "pk": false
+      }
+    ],
+    "foreign_keys": [
+      {
+        "to_table": "countries",
+        "from_col": "country_id",
+        "to_col": "country_id"
+      }
+    ]
+  },
+  "promotions": {
+    "columns": [
+      {
+        "name": "promo_id",
+        "type": "INTEGER",
+        "pk": true
+      },
+      {
+        "name": "promo_name",
+        "type": "TEXT",
+        "pk": false
+      },
+      {
+        "name": "promo_subcategory",
+        "type": "TEXT",
+        "pk": false
+      },
+      {
+        "name": "promo_subcategory_id",
+        "type": "INTEGER",
+        "pk": false
+      },
+      {
+        "name": "promo_category",
+        "type": "TEXT",
+        "pk": false
+      },
+      {
+        "name": "promo_category_id",
+        "type": "INTEGER",
+        "pk": false
+      },
+      {
+        "name": "promo_cost",
+        "type": "REAL",
+        "pk": false
+      },
+      {
+        "name": "promo_begin_date",
+        "type": "DATE",
+        "pk": false
+      },
+      {
+        "name": "promo_end_date",
+        "type": "DATE",
+        "pk": false
+      },
+      {
+        "name": "promo_total",
+        "type": "TEXT",
+        "pk": false
+      },
+      {
+        "name": "promo_total_id",
+        "type": "INTEGER",
+        "pk": false
+      }
+    ],
+    "foreign_keys": []
+  },
+  "products": {
+    "columns": [
+      {
+        "name": "prod_id",
+        "type": "INTEGER",
+        "pk": true
+      },
+      {
+        "name": "prod_name",
+        "type": "TEXT",
+        "pk": false
+      },
+      {
+        "name": "prod_desc",
+        "type": "TEXT",
+        "pk": false
+      },
+      {
+        "name": "prod_subcategory",
+        "type": "TEXT",
+        "pk": false
+      },
+      {
+        "name": "prod_subcategory_id",
+        "type": "INTEGER",
+        "pk": false
+      },
+      {
+        "name": "prod_subcategory_desc",
+        "type": "TEXT",
+        "pk": false
+      },
+      {
+        "name": "prod_category",
+        "type": "TEXT",
+        "pk": false
+      },
+      {
+        "name": "prod_category_id",
+        "type": "INTEGER",
+        "pk": false
+      },
+      {
+        "name": "prod_category_desc",
+        "type": "TEXT",
+        "pk": false
+      },
+      {
+        "name": "prod_weight_class",
+        "type": "INTEGER",
+        "pk": false
+      },
+      {
+        "name": "prod_unit_of_measure",
+        "type": "TEXT",
+        "pk": false
+      },
+      {
+        "name": "prod_pack_size",
+        "type": "TEXT",
+        "pk": false
+      },
+      {
+        "name": "supplier_id",
+        "type": "INTEGER",
+        "pk": false
+      },
+      {
+        "name": "prod_status",
+        "type": "TEXT",
+        "pk": false
+      },
+      {
+        "name": "prod_list_price",
+        "type": "REAL",
+        "pk": false
+      },
+      {
+        "name": "prod_min_price",
+        "type": "REAL",
+        "pk": false
+      },
+      {
+        "name": "prod_total",
+        "type": "TEXT",
+        "pk": false
+      },
+      {
+        "name": "prod_total_id",
+        "type": "INTEGER",
+        "pk": false
+      },
+      {
+        "name": "prod_src_id",
+        "type": "INTEGER",
+        "pk": false
+      },
+      {
+        "name": "prod_eff_from",
+        "type": "DATE",
+        "pk": false
+      },
+      {
+        "name": "prod_eff_to",
+        "type": "DATE",
+        "pk": false
+      },
+      {
+        "name": "prod_valid",
+        "type": "CHAR(1)",
+        "pk": false
+      }
+    ],
+    "foreign_keys": []
+  },
+  "times": {
+    "columns": [
+      {
+        "name": "time_id",
+        "type": "DATE",
+        "pk": true
+      },
+      {
+        "name": "day_name",
+        "type": "TEXT",
+        "pk": false
+      },
+      {
+        "name": "day_number_in_week",
+        "type": "INTEGER",
+        "pk": false
+      },
+      {
+        "name": "day_number_in_month",
+        "type": "INTEGER",
+        "pk": false
+      },
+      {
+        "name": "calendar_week_number",
+        "type": "INTEGER",
+        "pk": false
+      },
+      {
+        "name": "fiscal_week_number",
+        "type": "INTEGER",
+        "pk": false
+      },
+      {
+        "name": "week_ending_day",
+        "type": "DATE",
+        "pk": false
+      },
+      {
+        "name": "week_ending_day_id",
+        "type": "INTEGER",
+        "pk": false
+      },
+      {
+        "name": "calendar_month_number",
+        "type": "INTEGER",
+        "pk": false
+      },
+      {
+        "name": "fiscal_month_number",
+        "type": "INTEGER",
+        "pk": false
+      },
+      {
+        "name": "calendar_month_desc",
+        "type": "TEXT",
+        "pk": false
+      },
+      {
+        "name": "calendar_month_id",
+        "type": "INTEGER",
+        "pk": false
+      },
+      {
+        "name": "fiscal_month_desc",
+        "type": "TEXT",
+        "pk": false
+      },
+      {
+        "name": "fiscal_month_id",
+        "type": "INTEGER",
+        "pk": false
+      },
+      {
+        "name": "days_in_cal_month",
+        "type": "INTEGER",
+        "pk": false
+      },
+      {
+        "name": "days_in_fis_month",
+        "type": "INTEGER",
+        "pk": false
+      },
+      {
+        "name": "end_of_cal_month",
+        "type": "DATE",
+        "pk": false
+      },
+      {
+        "name": "end_of_fis_month",
+        "type": "DATE",
+        "pk": false
+      },
+      {
+        "name": "calendar_month_name",
+        "type": "TEXT",
+        "pk": false
+      },
+      {
+        "name": "fiscal_month_name",
+        "type": "TEXT",
+        "pk": false
+      },
+      {
+        "name": "calendar_quarter_desc",
+        "type": "CHAR(7)",
+        "pk": false
+      },
+      {
+        "name": "calendar_quarter_id",
+        "type": "INTEGER",
+        "pk": false
+      },
+      {
+        "name": "fiscal_quarter_desc",
+        "type": "CHAR(7)",
+        "pk": false
+      },
+      {
+        "name": "fiscal_quarter_id",
+        "type": "INTEGER",
+        "pk": false
+      },
+      {
+        "name": "days_in_cal_quarter",
+        "type": "INTEGER",
+        "pk": false
+      },
+      {
+        "name": "days_in_fis_quarter",
+        "type": "INTEGER",
+        "pk": false
+      },
+      {
+        "name": "end_of_cal_quarter",
+        "type": "DATE",
+        "pk": false
+      },
+      {
+        "name": "end_of_fis_quarter",
+        "type": "DATE",
+        "pk": false
+      },
+      {
+        "name": "calendar_quarter_number",
+        "type": "INTEGER",
+        "pk": false
+      },
+      {
+        "name": "fiscal_quarter_number",
+        "type": "INTEGER",
+        "pk": false
+      },
+      {
+        "name": "calendar_year",
+        "type": "INTEGER",
+        "pk": false
+      },
+      {
+        "name": "calendar_year_id",
+        "type": "INTEGER",
+        "pk": false
+      },
+      {
+        "name": "fiscal_year",
+        "type": "INTEGER",
+        "pk": false
+      },
+      {
+        "name": "fiscal_year_id",
+        "type": "INTEGER",
+        "pk": false
+      },
+      {
+        "name": "days_in_cal_year",
+        "type": "INTEGER",
+        "pk": false
+      },
+      {
+        "name": "days_in_fis_year",
+        "type": "INTEGER",
+        "pk": false
+      },
+      {
+        "name": "end_of_cal_year",
+        "type": "DATE",
+        "pk": false
+      },
+      {
+        "name": "end_of_fis_year",
+        "type": "DATE",
+        "pk": false
+      }
+    ],
+    "foreign_keys": []
+  },
+  "channels": {
+    "columns": [
+      {
+        "name": "channel_id",
+        "type": "INTEGER",
+        "pk": true
+      },
+      {
+        "name": "channel_desc",
+        "type": "TEXT",
+        "pk": false
+      },
+      {
+        "name": "channel_class",
+        "type": "TEXT",
+        "pk": false
+      },
+      {
+        "name": "channel_class_id",
+        "type": "INTEGER",
+        "pk": false
+      },
+      {
+        "name": "channel_total",
+        "type": "TEXT",
+        "pk": false
+      },
+      {
+        "name": "channel_total_id",
+        "type": "INTEGER",
+        "pk": false
+      }
+    ],
+    "foreign_keys": []
+  },
+  "sales": {
+    "columns": [
+      {
+        "name": "prod_id",
+        "type": "INTEGER",
+        "pk": false
+      },
+      {
+        "name": "cust_id",
+        "type": "INTEGER",
+        "pk": false
+      },
+      {
+        "name": "time_id",
+        "type": "DATE",
+        "pk": false
+      },
+      {
+        "name": "channel_id",
+        "type": "INTEGER",
+        "pk": false
+      },
+      {
+        "name": "promo_id",
+        "type": "INTEGER",
+        "pk": false
+      },
+      {
+        "name": "quantity_sold",
+        "type": "INTEGER",
+        "pk": false
+      },
+      {
+        "name": "amount_sold",
+        "type": "REAL",
+        "pk": false
+      }
+    ],
+    "foreign_keys": [
+      {
+        "to_table": "times",
+        "from_col": "time_id",
+        "to_col": "time_id"
+      },
+      {
+        "to_table": "channels",
+        "from_col": "channel_id",
+        "to_col": "channel_id"
+      },
+      {
+        "to_table": "products",
+        "from_col": "prod_id",
+        "to_col": "prod_id"
+      },
+      {
+        "to_table": "customers",
+        "from_col": "cust_id",
+        "to_col": "cust_id"
+      },
+      {
+        "to_table": "promotions",
+        "from_col": "promo_id",
+        "to_col": "promo_id"
+      }
+    ]
+  },
+  "costs": {
+    "columns": [
+      {
+        "name": "prod_id",
+        "type": "INTEGER",
+        "pk": false
+      },
+      {
+        "name": "time_id",
+        "type": "DATE",
+        "pk": false
+      },
+      {
+        "name": "promo_id",
+        "type": "INTEGER",
+        "pk": false
+      },
+      {
+        "name": "channel_id",
+        "type": "INTEGER",
+        "pk": false
+      },
+      {
+        "name": "unit_cost",
+        "type": "REAL",
+        "pk": false
+      },
+      {
+        "name": "unit_price",
+        "type": "REAL",
+        "pk": false
+      }
+    ],
+    "foreign_keys": [
+      {
+        "to_table": "channels",
+        "from_col": "channel_id",
+        "to_col": "channel_id"
+      },
+      {
+        "to_table": "times",
+        "from_col": "time_id",
+        "to_col": "time_id"
+      },
+      {
+        "to_table": "products",
+        "from_col": "prod_id",
+        "to_col": "prod_id"
+      },
+      {
+        "to_table": "promotions",
+        "from_col": "promo_id",
+        "to_col": "promo_id"
+      }
+    ]
+  },
+  "supplementary_demographics": {
+    "columns": [
+      {
+        "name": "cust_id",
+        "type": "INTEGER",
+        "pk": true
+      },
+      {
+        "name": "education",
+        "type": "TEXT",
+        "pk": false
+      },
+      {
+        "name": "occupation",
+        "type": "TEXT",
+        "pk": false
+      },
+      {
+        "name": "household_size",
+        "type": "TEXT",
+        "pk": false
+      },
+      {
+        "name": "yrs_residence",
+        "type": "INTEGER",
+        "pk": false
+      },
+      {
+        "name": "affinity_card",
+        "type": "INTEGER",
+        "pk": false
+      },
+      {
+        "name": "cricket",
+        "type": "INTEGER",
+        "pk": false
+      },
+      {
+        "name": "baseball",
+        "type": "INTEGER",
+        "pk": false
+      },
+      {
+        "name": "tennis",
+        "type": "INTEGER",
+        "pk": false
+      },
+      {
+        "name": "soccer",
+        "type": "INTEGER",
+        "pk": false
+      },
+      {
+        "name": "golf",
+        "type": "INTEGER",
+        "pk": false
+      },
+      {
+        "name": "unknown",
+        "type": "INTEGER",
+        "pk": false
+      },
+      {
+        "name": "misc",
+        "type": "INTEGER",
+        "pk": false
+      },
+      {
+        "name": "comments",
+        "type": "TEXT",
+        "pk": false
+      }
+    ],
+    "foreign_keys": []
+  },
+  "currency": {
+    "columns": [
+      {
+        "name": "country",
+        "type": "TEXT",
+        "pk": false
+      },
+      {
+        "name": "year",
+        "type": "INTEGER",
+        "pk": false
+      },
+      {
+        "name": "month",
+        "type": "INTEGER",
+        "pk": false
+      },
+      {
+        "name": "to_us",
+        "type": "REAL",
+        "pk": false
+      }
+    ],
+    "foreign_keys": []
+  }
+}

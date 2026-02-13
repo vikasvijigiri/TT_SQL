@@ -1,0 +1,552 @@
+{
+  "categories": {
+    "columns": [
+      {
+        "name": "categoryid",
+        "type": "INTEGER",
+        "pk": false
+      },
+      {
+        "name": "categoryname",
+        "type": "TEXT",
+        "pk": false
+      },
+      {
+        "name": "description",
+        "type": "TEXT",
+        "pk": false
+      },
+      {
+        "name": "picture",
+        "type": "BLOB",
+        "pk": false
+      }
+    ],
+    "foreign_keys": []
+  },
+  "customercustomerdemo": {
+    "columns": [
+      {
+        "name": "customerid",
+        "type": "TEXT",
+        "pk": false
+      },
+      {
+        "name": "customertypeid",
+        "type": "TEXT",
+        "pk": false
+      }
+    ],
+    "foreign_keys": []
+  },
+  "customerdemographics": {
+    "columns": [
+      {
+        "name": "customertypeid",
+        "type": "TEXT",
+        "pk": false
+      },
+      {
+        "name": "customerdesc",
+        "type": "TEXT",
+        "pk": false
+      }
+    ],
+    "foreign_keys": []
+  },
+  "customers": {
+    "columns": [
+      {
+        "name": "customerid",
+        "type": "TEXT",
+        "pk": false
+      },
+      {
+        "name": "companyname",
+        "type": "TEXT",
+        "pk": false
+      },
+      {
+        "name": "contactname",
+        "type": "TEXT",
+        "pk": false
+      },
+      {
+        "name": "contacttitle",
+        "type": "TEXT",
+        "pk": false
+      },
+      {
+        "name": "address",
+        "type": "TEXT",
+        "pk": false
+      },
+      {
+        "name": "city",
+        "type": "TEXT",
+        "pk": false
+      },
+      {
+        "name": "region",
+        "type": "TEXT",
+        "pk": false
+      },
+      {
+        "name": "postalcode",
+        "type": "TEXT",
+        "pk": false
+      },
+      {
+        "name": "country",
+        "type": "TEXT",
+        "pk": false
+      },
+      {
+        "name": "phone",
+        "type": "TEXT",
+        "pk": false
+      },
+      {
+        "name": "fax",
+        "type": "TEXT",
+        "pk": false
+      }
+    ],
+    "foreign_keys": []
+  },
+  "employees": {
+    "columns": [
+      {
+        "name": "employeeid",
+        "type": "INTEGER",
+        "pk": false
+      },
+      {
+        "name": "lastname",
+        "type": "TEXT",
+        "pk": false
+      },
+      {
+        "name": "firstname",
+        "type": "TEXT",
+        "pk": false
+      },
+      {
+        "name": "title",
+        "type": "TEXT",
+        "pk": false
+      },
+      {
+        "name": "titleofcourtesy",
+        "type": "TEXT",
+        "pk": false
+      },
+      {
+        "name": "birthdate",
+        "type": "DATE",
+        "pk": false
+      },
+      {
+        "name": "hiredate",
+        "type": "DATE",
+        "pk": false
+      },
+      {
+        "name": "address",
+        "type": "TEXT",
+        "pk": false
+      },
+      {
+        "name": "city",
+        "type": "TEXT",
+        "pk": false
+      },
+      {
+        "name": "region",
+        "type": "TEXT",
+        "pk": false
+      },
+      {
+        "name": "postalcode",
+        "type": "TEXT",
+        "pk": false
+      },
+      {
+        "name": "country",
+        "type": "TEXT",
+        "pk": false
+      },
+      {
+        "name": "homephone",
+        "type": "TEXT",
+        "pk": false
+      },
+      {
+        "name": "extension",
+        "type": "TEXT",
+        "pk": false
+      },
+      {
+        "name": "photo",
+        "type": "BLOB",
+        "pk": false
+      },
+      {
+        "name": "notes",
+        "type": "TEXT",
+        "pk": false
+      },
+      {
+        "name": "reportsto",
+        "type": "INTEGER",
+        "pk": false
+      },
+      {
+        "name": "photopath",
+        "type": "TEXT",
+        "pk": false
+      }
+    ],
+    "foreign_keys": []
+  },
+  "employeeterritories": {
+    "columns": [
+      {
+        "name": "employeeid",
+        "type": "INTEGER",
+        "pk": false
+      },
+      {
+        "name": "territoryid",
+        "type": "TEXT",
+        "pk": false
+      }
+    ],
+    "foreign_keys": []
+  },
+  "order_details": {
+    "columns": [
+      {
+        "name": "orderid",
+        "type": "INTEGER",
+        "pk": false
+      },
+      {
+        "name": "productid",
+        "type": "INTEGER",
+        "pk": false
+      },
+      {
+        "name": "unitprice",
+        "type": "REAL",
+        "pk": false
+      },
+      {
+        "name": "quantity",
+        "type": "INTEGER",
+        "pk": false
+      },
+      {
+        "name": "discount",
+        "type": "REAL",
+        "pk": false
+      }
+    ],
+    "foreign_keys": []
+  },
+  "orders": {
+    "columns": [
+      {
+        "name": "orderid",
+        "type": "INTEGER",
+        "pk": false
+      },
+      {
+        "name": "customerid",
+        "type": "TEXT",
+        "pk": false
+      },
+      {
+        "name": "employeeid",
+        "type": "INTEGER",
+        "pk": false
+      },
+      {
+        "name": "orderdate",
+        "type": "DATE",
+        "pk": false
+      },
+      {
+        "name": "requireddate",
+        "type": "DATE",
+        "pk": false
+      },
+      {
+        "name": "shippeddate",
+        "type": "DATE",
+        "pk": false
+      },
+      {
+        "name": "shipvia",
+        "type": "INTEGER",
+        "pk": false
+      },
+      {
+        "name": "freight",
+        "type": "REAL",
+        "pk": false
+      },
+      {
+        "name": "shipname",
+        "type": "TEXT",
+        "pk": false
+      },
+      {
+        "name": "shipaddress",
+        "type": "TEXT",
+        "pk": false
+      },
+      {
+        "name": "shipcity",
+        "type": "TEXT",
+        "pk": false
+      },
+      {
+        "name": "shipregion",
+        "type": "TEXT",
+        "pk": false
+      },
+      {
+        "name": "shippostalcode",
+        "type": "TEXT",
+        "pk": false
+      },
+      {
+        "name": "shipcountry",
+        "type": "TEXT",
+        "pk": false
+      }
+    ],
+    "foreign_keys": []
+  },
+  "products": {
+    "columns": [
+      {
+        "name": "productid",
+        "type": "INTEGER",
+        "pk": false
+      },
+      {
+        "name": "productname",
+        "type": "TEXT",
+        "pk": false
+      },
+      {
+        "name": "supplierid",
+        "type": "INTEGER",
+        "pk": false
+      },
+      {
+        "name": "categoryid",
+        "type": "INTEGER",
+        "pk": false
+      },
+      {
+        "name": "quantityperunit",
+        "type": "TEXT",
+        "pk": false
+      },
+      {
+        "name": "unitprice",
+        "type": "REAL",
+        "pk": false
+      },
+      {
+        "name": "unitsinstock",
+        "type": "INTEGER",
+        "pk": false
+      },
+      {
+        "name": "unitsonorder",
+        "type": "INTEGER",
+        "pk": false
+      },
+      {
+        "name": "reorderlevel",
+        "type": "INTEGER",
+        "pk": false
+      },
+      {
+        "name": "discontinued",
+        "type": "INTEGER",
+        "pk": false
+      }
+    ],
+    "foreign_keys": []
+  },
+  "region": {
+    "columns": [
+      {
+        "name": "regionid",
+        "type": "INTEGER",
+        "pk": false
+      },
+      {
+        "name": "regiondescription",
+        "type": "TEXT",
+        "pk": false
+      }
+    ],
+    "foreign_keys": []
+  },
+  "shippers": {
+    "columns": [
+      {
+        "name": "shipperid",
+        "type": "INTEGER",
+        "pk": false
+      },
+      {
+        "name": "companyname",
+        "type": "TEXT",
+        "pk": false
+      },
+      {
+        "name": "phone",
+        "type": "TEXT",
+        "pk": false
+      }
+    ],
+    "foreign_keys": []
+  },
+  "suppliers": {
+    "columns": [
+      {
+        "name": "supplierid",
+        "type": "INTEGER",
+        "pk": false
+      },
+      {
+        "name": "companyname",
+        "type": "TEXT",
+        "pk": false
+      },
+      {
+        "name": "contactname",
+        "type": "TEXT",
+        "pk": false
+      },
+      {
+        "name": "contacttitle",
+        "type": "TEXT",
+        "pk": false
+      },
+      {
+        "name": "address",
+        "type": "TEXT",
+        "pk": false
+      },
+      {
+        "name": "city",
+        "type": "TEXT",
+        "pk": false
+      },
+      {
+        "name": "region",
+        "type": "TEXT",
+        "pk": false
+      },
+      {
+        "name": "postalcode",
+        "type": "TEXT",
+        "pk": false
+      },
+      {
+        "name": "country",
+        "type": "TEXT",
+        "pk": false
+      },
+      {
+        "name": "phone",
+        "type": "TEXT",
+        "pk": false
+      },
+      {
+        "name": "fax",
+        "type": "TEXT",
+        "pk": false
+      },
+      {
+        "name": "homepage",
+        "type": "TEXT",
+        "pk": false
+      }
+    ],
+    "foreign_keys": []
+  },
+  "territories": {
+    "columns": [
+      {
+        "name": "territoryid",
+        "type": "TEXT",
+        "pk": false
+      },
+      {
+        "name": "territorydescription",
+        "type": "TEXT",
+        "pk": false
+      },
+      {
+        "name": "regionid",
+        "type": "INTEGER",
+        "pk": false
+      }
+    ],
+    "foreign_keys": []
+  },
+  "usstates": {
+    "columns": [
+      {
+        "name": "stateid",
+        "type": "INTEGER",
+        "pk": false
+      },
+      {
+        "name": "statename",
+        "type": "TEXT",
+        "pk": false
+      },
+      {
+        "name": "stateabbr",
+        "type": "TEXT",
+        "pk": false
+      },
+      {
+        "name": "stateregion",
+        "type": "TEXT",
+        "pk": false
+      }
+    ],
+    "foreign_keys": []
+  },
+  "customergroupthreshold": {
+    "columns": [
+      {
+        "name": "groupname",
+        "type": "TEXT",
+        "pk": false
+      },
+      {
+        "name": "rangebottom",
+        "type": "DECIMAL",
+        "pk": false
+      },
+      {
+        "name": "rangetop",
+        "type": "DECIMAL",
+        "pk": false
+      }
+    ],
+    "foreign_keys": []
+  }
+}

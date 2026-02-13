@@ -1,0 +1,10 @@
+{
+  "step_by_step_approach": [
+    "Identify all records that belong to traditional models",
+    "Identify all records that belong to the Stack model",
+    "Combine the records from both groups",
+    "Count the occurrences of each model category across every step and version",
+    "Find the model category with the highest occurrence count",
+    "Return that model category and its total count"
+  ]
+}

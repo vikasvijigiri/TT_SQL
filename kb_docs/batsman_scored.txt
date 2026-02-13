@@ -1,0 +1,8 @@
+Table: batsman_scored
+            Columns:
+            - match_id (INTEGER)
+- over_id (INTEGER)
+- ball_id (INTEGER)
+- runs_scored (INTEGER)
+- innings_no (INTEGER)
+        

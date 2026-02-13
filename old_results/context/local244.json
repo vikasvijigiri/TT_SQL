@@ -1,0 +1,8 @@
+{
+  "relevant_tables": [
+    "Tracks",
+    "TrackRevenue",
+    "Categories"
+  ],
+  "reasoning": "The query needs the duration of each track, which is typically stored in a **Tracks** table (or a similarly named table containing fields such as `track_id`, `duration_seconds` or `duration_minutes`). To classify tracks into short, medium, or long, we only need the duration column from this table. The total revenue per category requires a table that records monetary values associated with each track, often named **TrackRevenue**, **Sales**, or **Invoices**, containing fields like `track_id` and `revenue_amount`. Finally, to group the results by category (short, medium, long), we either use a derived classification based on duration or a separate **Categories** table if the classification is pre\u2011defined; however, in most schemas the classification can be derived on\u2011the\u2011fly, so the **Categories** table is optional. These three tables together provide the necessary data to compute min/max durations per category and sum the revenue for each category."
+}

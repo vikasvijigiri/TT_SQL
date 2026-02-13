@@ -1,0 +1,8 @@
+{
+  "relevant_tables": [
+    "rental",
+    "staff",
+    "store"
+  ],
+  "reasoning": "The query requires counting rental orders (from the **rental** table) and grouping them by the year and month of the rental creation date. To associate each rental with the store where it was processed, we need the **staff** table (which links each rental to a staff member via staff_id) and the **store** table (which provides the store_id for each staff member). By joining rental \u2192 staff \u2192 store, we can aggregate rentals per store, year, and month, then select the year\u2011month with the highest total rentals for each store."
+}

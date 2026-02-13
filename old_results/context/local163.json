@@ -1,0 +1,6 @@
+{
+  "relevant_tables": [
+    "university_faculty"
+  ],
+  "reasoning": "The query asks for faculty members' ranks, first names, last names, and salaries, and to compare each salary to the average salary for that rank. All of these attributes (FacRank, FacFirstName, FacLastName, FacSalary) reside in the `university_faculty` table, and the average per rank can be calculated using an aggregate on the same table. No other tables contain relevant faculty salary or rank information."
+}

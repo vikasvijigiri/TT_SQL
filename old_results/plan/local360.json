@@ -1,0 +1,12 @@
+{
+  "step_by_step_approach": [
+    "Keep only events where the search type is not empty.",
+    "Consider events separately for each session.",
+    "Order the events of each session by their occurrence time.",
+    "Identify the earliest event in each session whose path is '/detail' or '/complete'.",
+    "Count the events that occur before that earliest '/detail' or '/complete' event within the same session.",
+    "Find the smallest of those counts across all sessions.",
+    "Select the sessions whose count equals that smallest number.",
+    "Return each selected session together with the path and search type of its counted events."
+  ]
+}

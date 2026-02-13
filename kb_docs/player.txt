@@ -1,0 +1,9 @@
+Table: player
+            Columns:
+            - player_id (INTEGER)
+- player_name (TEXT)
+- dob (DATE)
+- batting_hand (TEXT)
+- bowling_skill (TEXT)
+- country_name (TEXT)
+        

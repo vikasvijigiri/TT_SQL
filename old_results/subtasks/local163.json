@@ -1,0 +1,98 @@
+[
+  {
+    "sub_question": "Calculate the average salary for each faculty rank.",
+    "sub_sql": "/*  Find the faculty member whose salary is closest to the\n    average salary for his/her rank and return the required columns. */\n\nWITH avg_by_rank AS (\n    /* average salary for each rank */\n    SELECT FacRank,\n           AVG(FacSalary) AS avg_salary\n    FROM university_faculty\n    GROUP BY FacRank\n),\n\nsalary_diff AS (\n    /* compute the absolute difference between each salary and the\n       average salary of the same rank */\n    SELECT uf.FacRank               AS rank,\n           uf.FirstName,\n           uf.LastName,\n           uf.FacSalary             AS salary,\n           ABS(uf.FacSalary - a.avg_salary) AS diff\n    FROM university_faculty uf\n    JOIN avg_by_rank a\n          ON uf.FacRank = a.FacRank\n)\n\nSELECT rank,\n       FirstName,\n       LastName,\n       salary\nFROM salary_diff\nWHERE diff = (SELECT MIN(diff) FROM salary_diff);",
+    "intermediate_rows": [],
+    "columns": [],
+    "critic_feedback": "The query references columns 'rank' and 'salary' which do not exist in the 'university_faculty' table; the correct column names are 'FacRank' and 'FacSalary'.; The query only calculates the average salary per rank and does not implement the subsequent steps of computing salary differences, identifying faculty with the smallest difference, or returning the required faculty details.; The result set does not include the required columns (rank, first name, last name, salary) as specified in the Action Plan.",
+    "iteration_count": 3,
+    "is_valid": true
+  },
+  {
+    "sub_question": "For each faculty member, compute the absolute difference between their salary and the average salary of their rank.",
+    "sub_sql": "/*  Find the faculty member whose salary is closest to the\n    average salary for his/her rank (FacRank).  Return the\n    required columns: rank, first name, last name, salary.   */\n\nWITH AvgByRank AS (\n    SELECT \n        FacRank,\n        AVG(FacSalary) AS AvgSalary\n    FROM university_faculty\n    GROUP BY FacRank\n),\n\nSalaryDiff AS (\n    SELECT \n        uf.FacRank,\n        uf.FirstName,\n        uf.LastName,\n        uf.FacSalary,\n        ABS(uf.FacSalary - a.AvgSalary) AS DiffToAvg\n    FROM university_faculty uf\n    JOIN AvgByRank a\n          ON uf.FacRank = a.FacRank\n),\n\nRankedDiff AS (\n    SELECT \n        FacRank,\n        FirstName,\n        LastName,\n        FacSalary,\n        DiffToAvg,\n        ROW_NUMBER() OVER (PARTITION BY FacRank \n                           ORDER BY DiffToAvg ASC, FacSalary ASC) AS rn\n    FROM SalaryDiff\n)\n\nSELECT \n    FacRank   AS rank,\n    FirstName,\n    LastName,\n    FacSalary AS salary\nFROM RankedDiff\nWHERE rn = 1                -- smallest difference per rank\nORDER BY rank;",
+    "intermediate_rows": [],
+    "columns": [],
+    "critic_feedback": "The query references columns 'rank' and 'salary' which do not exist in the 'university_faculty' table; the correct column names are 'FacRank' and 'FacSalary'.; The query only calculates the average salary per rank and does not implement the subsequent steps of computing salary differences, identifying faculty with the smallest difference, or returning the required faculty details.; The result set does not include the required columns (rank, first name, last name, salary) as specified in the Action Plan.",
+    "iteration_count": 1,
+    "is_valid": true
+  },
+  {
+    "sub_question": "Identify, within each rank, the faculty member(s) whose salary difference is the smallest.",
+    "sub_sql": "/*  Find, for each rank, the faculty member(s) whose salary is closest \n    to the average salary of that rank.  Only the required columns are returned. */\nWITH SalaryDiffs AS (\n    SELECT\n        FacRank,\n        FacFirstName,\n        FacLastName,\n        FacSalary,\n        ABS(FacSalary - AVG(FacSalary) OVER (PARTITION BY FacRank)) AS SalaryDiff\n    FROM university_faculty\n)\n\nSELECT\n    FacRank   AS Rank,\n    FacFirstName AS FirstName,\n    FacLastName  AS LastName,\n    FacSalary    AS Salary\nFROM SalaryDiffs sd\nWHERE SalaryDiff = (\n        SELECT MIN(SalaryDiff)\n        FROM SalaryDiffs sd2\n        WHERE sd2.FacRank = sd.FacRank\n      )\nORDER BY FacRank, FacFirstName, FacLastName;",
+    "intermediate_rows": [
+      [
+        "ASSC",
+        "JULIA",
+        "MILLS",
+        75000
+      ],
+      [
+        "ASSC",
+        "LEONARD",
+        "FIBON",
+        70000
+      ],
+      [
+        "ASST",
+        "CRISTOPHER",
+        "COLAN",
+        40000
+      ],
+      [
+        "PROF",
+        "JANE",
+        "SMITH",
+        110000
+      ]
+    ],
+    "columns": [
+      "Rank",
+      "FirstName",
+      "LastName",
+      "Salary"
+    ],
+    "critic_feedback": "No issues found.",
+    "iteration_count": 3,
+    "is_valid": true
+  },
+  {
+    "sub_question": "Return the rank, first name, last name, and salary of those identified faculty members.",
+    "sub_sql": "/*  Goal:  For each faculty rank, return the faculty member(s) whose salary is\n    closest to the average salary of that rank (i.e., the smallest absolute\n    salary difference).  The query now uses the correct table and column names. */\n\nWITH avg_by_rank AS (\n    SELECT \n        FacRank,\n        AVG(FacSalary) AS avg_salary\n    FROM university_faculty\n    GROUP BY FacRank\n),\n\nsalary_diff AS (\n    SELECT \n        uf.FacNo,\n        uf.FacFirstName,\n        uf.FacLastName,\n        uf.FacRank,\n        uf.FacSalary,\n        ABS(uf.FacSalary - a.avg_salary) AS diff_to_avg\n    FROM university_faculty uf\n    JOIN avg_by_rank a\n          ON uf.FacRank = a.FacRank\n),\n\nmin_diff_per_rank AS (\n    SELECT \n        FacRank,\n        MIN(diff_to_avg) AS min_diff\n    FROM salary_diff\n    GROUP BY FacRank\n)\n\nSELECT \n    d.FacRank,\n    d.FacFirstName,\n    d.FacLastName,\n    d.FacSalary\nFROM salary_diff d\nJOIN min_diff_per_rank m\n      ON d.FacRank = m.FacRank\n     AND d.diff_to_avg = m.min_diff\nORDER BY d.FacRank;",
+    "intermediate_rows": [
+      [
+        "ASSC",
+        "JULIA",
+        "MILLS",
+        75000
+      ],
+      [
+        "ASSC",
+        "LEONARD",
+        "FIBON",
+        70000
+      ],
+      [
+        "ASST",
+        "CRISTOPHER",
+        "COLAN",
+        40000
+      ],
+      [
+        "PROF",
+        "JANE",
+        "SMITH",
+        110000
+      ]
+    ],
+    "columns": [
+      "FacRank",
+      "FacFirstName",
+      "FacLastName",
+      "FacSalary"
+    ],
+    "critic_feedback": "No issues found.",
+    "iteration_count": 2,
+    "is_valid": true
+  }
+]

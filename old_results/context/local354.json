@@ -1,0 +1,10 @@
+{
+  "relevant_tables": [
+    "drivers",
+    "constructors",
+    "races",
+    "results",
+    "seasons"
+  ],
+  "reasoning": "The query must identify drivers who raced in the 1950s, so we need the **drivers** table for driver identities and the **races** (or **seasons**) table for race dates to filter the 1950\u20111959 period. To determine which constructor a driver was with in each race we need the **constructors** table and the linking **results** (or driver_race_results) table that records each driver\u2019s participation, the constructor they represented, and the race round. The **seasons** table (or season information within the races table) is required to group races by season and verify that the driver completed a full season, with the same constructor in both the first and last race of that season. Finally, counting distinct race rounds for each driver in a season also relies on the **results** table. These tables together provide the driver\u2011constructor\u2011race\u2011season relationships needed to answer the query."
+}

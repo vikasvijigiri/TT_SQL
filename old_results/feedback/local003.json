@@ -1,0 +1,16 @@
+{
+  "is_valid": false,
+  "check_results": {
+    "columns": "PASS",
+    "syntax": "PASS",
+    "joins": "PASS",
+    "group_by": "PASS",
+    "math_types": "FAIL",
+    "logic": "FAIL"
+  },
+  "feedback": [
+    "The division in 'avg_sales_per_order' should use CAST to ensure floating-point division, but it is already using REAL, so this is correct.",
+    "The logic for calculating RFM segments is not fully defined in the request. The SQL assumes specific thresholds for recency, frequency, and monetary values without explicit criteria from the request.",
+    "The SQL does not explicitly define how to calculate Recency based on the latest purchase timestamp as requested. It assumes a calculation but does not specify it in the query."
+  ]
+}

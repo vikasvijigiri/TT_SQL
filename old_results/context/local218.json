@@ -1,0 +1,7 @@
+{
+  "relevant_tables": [
+    "teams",
+    "team_season_stats"
+  ],
+  "reasoning": "The query requires the total number of goals each team scored in each season. The `team_season_stats` (or similarly named) table holds the per\u2011season goal counts for each team (e.g., columns like `team_id`, `season_id`, `goals_scored`). To determine the highest goal total per team, we need to group by `team_id` and select the maximum `goals_scored`. After obtaining those maximum values, we compute the median across the set of values. The `teams` table is needed only if we want to reference team names or IDs in the final output. No other tables (e.g., matches, players) are required for this specific calculation."
+}

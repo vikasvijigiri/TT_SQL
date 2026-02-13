@@ -1,0 +1,7 @@
+{
+  "relevant_tables": [
+    "customers",
+    "payments"
+  ],
+  "reasoning": "To answer the question we need to (1) identify the top\u201110 customers by total amount paid, which requires the `customers` table (for customer identifiers and any descriptive fields) and the `payments` table (for each payment's amount and date). (2) Compute month\u2011over\u2011month payment totals per customer, which also relies on the `payments` table's `payment_date` (or a month field) and `amount`. By joining these two tables on `customer_id` we can aggregate monthly totals, calculate the absolute month\u2011to\u2011month differences, and then select the maximum difference among the top\u201110 paying customers. No other tables are required for this specific analysis."
+}

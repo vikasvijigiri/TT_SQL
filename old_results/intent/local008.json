@@ -1,0 +1,42 @@
+{
+  "intent": "DATA_retrieval",
+  "complexity": "High",
+  "entities": [
+    "batting",
+    "player"
+  ],
+  "metrics": [
+    "games played",
+    "runs",
+    "hits",
+    "home runs"
+  ],
+  "all_maths_operations": [
+    "MAX"
+  ],
+  "quantities_to_be_estimated": [
+    "Maximum games played",
+    "Maximum runs",
+    "Maximum hits",
+    "Maximum home runs"
+  ],
+  "approach_to_calculate_quantities_to_be_estimated": "Join the 'batting' and 'player' tables on the 'player_id' column. Then, find the maximum values for 'g', 'r', 'h', and 'hr' columns.",
+  "dimensions": [
+    "player_id"
+  ],
+  "filters": [],
+  "time_constraints": [],
+  "joins": [
+    {
+      "type": "INNER",
+      "table1": "batting",
+      "column1": "player_id",
+      "table2": "player",
+      "column2": "player_id"
+    }
+  ],
+  "sorting": [],
+  "limits": [],
+  "output_format": "dict",
+  "output_precision": "high"
+}

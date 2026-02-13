@@ -1,0 +1,45 @@
+{
+  "intent": "DATA_retrieval",
+  "complexity": "High",
+  "entities": [
+    "orders",
+    "order_payments",
+    "customers"
+  ],
+  "metrics": [
+    "number of orders",
+    "average payment per order",
+    "customer lifespan in weeks"
+  ],
+  "all_maths_operations": [
+    "COUNT",
+    "AVG",
+    "DATE_DIFF",
+    "DATE_PART",
+    "CASE WHEN"
+  ],
+  "quantities_to_be_estimated": [
+    "count of orders",
+    "sum of payments",
+    "minimum purchase date",
+    "maximum purchase date"
+  ],
+  "approach_to_calculate_quantities_to_be_estimated": "Join the orders, order_payments, and customers tables on the order_id and customer_id columns. Group the results by customer_id. Calculate the count of orders and sum of payments for each customer. Find the minimum and maximum purchase date for each customer. Subtract the minimum purchase date from the maximum purchase date to get the lifespan in days. Divide the lifespan by 7 to get the lifespan in weeks. If the lifespan in weeks is less than 1, set it to 1.0.",
+  "dimensions": [
+    "customer_id"
+  ],
+  "filters": [
+    "LIMIT 3",
+    "ORDER BY AVG(payment_value) DESC"
+  ],
+  "time_constraints": "None",
+  "joins": [
+    "INNER JOIN orders ON order_payments.order_id = orders.order_id INNER JOIN customers ON orders.customer_id = customers.customer_id"
+  ],
+  "sorting": [
+    "AVG(payment_value) DESC"
+  ],
+  "limits": "3",
+  "output_format": "dict",
+  "output_precision": "2"
+}

@@ -1,0 +1,7 @@
+{
+  "relevant_tables": [
+    "legislators",
+    "legislators_terms"
+  ],
+  "reasoning": "The query requires identifying female legislators (gender column) from the **legislators** table and linking each legislator to their service periods in the **legislators_terms** table. From legislators_terms we can obtain the state each term was for, the term start and end dates to check if any term covered December 31st, and determine the first state a legislator represented (by selecting the earliest term per legislator). Combining these two tables allows us to count, per state abbreviation, the number of distinct female legislators whose terms included December 31st and then select the state with the highest count."
+}

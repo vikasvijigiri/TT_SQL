@@ -1,0 +1,14 @@
+{
+  "is_valid": false,
+  "check_results": {
+    "columns": "PASS",
+    "syntax": "PASS",
+    "joins": "PASS",
+    "group_by": "PASS",
+    "math_types": "PASS",
+    "logic": "FAIL"
+  },
+  "feedback": [
+    "The logic does not correctly calculate the average runs per match for each player and then the average of these averages for each country. The current logic calculates the average runs per match for each player correctly, but when calculating the country average, it should be the average of player averages, not the average of total runs divided by matches played."
+  ]
+}

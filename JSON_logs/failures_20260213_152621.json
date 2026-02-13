@@ -1,0 +1,50 @@
+[
+  {
+    "instance_id": "local168",
+    "question": "Unknown",
+    "sql": "/* Corrected query \u2013 uses the proper linking table `skills_job_dim`\n   and avoids unsupported ILIKE syntax by using LOWER() with LIKE. */\nSELECT\n    jp.job_posting_id,\n    jp.title,\n    jp.description,\n    GROUP_CONCAT(s.skill_name, ', ') AS skill_list\nFROM\n    job_postings AS jp\n    /* link job postings to their required skills */\n    JOIN skills_job_dim AS sjd\n        ON jp.job_posting_id = sjd.job_posting_id\n    /* bring in the human\u2011readable skill name */\n    JOIN skills AS s\n        ON sjd.skill_id = s.skill_id\nWHERE\n    /* case\u2011insensitive search on the posting title */\n    LOWER(jp.title) LIKE '%' || LOWER('data') || '%'\n    /* optional filter on a specific skill (example) */\n    AND LOWER(s.skill_name) LIKE '%' || LOWER('python') || '%'\nGROUP BY\n    jp.job_posting_id,\n    jp.title,\n    jp.description;",
+    "error_message": "no such table: job_postings",
+    "csv_result": "job_title,job_work_from_home,salary_year_avg\nData Analyst,1,145000.0\nData Analyst,1,112661.0\nData Analyst,1,95700.0\nData Analyst,1,105000.0\nData Analyst,1,50000.0\n",
+    "model": "old_results"
+  },
+  {
+    "instance_id": "local169",
+    "question": "Unknown",
+    "sql": "WITH base AS (\n    SELECT b.id_bioguide,\n           b.full_name,\n           printf('%04d-12-31', CAST(strftime('%Y', b.first_term_start) AS INTEGER) + n) AS reference_date\n    FROM (\n        SELECT l.id_bioguide,\n               l.full_name,\n               ft.first_term_start\n        FROM legislators l\n        JOIN (\n            SELECT id_bioguide,\n                   MIN(term_start) AS first_term_start\n            FROM legislators_terms\n            GROUP BY id_bioguide\n        ) ft ON l.id_bioguide = ft.id_bioguide\n        WHERE ft.first_term_start >= '1917-01-01'\n          AND ft.first_term_start <= '1999-12-31'\n    ) b\n    JOIN (\n        SELECT 1 AS n UNION ALL SELECT 2 UNION ALL SELECT 3 UNION ALL SELECT 4 UNION ALL SELECT 5 UNION ALL SELECT 6 UNION ALL SELECT 7 UNION ALL SELECT 8 UNION ALL SELECT 9 UNION ALL SELECT 10 UNION ALL SELECT 11 UNION ALL SELECT 12 UNION ALL SELECT 13 UNION ALL SELECT 14 UNION ALL SELECT 15 UNION ALL SELECT 16 UNION ALL SELECT 17 UNION ALL SELECT 18 UNION ALL SELECT 19 UNION ALL SELECT 20\n    ) nums ON 1 = 1\n)\nSELECT b.id_bioguide,\n       b.full_name,\n       b.reference_date,\n       CASE WHEN EXISTS (\n           SELECT 1 FROM legislators_terms lt\n           WHERE lt.id_bioguide = b.id_bioguide\n             AND (lt.term_end IS NULL OR lt.term_end > b.reference_date)\n       ) THEN 1 ELSE 0 END AS still_in_office\nFROM base b\nORDER BY b.id_bioguide, b.reference_date;",
+    "error_message": "no such table: base",
+    "csv_result": "id_bioguide,full_name,reference_date\nA000001,Fred George Aandahl,1952-12-31\nA000001,Fred George Aandahl,1953-12-31\nA000001,Fred George Aandahl,1954-12-31\nA000001,Fred George Aandahl,1955-12-31\nA000001,Fred George Aandahl,1956-12-31\n",
+    "model": "old_results"
+  },
+  {
+    "instance_id": "local170",
+    "question": "Unknown",
+    "sql": "SELECT state, gender\nFROM base\nWHERE proportion1 > 0\n  AND proportion2 > 0\n  AND proportion3 > 0\n  AND proportion4 > 0\n  AND proportion5 > 0\n  AND proportion6 > 0",
+    "error_message": "no such table: base",
+    "csv_result": "state,gender,proportion\nAK,F,1.0\nAK,M,0.3333333333333333\nAL,F,0.0\nAL,M,0.18840579710144928\nAR,F,0.4\n",
+    "model": "old_results"
+  },
+  {
+    "instance_id": "local259",
+    "question": "Unknown",
+    "sql": "ERROR: LLM_FAILURE - ",
+    "error_message": "near \"ERROR\": syntax error",
+    "csv_result": "",
+    "model": "old_results"
+  },
+  {
+    "instance_id": "local336",
+    "question": "Unknown",
+    "sql": "SELECT\n  (SELECT COUNT(*) FROM retirements r WHERE r.race_id = :race_id AND r.lap BETWEEN 1 AND 5) AS retirements,\n  (SELECT COUNT(*) FROM pit_stops p WHERE p.race_id = :race_id AND p.lap BETWEEN 1 AND 5) AS pit_stops,\n  (SELECT COUNT(*) FROM lap_positions lp WHERE lp.race_id = :race_id AND lp.lap BETWEEN 1 AND 5 AND lp.lap_type = 'start') AS start_overtakes,\n  (SELECT COUNT(*) FROM lap_positions lp2 WHERE lp2.race_id = :race_id AND lp2.lap BETWEEN 1 AND 5 AND lp2.lap_type = 'pass') AS standard_passes;",
+    "error_message": "Incorrect number of bindings supplied. The current statement uses 1, and there are 0 supplied.",
+    "csv_result": "",
+    "model": "old_results"
+  },
+  {
+    "instance_id": "local344",
+    "question": "Unknown",
+    "sql": "ERROR: LLM_FAILURE - {\n  \"sql\": \"WITH races_with_pit AS (\\n    SELECT race_id\\n    FROM races_ext\\n    WHERE is_pit_data_available = 1\\n),\\ncur AS (\\n    SELECT race_id, lap, driver_id, position\\n    FROM lap_positions\\n    WHERE race_id IN (SELECT race_id FROM races_with_pit)\\n),\\nprev AS (\\n    SELECT race_id, lap + 1 AS lap, driver_id, position\\n    FROM lap_positions\\n    WHERE race_id IN (SELECT race_id FROM races_with_pit)\\n),\\novertake_events AS (\\n    SELECT\\n        cur.race_id,\\n        cur.lap,\\n        a.driver_id AS driver_a,\\n        b.driver_id AS driver_b\\n    FROM cur a\\n    JOIN cur b\\n        ON a.race_id = b.race_id\\n       AND a.lap = b.lap\\n       AND a.driver_id < b.driver_id\\n    JOIN prev a_prev\\n        ON a.race_id = a_prev.race_id\\n",
+    "error_message": "near \"ERROR\": syntax error",
+    "csv_result": "overtake_type,overtake_count\nrace_start,1755\nretirement,805\n",
+    "model": "old_results"
+  }
+]

@@ -1,0 +1,622 @@
+{
+  "victims": {
+    "columns": [
+      {
+        "name": "id",
+        "type": "INTEGER",
+        "pk": false
+      },
+      {
+        "name": "case_id",
+        "type": "REAL",
+        "pk": false
+      },
+      {
+        "name": "party_number",
+        "type": "INTEGER",
+        "pk": false
+      },
+      {
+        "name": "victim_role",
+        "type": "TEXT",
+        "pk": false
+      },
+      {
+        "name": "victim_sex",
+        "type": "TEXT",
+        "pk": false
+      },
+      {
+        "name": "victim_age",
+        "type": "REAL",
+        "pk": false
+      },
+      {
+        "name": "victim_degree_of_injury",
+        "type": "TEXT",
+        "pk": false
+      },
+      {
+        "name": "victim_seating_position",
+        "type": "TEXT",
+        "pk": false
+      },
+      {
+        "name": "victim_safety_equipment_1",
+        "type": "TEXT",
+        "pk": false
+      },
+      {
+        "name": "victim_safety_equipment_2",
+        "type": "TEXT",
+        "pk": false
+      },
+      {
+        "name": "victim_ejected",
+        "type": "TEXT",
+        "pk": false
+      }
+    ],
+    "foreign_keys": []
+  },
+  "collisions": {
+    "columns": [
+      {
+        "name": "case_id",
+        "type": "REAL",
+        "pk": false
+      },
+      {
+        "name": "jurisdiction",
+        "type": "REAL",
+        "pk": false
+      },
+      {
+        "name": "officer_id",
+        "type": "TEXT",
+        "pk": false
+      },
+      {
+        "name": "reporting_district",
+        "type": "TEXT",
+        "pk": false
+      },
+      {
+        "name": "chp_shift",
+        "type": "TEXT",
+        "pk": false
+      },
+      {
+        "name": "population",
+        "type": "TEXT",
+        "pk": false
+      },
+      {
+        "name": "county_city_location",
+        "type": "INTEGER",
+        "pk": false
+      },
+      {
+        "name": "county_location",
+        "type": "TEXT",
+        "pk": false
+      },
+      {
+        "name": "special_condition",
+        "type": "REAL",
+        "pk": false
+      },
+      {
+        "name": "beat_type",
+        "type": "TEXT",
+        "pk": false
+      },
+      {
+        "name": "chp_beat_type",
+        "type": "TEXT",
+        "pk": false
+      },
+      {
+        "name": "city_division_lapd",
+        "type": "TEXT",
+        "pk": false
+      },
+      {
+        "name": "chp_beat_class",
+        "type": "TEXT",
+        "pk": false
+      },
+      {
+        "name": "beat_number",
+        "type": "TEXT",
+        "pk": false
+      },
+      {
+        "name": "primary_road",
+        "type": "TEXT",
+        "pk": false
+      },
+      {
+        "name": "secondary_road",
+        "type": "TEXT",
+        "pk": false
+      },
+      {
+        "name": "distance",
+        "type": "REAL",
+        "pk": false
+      },
+      {
+        "name": "direction",
+        "type": "TEXT",
+        "pk": false
+      },
+      {
+        "name": "intersection",
+        "type": "REAL",
+        "pk": false
+      },
+      {
+        "name": "weather_1",
+        "type": "TEXT",
+        "pk": false
+      },
+      {
+        "name": "weather_2",
+        "type": "TEXT",
+        "pk": false
+      },
+      {
+        "name": "state_highway_indicator",
+        "type": "REAL",
+        "pk": false
+      },
+      {
+        "name": "caltrans_county",
+        "type": "TEXT",
+        "pk": false
+      },
+      {
+        "name": "caltrans_district",
+        "type": "REAL",
+        "pk": false
+      },
+      {
+        "name": "state_route",
+        "type": "REAL",
+        "pk": false
+      },
+      {
+        "name": "route_suffix",
+        "type": "TEXT",
+        "pk": false
+      },
+      {
+        "name": "postmile_prefix",
+        "type": "TEXT",
+        "pk": false
+      },
+      {
+        "name": "postmile",
+        "type": "REAL",
+        "pk": false
+      },
+      {
+        "name": "location_type",
+        "type": "TEXT",
+        "pk": false
+      },
+      {
+        "name": "ramp_intersection",
+        "type": "TEXT",
+        "pk": false
+      },
+      {
+        "name": "side_of_highway",
+        "type": "TEXT",
+        "pk": false
+      },
+      {
+        "name": "tow_away",
+        "type": "REAL",
+        "pk": false
+      },
+      {
+        "name": "collision_severity",
+        "type": "TEXT",
+        "pk": false
+      },
+      {
+        "name": "killed_victims",
+        "type": "REAL",
+        "pk": false
+      },
+      {
+        "name": "injured_victims",
+        "type": "REAL",
+        "pk": false
+      },
+      {
+        "name": "party_count",
+        "type": "REAL",
+        "pk": false
+      },
+      {
+        "name": "primary_collision_factor",
+        "type": "TEXT",
+        "pk": false
+      },
+      {
+        "name": "pcf_violation_code",
+        "type": "TEXT",
+        "pk": false
+      },
+      {
+        "name": "pcf_violation_category",
+        "type": "TEXT",
+        "pk": false
+      },
+      {
+        "name": "pcf_violation",
+        "type": "REAL",
+        "pk": false
+      },
+      {
+        "name": "pcf_violation_subsection",
+        "type": "TEXT",
+        "pk": false
+      },
+      {
+        "name": "hit_and_run",
+        "type": "TEXT",
+        "pk": false
+      },
+      {
+        "name": "type_of_collision",
+        "type": "TEXT",
+        "pk": false
+      },
+      {
+        "name": "motor_vehicle_involved_with",
+        "type": "TEXT",
+        "pk": false
+      },
+      {
+        "name": "pedestrian_action",
+        "type": "TEXT",
+        "pk": false
+      },
+      {
+        "name": "road_surface",
+        "type": "TEXT",
+        "pk": false
+      },
+      {
+        "name": "road_condition_1",
+        "type": "TEXT",
+        "pk": false
+      },
+      {
+        "name": "road_condition_2",
+        "type": "TEXT",
+        "pk": false
+      },
+      {
+        "name": "lighting",
+        "type": "TEXT",
+        "pk": false
+      },
+      {
+        "name": "control_device",
+        "type": "TEXT",
+        "pk": false
+      },
+      {
+        "name": "chp_road_type",
+        "type": "TEXT",
+        "pk": false
+      },
+      {
+        "name": "pedestrian_collision",
+        "type": "INTEGER",
+        "pk": false
+      },
+      {
+        "name": "bicycle_collision",
+        "type": "INTEGER",
+        "pk": false
+      },
+      {
+        "name": "motorcycle_collision",
+        "type": "INTEGER",
+        "pk": false
+      },
+      {
+        "name": "truck_collision",
+        "type": "INTEGER",
+        "pk": false
+      },
+      {
+        "name": "not_private_property",
+        "type": "REAL",
+        "pk": false
+      },
+      {
+        "name": "alcohol_involved",
+        "type": "REAL",
+        "pk": false
+      },
+      {
+        "name": "statewide_vehicle_type_at_fault",
+        "type": "TEXT",
+        "pk": false
+      },
+      {
+        "name": "chp_vehicle_type_at_fault",
+        "type": "TEXT",
+        "pk": false
+      },
+      {
+        "name": "severe_injury_count",
+        "type": "INTEGER",
+        "pk": false
+      },
+      {
+        "name": "other_visible_injury_count",
+        "type": "INTEGER",
+        "pk": false
+      },
+      {
+        "name": "complaint_of_pain_injury_count",
+        "type": "INTEGER",
+        "pk": false
+      },
+      {
+        "name": "pedestrian_killed_count",
+        "type": "INTEGER",
+        "pk": false
+      },
+      {
+        "name": "pedestrian_injured_count",
+        "type": "INTEGER",
+        "pk": false
+      },
+      {
+        "name": "bicyclist_killed_count",
+        "type": "INTEGER",
+        "pk": false
+      },
+      {
+        "name": "bicyclist_injured_count",
+        "type": "INTEGER",
+        "pk": false
+      },
+      {
+        "name": "motorcyclist_killed_count",
+        "type": "INTEGER",
+        "pk": false
+      },
+      {
+        "name": "motorcyclist_injured_count",
+        "type": "REAL",
+        "pk": false
+      },
+      {
+        "name": "primary_ramp",
+        "type": "TEXT",
+        "pk": false
+      },
+      {
+        "name": "secondary_ramp",
+        "type": "TEXT",
+        "pk": false
+      },
+      {
+        "name": "latitude",
+        "type": "REAL",
+        "pk": false
+      },
+      {
+        "name": "longitude",
+        "type": "REAL",
+        "pk": false
+      },
+      {
+        "name": "collision_date",
+        "type": "TEXT",
+        "pk": false
+      },
+      {
+        "name": "collision_time",
+        "type": "TEXT",
+        "pk": false
+      },
+      {
+        "name": "process_date",
+        "type": "TEXT",
+        "pk": false
+      }
+    ],
+    "foreign_keys": []
+  },
+  "case_ids": {
+    "columns": [
+      {
+        "name": "case_id",
+        "type": "REAL",
+        "pk": false
+      },
+      {
+        "name": "db_year",
+        "type": "INTEGER",
+        "pk": false
+      }
+    ],
+    "foreign_keys": []
+  },
+  "parties": {
+    "columns": [
+      {
+        "name": "id",
+        "type": "INTEGER",
+        "pk": false
+      },
+      {
+        "name": "case_id",
+        "type": "REAL",
+        "pk": false
+      },
+      {
+        "name": "party_number",
+        "type": "INTEGER",
+        "pk": false
+      },
+      {
+        "name": "party_type",
+        "type": "TEXT",
+        "pk": false
+      },
+      {
+        "name": "at_fault",
+        "type": "INTEGER",
+        "pk": false
+      },
+      {
+        "name": "party_sex",
+        "type": "TEXT",
+        "pk": false
+      },
+      {
+        "name": "party_age",
+        "type": "REAL",
+        "pk": false
+      },
+      {
+        "name": "party_sobriety",
+        "type": "TEXT",
+        "pk": false
+      },
+      {
+        "name": "party_drug_physical",
+        "type": "TEXT",
+        "pk": false
+      },
+      {
+        "name": "direction_of_travel",
+        "type": "TEXT",
+        "pk": false
+      },
+      {
+        "name": "party_safety_equipment_1",
+        "type": "TEXT",
+        "pk": false
+      },
+      {
+        "name": "party_safety_equipment_2",
+        "type": "TEXT",
+        "pk": false
+      },
+      {
+        "name": "financial_responsibility",
+        "type": "TEXT",
+        "pk": false
+      },
+      {
+        "name": "hazardous_materials",
+        "type": "REAL",
+        "pk": false
+      },
+      {
+        "name": "cellphone_in_use",
+        "type": "REAL",
+        "pk": false
+      },
+      {
+        "name": "cellphone_use_type",
+        "type": "TEXT",
+        "pk": false
+      },
+      {
+        "name": "school_bus_related",
+        "type": "REAL",
+        "pk": false
+      },
+      {
+        "name": "oaf_violation_code",
+        "type": "TEXT",
+        "pk": false
+      },
+      {
+        "name": "oaf_violation_category",
+        "type": "TEXT",
+        "pk": false
+      },
+      {
+        "name": "oaf_violation_section",
+        "type": "REAL",
+        "pk": false
+      },
+      {
+        "name": "oaf_violation_suffix",
+        "type": "TEXT",
+        "pk": false
+      },
+      {
+        "name": "other_associate_factor_1",
+        "type": "TEXT",
+        "pk": false
+      },
+      {
+        "name": "other_associate_factor_2",
+        "type": "TEXT",
+        "pk": false
+      },
+      {
+        "name": "party_number_killed",
+        "type": "INTEGER",
+        "pk": false
+      },
+      {
+        "name": "party_number_injured",
+        "type": "INTEGER",
+        "pk": false
+      },
+      {
+        "name": "movement_preceding_collision",
+        "type": "TEXT",
+        "pk": false
+      },
+      {
+        "name": "vehicle_year",
+        "type": "REAL",
+        "pk": false
+      },
+      {
+        "name": "vehicle_make",
+        "type": "TEXT",
+        "pk": false
+      },
+      {
+        "name": "statewide_vehicle_type",
+        "type": "TEXT",
+        "pk": false
+      },
+      {
+        "name": "chp_vehicle_type_towing",
+        "type": "TEXT",
+        "pk": false
+      },
+      {
+        "name": "chp_vehicle_type_towed",
+        "type": "TEXT",
+        "pk": false
+      },
+      {
+        "name": "party_race",
+        "type": "TEXT",
+        "pk": false
+      }
+    ],
+    "foreign_keys": []
+  }
+}

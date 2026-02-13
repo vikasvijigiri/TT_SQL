@@ -1,0 +1,472 @@
+{
+  "pizza_names": {
+    "columns": [
+      {
+        "name": "pizza_id",
+        "type": "INTEGER",
+        "pk": false
+      },
+      {
+        "name": "pizza_name",
+        "type": "TEXT",
+        "pk": false
+      }
+    ],
+    "foreign_keys": []
+  },
+  "companies_funding": {
+    "columns": [
+      {
+        "name": "company_id",
+        "type": "INTEGER",
+        "pk": false
+      },
+      {
+        "name": "valuation",
+        "type": "INTEGER",
+        "pk": false
+      },
+      {
+        "name": "funding",
+        "type": "INTEGER",
+        "pk": false
+      },
+      {
+        "name": "select_investors",
+        "type": "TEXT",
+        "pk": false
+      }
+    ],
+    "foreign_keys": []
+  },
+  "pizza_customer_orders": {
+    "columns": [
+      {
+        "name": "order_id",
+        "type": "INTEGER",
+        "pk": false
+      },
+      {
+        "name": "customer_id",
+        "type": "INTEGER",
+        "pk": false
+      },
+      {
+        "name": "pizza_id",
+        "type": "INTEGER",
+        "pk": false
+      },
+      {
+        "name": "exclusions",
+        "type": "TEXT",
+        "pk": false
+      },
+      {
+        "name": "extras",
+        "type": "TEXT",
+        "pk": false
+      },
+      {
+        "name": "order_time",
+        "type": "TEXT",
+        "pk": false
+      }
+    ],
+    "foreign_keys": []
+  },
+  "pizza_toppings": {
+    "columns": [
+      {
+        "name": "topping_id",
+        "type": "INTEGER",
+        "pk": false
+      },
+      {
+        "name": "topping_name",
+        "type": "TEXT",
+        "pk": false
+      }
+    ],
+    "foreign_keys": []
+  },
+  "trees": {
+    "columns": [
+      {
+        "name": "idx",
+        "type": "INTEGER",
+        "pk": false
+      },
+      {
+        "name": "tree_id",
+        "type": "INTEGER",
+        "pk": false
+      },
+      {
+        "name": "tree_dbh",
+        "type": "INTEGER",
+        "pk": false
+      },
+      {
+        "name": "stump_diam",
+        "type": "INTEGER",
+        "pk": false
+      },
+      {
+        "name": "status",
+        "type": "TEXT",
+        "pk": false
+      },
+      {
+        "name": "health",
+        "type": "TEXT",
+        "pk": false
+      },
+      {
+        "name": "spc_latin",
+        "type": "TEXT",
+        "pk": false
+      },
+      {
+        "name": "spc_common",
+        "type": "TEXT",
+        "pk": false
+      },
+      {
+        "name": "address",
+        "type": "TEXT",
+        "pk": false
+      },
+      {
+        "name": "zipcode",
+        "type": "INTEGER",
+        "pk": false
+      },
+      {
+        "name": "borocode",
+        "type": "INTEGER",
+        "pk": false
+      },
+      {
+        "name": "boroname",
+        "type": "TEXT",
+        "pk": false
+      },
+      {
+        "name": "nta_name",
+        "type": "TEXT",
+        "pk": false
+      },
+      {
+        "name": "state",
+        "type": "TEXT",
+        "pk": false
+      },
+      {
+        "name": "latitude",
+        "type": "REAL",
+        "pk": false
+      },
+      {
+        "name": "longitude",
+        "type": "REAL",
+        "pk": false
+      }
+    ],
+    "foreign_keys": []
+  },
+  "pizza_recipes": {
+    "columns": [
+      {
+        "name": "pizza_id",
+        "type": "INTEGER",
+        "pk": false
+      },
+      {
+        "name": "toppings",
+        "type": "TEXT",
+        "pk": false
+      }
+    ],
+    "foreign_keys": []
+  },
+  "statistics": {
+    "columns": [
+      {
+        "name": "date",
+        "type": "TEXT",
+        "pk": false
+      },
+      {
+        "name": "state",
+        "type": "TEXT",
+        "pk": false
+      },
+      {
+        "name": "total_cases",
+        "type": "INTEGER",
+        "pk": false
+      },
+      {
+        "name": "total_deaths",
+        "type": "INTEGER",
+        "pk": false
+      }
+    ],
+    "foreign_keys": []
+  },
+  "income_trees": {
+    "columns": [
+      {
+        "name": "zipcode",
+        "type": "INTEGER",
+        "pk": false
+      },
+      {
+        "name": "Estimate_Total",
+        "type": "INTEGER",
+        "pk": false
+      },
+      {
+        "name": "Margin_of_Error_Total",
+        "type": "INTEGER",
+        "pk": false
+      },
+      {
+        "name": "Estimate_Median_income",
+        "type": "INTEGER",
+        "pk": false
+      },
+      {
+        "name": "Margin_of_Error_Median_income",
+        "type": "INTEGER",
+        "pk": false
+      },
+      {
+        "name": "Estimate_Mean_income",
+        "type": "INTEGER",
+        "pk": false
+      },
+      {
+        "name": "Margin_of_Error_Mean_income",
+        "type": "INTEGER",
+        "pk": false
+      }
+    ],
+    "foreign_keys": []
+  },
+  "pizza_clean_runner_orders": {
+    "columns": [
+      {
+        "name": "order_id",
+        "type": "INTEGER",
+        "pk": false
+      },
+      {
+        "name": "runner_id",
+        "type": "INTEGER",
+        "pk": false
+      },
+      {
+        "name": "pickup_time",
+        "type": "TEXT",
+        "pk": false
+      },
+      {
+        "name": "distance",
+        "type": "REAL",
+        "pk": false
+      },
+      {
+        "name": "duration",
+        "type": "REAL",
+        "pk": false
+      },
+      {
+        "name": "cancellation",
+        "type": "TEXT",
+        "pk": false
+      }
+    ],
+    "foreign_keys": []
+  },
+  "pizza_runner_orders": {
+    "columns": [
+      {
+        "name": "order_id",
+        "type": "INTEGER",
+        "pk": false
+      },
+      {
+        "name": "runner_id",
+        "type": "INTEGER",
+        "pk": false
+      },
+      {
+        "name": "pickup_time",
+        "type": "TEXT",
+        "pk": false
+      },
+      {
+        "name": "distance",
+        "type": "TEXT",
+        "pk": false
+      },
+      {
+        "name": "duration",
+        "type": "TEXT",
+        "pk": false
+      },
+      {
+        "name": "cancellation",
+        "type": "TEXT",
+        "pk": false
+      }
+    ],
+    "foreign_keys": []
+  },
+  "word_list": {
+    "columns": [
+      {
+        "name": "words",
+        "type": "TEXT",
+        "pk": false
+      }
+    ],
+    "foreign_keys": []
+  },
+  "companies_dates": {
+    "columns": [
+      {
+        "name": "company_id",
+        "type": "INTEGER",
+        "pk": false
+      },
+      {
+        "name": "date_joined",
+        "type": "TEXT",
+        "pk": false
+      },
+      {
+        "name": "year_founded",
+        "type": "INTEGER",
+        "pk": false
+      }
+    ],
+    "foreign_keys": []
+  },
+  "pizza_get_extras": {
+    "columns": [
+      {
+        "name": "row_id",
+        "type": "INTEGER",
+        "pk": false
+      },
+      {
+        "name": "order_id",
+        "type": "INTEGER",
+        "pk": false
+      },
+      {
+        "name": "extras",
+        "type": "INTEGER",
+        "pk": false
+      },
+      {
+        "name": "extras_count",
+        "type": "INTEGER",
+        "pk": false
+      }
+    ],
+    "foreign_keys": []
+  },
+  "pizza_get_exclusions": {
+    "columns": [
+      {
+        "name": "row_id",
+        "type": "INTEGER",
+        "pk": false
+      },
+      {
+        "name": "order_id",
+        "type": "INTEGER",
+        "pk": false
+      },
+      {
+        "name": "exclusions",
+        "type": "INTEGER",
+        "pk": false
+      },
+      {
+        "name": "total_exclusions",
+        "type": "INTEGER",
+        "pk": false
+      }
+    ],
+    "foreign_keys": []
+  },
+  "pizza_clean_customer_orders": {
+    "columns": [
+      {
+        "name": "order_id",
+        "type": "INTEGER",
+        "pk": false
+      },
+      {
+        "name": "customer_id",
+        "type": "INTEGER",
+        "pk": false
+      },
+      {
+        "name": "pizza_id",
+        "type": "INTEGER",
+        "pk": false
+      },
+      {
+        "name": "exclusions",
+        "type": "TEXT",
+        "pk": false
+      },
+      {
+        "name": "extras",
+        "type": "TEXT",
+        "pk": false
+      },
+      {
+        "name": "order_time",
+        "type": "TEXT",
+        "pk": false
+      }
+    ],
+    "foreign_keys": []
+  },
+  "companies_industries": {
+    "columns": [
+      {
+        "name": "company_id",
+        "type": "INTEGER",
+        "pk": false
+      },
+      {
+        "name": "industry",
+        "type": "TEXT",
+        "pk": false
+      }
+    ],
+    "foreign_keys": []
+  },
+  "pizza_runners": {
+    "columns": [
+      {
+        "name": "runner_id",
+        "type": "INTEGER",
+        "pk": false
+      },
+      {
+        "name": "registration_date",
+        "type": "TEXT",
+        "pk": false
+      }
+    ],
+    "foreign_keys": []
+  }
+}

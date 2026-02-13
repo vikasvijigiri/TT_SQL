@@ -1,0 +1,22 @@
+{
+  "columns": [
+    "player_name",
+    "type",
+    "count"
+  ],
+  "rows": [
+    [
+      "Cristiano Ronaldo",
+      "win",
+      199
+    ],
+    [
+      "Gorka Iraizoz Moreno",
+      "loss",
+      107
+    ]
+  ],
+  "row_count": 2,
+  "execution_time_ms": 2795.0963973999023,
+  "error_message": null
+}

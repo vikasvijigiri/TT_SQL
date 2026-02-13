@@ -1,0 +1,18 @@
+{
+  "is_valid": false,
+  "check_results": {
+    "columns": "PASS",
+    "syntax": "PASS",
+    "joins": "PASS",
+    "group_by": "PASS",
+    "math_types": "PASS",
+    "logic": "FAIL",
+    "step_logic": "FAIL"
+  },
+  "feedback": [
+    "The query aggregates order line quantities per product (SUM) and thus loses the required per\u2011line sequencing, violating steps 1, 5, and 6 of the Action Plan.",
+    "Allocation is performed only against the total required quantity per product, not against each individual order line, so the cumulative allocation across multiple lines is not respected.",
+    "The window function cum_qty correctly orders inventory by purchase date and quantity, but the logic does not incorporate order line order or line identifiers, which the plan explicitly requires.",
+    "No explicit verification is performed that the total allocated quantity for a product does not exceed the total inventory available in warehouse\u202f1 beyond the implicit CASE logic."
+  ]
+}

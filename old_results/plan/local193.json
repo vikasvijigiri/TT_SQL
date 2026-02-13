@@ -1,0 +1,13 @@
+{
+  "step_by_step_approach": [
+    "Exclude any customers whose total lifetime sales amount is zero.",
+    "For each remaining customer, determine the total amount of sales made over the entire lifetime.",
+    "For each remaining customer, sum the sales that occurred within exactly 7 days (including hours, minutes, and seconds) after the customer's first purchase.",
+    "For each remaining customer, sum the sales that occurred within exactly 30 days (including hours, minutes, and seconds) after the customer's first purchase.",
+    "For each remaining customer, calculate the percentage of the total lifetime sales that the 7\u2011day sales represent.",
+    "For each remaining customer, calculate the percentage of the total lifetime sales that the 30\u2011day sales represent.",
+    "Compute the average of the 7\u2011day percentages across all customers.",
+    "Compute the average of the 30\u2011day percentages across all customers.",
+    "Compute the average of the total lifetime sales amounts across all customers."
+  ]
+}

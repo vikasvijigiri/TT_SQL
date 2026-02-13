@@ -1,0 +1,11 @@
+{
+  "step_by_step_approach": [
+    "Identify all races that have pit\u2011stop information available.",
+    "For each selected race, list the order of drivers for every lap.",
+    "Compare each driver's position on one lap with the next lap to find moments when the driver was ahead of another driver on the previous lap but behind on the current lap.",
+    "For each identified position change, check whether it coincides with a driver retiring, entering a pit stop, exiting a pit stop, or occurring at the start of the race.",
+    "Classify each position change into one of the categories: retirement, pit\u2011stop entry, pit\u2011stop exit, or race start.",
+    "Count how many times each category of position change occurs across all races.",
+    "Report the counts for each type of overtake."
+  ]
+}

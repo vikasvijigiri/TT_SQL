@@ -1,0 +1,9 @@
+{
+  "step_by_step_approach": [
+    "Select all match records that belong to season 5.",
+    "Group the records by player and compute each player's average runs per match.",
+    "Order the players from highest to lowest based on the computed average runs per match.",
+    "Take the first five players from this ordered list.",
+    "For each of these five players, retrieve their name and their batting average."
+  ]
+}

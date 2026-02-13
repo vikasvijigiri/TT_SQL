@@ -1,0 +1,648 @@
+{
+  "actor": {
+    "columns": [
+      {
+        "name": "actor_id",
+        "type": "numeric",
+        "pk": true
+      },
+      {
+        "name": "first_name",
+        "type": "VARCHAR(45)",
+        "pk": false
+      },
+      {
+        "name": "last_name",
+        "type": "VARCHAR(45)",
+        "pk": false
+      },
+      {
+        "name": "last_update",
+        "type": "TIMESTAMP",
+        "pk": false
+      }
+    ],
+    "foreign_keys": []
+  },
+  "country": {
+    "columns": [
+      {
+        "name": "country_id",
+        "type": "SMALLINT",
+        "pk": true
+      },
+      {
+        "name": "country",
+        "type": "VARCHAR(50)",
+        "pk": false
+      },
+      {
+        "name": "last_update",
+        "type": "TIMESTAMP",
+        "pk": false
+      }
+    ],
+    "foreign_keys": []
+  },
+  "city": {
+    "columns": [
+      {
+        "name": "city_id",
+        "type": "INT",
+        "pk": true
+      },
+      {
+        "name": "city",
+        "type": "VARCHAR(50)",
+        "pk": false
+      },
+      {
+        "name": "country_id",
+        "type": "SMALLINT",
+        "pk": false
+      },
+      {
+        "name": "last_update",
+        "type": "TIMESTAMP",
+        "pk": false
+      }
+    ],
+    "foreign_keys": [
+      {
+        "to_table": "country",
+        "from_col": "country_id",
+        "to_col": "country_id"
+      }
+    ]
+  },
+  "address": {
+    "columns": [
+      {
+        "name": "address_id",
+        "type": "INT",
+        "pk": true
+      },
+      {
+        "name": "address",
+        "type": "VARCHAR(50)",
+        "pk": false
+      },
+      {
+        "name": "address2",
+        "type": "VARCHAR(50)",
+        "pk": false
+      },
+      {
+        "name": "district",
+        "type": "VARCHAR(20)",
+        "pk": false
+      },
+      {
+        "name": "city_id",
+        "type": "INT",
+        "pk": false
+      },
+      {
+        "name": "postal_code",
+        "type": "VARCHAR(10)",
+        "pk": false
+      },
+      {
+        "name": "phone",
+        "type": "VARCHAR(20)",
+        "pk": false
+      },
+      {
+        "name": "last_update",
+        "type": "TIMESTAMP",
+        "pk": false
+      }
+    ],
+    "foreign_keys": [
+      {
+        "to_table": "city",
+        "from_col": "city_id",
+        "to_col": "city_id"
+      }
+    ]
+  },
+  "language": {
+    "columns": [
+      {
+        "name": "language_id",
+        "type": "SMALLINT",
+        "pk": true
+      },
+      {
+        "name": "name",
+        "type": "CHAR(20)",
+        "pk": false
+      },
+      {
+        "name": "last_update",
+        "type": "TIMESTAMP",
+        "pk": false
+      }
+    ],
+    "foreign_keys": []
+  },
+  "category": {
+    "columns": [
+      {
+        "name": "category_id",
+        "type": "SMALLINT",
+        "pk": true
+      },
+      {
+        "name": "name",
+        "type": "VARCHAR(25)",
+        "pk": false
+      },
+      {
+        "name": "last_update",
+        "type": "TIMESTAMP",
+        "pk": false
+      }
+    ],
+    "foreign_keys": []
+  },
+  "customer": {
+    "columns": [
+      {
+        "name": "customer_id",
+        "type": "INT",
+        "pk": true
+      },
+      {
+        "name": "store_id",
+        "type": "INT",
+        "pk": false
+      },
+      {
+        "name": "first_name",
+        "type": "VARCHAR(45)",
+        "pk": false
+      },
+      {
+        "name": "last_name",
+        "type": "VARCHAR(45)",
+        "pk": false
+      },
+      {
+        "name": "email",
+        "type": "VARCHAR(50)",
+        "pk": false
+      },
+      {
+        "name": "address_id",
+        "type": "INT",
+        "pk": false
+      },
+      {
+        "name": "active",
+        "type": "CHAR(1)",
+        "pk": false
+      },
+      {
+        "name": "create_date",
+        "type": "TIMESTAMP",
+        "pk": false
+      },
+      {
+        "name": "last_update",
+        "type": "TIMESTAMP",
+        "pk": false
+      }
+    ],
+    "foreign_keys": [
+      {
+        "to_table": "address",
+        "from_col": "address_id",
+        "to_col": "address_id"
+      },
+      {
+        "to_table": "store",
+        "from_col": "store_id",
+        "to_col": "store_id"
+      }
+    ]
+  },
+  "film": {
+    "columns": [
+      {
+        "name": "film_id",
+        "type": "INT",
+        "pk": true
+      },
+      {
+        "name": "title",
+        "type": "VARCHAR(255)",
+        "pk": false
+      },
+      {
+        "name": "description",
+        "type": "BLOB SUB_TYPE TEXT",
+        "pk": false
+      },
+      {
+        "name": "release_year",
+        "type": "VARCHAR(4)",
+        "pk": false
+      },
+      {
+        "name": "language_id",
+        "type": "SMALLINT",
+        "pk": false
+      },
+      {
+        "name": "original_language_id",
+        "type": "SMALLINT",
+        "pk": false
+      },
+      {
+        "name": "rental_duration",
+        "type": "SMALLINT",
+        "pk": false
+      },
+      {
+        "name": "rental_rate",
+        "type": "DECIMAL(4,2)",
+        "pk": false
+      },
+      {
+        "name": "length",
+        "type": "SMALLINT",
+        "pk": false
+      },
+      {
+        "name": "replacement_cost",
+        "type": "DECIMAL(5,2)",
+        "pk": false
+      },
+      {
+        "name": "rating",
+        "type": "VARCHAR(10)",
+        "pk": false
+      },
+      {
+        "name": "special_features",
+        "type": "VARCHAR(100)",
+        "pk": false
+      },
+      {
+        "name": "last_update",
+        "type": "TIMESTAMP",
+        "pk": false
+      }
+    ],
+    "foreign_keys": [
+      {
+        "to_table": "language",
+        "from_col": "original_language_id",
+        "to_col": "language_id"
+      },
+      {
+        "to_table": "language",
+        "from_col": "language_id",
+        "to_col": "language_id"
+      }
+    ]
+  },
+  "film_actor": {
+    "columns": [
+      {
+        "name": "actor_id",
+        "type": "INT",
+        "pk": true
+      },
+      {
+        "name": "film_id",
+        "type": "INT",
+        "pk": true
+      },
+      {
+        "name": "last_update",
+        "type": "TIMESTAMP",
+        "pk": false
+      }
+    ],
+    "foreign_keys": [
+      {
+        "to_table": "film",
+        "from_col": "film_id",
+        "to_col": "film_id"
+      },
+      {
+        "to_table": "actor",
+        "from_col": "actor_id",
+        "to_col": "actor_id"
+      }
+    ]
+  },
+  "film_category": {
+    "columns": [
+      {
+        "name": "film_id",
+        "type": "INT",
+        "pk": true
+      },
+      {
+        "name": "category_id",
+        "type": "SMALLINT",
+        "pk": true
+      },
+      {
+        "name": "last_update",
+        "type": "TIMESTAMP",
+        "pk": false
+      }
+    ],
+    "foreign_keys": [
+      {
+        "to_table": "category",
+        "from_col": "category_id",
+        "to_col": "category_id"
+      },
+      {
+        "to_table": "film",
+        "from_col": "film_id",
+        "to_col": "film_id"
+      }
+    ]
+  },
+  "film_text": {
+    "columns": [
+      {
+        "name": "film_id",
+        "type": "SMALLINT",
+        "pk": true
+      },
+      {
+        "name": "title",
+        "type": "VARCHAR(255)",
+        "pk": false
+      },
+      {
+        "name": "description",
+        "type": "BLOB SUB_TYPE TEXT",
+        "pk": false
+      }
+    ],
+    "foreign_keys": []
+  },
+  "inventory": {
+    "columns": [
+      {
+        "name": "inventory_id",
+        "type": "INT",
+        "pk": true
+      },
+      {
+        "name": "film_id",
+        "type": "INT",
+        "pk": false
+      },
+      {
+        "name": "store_id",
+        "type": "INT",
+        "pk": false
+      },
+      {
+        "name": "last_update",
+        "type": "TIMESTAMP",
+        "pk": false
+      }
+    ],
+    "foreign_keys": [
+      {
+        "to_table": "film",
+        "from_col": "film_id",
+        "to_col": "film_id"
+      },
+      {
+        "to_table": "store",
+        "from_col": "store_id",
+        "to_col": "store_id"
+      }
+    ]
+  },
+  "staff": {
+    "columns": [
+      {
+        "name": "staff_id",
+        "type": "SMALLINT",
+        "pk": true
+      },
+      {
+        "name": "first_name",
+        "type": "VARCHAR(45)",
+        "pk": false
+      },
+      {
+        "name": "last_name",
+        "type": "VARCHAR(45)",
+        "pk": false
+      },
+      {
+        "name": "address_id",
+        "type": "INT",
+        "pk": false
+      },
+      {
+        "name": "picture",
+        "type": "BLOB",
+        "pk": false
+      },
+      {
+        "name": "email",
+        "type": "VARCHAR(50)",
+        "pk": false
+      },
+      {
+        "name": "store_id",
+        "type": "INT",
+        "pk": false
+      },
+      {
+        "name": "active",
+        "type": "SMALLINT",
+        "pk": false
+      },
+      {
+        "name": "username",
+        "type": "VARCHAR(16)",
+        "pk": false
+      },
+      {
+        "name": "password",
+        "type": "VARCHAR(40)",
+        "pk": false
+      },
+      {
+        "name": "last_update",
+        "type": "TIMESTAMP",
+        "pk": false
+      }
+    ],
+    "foreign_keys": [
+      {
+        "to_table": "address",
+        "from_col": "address_id",
+        "to_col": "address_id"
+      },
+      {
+        "to_table": "store",
+        "from_col": "store_id",
+        "to_col": "store_id"
+      }
+    ]
+  },
+  "store": {
+    "columns": [
+      {
+        "name": "store_id",
+        "type": "INT",
+        "pk": true
+      },
+      {
+        "name": "manager_staff_id",
+        "type": "SMALLINT",
+        "pk": false
+      },
+      {
+        "name": "address_id",
+        "type": "INT",
+        "pk": false
+      },
+      {
+        "name": "last_update",
+        "type": "TIMESTAMP",
+        "pk": false
+      }
+    ],
+    "foreign_keys": [
+      {
+        "to_table": "address",
+        "from_col": "address_id",
+        "to_col": "address_id"
+      },
+      {
+        "to_table": "staff",
+        "from_col": "manager_staff_id",
+        "to_col": "staff_id"
+      }
+    ]
+  },
+  "payment": {
+    "columns": [
+      {
+        "name": "payment_id",
+        "type": "INT",
+        "pk": true
+      },
+      {
+        "name": "customer_id",
+        "type": "INT",
+        "pk": false
+      },
+      {
+        "name": "staff_id",
+        "type": "SMALLINT",
+        "pk": false
+      },
+      {
+        "name": "rental_id",
+        "type": "INT",
+        "pk": false
+      },
+      {
+        "name": "amount",
+        "type": "DECIMAL(5,2)",
+        "pk": false
+      },
+      {
+        "name": "payment_date",
+        "type": "TIMESTAMP",
+        "pk": false
+      },
+      {
+        "name": "last_update",
+        "type": "TIMESTAMP",
+        "pk": false
+      }
+    ],
+    "foreign_keys": [
+      {
+        "to_table": "staff",
+        "from_col": "staff_id",
+        "to_col": "staff_id"
+      },
+      {
+        "to_table": "customer",
+        "from_col": "customer_id",
+        "to_col": "customer_id"
+      },
+      {
+        "to_table": "rental",
+        "from_col": "rental_id",
+        "to_col": "rental_id"
+      }
+    ]
+  },
+  "rental": {
+    "columns": [
+      {
+        "name": "rental_id",
+        "type": "INT",
+        "pk": true
+      },
+      {
+        "name": "rental_date",
+        "type": "TIMESTAMP",
+        "pk": false
+      },
+      {
+        "name": "inventory_id",
+        "type": "INT",
+        "pk": false
+      },
+      {
+        "name": "customer_id",
+        "type": "INT",
+        "pk": false
+      },
+      {
+        "name": "return_date",
+        "type": "TIMESTAMP",
+        "pk": false
+      },
+      {
+        "name": "staff_id",
+        "type": "SMALLINT",
+        "pk": false
+      },
+      {
+        "name": "last_update",
+        "type": "TIMESTAMP",
+        "pk": false
+      }
+    ],
+    "foreign_keys": [
+      {
+        "to_table": "customer",
+        "from_col": "customer_id",
+        "to_col": "customer_id"
+      },
+      {
+        "to_table": "inventory",
+        "from_col": "inventory_id",
+        "to_col": "inventory_id"
+      },
+      {
+        "to_table": "staff",
+        "from_col": "staff_id",
+        "to_col": "staff_id"
+      }
+    ]
+  }
+}

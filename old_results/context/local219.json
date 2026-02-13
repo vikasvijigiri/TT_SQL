@@ -1,0 +1,9 @@
+{
+  "relevant_tables": [
+    "leagues",
+    "seasons",
+    "teams",
+    "matches"
+  ],
+  "reasoning": "To determine the team with the fewest wins per league across all seasons, we need:\n- **matches** (or a similarly named table) to access each game's home_team_id, away_team_id, home_goals, and away_goals, which allow us to calculate win counts.\n- **teams** to map team IDs to their names and ensure we include teams that may have zero wins.\n- **leagues** to group the results by league.\n- **seasons** (or a season identifier within the matches table) to ensure the calculation spans all seasons for each league. \nThese tables together provide the necessary data to compute total wins per team, filter by league, and select the single team with the minimum win count for each league."
+}

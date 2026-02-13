@@ -1,0 +1,12 @@
+{
+  "step_by_step_approach": [
+    "Gather each driver's race participation records for every year.",
+    "Identify any sequences of races that a driver did not start within each year.",
+    "Retain only those driver-year sequences where the total number of missed races is fewer than three.",
+    "For each retained sequence, compare the team of the race immediately before the first missed race with the team of the race immediately after the last missed race and keep only those where the teams differ.",
+    "Record the round number of the first missed race and the round number of the last missed race for each qualifying case.",
+    "Calculate the average of all recorded first missed round numbers.",
+    "Calculate the average of all recorded last missed round numbers.",
+    "Return the two overall averages."
+  ]
+}

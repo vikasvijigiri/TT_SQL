@@ -1,0 +1,62 @@
+# Pipeline Configuration
+# Defines the execution order and settings for all agents in the Text2SQL pipeline
+
+pipeline:
+  # Agent execution order - agents will run in this sequence
+  execution_order:
+    # 1. Input Layer - Understanding the query
+    - agent: SchemaAnalyzer
+      enabled: true
+      description: "Connect to database and extract schema"
+    
+    - agent: QueryIntentClassifier
+      enabled: true
+      description: "Classify query intent and complexity"
+    
+    # 2. Planning Layer - Context and strategy
+    - agent: ContextEnrichment
+      enabled: true
+      description: "Select relevant tables and enrich context"
+    
+    - agent: StepByStepPlanner
+      enabled: true
+      description: "Create step-by-step execution plan"
+    
+    # 3. Generation Layer - SQL creation and refinement
+    - agent: RefinementLoop
+      enabled: true
+      description: "Generate and refine SQL through iterative loop"
+      settings:
+        max_iterations: 3
+        enable_critic: true
+    
+    # 4. Execution Layer - Run and validate
+    - agent: SQLiteExecutor
+      enabled: true
+      description: "Execute final SQL query"
+
+# Agent-specific settings
+agent_settings:
+  ContextEnrichment:
+    # Set this in .env as BEDROCK_KB_ID
+    bedrock_knowledge_base_id: null 
+    max_results: 10
+    
+  RefinementLoop:
+    max_subtask_iterations: 3
+    max_total_iterations: 10
+    enable_rag: false
+  
+  MultiCandidateGenerator:
+    temperature: 0.0
+    max_tokens: 1500
+  
+  Critic:
+    temperature: 0.0
+    max_tokens: 1500
+
+# Logging settings
+logging:
+  log_token_usage: true
+  log_agent_transitions: true
+  save_detailed_logs: true

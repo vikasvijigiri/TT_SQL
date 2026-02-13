@@ -1,0 +1,14 @@
+{
+  "is_valid": false,
+  "check_results": {
+    "columns": "PASS",
+    "syntax": "PASS",
+    "joins": "PASS",
+    "group_by": "PASS",
+    "math_types": "FAIL",
+    "logic": "PASS"
+  },
+  "feedback": [
+    "The calculation of the median uses integer division, which can lead to incorrect results. Ensure that division results in a floating-point number to correctly calculate the median."
+  ]
+}

@@ -1,0 +1,11 @@
+{
+  "step_by_step_approach": [
+    "Gather weekly sales records for the years 2018, 2019, and 2020.",
+    "For each year, isolate the four weeks that end on June 14 (the four weeks leading up to June 15).",
+    "Sum the sales amounts for those pre\u2011June 15 weeks for each year.",
+    "For each year, isolate the four weeks that start on June 15 (the four weeks following June 15).",
+    "Sum the sales amounts for those post\u2011June 15 weeks for each year.",
+    "Compute the percentage change between the post\u2011June 15 total and the pre\u2011June 15 total for each year.",
+    "Report the percentage change for 2018, 2019, and 2020."
+  ]
+}

@@ -1,0 +1,227 @@
+{
+  "Promotions": {
+    "columns": [
+      {
+        "name": "id",
+        "type": "INTEGER",
+        "pk": true
+      },
+      {
+        "name": "name",
+        "type": "TEXT",
+        "pk": false
+      }
+    ],
+    "foreign_keys": []
+  },
+  "sqlite_sequence": {
+    "columns": [
+      {
+        "name": "name",
+        "type": "",
+        "pk": false
+      },
+      {
+        "name": "seq",
+        "type": "",
+        "pk": false
+      }
+    ],
+    "foreign_keys": []
+  },
+  "Tables": {
+    "columns": [
+      {
+        "name": "id",
+        "type": "INTEGER",
+        "pk": true
+      },
+      {
+        "name": "html",
+        "type": "TEXT",
+        "pk": false
+      },
+      {
+        "name": "url",
+        "type": "TEXT",
+        "pk": false
+      }
+    ],
+    "foreign_keys": []
+  },
+  "Cards": {
+    "columns": [
+      {
+        "name": "id",
+        "type": "INTEGER",
+        "pk": true
+      },
+      {
+        "name": "table_id",
+        "type": "INTEGER",
+        "pk": false
+      },
+      {
+        "name": "location_id",
+        "type": "INTEGER",
+        "pk": false
+      },
+      {
+        "name": "promotion_id",
+        "type": "INTEGER",
+        "pk": false
+      },
+      {
+        "name": "event_date",
+        "type": "TEXT",
+        "pk": false
+      },
+      {
+        "name": "event_id",
+        "type": "INTEGER",
+        "pk": false
+      },
+      {
+        "name": "url",
+        "type": "TEXT",
+        "pk": false
+      },
+      {
+        "name": "info_html",
+        "type": "TEXT",
+        "pk": false
+      },
+      {
+        "name": "match_html",
+        "type": "TEXT",
+        "pk": false
+      }
+    ],
+    "foreign_keys": []
+  },
+  "Locations": {
+    "columns": [
+      {
+        "name": "id",
+        "type": "INTEGER",
+        "pk": true
+      },
+      {
+        "name": "name",
+        "type": "TEXT",
+        "pk": false
+      }
+    ],
+    "foreign_keys": []
+  },
+  "Events": {
+    "columns": [
+      {
+        "name": "id",
+        "type": "INTEGER",
+        "pk": true
+      },
+      {
+        "name": "name",
+        "type": "TEXT",
+        "pk": false
+      }
+    ],
+    "foreign_keys": []
+  },
+  "Matches": {
+    "columns": [
+      {
+        "name": "id",
+        "type": "INTEGER",
+        "pk": true
+      },
+      {
+        "name": "card_id",
+        "type": "INTEGER",
+        "pk": false
+      },
+      {
+        "name": "winner_id",
+        "type": "TEXT",
+        "pk": false
+      },
+      {
+        "name": "win_type",
+        "type": "TEXT",
+        "pk": false
+      },
+      {
+        "name": "loser_id",
+        "type": "TEXT",
+        "pk": false
+      },
+      {
+        "name": "match_type_id",
+        "type": "TEXT",
+        "pk": false
+      },
+      {
+        "name": "duration",
+        "type": "TEXT",
+        "pk": false
+      },
+      {
+        "name": "title_id",
+        "type": "TEXT",
+        "pk": false
+      },
+      {
+        "name": "title_change",
+        "type": "INTEGER",
+        "pk": false
+      }
+    ],
+    "foreign_keys": []
+  },
+  "Belts": {
+    "columns": [
+      {
+        "name": "id",
+        "type": "INTEGER",
+        "pk": true
+      },
+      {
+        "name": "name",
+        "type": "TEXT",
+        "pk": false
+      }
+    ],
+    "foreign_keys": []
+  },
+  "Wrestlers": {
+    "columns": [
+      {
+        "name": "id",
+        "type": "INTEGER",
+        "pk": true
+      },
+      {
+        "name": "name",
+        "type": "",
+        "pk": false
+      }
+    ],
+    "foreign_keys": []
+  },
+  "Match_Types": {
+    "columns": [
+      {
+        "name": "id",
+        "type": "INTEGER",
+        "pk": true
+      },
+      {
+        "name": "name",
+        "type": "TEXT",
+        "pk": false
+      }
+    ],
+    "foreign_keys": []
+  }
+}

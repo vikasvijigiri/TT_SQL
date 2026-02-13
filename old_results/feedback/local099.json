@@ -1,0 +1,15 @@
+{
+  "is_valid": false,
+  "check_results": {
+    "columns": "PASS",
+    "syntax": "PASS",
+    "joins": "FAIL",
+    "group_by": "PASS",
+    "math_types": "PASS",
+    "logic": "FAIL"
+  },
+  "feedback": [
+    "The join condition in ActorDirectorCount is incorrect. It should ensure that the director is not Yash Chopra, but it currently does not.",
+    "The logic in ActorMaxDirectorFilms does not correctly exclude Yash Chopra from the MAX calculation, as the WHERE clause is applied after the aggregation."
+  ]
+}

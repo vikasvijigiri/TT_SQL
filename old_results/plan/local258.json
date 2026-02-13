@@ -1,0 +1,14 @@
+{
+  "step_by_step_approach": [
+    "Select all dismissal events that are credited to a bowler, ignoring run-outs and any dismissals not attributed to the bowler.",
+    "Count those events for each bowler to obtain the total number of wickets per bowler.",
+    "Collect the runs given up by each bowler, excluding wides, no-balls and other extra runs.",
+    "Sum the total balls bowled by each bowler.",
+    "Convert each bowler's total balls into overs (six balls per over).",
+    "Calculate the economy rate for each bowler by dividing the runs conceded by the overs bowled.",
+    "Calculate the strike rate for each bowler by dividing the balls bowled by the total wickets taken.",
+    "Determine the number of wickets each bowler took in each individual match.",
+    "Identify, for each bowler, the match where they recorded the highest wicket count.",
+    "For that match, combine the highest wicket count with the runs conceded (excluding extras) and format it as \"wickets-runs\" to represent the best bowling performance."
+  ]
+}

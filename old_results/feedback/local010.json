@@ -1,0 +1,16 @@
+{
+  "is_valid": false,
+  "check_results": {
+    "columns": "FAIL",
+    "syntax": "PASS",
+    "joins": "PASS",
+    "group_by": "FAIL",
+    "math_types": "PASS",
+    "logic": "PASS"
+  },
+  "feedback": [
+    "The 'city' column in 'airports_data' is of type 'jsonb', but the query uses it as a simple text field.",
+    "The GROUP BY clause in the 'city_pairs' CTE is incorrect because it uses 'city1' and 'city2' which are defined in the SELECT clause, not directly available from the tables.",
+    "The query assumes 'coordinates' is a point type with X and Y functions, which may not be supported in all SQL dialects."
+  ]
+}

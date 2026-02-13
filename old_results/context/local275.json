@@ -1,0 +1,7 @@
+{
+  "relevant_tables": [
+    "monthly_sales",
+    "products"
+  ],
+  "reasoning": "The analysis requires the monthly sales quantities for each product (monthly_sales) to compute a centered moving average and the seasonality\u2011adjusted sales ratio for each month of 2017. The products table is needed to identify the product names/IDs and to join with monthly_sales. No other tables contain the required time\u2011series sales data or product metadata for this calculation."
+}

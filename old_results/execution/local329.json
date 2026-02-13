@@ -1,0 +1,13 @@
+{
+  "columns": [
+    "unique_sessions"
+  ],
+  "rows": [
+    [
+      0
+    ]
+  ],
+  "row_count": 1,
+  "execution_time_ms": 0.6458759307861328,
+  "error_message": null
+}

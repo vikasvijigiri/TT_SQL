@@ -1,0 +1,227 @@
+{
+  "ERD": {
+    "columns": [
+      {
+        "name": "table",
+        "type": "TEXT",
+        "pk": false
+      },
+      {
+        "name": "column",
+        "type": "TEXT",
+        "pk": false
+      },
+      {
+        "name": "Unnamed: 2",
+        "type": "REAL",
+        "pk": false
+      },
+      {
+        "name": "Unnamed: 3",
+        "type": "REAL",
+        "pk": false
+      },
+      {
+        "name": "Unnamed: 4",
+        "type": "REAL",
+        "pk": false
+      },
+      {
+        "name": "Unnamed: 5",
+        "type": "REAL",
+        "pk": false
+      },
+      {
+        "name": "Unnamed: 6",
+        "type": "TEXT",
+        "pk": false
+      },
+      {
+        "name": "Unnamed: 7",
+        "type": "REAL",
+        "pk": false
+      },
+      {
+        "name": "Unnamed: 8",
+        "type": "REAL",
+        "pk": false
+      },
+      {
+        "name": "Unnamed: 9",
+        "type": "TEXT",
+        "pk": false
+      },
+      {
+        "name": "Unnamed: 10",
+        "type": "REAL",
+        "pk": false
+      },
+      {
+        "name": "Unnamed: 11",
+        "type": "REAL",
+        "pk": false
+      },
+      {
+        "name": "Unnamed: 12",
+        "type": "TEXT",
+        "pk": false
+      }
+    ],
+    "foreign_keys": []
+  },
+  "movies": {
+    "columns": [
+      {
+        "name": "id",
+        "type": "TEXT",
+        "pk": false
+      },
+      {
+        "name": "title",
+        "type": "TEXT",
+        "pk": false
+      },
+      {
+        "name": "year",
+        "type": "INTEGER",
+        "pk": false
+      },
+      {
+        "name": "date_published",
+        "type": "TIMESTAMP",
+        "pk": false
+      },
+      {
+        "name": "duration",
+        "type": "INTEGER",
+        "pk": false
+      },
+      {
+        "name": "country",
+        "type": "TEXT",
+        "pk": false
+      },
+      {
+        "name": "worlwide_gross_income",
+        "type": "TEXT",
+        "pk": false
+      },
+      {
+        "name": "languages",
+        "type": "TEXT",
+        "pk": false
+      },
+      {
+        "name": "production_company",
+        "type": "TEXT",
+        "pk": false
+      }
+    ],
+    "foreign_keys": []
+  },
+  "genre": {
+    "columns": [
+      {
+        "name": "movie_id",
+        "type": "TEXT",
+        "pk": false
+      },
+      {
+        "name": "genre",
+        "type": "TEXT",
+        "pk": false
+      }
+    ],
+    "foreign_keys": []
+  },
+  "director_mapping": {
+    "columns": [
+      {
+        "name": "movie_id",
+        "type": "TEXT",
+        "pk": false
+      },
+      {
+        "name": "name_id",
+        "type": "TEXT",
+        "pk": false
+      }
+    ],
+    "foreign_keys": []
+  },
+  "role_mapping": {
+    "columns": [
+      {
+        "name": "movie_id",
+        "type": "TEXT",
+        "pk": false
+      },
+      {
+        "name": "name_id",
+        "type": "TEXT",
+        "pk": false
+      },
+      {
+        "name": "category",
+        "type": "TEXT",
+        "pk": false
+      }
+    ],
+    "foreign_keys": []
+  },
+  "names": {
+    "columns": [
+      {
+        "name": "id",
+        "type": "TEXT",
+        "pk": false
+      },
+      {
+        "name": "name",
+        "type": "TEXT",
+        "pk": false
+      },
+      {
+        "name": "height",
+        "type": "REAL",
+        "pk": false
+      },
+      {
+        "name": "date_of_birth",
+        "type": "TEXT",
+        "pk": false
+      },
+      {
+        "name": "known_for_movies",
+        "type": "TEXT",
+        "pk": false
+      }
+    ],
+    "foreign_keys": []
+  },
+  "ratings": {
+    "columns": [
+      {
+        "name": "movie_id",
+        "type": "TEXT",
+        "pk": false
+      },
+      {
+        "name": "avg_rating",
+        "type": "REAL",
+        "pk": false
+      },
+      {
+        "name": "total_votes",
+        "type": "INTEGER",
+        "pk": false
+      },
+      {
+        "name": "median_rating",
+        "type": "REAL",
+        "pk": false
+      }
+    ],
+    "foreign_keys": []
+  }
+}

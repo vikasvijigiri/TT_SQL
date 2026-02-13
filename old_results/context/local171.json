@@ -1,0 +1,7 @@
+{
+  "relevant_tables": [
+    "legislators",
+    "legislators_terms"
+  ],
+  "reasoning": "The query requires demographic information (gender and state) for each legislator, which is stored in the **legislators** table. To determine whether a legislator was actively serving on December\u202f31 of a given year and to calculate the number of years elapsed since their first term, we need the start and end dates of each term, which are provided in the **legislators_terms** table. By joining these two tables on the common identifier `id_bioguide`, we can filter for male legislators from Louisiana, compute the elapsed years since their first term, check service status on each December\u202f31, and then count distinct legislators grouped by the exact elapsed year range (30\u202f<\u202fyears\u202f<\u202f50)."
+}

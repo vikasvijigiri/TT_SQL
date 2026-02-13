@@ -1,0 +1,16 @@
+{
+  "is_valid": false,
+  "check_results": {
+    "columns": "PASS",
+    "syntax": "FAIL",
+    "joins": "PASS",
+    "group_by": "PASS",
+    "math_types": "FAIL",
+    "logic": "FAIL"
+  },
+  "feedback": [
+    "Syntax error: The use of 'ROW_NUMBER() OVER (ORDER BY ...)' is not valid in SQLite as it does not support window functions like ROW_NUMBER().",
+    "Math types error: The expression 'total_count * 0.2' may result in integer division if 'total_count' is an integer. Ensure casting to REAL for correct division.",
+    "Logic error: The query does not correctly filter out sales with promotions as 's.promo_id IS NULL' is used, which may not correctly exclude all promotional sales."
+  ]
+}

@@ -1,0 +1,11 @@
+{
+  "step_by_step_approach": [
+    "Identify each match and the pairs of players that have a partnership run record.",
+    "Calculate the total partnership runs for each player pair within each match.",
+    "Determine the highest total partnership runs value for each match.",
+    "Select the player pairs whose total partnership runs equal the highest value for their match.",
+    "Retrieve each player's ID and their individual run contribution for the selected pairs.",
+    "For each pair, compare the two individual scores and place the player with the higher score first; if the scores are equal, place the player with the higher ID first.",
+    "Output the match identifier, player\u202f1 ID, player\u202f1 score, player\u202f2 ID, player\u202f2 score, and the total partnership runs."
+  ]
+}

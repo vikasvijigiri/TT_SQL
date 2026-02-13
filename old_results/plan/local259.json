@@ -1,0 +1,14 @@
+{
+  "step_by_step_approach": [
+    "Identify each player and retrieve their ID, name, batting hand, and bowling skill.",
+    "Collect all match records for each player.",
+    "Determine the role that appears most frequently for each player across those matches.",
+    "Summarize per-player totals: total runs (excluding extra runs), total matches played, total dismissals, total balls faced, total wickets taken, total runs conceded, and total overs bowled.",
+    "Calculate batting average as total runs divided by total dismissals.",
+    "Find the highest score achieved by each player in a single match.",
+    "Count, for each player, the number of matches with at least 30 runs, at least 50 runs, and at least 100 runs.",
+    "Compute strike rate as total runs divided by total balls faced multiplied by 100.",
+    "Compute economy rate as total runs conceded divided by total overs bowled.",
+    "Identify each player's best bowling performance: the match with the most wickets taken, using fewest runs conceded to break ties, formatted as \"wickets-run\"."
+  ]
+}

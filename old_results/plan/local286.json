@@ -1,0 +1,12 @@
+{
+  "step_by_step_approach": [
+    "Identify sellers whose sold quantity exceeds 100 products",
+    "Sum the monetary value of all sales for each identified seller",
+    "Calculate the average price of items sold by each identified seller",
+    "Determine the average review score for each identified seller",
+    "Compute the average packing time for each identified seller",
+    "Calculate total sales volume for each product category",
+    "Select the product category name in English with the highest sales volume",
+    "Combine the seller metrics with the highlighted top-selling category into a performance report"
+  ]
+}

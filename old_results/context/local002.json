@@ -1,0 +1,7 @@
+{
+  "relevant_tables": [
+    "orders",
+    "order_items"
+  ],
+  "reasoning": "The orders table contains the order_purchase_timestamp, which is needed to filter the date range and group the data by date. It also contains the order_id, which is a foreign key in the order_items table. The order_items table contains the price column, which represents the toy sales data. Both tables are needed to calculate the 5-day symmetric moving average of predicted toy sales for December 5 to 8, 2018."
+}

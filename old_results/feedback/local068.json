@@ -1,0 +1,15 @@
+{
+  "is_valid": false,
+  "check_results": {
+    "columns": "PASS",
+    "syntax": "PASS",
+    "joins": "PASS",
+    "group_by": "PASS",
+    "math_types": "PASS",
+    "logic": "FAIL"
+  },
+  "feedback": [
+    "The logic for calculating the cumulative running total and year-over-year growth percentages is incorrect. The cumulative running total should be calculated across all years up to and including the given year, but the current logic only considers the current year.",
+    "The year-over-year growth percentages are not correctly calculated because they should compare the current year's cumulative total to the previous year's cumulative total, but the logic does not ensure this comparison is made correctly."
+  ]
+}

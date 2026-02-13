@@ -1,0 +1,496 @@
+{
+  "Agents": {
+    "columns": [
+      {
+        "name": "AgentID",
+        "type": "INT",
+        "pk": true
+      },
+      {
+        "name": "AgtFirstName",
+        "type": "nvarchar (25)",
+        "pk": false
+      },
+      {
+        "name": "AgtLastName",
+        "type": "nvarchar (25)",
+        "pk": false
+      },
+      {
+        "name": "AgtStreetAddress",
+        "type": "nvarchar (50)",
+        "pk": false
+      },
+      {
+        "name": "AgtCity",
+        "type": "nvarchar (30)",
+        "pk": false
+      },
+      {
+        "name": "AgtState",
+        "type": "nvarchar (2)",
+        "pk": false
+      },
+      {
+        "name": "AgtZipCode",
+        "type": "nvarchar (10)",
+        "pk": false
+      },
+      {
+        "name": "AgtPhoneNumber",
+        "type": "nvarchar (15)",
+        "pk": false
+      },
+      {
+        "name": "DateHired",
+        "type": "date",
+        "pk": false
+      },
+      {
+        "name": "Salary",
+        "type": "decimal(15, 2)",
+        "pk": false
+      },
+      {
+        "name": "CommissionRate",
+        "type": "float(24)",
+        "pk": false
+      }
+    ],
+    "foreign_keys": []
+  },
+  "Customers": {
+    "columns": [
+      {
+        "name": "CustomerID",
+        "type": "INT",
+        "pk": true
+      },
+      {
+        "name": "CustFirstName",
+        "type": "nvarchar (25)",
+        "pk": false
+      },
+      {
+        "name": "CustLastName",
+        "type": "nvarchar (25)",
+        "pk": false
+      },
+      {
+        "name": "CustStreetAddress",
+        "type": "nvarchar (50)",
+        "pk": false
+      },
+      {
+        "name": "CustCity",
+        "type": "nvarchar (30)",
+        "pk": false
+      },
+      {
+        "name": "CustState",
+        "type": "nvarchar (2)",
+        "pk": false
+      },
+      {
+        "name": "CustZipCode",
+        "type": "nvarchar (10)",
+        "pk": false
+      },
+      {
+        "name": "CustPhoneNumber",
+        "type": "nvarchar (15)",
+        "pk": false
+      }
+    ],
+    "foreign_keys": []
+  },
+  "Engagements": {
+    "columns": [
+      {
+        "name": "EngagementNumber",
+        "type": "INT",
+        "pk": true
+      },
+      {
+        "name": "StartDate",
+        "type": "date",
+        "pk": false
+      },
+      {
+        "name": "EndDate",
+        "type": "date",
+        "pk": false
+      },
+      {
+        "name": "StartTime",
+        "type": "time",
+        "pk": false
+      },
+      {
+        "name": "StopTime",
+        "type": "time",
+        "pk": false
+      },
+      {
+        "name": "ContractPrice",
+        "type": "decimal(15, 2)",
+        "pk": false
+      },
+      {
+        "name": "CustomerID",
+        "type": "INT",
+        "pk": false
+      },
+      {
+        "name": "AgentID",
+        "type": "INT",
+        "pk": false
+      },
+      {
+        "name": "EntertainerID",
+        "type": "INT",
+        "pk": false
+      }
+    ],
+    "foreign_keys": [
+      {
+        "to_table": "Entertainers",
+        "from_col": "EntertainerID",
+        "to_col": "EntertainerID"
+      },
+      {
+        "to_table": "Customers",
+        "from_col": "CustomerID",
+        "to_col": "CustomerID"
+      },
+      {
+        "to_table": "Agents",
+        "from_col": "AgentID",
+        "to_col": "AgentID"
+      }
+    ]
+  },
+  "Entertainer_Members": {
+    "columns": [
+      {
+        "name": "EntertainerID",
+        "type": "INT",
+        "pk": true
+      },
+      {
+        "name": "MemberID",
+        "type": "INT",
+        "pk": true
+      },
+      {
+        "name": "Status",
+        "type": "smallint",
+        "pk": false
+      }
+    ],
+    "foreign_keys": [
+      {
+        "to_table": "Members",
+        "from_col": "MemberID",
+        "to_col": "MemberID"
+      },
+      {
+        "to_table": "Entertainers",
+        "from_col": "EntertainerID",
+        "to_col": "EntertainerID"
+      }
+    ]
+  },
+  "Entertainer_Styles": {
+    "columns": [
+      {
+        "name": "EntertainerID",
+        "type": "INT",
+        "pk": true
+      },
+      {
+        "name": "StyleID",
+        "type": "smallint",
+        "pk": true
+      },
+      {
+        "name": "StyleStrength",
+        "type": "smallint",
+        "pk": false
+      }
+    ],
+    "foreign_keys": [
+      {
+        "to_table": "Musical_Styles",
+        "from_col": "StyleID",
+        "to_col": "StyleID"
+      },
+      {
+        "to_table": "Entertainers",
+        "from_col": "EntertainerID",
+        "to_col": "EntertainerID"
+      }
+    ]
+  },
+  "Entertainers": {
+    "columns": [
+      {
+        "name": "EntertainerID",
+        "type": "INT",
+        "pk": true
+      },
+      {
+        "name": "EntStageName",
+        "type": "nvarchar (50)",
+        "pk": false
+      },
+      {
+        "name": "EntSSN",
+        "type": "nvarchar (12)",
+        "pk": false
+      },
+      {
+        "name": "EntStreetAddress",
+        "type": "nvarchar (50)",
+        "pk": false
+      },
+      {
+        "name": "EntCity",
+        "type": "nvarchar (30)",
+        "pk": false
+      },
+      {
+        "name": "EntState",
+        "type": "nvarchar (2)",
+        "pk": false
+      },
+      {
+        "name": "EntZipCode",
+        "type": "nvarchar (10)",
+        "pk": false
+      },
+      {
+        "name": "EntPhoneNumber",
+        "type": "nvarchar (15)",
+        "pk": false
+      },
+      {
+        "name": "EntWebPage",
+        "type": "nvarchar (50)",
+        "pk": false
+      },
+      {
+        "name": "EntEMailAddress",
+        "type": "nvarchar (50)",
+        "pk": false
+      },
+      {
+        "name": "DateEntered",
+        "type": "date",
+        "pk": false
+      }
+    ],
+    "foreign_keys": []
+  },
+  "Members": {
+    "columns": [
+      {
+        "name": "MemberID",
+        "type": "INT",
+        "pk": true
+      },
+      {
+        "name": "MbrFirstName",
+        "type": "nvarchar (25)",
+        "pk": false
+      },
+      {
+        "name": "MbrLastName",
+        "type": "nvarchar (25)",
+        "pk": false
+      },
+      {
+        "name": "MbrPhoneNumber",
+        "type": "nvarchar (15)",
+        "pk": false
+      },
+      {
+        "name": "Gender",
+        "type": "nvarchar (2)",
+        "pk": false
+      }
+    ],
+    "foreign_keys": []
+  },
+  "Musical_Preferences": {
+    "columns": [
+      {
+        "name": "CustomerID",
+        "type": "INT",
+        "pk": true
+      },
+      {
+        "name": "StyleID",
+        "type": "smallint",
+        "pk": true
+      },
+      {
+        "name": "PreferenceSeq",
+        "type": "smallint",
+        "pk": false
+      }
+    ],
+    "foreign_keys": [
+      {
+        "to_table": "Musical_Styles",
+        "from_col": "StyleID",
+        "to_col": "StyleID"
+      },
+      {
+        "to_table": "Customers",
+        "from_col": "CustomerID",
+        "to_col": "CustomerID"
+      }
+    ]
+  },
+  "Musical_Styles": {
+    "columns": [
+      {
+        "name": "StyleID",
+        "type": "smallint",
+        "pk": true
+      },
+      {
+        "name": "StyleName",
+        "type": "nvarchar (75)",
+        "pk": false
+      }
+    ],
+    "foreign_keys": []
+  },
+  "ztblDays": {
+    "columns": [
+      {
+        "name": "DateField",
+        "type": "date",
+        "pk": true
+      }
+    ],
+    "foreign_keys": []
+  },
+  "ztblMonths": {
+    "columns": [
+      {
+        "name": "MonthYear",
+        "type": "nvarchar (15)",
+        "pk": false
+      },
+      {
+        "name": "YearNumber",
+        "type": "smallint",
+        "pk": true
+      },
+      {
+        "name": "MonthNumber",
+        "type": "smallint",
+        "pk": true
+      },
+      {
+        "name": "MonthStart",
+        "type": "date",
+        "pk": false
+      },
+      {
+        "name": "MonthEnd",
+        "type": "date",
+        "pk": false
+      },
+      {
+        "name": "January",
+        "type": "smallint",
+        "pk": false
+      },
+      {
+        "name": "February",
+        "type": "smallint",
+        "pk": false
+      },
+      {
+        "name": "March",
+        "type": "smallint",
+        "pk": false
+      },
+      {
+        "name": "April",
+        "type": "smallint",
+        "pk": false
+      },
+      {
+        "name": "May",
+        "type": "smallint",
+        "pk": false
+      },
+      {
+        "name": "June",
+        "type": "smallint",
+        "pk": false
+      },
+      {
+        "name": "July",
+        "type": "smallint",
+        "pk": false
+      },
+      {
+        "name": "August",
+        "type": "smallint",
+        "pk": false
+      },
+      {
+        "name": "September",
+        "type": "smallint",
+        "pk": false
+      },
+      {
+        "name": "October",
+        "type": "smallint",
+        "pk": false
+      },
+      {
+        "name": "November",
+        "type": "smallint",
+        "pk": false
+      },
+      {
+        "name": "December",
+        "type": "smallint",
+        "pk": false
+      }
+    ],
+    "foreign_keys": []
+  },
+  "ztblSkipLabels": {
+    "columns": [
+      {
+        "name": "LabelCount",
+        "type": "INT",
+        "pk": true
+      }
+    ],
+    "foreign_keys": []
+  },
+  "ztblWeeks": {
+    "columns": [
+      {
+        "name": "WeekStart",
+        "type": "date",
+        "pk": true
+      },
+      {
+        "name": "WeekEnd",
+        "type": "date",
+        "pk": false
+      }
+    ],
+    "foreign_keys": []
+  }
+}

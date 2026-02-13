@@ -1,0 +1,17 @@
+{
+  "is_valid": false,
+  "check_results": {
+    "columns": "FAIL",
+    "syntax": "PASS",
+    "joins": "PASS",
+    "group_by": "PASS",
+    "math_types": "PASS",
+    "logic": "PASS",
+    "step_logic": "PASS"
+  },
+  "feedback": [
+    "The query references a table named 'base' which is not defined in the provided schema.",
+    "Columns 'reference_date' (and possibly 'full_name') are selected from 'base' but no such columns exist in any listed table.",
+    "Using a non\u2011existent source table violates strict schema adherence."
+  ]
+}

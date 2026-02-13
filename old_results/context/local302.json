@@ -1,0 +1,6 @@
+{
+  "relevant_tables": [
+    "cleaned_weekly_sales"
+  ],
+  "reasoning": "The query requires weekly sales figures and the attributes region, platform, age_band, demographic, and customer_type for each week. The `cleaned_weekly_sales` table contains the columns `week_date` (to filter the 12 weeks before and after June 15, 2020), `sales` (the metric to analyze), and all the required attribute columns (`region`, `platform`, `age_band`, `demographic`, `customer_type`). It also includes additional useful fields such as `week_number` and `calendar_year` for date calculations. No other tables in the schema provide both sales data and these specific attribute dimensions, so `cleaned_weekly_sales` is the sole relevant source for this analysis."
+}

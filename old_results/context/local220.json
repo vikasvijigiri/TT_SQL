@@ -1,0 +1,9 @@
+{
+  "relevant_tables": [
+    "players",
+    "matches",
+    "player_match",
+    "teams"
+  ],
+  "reasoning": "To determine the player with the most wins and the player with the most losses we need:\n- **players** \u2013 to identify each player and retrieve their unique identifier.\n- **matches** \u2013 to obtain match outcomes (win, loss, draw) and the participating teams.\n- **player_match** (or a similar junction table) \u2013 to link players to the matches they actually played, allowing us to count only non\u2011null participation entries.\n- **teams** \u2013 to map each player\u2019s team in a given match to the match result, so we can classify a player\u2019s appearance as a win or a loss. \nThese tables together provide the necessary data to count, per player, the number of matches they played that resulted in a win for their team and the number that resulted in a loss, while excluding draws and null participation entries."
+}

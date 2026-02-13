@@ -1,0 +1,11 @@
+{
+  "relevant_tables": [
+    "actor",
+    "film_actor",
+    "film",
+    "inventory",
+    "rental",
+    "customer"
+  ],
+  "reasoning": "To determine the appeal of the top five actors we need to:\n1. Identify actors (actor table).\n2. Link actors to the films they appear in (film_actor table).\n3. Access film details (film table) to join with inventory.\n4. Connect films to actual rentals via the inventory and rental tables (inventory links a film to a specific copy, rental records each rental transaction).\n5. Relate rentals to customers (customer table) to calculate the proportion of distinct customers who have rented at least one film starring each of the top five actors. These tables together provide the necessary data to count rentals per actor, rank the actors, and compute the percentage of customers who have rented films featuring those actors."
+}

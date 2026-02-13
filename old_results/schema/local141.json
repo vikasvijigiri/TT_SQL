@@ -1,0 +1,667 @@
+{
+  "salesperson": {
+    "columns": [
+      {
+        "name": "businessentityid",
+        "type": "INTEGER",
+        "pk": false
+      },
+      {
+        "name": "territoryid",
+        "type": "INTEGER",
+        "pk": false
+      },
+      {
+        "name": "salesquota",
+        "type": "INTEGER",
+        "pk": false
+      },
+      {
+        "name": "bonus",
+        "type": "INTEGER",
+        "pk": false
+      },
+      {
+        "name": "commissionpct",
+        "type": "FLOAT",
+        "pk": false
+      },
+      {
+        "name": "salesytd",
+        "type": "FLOAT",
+        "pk": false
+      },
+      {
+        "name": "saleslastyear",
+        "type": "FLOAT",
+        "pk": false
+      },
+      {
+        "name": "rowguid",
+        "type": "TEXT",
+        "pk": false
+      },
+      {
+        "name": "modifieddate",
+        "type": "DATE",
+        "pk": false
+      }
+    ],
+    "foreign_keys": []
+  },
+  "product": {
+    "columns": [
+      {
+        "name": "productid",
+        "type": "INTEGER",
+        "pk": false
+      },
+      {
+        "name": "NAME",
+        "type": "TEXT",
+        "pk": false
+      },
+      {
+        "name": "productnumber",
+        "type": "TEXT",
+        "pk": false
+      },
+      {
+        "name": "makeflag",
+        "type": "BOOLEAN",
+        "pk": false
+      },
+      {
+        "name": "finishedgoodsflag",
+        "type": "BOOLEAN",
+        "pk": false
+      },
+      {
+        "name": "color",
+        "type": "TEXT",
+        "pk": false
+      },
+      {
+        "name": "safetystocklevel",
+        "type": "INTEGER",
+        "pk": false
+      },
+      {
+        "name": "reorderpoint",
+        "type": "INTEGER",
+        "pk": false
+      },
+      {
+        "name": "standardcost",
+        "type": "FLOAT",
+        "pk": false
+      },
+      {
+        "name": "listprice",
+        "type": "FLOAT",
+        "pk": false
+      },
+      {
+        "name": "size",
+        "type": "TEXT",
+        "pk": false
+      },
+      {
+        "name": "sizeunitmeasurecode",
+        "type": "TEXT",
+        "pk": false
+      },
+      {
+        "name": "weightunitmeasurecode",
+        "type": "TEXT",
+        "pk": false
+      },
+      {
+        "name": "weight",
+        "type": "FLOAT",
+        "pk": false
+      },
+      {
+        "name": "daystomanufacture",
+        "type": "INTEGER",
+        "pk": false
+      },
+      {
+        "name": "productline",
+        "type": "TEXT",
+        "pk": false
+      },
+      {
+        "name": "class",
+        "type": "TEXT",
+        "pk": false
+      },
+      {
+        "name": "style",
+        "type": "TEXT",
+        "pk": false
+      },
+      {
+        "name": "productsubcategoryid",
+        "type": "INTEGER",
+        "pk": false
+      },
+      {
+        "name": "productmodelid",
+        "type": "INTEGER",
+        "pk": false
+      },
+      {
+        "name": "sellstartdate",
+        "type": "DATE",
+        "pk": false
+      },
+      {
+        "name": "sellenddate",
+        "type": "DATE",
+        "pk": false
+      },
+      {
+        "name": "discontinueddate",
+        "type": "DATE",
+        "pk": false
+      },
+      {
+        "name": "rowguid",
+        "type": "TEXT",
+        "pk": false
+      },
+      {
+        "name": "modifieddate",
+        "type": "DATE",
+        "pk": false
+      }
+    ],
+    "foreign_keys": []
+  },
+  "productmodelproductdescriptionculture": {
+    "columns": [
+      {
+        "name": "productmodelid",
+        "type": "INTEGER",
+        "pk": false
+      },
+      {
+        "name": "productdescriptionid",
+        "type": "INTEGER",
+        "pk": false
+      },
+      {
+        "name": "cultureid",
+        "type": "TEXT",
+        "pk": false
+      },
+      {
+        "name": "modifieddate",
+        "type": "DATE",
+        "pk": false
+      }
+    ],
+    "foreign_keys": []
+  },
+  "productdescription": {
+    "columns": [
+      {
+        "name": "productdescriptionid",
+        "type": "INTEGER",
+        "pk": false
+      },
+      {
+        "name": "description",
+        "type": "TEXT",
+        "pk": false
+      },
+      {
+        "name": "rowguid",
+        "type": "TEXT",
+        "pk": false
+      },
+      {
+        "name": "modifieddate",
+        "type": "DATE",
+        "pk": false
+      }
+    ],
+    "foreign_keys": []
+  },
+  "productreview": {
+    "columns": [
+      {
+        "name": "productreviewid",
+        "type": "INTEGER",
+        "pk": false
+      },
+      {
+        "name": "productid",
+        "type": "INTEGER",
+        "pk": false
+      },
+      {
+        "name": "reviewername",
+        "type": "TEXT",
+        "pk": false
+      },
+      {
+        "name": "reviewdate",
+        "type": "DATE",
+        "pk": false
+      },
+      {
+        "name": "emailaddress",
+        "type": "TEXT",
+        "pk": false
+      },
+      {
+        "name": "rating",
+        "type": "INTEGER",
+        "pk": false
+      },
+      {
+        "name": "comments",
+        "type": "TEXT",
+        "pk": false
+      },
+      {
+        "name": "modifeddate",
+        "type": "DATE",
+        "pk": false
+      },
+      {
+        "name": "modifieddate",
+        "type": "VARCHAR(19)",
+        "pk": false
+      }
+    ],
+    "foreign_keys": []
+  },
+  "productcategory": {
+    "columns": [
+      {
+        "name": "productcategoryid",
+        "type": "INTEGER",
+        "pk": false
+      },
+      {
+        "name": "name",
+        "type": "TEXT",
+        "pk": false
+      },
+      {
+        "name": "rowguid",
+        "type": "TEXT",
+        "pk": false
+      },
+      {
+        "name": "modifieddate",
+        "type": "DATE",
+        "pk": false
+      }
+    ],
+    "foreign_keys": []
+  },
+  "productsubcategory": {
+    "columns": [
+      {
+        "name": "productsubcategoryid",
+        "type": "INTEGER",
+        "pk": false
+      },
+      {
+        "name": "productcategoryid",
+        "type": "INTEGER",
+        "pk": false
+      },
+      {
+        "name": "name",
+        "type": "TEXT",
+        "pk": false
+      },
+      {
+        "name": "rowguid",
+        "type": "TEXT",
+        "pk": false
+      },
+      {
+        "name": "modifieddate",
+        "type": "DATE",
+        "pk": false
+      }
+    ],
+    "foreign_keys": []
+  },
+  "salesorderdetail": {
+    "columns": [
+      {
+        "name": "salesorderid",
+        "type": "INTEGER",
+        "pk": false
+      },
+      {
+        "name": "salesorderdetailid",
+        "type": "INTEGER",
+        "pk": false
+      },
+      {
+        "name": "carriertrackingnumber",
+        "type": "TEXT",
+        "pk": false
+      },
+      {
+        "name": "orderqty",
+        "type": "INTEGER",
+        "pk": false
+      },
+      {
+        "name": "productid",
+        "type": "INTEGER",
+        "pk": false
+      },
+      {
+        "name": "specialofferid",
+        "type": "INTEGER",
+        "pk": false
+      },
+      {
+        "name": "unitprice",
+        "type": "FLOAT",
+        "pk": false
+      },
+      {
+        "name": "unitpricediscount",
+        "type": "FLOAT",
+        "pk": false
+      },
+      {
+        "name": "rowguid",
+        "type": "TEXT",
+        "pk": false
+      },
+      {
+        "name": "modifieddate",
+        "type": "DATE",
+        "pk": false
+      }
+    ],
+    "foreign_keys": []
+  },
+  "salesorderheader": {
+    "columns": [
+      {
+        "name": "salesorderid",
+        "type": "INTEGER",
+        "pk": false
+      },
+      {
+        "name": "revisionnumber",
+        "type": "INTEGER",
+        "pk": false
+      },
+      {
+        "name": "orderdate",
+        "type": "DATE",
+        "pk": false
+      },
+      {
+        "name": "duedate",
+        "type": "DATE",
+        "pk": false
+      },
+      {
+        "name": "shipdate",
+        "type": "DATE",
+        "pk": false
+      },
+      {
+        "name": "STATUS",
+        "type": "TEXT",
+        "pk": false
+      },
+      {
+        "name": "onlineorderflag",
+        "type": "BOOLEAN",
+        "pk": false
+      },
+      {
+        "name": "purchaseordernumber",
+        "type": "TEXT",
+        "pk": false
+      },
+      {
+        "name": "accountnumber",
+        "type": "TEXT",
+        "pk": false
+      },
+      {
+        "name": "customerid",
+        "type": "INTEGER",
+        "pk": false
+      },
+      {
+        "name": "salespersonid",
+        "type": "INTEGER",
+        "pk": false
+      },
+      {
+        "name": "territoryid",
+        "type": "INTEGER",
+        "pk": false
+      },
+      {
+        "name": "billtoaddressid",
+        "type": "INTEGER",
+        "pk": false
+      },
+      {
+        "name": "shiptoaddressid",
+        "type": "INTEGER",
+        "pk": false
+      },
+      {
+        "name": "shipmethodid",
+        "type": "INTEGER",
+        "pk": false
+      },
+      {
+        "name": "creditcardid",
+        "type": "INTEGER",
+        "pk": false
+      },
+      {
+        "name": "creditcardapprovalcode",
+        "type": "TEXT",
+        "pk": false
+      },
+      {
+        "name": "currencyrateid",
+        "type": "INTEGER",
+        "pk": false
+      },
+      {
+        "name": "subtotal",
+        "type": "FLOAT",
+        "pk": false
+      },
+      {
+        "name": "taxamt",
+        "type": "FLOAT",
+        "pk": false
+      },
+      {
+        "name": "freight",
+        "type": "FLOAT",
+        "pk": false
+      },
+      {
+        "name": "totaldue",
+        "type": "FLOAT",
+        "pk": false
+      },
+      {
+        "name": "comment",
+        "type": "TEXT",
+        "pk": false
+      },
+      {
+        "name": "rowguid",
+        "type": "TEXT",
+        "pk": false
+      },
+      {
+        "name": "modifieddate",
+        "type": "DATE",
+        "pk": false
+      }
+    ],
+    "foreign_keys": []
+  },
+  "salesterritory": {
+    "columns": [
+      {
+        "name": "territoryid",
+        "type": "INTEGER",
+        "pk": false
+      },
+      {
+        "name": "name",
+        "type": "TEXT",
+        "pk": false
+      },
+      {
+        "name": "countryregioncode",
+        "type": "TEXT",
+        "pk": false
+      },
+      {
+        "name": "group",
+        "type": "TEXT",
+        "pk": false
+      },
+      {
+        "name": "salesytd",
+        "type": "FLOAT",
+        "pk": false
+      },
+      {
+        "name": "saleslastyear",
+        "type": "FLOAT",
+        "pk": false
+      },
+      {
+        "name": "costytd",
+        "type": "FLOAT",
+        "pk": false
+      },
+      {
+        "name": "costlastyear",
+        "type": "FLOAT",
+        "pk": false
+      },
+      {
+        "name": "rowguid",
+        "type": "TEXT",
+        "pk": false
+      },
+      {
+        "name": "modifieddate",
+        "type": "DATE",
+        "pk": false
+      }
+    ],
+    "foreign_keys": []
+  },
+  "countryregioncurrency": {
+    "columns": [
+      {
+        "name": "countryregioncode",
+        "type": "TEXT",
+        "pk": false
+      },
+      {
+        "name": "currencycode",
+        "type": "TEXT",
+        "pk": false
+      },
+      {
+        "name": "modifieddate",
+        "type": "DATE",
+        "pk": false
+      }
+    ],
+    "foreign_keys": []
+  },
+  "currencyrate": {
+    "columns": [
+      {
+        "name": "currencyrateid",
+        "type": "INTEGER",
+        "pk": false
+      },
+      {
+        "name": "currencyratedate",
+        "type": "DATE",
+        "pk": false
+      },
+      {
+        "name": "fromcurrencycode",
+        "type": "TEXT",
+        "pk": false
+      },
+      {
+        "name": "tocurrencycode",
+        "type": "TEXT",
+        "pk": false
+      },
+      {
+        "name": "averagerate",
+        "type": "FLOAT",
+        "pk": false
+      },
+      {
+        "name": "endofdayrate",
+        "type": "FLOAT",
+        "pk": false
+      },
+      {
+        "name": "modifieddate",
+        "type": "DATE",
+        "pk": false
+      }
+    ],
+    "foreign_keys": []
+  },
+  "SalesPersonQuotaHistory": {
+    "columns": [
+      {
+        "name": "BusinessEntityID",
+        "type": "INTEGER",
+        "pk": false
+      },
+      {
+        "name": "QuotaDate",
+        "type": "TEXT",
+        "pk": false
+      },
+      {
+        "name": "SalesQuota",
+        "type": "REAL",
+        "pk": false
+      },
+      {
+        "name": "rowguid",
+        "type": "TEXT",
+        "pk": false
+      },
+      {
+        "name": "ModifiedDate",
+        "type": "TEXT",
+        "pk": false
+      }
+    ],
+    "foreign_keys": []
+  }
+}

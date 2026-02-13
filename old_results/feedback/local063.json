@@ -1,0 +1,15 @@
+{
+  "is_valid": false,
+  "check_results": {
+    "columns": "PASS",
+    "syntax": "PASS",
+    "joins": "PASS",
+    "group_by": "PASS",
+    "math_types": "FAIL",
+    "logic": "FAIL"
+  },
+  "feedback": [
+    "Integer division is used in calculating sales_increase, which can lead to incorrect results. Use CAST to ensure floating-point division.",
+    "The logic for calculating share_change does not correctly account for the total sales per quarter. It should aggregate sales per product across all cities in TopCities for each quarter separately."
+  ]
+}

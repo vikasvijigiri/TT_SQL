@@ -1,0 +1,13 @@
+{
+  "is_valid": true,
+  "check_results": {
+    "columns": "PASS",
+    "syntax": "PASS",
+    "joins": "PASS",
+    "group_by": "PASS",
+    "math_types": "PASS",
+    "logic": "PASS",
+    "step_logic": "PASS"
+  },
+  "feedback": []
+}

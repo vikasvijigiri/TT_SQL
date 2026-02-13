@@ -1,0 +1,12 @@
+{
+  "step_by_step_approach": [
+    "Define the 12\u2011week period ending on June\u202f15\u202f2020.",
+    "Define the 12\u2011week period starting on June\u202f15\u202f2020.",
+    "For each attribute type (region, platform, age band, demographic, customer type), gather total sales for each attribute value during the before period.",
+    "For each attribute type, gather total sales for each attribute value during the after period.",
+    "Calculate the percentage change in sales for each attribute value from the before period to the after period.",
+    "Compute the average of those percentage changes for each attribute type.",
+    "Identify the attribute type with the most negative average percentage change.",
+    "Return that attribute type together with its average percentage change."
+  ]
+}

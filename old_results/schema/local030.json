@@ -1,0 +1,362 @@
+{
+  "olist_customers": {
+    "columns": [
+      {
+        "name": "customer_id",
+        "type": "TEXT",
+        "pk": false
+      },
+      {
+        "name": "customer_unique_id",
+        "type": "TEXT",
+        "pk": false
+      },
+      {
+        "name": "customer_zip_code_prefix",
+        "type": "BIGINT",
+        "pk": false
+      },
+      {
+        "name": "customer_city",
+        "type": "TEXT",
+        "pk": false
+      },
+      {
+        "name": "customer_state",
+        "type": "TEXT",
+        "pk": false
+      }
+    ],
+    "foreign_keys": []
+  },
+  "olist_sellers": {
+    "columns": [
+      {
+        "name": "seller_id",
+        "type": "TEXT",
+        "pk": false
+      },
+      {
+        "name": "seller_zip_code_prefix",
+        "type": "BIGINT",
+        "pk": false
+      },
+      {
+        "name": "seller_city",
+        "type": "TEXT",
+        "pk": false
+      },
+      {
+        "name": "seller_state",
+        "type": "TEXT",
+        "pk": false
+      }
+    ],
+    "foreign_keys": []
+  },
+  "olist_order_reviews": {
+    "columns": [
+      {
+        "name": "review_id",
+        "type": "TEXT",
+        "pk": false
+      },
+      {
+        "name": "order_id",
+        "type": "TEXT",
+        "pk": false
+      },
+      {
+        "name": "review_score",
+        "type": "BIGINT",
+        "pk": false
+      },
+      {
+        "name": "review_comment_title",
+        "type": "TEXT",
+        "pk": false
+      },
+      {
+        "name": "review_comment_message",
+        "type": "TEXT",
+        "pk": false
+      },
+      {
+        "name": "review_creation_date",
+        "type": "TEXT",
+        "pk": false
+      },
+      {
+        "name": "review_answer_timestamp",
+        "type": "TEXT",
+        "pk": false
+      }
+    ],
+    "foreign_keys": []
+  },
+  "olist_order_items": {
+    "columns": [
+      {
+        "name": "order_id",
+        "type": "TEXT",
+        "pk": false
+      },
+      {
+        "name": "order_item_id",
+        "type": "BIGINT",
+        "pk": false
+      },
+      {
+        "name": "product_id",
+        "type": "TEXT",
+        "pk": false
+      },
+      {
+        "name": "seller_id",
+        "type": "TEXT",
+        "pk": false
+      },
+      {
+        "name": "shipping_limit_date",
+        "type": "TEXT",
+        "pk": false
+      },
+      {
+        "name": "price",
+        "type": "FLOAT",
+        "pk": false
+      },
+      {
+        "name": "freight_value",
+        "type": "FLOAT",
+        "pk": false
+      }
+    ],
+    "foreign_keys": []
+  },
+  "olist_products": {
+    "columns": [
+      {
+        "name": "product_id",
+        "type": "TEXT",
+        "pk": false
+      },
+      {
+        "name": "product_category_name",
+        "type": "TEXT",
+        "pk": false
+      },
+      {
+        "name": "product_name_lenght",
+        "type": "FLOAT",
+        "pk": false
+      },
+      {
+        "name": "product_description_lenght",
+        "type": "FLOAT",
+        "pk": false
+      },
+      {
+        "name": "product_photos_qty",
+        "type": "FLOAT",
+        "pk": false
+      },
+      {
+        "name": "product_weight_g",
+        "type": "FLOAT",
+        "pk": false
+      },
+      {
+        "name": "product_length_cm",
+        "type": "FLOAT",
+        "pk": false
+      },
+      {
+        "name": "product_height_cm",
+        "type": "FLOAT",
+        "pk": false
+      },
+      {
+        "name": "product_width_cm",
+        "type": "FLOAT",
+        "pk": false
+      }
+    ],
+    "foreign_keys": []
+  },
+  "olist_geolocation": {
+    "columns": [
+      {
+        "name": "geolocation_zip_code_prefix",
+        "type": "BIGINT",
+        "pk": false
+      },
+      {
+        "name": "geolocation_lat",
+        "type": "FLOAT",
+        "pk": false
+      },
+      {
+        "name": "geolocation_lng",
+        "type": "FLOAT",
+        "pk": false
+      },
+      {
+        "name": "geolocation_city",
+        "type": "TEXT",
+        "pk": false
+      },
+      {
+        "name": "geolocation_state",
+        "type": "TEXT",
+        "pk": false
+      }
+    ],
+    "foreign_keys": []
+  },
+  "product_category_name_translation": {
+    "columns": [
+      {
+        "name": "product_category_name",
+        "type": "TEXT",
+        "pk": false
+      },
+      {
+        "name": "product_category_name_english",
+        "type": "TEXT",
+        "pk": false
+      }
+    ],
+    "foreign_keys": []
+  },
+  "olist_orders": {
+    "columns": [
+      {
+        "name": "order_id",
+        "type": "TEXT",
+        "pk": false
+      },
+      {
+        "name": "customer_id",
+        "type": "TEXT",
+        "pk": false
+      },
+      {
+        "name": "order_status",
+        "type": "TEXT",
+        "pk": false
+      },
+      {
+        "name": "order_purchase_timestamp",
+        "type": "TEXT",
+        "pk": false
+      },
+      {
+        "name": "order_approved_at",
+        "type": "TEXT",
+        "pk": false
+      },
+      {
+        "name": "order_delivered_carrier_date",
+        "type": "TEXT",
+        "pk": false
+      },
+      {
+        "name": "order_delivered_customer_date",
+        "type": "TEXT",
+        "pk": false
+      },
+      {
+        "name": "order_estimated_delivery_date",
+        "type": "TEXT",
+        "pk": false
+      }
+    ],
+    "foreign_keys": []
+  },
+  "olist_order_payments": {
+    "columns": [
+      {
+        "name": "order_id",
+        "type": "TEXT",
+        "pk": false
+      },
+      {
+        "name": "payment_sequential",
+        "type": "BIGINT",
+        "pk": false
+      },
+      {
+        "name": "payment_type",
+        "type": "TEXT",
+        "pk": false
+      },
+      {
+        "name": "payment_installments",
+        "type": "BIGINT",
+        "pk": false
+      },
+      {
+        "name": "payment_value",
+        "type": "FLOAT",
+        "pk": false
+      }
+    ],
+    "foreign_keys": []
+  },
+  "olist_products_dataset": {
+    "columns": [
+      {
+        "name": "index",
+        "type": "BIGINT",
+        "pk": false
+      },
+      {
+        "name": "product_id",
+        "type": "TEXT",
+        "pk": false
+      },
+      {
+        "name": "product_category_name",
+        "type": "TEXT",
+        "pk": false
+      },
+      {
+        "name": "product_name_lenght",
+        "type": "FLOAT",
+        "pk": false
+      },
+      {
+        "name": "product_description_lenght",
+        "type": "FLOAT",
+        "pk": false
+      },
+      {
+        "name": "product_photos_qty",
+        "type": "FLOAT",
+        "pk": false
+      },
+      {
+        "name": "product_weight_g",
+        "type": "FLOAT",
+        "pk": false
+      },
+      {
+        "name": "product_length_cm",
+        "type": "FLOAT",
+        "pk": false
+      },
+      {
+        "name": "product_height_cm",
+        "type": "FLOAT",
+        "pk": false
+      },
+      {
+        "name": "product_width_cm",
+        "type": "FLOAT",
+        "pk": false
+      }
+    ],
+    "foreign_keys": []
+  }
+}

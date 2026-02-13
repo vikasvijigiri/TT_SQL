@@ -1,0 +1,9 @@
+{
+  "step_by_step_approach": [
+    "Gather all match results from the league.",
+    "Identify the winning team in each match.",
+    "Count how many times each team appears as the winner.",
+    "Arrange the teams from highest to lowest win count.",
+    "Select the first ten teams in this ordered list."
+  ]
+}

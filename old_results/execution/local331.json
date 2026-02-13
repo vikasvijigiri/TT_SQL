@@ -1,0 +1,23 @@
+{
+  "columns": [
+    "third_page",
+    "visit_count"
+  ],
+  "rows": [
+    [
+      "/detail",
+      33
+    ],
+    [
+      "/",
+      2
+    ],
+    [
+      "/search_list/",
+      1
+    ]
+  ],
+  "row_count": 3,
+  "execution_time_ms": 1.146078109741211,
+  "error_message": null
+}

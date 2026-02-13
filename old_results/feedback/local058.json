@@ -1,0 +1,14 @@
+{
+  "is_valid": false,
+  "check_results": {
+    "columns": "PASS",
+    "syntax": "PASS",
+    "joins": "PASS",
+    "group_by": "PASS",
+    "math_types": "FAIL",
+    "logic": "PASS"
+  },
+  "feedback": [
+    "Integer division issue: The calculation for percentage increase uses integer division. Ensure the numerator or denominator is cast to a REAL or FLOAT to avoid integer division."
+  ]
+}

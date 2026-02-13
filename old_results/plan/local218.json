@@ -1,0 +1,10 @@
+{
+  "step_by_step_approach": [
+    "Identify each team in the data set.",
+    "For each team, collect the total number of goals scored in each season.",
+    "Select the highest seasonal goal total for each team.",
+    "Gather all of those highest values into a single list.",
+    "Sort the list of highest values in ascending order.",
+    "Determine the middle value of the sorted list, or the average of the two middle values if the list has an even number of entries, to obtain the median."
+  ]
+}

@@ -1,0 +1,35 @@
+{
+  "intent": "DATA_retrieval",
+  "complexity": "High",
+  "entities": [
+    "airports_data",
+    "flights"
+  ],
+  "metrics": [
+    "distance"
+  ],
+  "all_maths_operations": [
+    "distance calculation"
+  ],
+  "quantities_to_be_estimated": [
+    "longest route distance"
+  ],
+  "approach_to_calculate_quantities_to_be_estimated": "Calculate the distance between the departure and arrival airports for each flight where Abakan is either the departure or destination city. Then, find the maximum distance among these calculated distances.",
+  "dimensions": [],
+  "filters": [
+    "airports_data.city = 'Abakan'",
+    "flights.departure_airport = airports_data.airport_code OR flights.arrival_airport = airports_data.airport_code"
+  ],
+  "time_constraints": null,
+  "joins": [
+    "INNER JOIN flights ON airports_data.airport_code = flights.departure_airport OR airports_data.airport_code = flights.arrival_airport"
+  ],
+  "sorting": [
+    "distance DESC"
+  ],
+  "limits": [
+    1
+  ],
+  "output_format": "float",
+  "output_precision": 2
+}

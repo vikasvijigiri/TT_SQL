@@ -1,0 +1,15 @@
+{
+  "is_valid": false,
+  "check_results": {
+    "columns": "PASS",
+    "syntax": "PASS",
+    "joins": "PASS",
+    "group_by": "PASS",
+    "math_types": "FAIL",
+    "logic": "FAIL"
+  },
+  "feedback": [
+    "The calculation of the growth rate when the previous month's balance is zero is incorrect. It should be the current month's balance multiplied by 100, but the logic does not handle this correctly.",
+    "The division in the final SELECT statement might result in integer division, which can lead to incorrect percentage calculations. Ensure that the division is performed with real numbers."
+  ]
+}

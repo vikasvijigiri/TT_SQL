@@ -1,0 +1,10 @@
+{
+  "step_by_step_approach": [
+    "Combine each order with its corresponding store information",
+    "Count how many orders belong to each store",
+    "Identify the store with the largest order count",
+    "From that store's orders, select those that also appear in the deliveries data with a status of 'DELIVERED'",
+    "Count the selected delivered orders",
+    "Divide the delivered order count by the total order count for that store to obtain the ratio"
+  ]
+}

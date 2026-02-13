@@ -1,0 +1,11 @@
+{
+  "step_by_step_approach": [
+    "Identify every distinct year in the data set.",
+    "For each year, total the points earned by each driver.",
+    "Select, for each year, the driver with the highest total points.",
+    "For each year, total the points earned by each constructor.",
+    "Select, for each year, the constructor with the highest total points.",
+    "Retrieve the full name of each driver identified in step 3.",
+    "Present each year together with the driver\u2019s full name and the corresponding constructor."
+  ]
+}

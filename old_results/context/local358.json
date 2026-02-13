@@ -1,0 +1,6 @@
+{
+  "relevant_tables": [
+    "users"
+  ],
+  "reasoning": "The query requires counting individuals based on their age. The table that stores user demographic information\u2014typically named `users` (or a similarly named table such as `user_profile` or `customers`)\u2014will contain an `age` or `date_of_birth` column. By grouping the records in this table by age ranges (20\u201129, 30\u201139, 40\u201149, 50\u201159, and all other ages), we can compute the required counts. No other tables are needed for this straightforward aggregation."
+}

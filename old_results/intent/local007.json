@@ -1,0 +1,45 @@
+{
+  "intent": "DATA_retrieval",
+  "complexity": "High",
+  "entities": [
+    "player",
+    "appearances"
+  ],
+  "metrics": "average single career span value in years for all baseball players",
+  "all_maths_operations": [
+    "subtraction",
+    "absolute value",
+    "division",
+    "addition",
+    "rounding",
+    "average"
+  ],
+  "quantities_to_be_estimated": [
+    "difference in years",
+    "difference in months",
+    "difference in days",
+    "absolute number of years",
+    "absolute number of months",
+    "absolute number of days",
+    "sum of career span parts",
+    "average career span"
+  ],
+  "approach_to_calculate_quantities_to_be_estimated": "First, join the 'player' and 'appearances' tables on the 'player_id' column. Then, calculate the difference in years, months, and days between the 'debut' and 'final_game' columns. Convert these differences into absolute values. Next, calculate the absolute number of years by dividing the absolute difference in years by 1. The absolute number of months is calculated by dividing the absolute difference in months by 12. The absolute number of days is calculated by dividing the absolute difference in days by 365. Round each of these parts to two decimal places. Sum these parts to get the career span for each player. Finally, calculate the average career span for all players.",
+  "dimensions": [
+    "player_id"
+  ],
+  "filters": [],
+  "time constraints": [],
+  "joins": [
+    {
+      "table1": "player",
+      "table2": "appearances",
+      "column1": "player_id",
+      "column2": "player_id"
+    }
+  ],
+  "sorting": [],
+  "limits": [],
+  "output_format": "float",
+  "output_precision": "2"
+}

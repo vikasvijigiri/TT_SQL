@@ -1,0 +1,14 @@
+{
+  "is_valid": false,
+  "check_results": {
+    "columns": "PASS",
+    "syntax": "FAIL",
+    "joins": "PASS",
+    "group_by": "PASS",
+    "math_types": "PASS",
+    "logic": "PASS"
+  },
+  "feedback": [
+    "Syntax error: The expression '6371 * 2 * ASIN(SQRT(...))' is missing a numeric value after the multiplication operator '*'."
+  ]
+}

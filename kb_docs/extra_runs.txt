@@ -1,0 +1,9 @@
+Table: extra_runs
+            Columns:
+            - match_id (INTEGER)
+- over_id (INTEGER)
+- ball_id (INTEGER)
+- extra_type (TEXT)
+- extra_runs (INTEGER)
+- innings_no (INTEGER)
+        

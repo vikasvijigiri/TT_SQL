@@ -1,0 +1,15 @@
+{
+  "is_valid": false,
+  "check_results": {
+    "columns": "PASS",
+    "syntax": "PASS",
+    "joins": "PASS",
+    "group_by": "PASS",
+    "math_types": "PASS",
+    "logic": "FAIL"
+  },
+  "feedback": [
+    "The logic for calculating consecutive streaks is incorrect. The calculation of 'day_diff' should check for consecutive days, but the COALESCE function defaults to 1, which is incorrect for the first row in each partition.",
+    "The logic for determining the longest streak does not correctly handle cases where multiple countries have the same longest streak length. The final SELECT statement should account for ties."
+  ]
+}

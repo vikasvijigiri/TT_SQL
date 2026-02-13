@@ -1,0 +1,25 @@
+{
+  "columns": [
+    "store_id",
+    "year",
+    "month",
+    "total_rentals"
+  ],
+  "rows": [
+    [
+      1,
+      2005,
+      7,
+      3342
+    ],
+    [
+      2,
+      2005,
+      7,
+      3367
+    ]
+  ],
+  "row_count": 2,
+  "execution_time_ms": 20.296335220336914,
+  "error_message": null
+}

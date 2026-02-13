@@ -1,0 +1,8 @@
+{
+  "relevant_tables": [
+    "job_postings_fact",
+    "skills_job_dim",
+    "skills_dim"
+  ],
+  "reasoning": "The query filters job postings by title (Data Analyst), a non\u2011null annual average salary (salary_year_avg), and remote work status (job_work_from_home) \u2013 all stored in **job_postings_fact**. To identify the most frequently demanded skills for those postings we need the many\u2011to\u2011many relationship between jobs and skills (**skills_job_dim**) and the skill names/descriptions (**skills_dim**) to count occurrences and select the top three. No other tables contain the required job, salary, or skill information."
+}

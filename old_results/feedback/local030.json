@@ -1,0 +1,14 @@
+{
+  "is_valid": false,
+  "check_results": {
+    "columns": "PASS",
+    "syntax": "PASS",
+    "joins": "PASS",
+    "group_by": "PASS",
+    "math_types": "PASS",
+    "logic": "FAIL"
+  },
+  "feedback": [
+    "The logic fails because the LIMIT clause is applied before calculating the averages. This means the query only considers the top 5 cities with the lowest payments, rather than all cities with delivered orders. The request asks for the average of the total payments and delivered order counts of the five cities with the lowest summed payments, not just the lowest five payments."
+  ]
+}

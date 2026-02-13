@@ -1,0 +1,9 @@
+{
+  "step_by_step_approach": [
+    "Identify packaging containers that are not contained within any other packaging.",
+    "For each identified container, collect all items that appear in it or in any of its nested sub-packages.",
+    "Calculate the total quantity of each item by adding its quantities across all levels of nesting within the container.",
+    "Filter to keep only those container\u2011item pairs where the total quantity exceeds 500.",
+    "Return the names of the qualifying containers together with the names of the corresponding items."
+  ]
+}

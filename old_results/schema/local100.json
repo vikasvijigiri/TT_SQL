@@ -1,0 +1,317 @@
+{
+  "Movie": {
+    "columns": [
+      {
+        "name": "index",
+        "type": "INTEGER",
+        "pk": false
+      },
+      {
+        "name": "MID",
+        "type": "TEXT",
+        "pk": false
+      },
+      {
+        "name": "title",
+        "type": "TEXT",
+        "pk": false
+      },
+      {
+        "name": "year",
+        "type": "TEXT",
+        "pk": false
+      },
+      {
+        "name": "rating",
+        "type": "REAL",
+        "pk": false
+      },
+      {
+        "name": "num_votes",
+        "type": "INTEGER",
+        "pk": false
+      }
+    ],
+    "foreign_keys": []
+  },
+  "Genre": {
+    "columns": [
+      {
+        "name": "index",
+        "type": "INTEGER",
+        "pk": false
+      },
+      {
+        "name": "Name",
+        "type": "TEXT",
+        "pk": false
+      },
+      {
+        "name": "GID",
+        "type": "INTEGER",
+        "pk": false
+      }
+    ],
+    "foreign_keys": []
+  },
+  "Language": {
+    "columns": [
+      {
+        "name": "index",
+        "type": "INTEGER",
+        "pk": false
+      },
+      {
+        "name": "Name",
+        "type": "TEXT",
+        "pk": false
+      },
+      {
+        "name": "LAID",
+        "type": "INTEGER",
+        "pk": false
+      }
+    ],
+    "foreign_keys": []
+  },
+  "Country": {
+    "columns": [
+      {
+        "name": "index",
+        "type": "INTEGER",
+        "pk": false
+      },
+      {
+        "name": "Name",
+        "type": "TEXT",
+        "pk": false
+      },
+      {
+        "name": "CID",
+        "type": "INTEGER",
+        "pk": false
+      }
+    ],
+    "foreign_keys": []
+  },
+  "Location": {
+    "columns": [
+      {
+        "name": "index",
+        "type": "INTEGER",
+        "pk": false
+      },
+      {
+        "name": "Name",
+        "type": "TEXT",
+        "pk": false
+      },
+      {
+        "name": "LID",
+        "type": "INTEGER",
+        "pk": false
+      }
+    ],
+    "foreign_keys": []
+  },
+  "M_Location": {
+    "columns": [
+      {
+        "name": "index",
+        "type": "INTEGER",
+        "pk": false
+      },
+      {
+        "name": "MID",
+        "type": "TEXT",
+        "pk": false
+      },
+      {
+        "name": "LID",
+        "type": "REAL",
+        "pk": false
+      },
+      {
+        "name": "ID",
+        "type": "INTEGER",
+        "pk": false
+      }
+    ],
+    "foreign_keys": []
+  },
+  "M_Country": {
+    "columns": [
+      {
+        "name": "index",
+        "type": "INTEGER",
+        "pk": false
+      },
+      {
+        "name": "MID",
+        "type": "TEXT",
+        "pk": false
+      },
+      {
+        "name": "CID",
+        "type": "REAL",
+        "pk": false
+      },
+      {
+        "name": "ID",
+        "type": "INTEGER",
+        "pk": false
+      }
+    ],
+    "foreign_keys": []
+  },
+  "M_Language": {
+    "columns": [
+      {
+        "name": "index",
+        "type": "INTEGER",
+        "pk": false
+      },
+      {
+        "name": "MID",
+        "type": "TEXT",
+        "pk": false
+      },
+      {
+        "name": "LAID",
+        "type": "INTEGER",
+        "pk": false
+      },
+      {
+        "name": "ID",
+        "type": "INTEGER",
+        "pk": false
+      }
+    ],
+    "foreign_keys": []
+  },
+  "M_Genre": {
+    "columns": [
+      {
+        "name": "index",
+        "type": "INTEGER",
+        "pk": false
+      },
+      {
+        "name": "MID",
+        "type": "TEXT",
+        "pk": false
+      },
+      {
+        "name": "GID",
+        "type": "INTEGER",
+        "pk": false
+      },
+      {
+        "name": "ID",
+        "type": "INTEGER",
+        "pk": false
+      }
+    ],
+    "foreign_keys": []
+  },
+  "Person": {
+    "columns": [
+      {
+        "name": "index",
+        "type": "INTEGER",
+        "pk": false
+      },
+      {
+        "name": "PID",
+        "type": "TEXT",
+        "pk": false
+      },
+      {
+        "name": "Name",
+        "type": "TEXT",
+        "pk": false
+      },
+      {
+        "name": "Gender",
+        "type": "TEXT",
+        "pk": false
+      }
+    ],
+    "foreign_keys": []
+  },
+  "M_Producer": {
+    "columns": [
+      {
+        "name": "index",
+        "type": "INTEGER",
+        "pk": false
+      },
+      {
+        "name": "MID",
+        "type": "TEXT",
+        "pk": false
+      },
+      {
+        "name": "PID",
+        "type": "TEXT",
+        "pk": false
+      },
+      {
+        "name": "ID",
+        "type": "INTEGER",
+        "pk": false
+      }
+    ],
+    "foreign_keys": []
+  },
+  "M_Director": {
+    "columns": [
+      {
+        "name": "index",
+        "type": "INTEGER",
+        "pk": false
+      },
+      {
+        "name": "MID",
+        "type": "TEXT",
+        "pk": false
+      },
+      {
+        "name": "PID",
+        "type": "TEXT",
+        "pk": false
+      },
+      {
+        "name": "ID",
+        "type": "INTEGER",
+        "pk": false
+      }
+    ],
+    "foreign_keys": []
+  },
+  "M_Cast": {
+    "columns": [
+      {
+        "name": "index",
+        "type": "INTEGER",
+        "pk": false
+      },
+      {
+        "name": "MID",
+        "type": "TEXT",
+        "pk": false
+      },
+      {
+        "name": "PID",
+        "type": "TEXT",
+        "pk": false
+      },
+      {
+        "name": "ID",
+        "type": "INTEGER",
+        "pk": false
+      }
+    ],
+    "foreign_keys": []
+  }
+}

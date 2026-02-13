@@ -1,0 +1,16 @@
+{
+  "is_valid": false,
+  "check_results": {
+    "columns": "PASS",
+    "syntax": "PASS",
+    "joins": "PASS",
+    "group_by": "PASS",
+    "math_types": "PASS",
+    "logic": "FAIL"
+  },
+  "feedback": [
+    "The logic to determine the top industry is flawed. If there are multiple industries with the same maximum count, the query will consider all of them, which may not be the intended behavior.",
+    "The query does not handle the case where there are no companies in the specified years, which could lead to division by zero or incorrect results.",
+    "The logic assumes that the top industry is determined solely by the count of companies, without considering other potential criteria that might define 'top industry'."
+  ]
+}

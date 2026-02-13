@@ -1,0 +1,20 @@
+{
+  "step_by_step_approach": [
+    "Determine the first term start year for each legislator.",
+    "Check whether each legislator is serving on December 31 of the start year (0 years).",
+    "Check whether each legislator is serving on December 31 of the year two years after the start year.",
+    "Check whether each legislator is serving on December 31 of the year four years after the start year.",
+    "Check whether each legislator is serving on December 31 of the year six years after the start year.",
+    "Check whether each legislator is serving on December 31 of the year eight years after the start year.",
+    "Check whether each legislator is serving on December 31 of the year ten years after the start year.",
+    "For each state and gender, calculate the proportion of legislators retained at the start year.",
+    "For each state and gender, calculate the proportion of legislators retained at year two.",
+    "For each state and gender, calculate the proportion of legislators retained at year four.",
+    "For each state and gender, calculate the proportion of legislators retained at year six.",
+    "For each state and gender, calculate the proportion of legislators retained at year eight.",
+    "For each state and gender, calculate the proportion of legislators retained at year ten.",
+    "Keep only those state\u2011gender groups where all six proportions are greater than zero.",
+    "Select states where both male and female groups satisfy the non\u2011zero condition for all six years.",
+    "Return the abbreviations of those states."
+  ]
+}

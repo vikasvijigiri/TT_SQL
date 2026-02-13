@@ -1,0 +1,13 @@
+{
+  "relevant_tables": [
+    "sellers",
+    "orders",
+    "order_items",
+    "products",
+    "product_categories",
+    "category_translations",
+    "reviews",
+    "packing_times"
+  ],
+  "reasoning": "To generate the requested performance report we need:\n- **sellers** \u2013 the primary entity whose performance is being measured.\n- **orders** (or a similar sales header table) \u2013 provides the overall sale transaction dates and links to the seller.\n- **order_items** \u2013 contains line\u2011item details (quantity, unit price, product_id) needed to calculate total sales, average item price and the total quantity sold per seller.\n- **products** \u2013 links each order line to a product so we can aggregate sales by product and retrieve the product\u2019s category.\n- **product_categories** \u2013 maps each product to its category, allowing us to compute sales volume per category.\n- **category_translations** (or a language\u2011specific category table) \u2013 supplies the English name of each category for the final report.\n- **reviews** \u2013 stores review scores for products/sellers; averaging these scores per seller gives the required average review metric.\n- **packing_times** (or a fulfillment/packaging log table) \u2013 records the time taken to pack each order, enabling the calculation of average packing times per seller.\n\nThese tables together provide all the data points needed to compute total sales, average item price, average review scores, packing times, filter sellers with >100 units sold, and identify the English\u2011named product categories with the highest sales volume."
+}

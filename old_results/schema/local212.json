@@ -1,0 +1,332 @@
+{
+  "channels": {
+    "columns": [
+      {
+        "name": "channel_id",
+        "type": "INTEGER",
+        "pk": true
+      },
+      {
+        "name": "channel_name",
+        "type": "VARCHAR(50)",
+        "pk": false
+      },
+      {
+        "name": "channel_type",
+        "type": "VARCHAR(50)",
+        "pk": false
+      }
+    ],
+    "foreign_keys": []
+  },
+  "drivers": {
+    "columns": [
+      {
+        "name": "driver_id",
+        "type": "INTEGER",
+        "pk": true
+      },
+      {
+        "name": "driver_modal",
+        "type": "VARCHAR(50)",
+        "pk": false
+      },
+      {
+        "name": "driver_type",
+        "type": "VARCHAR(50)",
+        "pk": false
+      }
+    ],
+    "foreign_keys": []
+  },
+  "deliveries": {
+    "columns": [
+      {
+        "name": "delivery_id",
+        "type": "INTEGER",
+        "pk": true
+      },
+      {
+        "name": "delivery_order_id",
+        "type": "INTEGER",
+        "pk": false
+      },
+      {
+        "name": "driver_id",
+        "type": "INTEGER",
+        "pk": false
+      },
+      {
+        "name": "delivery_distance_meters",
+        "type": "DECIMAL(10, 2)",
+        "pk": false
+      },
+      {
+        "name": "delivery_status",
+        "type": "VARCHAR(50)",
+        "pk": false
+      }
+    ],
+    "foreign_keys": []
+  },
+  "hubs": {
+    "columns": [
+      {
+        "name": "hub_id",
+        "type": "INTEGER",
+        "pk": true
+      },
+      {
+        "name": "hub_name",
+        "type": "VARCHAR(50)",
+        "pk": false
+      },
+      {
+        "name": "hub_city",
+        "type": "VARCHAR(50)",
+        "pk": false
+      },
+      {
+        "name": "hub_state",
+        "type": "CHAR(2)",
+        "pk": false
+      },
+      {
+        "name": "hub_latitude",
+        "type": "DECIMAL(9, 6)",
+        "pk": false
+      },
+      {
+        "name": "hub_longitude",
+        "type": "DECIMAL(9, 6)",
+        "pk": false
+      }
+    ],
+    "foreign_keys": []
+  },
+  "payments": {
+    "columns": [
+      {
+        "name": "payment_id",
+        "type": "INTEGER",
+        "pk": true
+      },
+      {
+        "name": "payment_order_id",
+        "type": "INTEGER",
+        "pk": false
+      },
+      {
+        "name": "payment_amount",
+        "type": "DECIMAL(10, 2)",
+        "pk": false
+      },
+      {
+        "name": "payment_fee",
+        "type": "DECIMAL(10, 2)",
+        "pk": false
+      },
+      {
+        "name": "payment_method",
+        "type": "VARCHAR(50)",
+        "pk": false
+      },
+      {
+        "name": "payment_status",
+        "type": "VARCHAR(50)",
+        "pk": false
+      }
+    ],
+    "foreign_keys": []
+  },
+  "stores": {
+    "columns": [
+      {
+        "name": "store_id",
+        "type": "INTEGER",
+        "pk": true
+      },
+      {
+        "name": "hub_id",
+        "type": "INTEGER",
+        "pk": false
+      },
+      {
+        "name": "store_name",
+        "type": "VARCHAR(50)",
+        "pk": false
+      },
+      {
+        "name": "store_segment",
+        "type": "VARCHAR(50)",
+        "pk": false
+      },
+      {
+        "name": "store_plan_price",
+        "type": "DECIMAL(10, 2)",
+        "pk": false
+      },
+      {
+        "name": "store_latitude",
+        "type": "DECIMAL(9, 6)",
+        "pk": false
+      },
+      {
+        "name": "store_longitude",
+        "type": "DECIMAL(9, 6)",
+        "pk": false
+      }
+    ],
+    "foreign_keys": []
+  },
+  "orders": {
+    "columns": [
+      {
+        "name": "order_id",
+        "type": "INTEGER",
+        "pk": true
+      },
+      {
+        "name": "store_id",
+        "type": "INTEGER",
+        "pk": false
+      },
+      {
+        "name": "channel_id",
+        "type": "INTEGER",
+        "pk": false
+      },
+      {
+        "name": "payment_order_id",
+        "type": "INTEGER",
+        "pk": false
+      },
+      {
+        "name": "delivery_order_id",
+        "type": "INTEGER",
+        "pk": false
+      },
+      {
+        "name": "order_status",
+        "type": "VARCHAR(50)",
+        "pk": false
+      },
+      {
+        "name": "order_amount",
+        "type": "DECIMAL(10, 2)",
+        "pk": false
+      },
+      {
+        "name": "order_delivery_fee",
+        "type": "DECIMAL(10, 2)",
+        "pk": false
+      },
+      {
+        "name": "order_delivery_cost",
+        "type": "DECIMAL(10, 2)",
+        "pk": false
+      },
+      {
+        "name": "order_created_hour",
+        "type": "INTEGER",
+        "pk": false
+      },
+      {
+        "name": "order_created_minute",
+        "type": "INTEGER",
+        "pk": false
+      },
+      {
+        "name": "order_created_day",
+        "type": "INTEGER",
+        "pk": false
+      },
+      {
+        "name": "order_created_month",
+        "type": "INTEGER",
+        "pk": false
+      },
+      {
+        "name": "order_created_year",
+        "type": "INTEGER",
+        "pk": false
+      },
+      {
+        "name": "order_moment_created",
+        "type": "DATETIME",
+        "pk": false
+      },
+      {
+        "name": "order_moment_accepted",
+        "type": "DATETIME",
+        "pk": false
+      },
+      {
+        "name": "order_moment_ready",
+        "type": "DATETIME",
+        "pk": false
+      },
+      {
+        "name": "order_moment_collected",
+        "type": "DATETIME",
+        "pk": false
+      },
+      {
+        "name": "order_moment_in_expedition",
+        "type": "DATETIME",
+        "pk": false
+      },
+      {
+        "name": "order_moment_delivering",
+        "type": "DATETIME",
+        "pk": false
+      },
+      {
+        "name": "order_moment_delivered",
+        "type": "DATETIME",
+        "pk": false
+      },
+      {
+        "name": "order_moment_finished",
+        "type": "DATETIME",
+        "pk": false
+      },
+      {
+        "name": "order_metric_collected_time",
+        "type": "DECIMAL(10, 2)",
+        "pk": false
+      },
+      {
+        "name": "order_metric_paused_time",
+        "type": "DECIMAL(10, 2)",
+        "pk": false
+      },
+      {
+        "name": "order_metric_production_time",
+        "type": "DECIMAL(10, 2)",
+        "pk": false
+      },
+      {
+        "name": "order_metric_walking_time",
+        "type": "DECIMAL(10, 2)",
+        "pk": false
+      },
+      {
+        "name": "order_metric_expediton_speed_time",
+        "type": "DECIMAL(10, 2)",
+        "pk": false
+      },
+      {
+        "name": "order_metric_transit_time",
+        "type": "DECIMAL(10, 2)",
+        "pk": false
+      },
+      {
+        "name": "order_metric_cycle_time",
+        "type": "DECIMAL(10, 2)",
+        "pk": false
+      }
+    ],
+    "foreign_keys": []
+  }
+}

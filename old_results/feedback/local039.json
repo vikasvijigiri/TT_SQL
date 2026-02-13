@@ -1,0 +1,14 @@
+{
+  "is_valid": false,
+  "check_results": {
+    "columns": "PASS",
+    "syntax": "PASS",
+    "joins": "PASS",
+    "group_by": "PASS",
+    "math_types": "PASS",
+    "logic": "FAIL"
+  },
+  "feedback": [
+    "The logic in the WHERE clause does not fully match the request. The request specifies cities where the name starts with 'A' or contains a hyphen, but the SQL only checks for cities starting with 'A' or containing a hyphen. This is correct, but ensure the logic is clear and matches the request's intent."
+  ]
+}

@@ -1,0 +1,8 @@
+{
+  "relevant_tables": [
+    "teams",
+    "matches",
+    "match_results"
+  ],
+  "reasoning": "To compute the top\u201110 teams with the most wins we need a table that stores each team's identity (e.g., `teams`), a table that records each game or fixture (e.g., `matches`), and a table that captures the outcome of each match (e.g., `match_results` or a win/loss flag within `matches`). By joining `teams` with the results of `matches`/`match_results` and aggregating the number of rows where the team is marked as the winner, we can rank teams by total wins and select the top ten."
+}

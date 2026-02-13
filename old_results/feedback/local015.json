@@ -1,0 +1,15 @@
+{
+  "is_valid": false,
+  "check_results": {
+    "columns": "PASS",
+    "syntax": "PASS",
+    "joins": "PASS",
+    "group_by": "PASS",
+    "math_types": "PASS",
+    "logic": "FAIL"
+  },
+  "feedback": [
+    "The logic for calculating the fatality rate is incorrect. The denominator should be the total number of collisions involving motorcyclists with or without helmets, not the total number of distinct case_ids.",
+    "The query does not account for cases where a motorcyclist might be wearing a helmet in one safety equipment field but not in the other. It should check both fields for helmet usage in a more comprehensive manner."
+  ]
+}

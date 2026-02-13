@@ -1,0 +1,15 @@
+{
+  "is_valid": false,
+  "check_results": {
+    "columns": "PASS",
+    "syntax": "PASS",
+    "joins": "PASS",
+    "group_by": "PASS",
+    "math_types": "PASS",
+    "logic": "FAIL"
+  },
+  "feedback": [
+    "The logic does not account for initial balances of customers. Without an initial balance, the cumulative balance calculation may not be accurate.",
+    "The SQL assumes that the first month in the dataset is the starting point for cumulative balance, which may not be correct if there are transactions before the first month in the dataset."
+  ]
+}

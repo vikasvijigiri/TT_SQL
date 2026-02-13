@@ -1,0 +1,7 @@
+{
+  "relevant_tables": [
+    "legislators",
+    "legislators_terms"
+  ],
+  "reasoning": "The query requires gender information for each legislator (male/female) and the dates of their service to calculate retention at 0, 2, 4, 6, 8, and 10 years after the start of their first term. The **legislators** table provides the gender and the unique identifier (id_bioguide) that links a person to their term records. The **legislators_terms** table contains the term start and end dates, the state abbreviation, and the same id_bioguide, allowing us to determine whether a legislator is still serving on December\u202f31 of each target year and to compute retention rates per state and gender. No other tables in the schema contain the necessary legislator or term data."
+}

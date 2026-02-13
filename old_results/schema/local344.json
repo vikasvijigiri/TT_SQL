@@ -1,0 +1,1287 @@
+{
+  "circuits": {
+    "columns": [
+      {
+        "name": "circuit_id",
+        "type": "INT(11)",
+        "pk": true
+      },
+      {
+        "name": "circuit_ref",
+        "type": "VARCHAR(255)",
+        "pk": false
+      },
+      {
+        "name": "name",
+        "type": "VARCHAR(255)",
+        "pk": false
+      },
+      {
+        "name": "location",
+        "type": "VARCHAR(255)",
+        "pk": false
+      },
+      {
+        "name": "country",
+        "type": "VARCHAR(255)",
+        "pk": false
+      },
+      {
+        "name": "lat",
+        "type": "FLOAT",
+        "pk": false
+      },
+      {
+        "name": "lng",
+        "type": "FLOAT",
+        "pk": false
+      },
+      {
+        "name": "alt",
+        "type": "INT(11)",
+        "pk": false
+      },
+      {
+        "name": "url",
+        "type": "VARCHAR(255)",
+        "pk": false
+      }
+    ],
+    "foreign_keys": []
+  },
+  "constructor_results": {
+    "columns": [
+      {
+        "name": "constructor_results_id",
+        "type": "INT(11)",
+        "pk": true
+      },
+      {
+        "name": "race_id",
+        "type": "INT(11)",
+        "pk": false
+      },
+      {
+        "name": "constructor_id",
+        "type": "INT(11)",
+        "pk": false
+      },
+      {
+        "name": "points",
+        "type": "FLOAT",
+        "pk": false
+      },
+      {
+        "name": "status",
+        "type": "VARCHAR(255)",
+        "pk": false
+      }
+    ],
+    "foreign_keys": []
+  },
+  "constructor_standings": {
+    "columns": [
+      {
+        "name": "constructor_standings_id",
+        "type": "INT(11)",
+        "pk": true
+      },
+      {
+        "name": "race_id",
+        "type": "INT(11)",
+        "pk": false
+      },
+      {
+        "name": "constructor_id",
+        "type": "INT(11)",
+        "pk": false
+      },
+      {
+        "name": "points",
+        "type": "FLOAT",
+        "pk": false
+      },
+      {
+        "name": "position",
+        "type": "INT(11)",
+        "pk": false
+      },
+      {
+        "name": "position_text",
+        "type": "VARCHAR(255)",
+        "pk": false
+      },
+      {
+        "name": "wins",
+        "type": "INT(11)",
+        "pk": false
+      }
+    ],
+    "foreign_keys": []
+  },
+  "constructors": {
+    "columns": [
+      {
+        "name": "constructor_id",
+        "type": "INT(11)",
+        "pk": true
+      },
+      {
+        "name": "constructor_ref",
+        "type": "VARCHAR(255)",
+        "pk": false
+      },
+      {
+        "name": "name",
+        "type": "VARCHAR(255)",
+        "pk": false
+      },
+      {
+        "name": "nationality",
+        "type": "VARCHAR(255)",
+        "pk": false
+      },
+      {
+        "name": "url",
+        "type": "VARCHAR(255)",
+        "pk": false
+      }
+    ],
+    "foreign_keys": []
+  },
+  "driver_standings": {
+    "columns": [
+      {
+        "name": "driver_standings_id",
+        "type": "INT(11)",
+        "pk": true
+      },
+      {
+        "name": "race_id",
+        "type": "INT(11)",
+        "pk": false
+      },
+      {
+        "name": "driver_id",
+        "type": "INT(11)",
+        "pk": false
+      },
+      {
+        "name": "points",
+        "type": "FLOAT",
+        "pk": false
+      },
+      {
+        "name": "position",
+        "type": "INT(11)",
+        "pk": false
+      },
+      {
+        "name": "position_text",
+        "type": "VARCHAR(255)",
+        "pk": false
+      },
+      {
+        "name": "wins",
+        "type": "INT(11)",
+        "pk": false
+      }
+    ],
+    "foreign_keys": []
+  },
+  "drivers": {
+    "columns": [
+      {
+        "name": "driver_id",
+        "type": "INT(11)",
+        "pk": true
+      },
+      {
+        "name": "driver_ref",
+        "type": "VARCHAR(255)",
+        "pk": false
+      },
+      {
+        "name": "number",
+        "type": "INT(11)",
+        "pk": false
+      },
+      {
+        "name": "code",
+        "type": "VARCHAR(3)",
+        "pk": false
+      },
+      {
+        "name": "forename",
+        "type": "VARCHAR(255)",
+        "pk": false
+      },
+      {
+        "name": "surname",
+        "type": "VARCHAR(255)",
+        "pk": false
+      },
+      {
+        "name": "dob",
+        "type": "DATE",
+        "pk": false
+      },
+      {
+        "name": "nationality",
+        "type": "VARCHAR(255)",
+        "pk": false
+      },
+      {
+        "name": "url",
+        "type": "VARCHAR(255)",
+        "pk": false
+      }
+    ],
+    "foreign_keys": []
+  },
+  "lap_times": {
+    "columns": [
+      {
+        "name": "race_id",
+        "type": "INT(11)",
+        "pk": true
+      },
+      {
+        "name": "driver_id",
+        "type": "INT(11)",
+        "pk": true
+      },
+      {
+        "name": "lap",
+        "type": "INT(11)",
+        "pk": true
+      },
+      {
+        "name": "position",
+        "type": "INT(11)",
+        "pk": false
+      },
+      {
+        "name": "time",
+        "type": "VARCHAR(255)",
+        "pk": false
+      },
+      {
+        "name": "milliseconds",
+        "type": "INT(11)",
+        "pk": false
+      }
+    ],
+    "foreign_keys": []
+  },
+  "pit_stops": {
+    "columns": [
+      {
+        "name": "race_id",
+        "type": "INT(11)",
+        "pk": true
+      },
+      {
+        "name": "driver_id",
+        "type": "INT(11)",
+        "pk": true
+      },
+      {
+        "name": "stop",
+        "type": "INT(11)",
+        "pk": true
+      },
+      {
+        "name": "lap",
+        "type": "INT(11)",
+        "pk": false
+      },
+      {
+        "name": "time",
+        "type": "TIME",
+        "pk": false
+      },
+      {
+        "name": "duration",
+        "type": "VARCHAR(255)",
+        "pk": false
+      },
+      {
+        "name": "milliseconds",
+        "type": "INT(11)",
+        "pk": false
+      }
+    ],
+    "foreign_keys": []
+  },
+  "qualifying": {
+    "columns": [
+      {
+        "name": "qualify_id",
+        "type": "INT(11)",
+        "pk": true
+      },
+      {
+        "name": "race_id",
+        "type": "INT(11)",
+        "pk": false
+      },
+      {
+        "name": "driver_id",
+        "type": "INT(11)",
+        "pk": false
+      },
+      {
+        "name": "constructor_id",
+        "type": "INT(11)",
+        "pk": false
+      },
+      {
+        "name": "number",
+        "type": "INT(11)",
+        "pk": false
+      },
+      {
+        "name": "position",
+        "type": "INT(11)",
+        "pk": false
+      },
+      {
+        "name": "q1",
+        "type": "VARCHAR(255)",
+        "pk": false
+      },
+      {
+        "name": "q2",
+        "type": "VARCHAR(255)",
+        "pk": false
+      },
+      {
+        "name": "q3",
+        "type": "VARCHAR(255)",
+        "pk": false
+      }
+    ],
+    "foreign_keys": []
+  },
+  "races": {
+    "columns": [
+      {
+        "name": "race_id",
+        "type": "INT(11)",
+        "pk": true
+      },
+      {
+        "name": "year",
+        "type": "INT(11)",
+        "pk": false
+      },
+      {
+        "name": "round",
+        "type": "INT(11)",
+        "pk": false
+      },
+      {
+        "name": "circuit_id",
+        "type": "INT(11)",
+        "pk": false
+      },
+      {
+        "name": "name",
+        "type": "VARCHAR(255)",
+        "pk": false
+      },
+      {
+        "name": "date",
+        "type": "DATE",
+        "pk": false
+      },
+      {
+        "name": "time",
+        "type": "TIME",
+        "pk": false
+      },
+      {
+        "name": "url",
+        "type": "VARCHAR(255)",
+        "pk": false
+      },
+      {
+        "name": "fp1_date",
+        "type": "VARCHAR(255)",
+        "pk": false
+      },
+      {
+        "name": "fp1_time",
+        "type": "VARCHAR(255)",
+        "pk": false
+      },
+      {
+        "name": "fp2_date",
+        "type": "VARCHAR(255)",
+        "pk": false
+      },
+      {
+        "name": "fp2_time",
+        "type": "VARCHAR(255)",
+        "pk": false
+      },
+      {
+        "name": "fp3_date",
+        "type": "VARCHAR(255)",
+        "pk": false
+      },
+      {
+        "name": "fp3_time",
+        "type": "VARCHAR(255)",
+        "pk": false
+      },
+      {
+        "name": "quali_date",
+        "type": "VARCHAR(255)",
+        "pk": false
+      },
+      {
+        "name": "quali_time",
+        "type": "VARCHAR(255)",
+        "pk": false
+      },
+      {
+        "name": "sprint_date",
+        "type": "VARCHAR(255)",
+        "pk": false
+      },
+      {
+        "name": "sprint_time",
+        "type": "VARCHAR(255)",
+        "pk": false
+      }
+    ],
+    "foreign_keys": []
+  },
+  "results": {
+    "columns": [
+      {
+        "name": "result_id",
+        "type": "INT(11)",
+        "pk": true
+      },
+      {
+        "name": "race_id",
+        "type": "INT(11)",
+        "pk": false
+      },
+      {
+        "name": "driver_id",
+        "type": "INT(11)",
+        "pk": false
+      },
+      {
+        "name": "constructor_id",
+        "type": "INT(11)",
+        "pk": false
+      },
+      {
+        "name": "number",
+        "type": "INT(11)",
+        "pk": false
+      },
+      {
+        "name": "grid",
+        "type": "INT(11)",
+        "pk": false
+      },
+      {
+        "name": "position",
+        "type": "INT(11)",
+        "pk": false
+      },
+      {
+        "name": "position_text",
+        "type": "VARCHAR(255)",
+        "pk": false
+      },
+      {
+        "name": "position_order",
+        "type": "INT(11)",
+        "pk": false
+      },
+      {
+        "name": "points",
+        "type": "FLOAT",
+        "pk": false
+      },
+      {
+        "name": "laps",
+        "type": "INT(11)",
+        "pk": false
+      },
+      {
+        "name": "time",
+        "type": "VARCHAR(255)",
+        "pk": false
+      },
+      {
+        "name": "milliseconds",
+        "type": "INT(11)",
+        "pk": false
+      },
+      {
+        "name": "fastest_lap",
+        "type": "INT(11)",
+        "pk": false
+      },
+      {
+        "name": "rank",
+        "type": "INT(11)",
+        "pk": false
+      },
+      {
+        "name": "fastest_lap_time",
+        "type": "VARCHAR(255)",
+        "pk": false
+      },
+      {
+        "name": "fastest_lap_speed",
+        "type": "VARCHAR(255)",
+        "pk": false
+      },
+      {
+        "name": "status_id",
+        "type": "INT(11)",
+        "pk": false
+      }
+    ],
+    "foreign_keys": []
+  },
+  "seasons": {
+    "columns": [
+      {
+        "name": "year",
+        "type": "INT(11)",
+        "pk": true
+      },
+      {
+        "name": "url",
+        "type": "VARCHAR(255)",
+        "pk": false
+      }
+    ],
+    "foreign_keys": []
+  },
+  "status": {
+    "columns": [
+      {
+        "name": "status_id",
+        "type": "INT(11)",
+        "pk": true
+      },
+      {
+        "name": "status",
+        "type": "VARCHAR(255)",
+        "pk": false
+      }
+    ],
+    "foreign_keys": []
+  },
+  "sprint_results": {
+    "columns": [
+      {
+        "name": "result_id",
+        "type": "INT(11)",
+        "pk": true
+      },
+      {
+        "name": "race_id",
+        "type": "INT(11)",
+        "pk": false
+      },
+      {
+        "name": "driver_id",
+        "type": "INT(11)",
+        "pk": false
+      },
+      {
+        "name": "constructor_id",
+        "type": "INT(11)",
+        "pk": false
+      },
+      {
+        "name": "number",
+        "type": "INT(11)",
+        "pk": false
+      },
+      {
+        "name": "grid",
+        "type": "INT(11)",
+        "pk": false
+      },
+      {
+        "name": "position",
+        "type": "INT(11)",
+        "pk": false
+      },
+      {
+        "name": "position_text",
+        "type": "VARCHAR(255)",
+        "pk": false
+      },
+      {
+        "name": "position_order",
+        "type": "INT(11)",
+        "pk": false
+      },
+      {
+        "name": "points",
+        "type": "FLOAT",
+        "pk": false
+      },
+      {
+        "name": "laps",
+        "type": "INT(11)",
+        "pk": false
+      },
+      {
+        "name": "time",
+        "type": "VARCHAR(255)",
+        "pk": false
+      },
+      {
+        "name": "milliseconds",
+        "type": "INT(11)",
+        "pk": false
+      },
+      {
+        "name": "fastest_lap",
+        "type": "INT(11)",
+        "pk": false
+      },
+      {
+        "name": "fastest_lap_time",
+        "type": "VARCHAR(255)",
+        "pk": false
+      },
+      {
+        "name": "fastest_lap_speed",
+        "type": "VARCHAR(255)",
+        "pk": false
+      },
+      {
+        "name": "status_id",
+        "type": "INT(11)",
+        "pk": false
+      }
+    ],
+    "foreign_keys": []
+  },
+  "short_grand_prix_names": {
+    "columns": [
+      {
+        "name": "full_name",
+        "type": "VARCHAR(255)",
+        "pk": true
+      },
+      {
+        "name": "short_name",
+        "type": "VARCHAR(255)",
+        "pk": false
+      }
+    ],
+    "foreign_keys": []
+  },
+  "short_constructor_names": {
+    "columns": [
+      {
+        "name": "constructor_ref",
+        "type": "VARCHAR(255)",
+        "pk": true
+      },
+      {
+        "name": "short_name",
+        "type": "VARCHAR(255)",
+        "pk": false
+      }
+    ],
+    "foreign_keys": []
+  },
+  "liveries": {
+    "columns": [
+      {
+        "name": "constructor_ref",
+        "type": "VARCHAR(255)",
+        "pk": true
+      },
+      {
+        "name": "start_year",
+        "type": "INT(11)",
+        "pk": true
+      },
+      {
+        "name": "end_year",
+        "type": "INT(11)",
+        "pk": true
+      },
+      {
+        "name": "primary_hex_code",
+        "type": "VARCHAR(255)",
+        "pk": false
+      }
+    ],
+    "foreign_keys": []
+  },
+  "tdr_overrides": {
+    "columns": [
+      {
+        "name": "year",
+        "type": "INT(11)",
+        "pk": true
+      },
+      {
+        "name": "constructor_ref",
+        "type": "VARCHAR(255)",
+        "pk": true
+      },
+      {
+        "name": "driver_ref",
+        "type": "VARCHAR(255)",
+        "pk": true
+      },
+      {
+        "name": "team_driver_rank",
+        "type": "INT(11)",
+        "pk": false
+      }
+    ],
+    "foreign_keys": []
+  },
+  "circuits_ext": {
+    "columns": [
+      {
+        "name": "circuit_id",
+        "type": "INT",
+        "pk": false
+      },
+      {
+        "name": "circuit_ref",
+        "type": "TEXT",
+        "pk": false
+      },
+      {
+        "name": "name",
+        "type": "TEXT",
+        "pk": false
+      },
+      {
+        "name": "location",
+        "type": "TEXT",
+        "pk": false
+      },
+      {
+        "name": "country",
+        "type": "TEXT",
+        "pk": false
+      },
+      {
+        "name": "lat",
+        "type": "REAL",
+        "pk": false
+      },
+      {
+        "name": "lng",
+        "type": "REAL",
+        "pk": false
+      },
+      {
+        "name": "alt",
+        "type": "INT",
+        "pk": false
+      },
+      {
+        "name": "url",
+        "type": "TEXT",
+        "pk": false
+      },
+      {
+        "name": "last_race_year",
+        "type": "",
+        "pk": false
+      },
+      {
+        "name": "number_of_races",
+        "type": "",
+        "pk": false
+      }
+    ],
+    "foreign_keys": []
+  },
+  "constructors_ext": {
+    "columns": [
+      {
+        "name": "constructor_id",
+        "type": "INT",
+        "pk": false
+      },
+      {
+        "name": "constructor_ref",
+        "type": "TEXT",
+        "pk": false
+      },
+      {
+        "name": "name",
+        "type": "TEXT",
+        "pk": false
+      },
+      {
+        "name": "nationality",
+        "type": "TEXT",
+        "pk": false
+      },
+      {
+        "name": "url",
+        "type": "TEXT",
+        "pk": false
+      },
+      {
+        "name": "short_name",
+        "type": "",
+        "pk": false
+      }
+    ],
+    "foreign_keys": []
+  },
+  "drivers_ext": {
+    "columns": [
+      {
+        "name": "driver_id",
+        "type": "INT",
+        "pk": false
+      },
+      {
+        "name": "driver_ref",
+        "type": "TEXT",
+        "pk": false
+      },
+      {
+        "name": "number",
+        "type": "INT",
+        "pk": false
+      },
+      {
+        "name": "code",
+        "type": "",
+        "pk": false
+      },
+      {
+        "name": "forename",
+        "type": "TEXT",
+        "pk": false
+      },
+      {
+        "name": "surname",
+        "type": "TEXT",
+        "pk": false
+      },
+      {
+        "name": "full_name",
+        "type": "TEXT",
+        "pk": false
+      },
+      {
+        "name": "dob",
+        "type": "NUM",
+        "pk": false
+      },
+      {
+        "name": "nationality",
+        "type": "TEXT",
+        "pk": false
+      },
+      {
+        "name": "url",
+        "type": "TEXT",
+        "pk": false
+      }
+    ],
+    "foreign_keys": []
+  },
+  "driver_standings_ext": {
+    "columns": [
+      {
+        "name": "driver_standings_id",
+        "type": "INT",
+        "pk": false
+      },
+      {
+        "name": "race_id",
+        "type": "INT",
+        "pk": false
+      },
+      {
+        "name": "driver_id",
+        "type": "INT",
+        "pk": false
+      },
+      {
+        "name": "points",
+        "type": "REAL",
+        "pk": false
+      },
+      {
+        "name": "position",
+        "type": "INT",
+        "pk": false
+      },
+      {
+        "name": "position_text",
+        "type": "TEXT",
+        "pk": false
+      },
+      {
+        "name": "wins",
+        "type": "INT",
+        "pk": false
+      }
+    ],
+    "foreign_keys": []
+  },
+  "lap_times_ext": {
+    "columns": [
+      {
+        "name": "race_id",
+        "type": "INT",
+        "pk": false
+      },
+      {
+        "name": "driver_id",
+        "type": "INT",
+        "pk": false
+      },
+      {
+        "name": "lap",
+        "type": "INT",
+        "pk": false
+      },
+      {
+        "name": "position",
+        "type": "INT",
+        "pk": false
+      },
+      {
+        "name": "time",
+        "type": "TEXT",
+        "pk": false
+      },
+      {
+        "name": "milliseconds",
+        "type": "INT",
+        "pk": false
+      },
+      {
+        "name": "seconds",
+        "type": "REAL",
+        "pk": false
+      },
+      {
+        "name": "running_milliseconds",
+        "type": "",
+        "pk": false
+      }
+    ],
+    "foreign_keys": []
+  },
+  "lap_time_stats": {
+    "columns": [
+      {
+        "name": "race_id",
+        "type": "INT",
+        "pk": false
+      },
+      {
+        "name": "driver_id",
+        "type": "INT",
+        "pk": false
+      },
+      {
+        "name": "avg_milliseconds",
+        "type": "",
+        "pk": false
+      },
+      {
+        "name": "avg_seconds",
+        "type": "",
+        "pk": false
+      },
+      {
+        "name": "stdev_milliseconds",
+        "type": "",
+        "pk": false
+      },
+      {
+        "name": "stdev_seconds",
+        "type": "",
+        "pk": false
+      }
+    ],
+    "foreign_keys": []
+  },
+  "races_ext": {
+    "columns": [
+      {
+        "name": "race_id",
+        "type": "INT",
+        "pk": false
+      },
+      {
+        "name": "year",
+        "type": "INT",
+        "pk": false
+      },
+      {
+        "name": "round",
+        "type": "INT",
+        "pk": false
+      },
+      {
+        "name": "circuit_id",
+        "type": "INT",
+        "pk": false
+      },
+      {
+        "name": "name",
+        "type": "TEXT",
+        "pk": false
+      },
+      {
+        "name": "date",
+        "type": "NUM",
+        "pk": false
+      },
+      {
+        "name": "time",
+        "type": "NUM",
+        "pk": false
+      },
+      {
+        "name": "url",
+        "type": "TEXT",
+        "pk": false
+      },
+      {
+        "name": "fp1_date",
+        "type": "TEXT",
+        "pk": false
+      },
+      {
+        "name": "fp1_time",
+        "type": "TEXT",
+        "pk": false
+      },
+      {
+        "name": "fp2_date",
+        "type": "TEXT",
+        "pk": false
+      },
+      {
+        "name": "fp2_time",
+        "type": "TEXT",
+        "pk": false
+      },
+      {
+        "name": "fp3_date",
+        "type": "TEXT",
+        "pk": false
+      },
+      {
+        "name": "fp3_time",
+        "type": "TEXT",
+        "pk": false
+      },
+      {
+        "name": "quali_date",
+        "type": "TEXT",
+        "pk": false
+      },
+      {
+        "name": "quali_time",
+        "type": "TEXT",
+        "pk": false
+      },
+      {
+        "name": "sprint_date",
+        "type": "TEXT",
+        "pk": false
+      },
+      {
+        "name": "sprint_time",
+        "type": "TEXT",
+        "pk": false
+      },
+      {
+        "name": "is_pit_data_available",
+        "type": "",
+        "pk": false
+      },
+      {
+        "name": "short_name",
+        "type": "",
+        "pk": false
+      },
+      {
+        "name": "has_sprint",
+        "type": "",
+        "pk": false
+      },
+      {
+        "name": "max_points",
+        "type": "",
+        "pk": false
+      }
+    ],
+    "foreign_keys": []
+  },
+  "team_driver_ranks": {
+    "columns": [
+      {
+        "name": "year",
+        "type": "INT",
+        "pk": false
+      },
+      {
+        "name": "constructor_id",
+        "type": "INT",
+        "pk": false
+      },
+      {
+        "name": "constructor_ref",
+        "type": "TEXT",
+        "pk": false
+      },
+      {
+        "name": "driver_id",
+        "type": "INT",
+        "pk": false
+      },
+      {
+        "name": "driver_ref",
+        "type": "TEXT",
+        "pk": false
+      },
+      {
+        "name": "team_driver_rank",
+        "type": "",
+        "pk": false
+      }
+    ],
+    "foreign_keys": []
+  },
+  "drives": {
+    "columns": [
+      {
+        "name": "year",
+        "type": "INT",
+        "pk": false
+      },
+      {
+        "name": "driver_id",
+        "type": "INT",
+        "pk": false
+      },
+      {
+        "name": "drive_id",
+        "type": "",
+        "pk": false
+      },
+      {
+        "name": "constructor_id",
+        "type": "INT",
+        "pk": false
+      },
+      {
+        "name": "first_round",
+        "type": "INT",
+        "pk": false
+      },
+      {
+        "name": "last_round",
+        "type": "INT",
+        "pk": false
+      },
+      {
+        "name": "is_first_drive_of_season",
+        "type": "",
+        "pk": false
+      },
+      {
+        "name": "is_final_drive_of_season",
+        "type": "",
+        "pk": false
+      }
+    ],
+    "foreign_keys": []
+  },
+  "retirements": {
+    "columns": [
+      {
+        "name": "race_id",
+        "type": "INT",
+        "pk": false
+      },
+      {
+        "name": "driver_id",
+        "type": "INT",
+        "pk": false
+      },
+      {
+        "name": "lap",
+        "type": "",
+        "pk": false
+      },
+      {
+        "name": "position_order",
+        "type": "INT",
+        "pk": false
+      },
+      {
+        "name": "status_id",
+        "type": "INT",
+        "pk": false
+      },
+      {
+        "name": "retirement_type",
+        "type": "",
+        "pk": false
+      }
+    ],
+    "foreign_keys": []
+  },
+  "lap_positions": {
+    "columns": [
+      {
+        "name": "race_id",
+        "type": "INT",
+        "pk": false
+      },
+      {
+        "name": "driver_id",
+        "type": "INT",
+        "pk": false
+      },
+      {
+        "name": "lap",
+        "type": "INT",
+        "pk": false
+      },
+      {
+        "name": "position",
+        "type": "INT",
+        "pk": false
+      },
+      {
+        "name": "lap_type",
+        "type": "",
+        "pk": false
+      }
+    ],
+    "foreign_keys": []
+  }
+}

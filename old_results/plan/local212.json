@@ -1,0 +1,9 @@
+{
+  "step_by_step_approach": [
+    "Collect all delivery records.",
+    "Count how many deliveries each driver makes on each day.",
+    "Calculate the average of those daily counts for each driver.",
+    "Rank the drivers from highest to lowest average daily deliveries.",
+    "Select the top five drivers from this ranking."
+  ]
+}

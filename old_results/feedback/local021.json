@@ -1,0 +1,15 @@
+{
+  "is_valid": false,
+  "check_results": {
+    "columns": "PASS",
+    "syntax": "PASS",
+    "joins": "FAIL",
+    "group_by": "PASS",
+    "math_types": "PASS",
+    "logic": "FAIL"
+  },
+  "feedback": [
+    "The JOIN condition between batsman_scored and ball_by_ball is incorrect. The tables should be joined on match_id, over_id, ball_id, and innings_no, but the current logic does not ensure that runs are correctly attributed to the striker.",
+    "The logic does not correctly calculate the total runs scored by each striker in a single match. The current query sums runs across all matches for each striker, which is not the intended logic."
+  ]
+}
