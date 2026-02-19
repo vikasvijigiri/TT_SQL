@@ -1,35 +1,94 @@
 # TT_SQL: nQuiry Text2SQL Agent
 
-nQuiry is an industry-grade Text-to-SQL engine that converts natural language questions into executable SQL queries with high precision. It uses a multi-agent architecture to plan, generate, criticize, and refine SQL queries iteratively.
+nQuiry is an industry-grade Text-to-SQL engine that converts natural language questions into executable SQL queries with high precision. It uses a **layered multi-agent architecture** to analyze, plan, generate, critique, and refine SQL queries iteratively.
 
 ## ✨ Key Features
 
-- **Multi-Agent Pipeline**: Planner, Generator, Critic, and Refiner agents work together.
-- **Self-Correction**: Automatically detects and fixes SQL errors by reading SQLite error messages.
-- **RAG-Augmented**: Uses vector search (Qdrant) or Amazon Bedrock Knowledge Bases to inject domain knowledge.
-- **Interactive UI**: A polished Streamlit dashboard with a conversational narrator.
-- **Safe & Secure**: Only executes `SELECT` statements (by design intent, though requires DB permissions).
+- **Layered Architecture**: 4-layer pipeline (Input → Planning → Generation → Execution) with 7 specialized agents.
+- **Self-Correction Loop**: A Critic agent validates SQL logic; the Builder auto-refines on failure (up to 5 retries).
+- **Schema-Aware**: Extracts full database schema, selects only relevant tables, and builds FK relationship graphs.
+- **Intent Classification**: Automatically detects query type (AGGREGATION, RANKING, etc.) and complexity.
+- **RAG-Augmented**: Optional vector search (Qdrant) or Amazon Bedrock Knowledge Bases for few-shot learning.
+- **Batch Processing**: High-performance parallel batch runner with progress tracking.
+- **Safe Execution**: Only executes `SELECT` statements by design.
 
 ---
 
-## 🚀 Building from Scratch
+## 🏗️ Architecture Overview
 
-Follow these steps to set up the project on your local machine.
+```
+User Query
+    │
+    ▼
+┌──────────────────────────────────────────────┐
+│  📥 INPUT LAYER                               │
+│  SQLiteFileLoader → SchemaAnalyzer            │
+│                   → TableSelector (🤖 LLM)    │
+│                                               │
+│  Outputs: schema_info, relevant_tables,       │
+│           query_intent, complexity             │
+└────────────────────┬─────────────────────────┘
+                     │
+                     ▼
+┌──────────────────────────────────────────────┐
+│  📋 PLANNING LAYER                            │
+│  RelationshipGraphBuilder → QueryPlanner (🤖) │
+│                                               │
+│  Outputs: FK relationship_graph,              │
+│           step_by_step_plan                    │
+└────────────────────┬─────────────────────────┘
+                     │
+                     ▼
+┌──────────────────────────────────────────────┐
+│  ⚡ GENERATION LAYER (RefinementLoop)         │
+│                                               │
+│  ┌───────────┐  feedback  ┌──────────┐       │
+│  │SQLBuilder │◄───────────│SQLCritic │       │
+│  │   (🤖)    │───────────►│   (🤖)   │       │
+│  └───────────┘  SQL       └──────────┘       │
+│       ▲                       │ ✅ PASS       │
+│       └── retry (max 5) ─────┘               │
+└────────────────────┬─────────────────────────┘
+                     │
+                     ▼
+┌──────────────────────────────────────────────┐
+│  🚀 EXECUTION LAYER                          │
+│  SQLiteExecutor → .sql + .csv output files    │
+└──────────────────────────────────────────────┘
+```
+
+> 🤖 = LLM call
+
+### Agent Summary
+
+| # | Agent | Layer | LLM? | Purpose |
+|---|-------|-------|------|---------|
+| 1 | `SQLiteFileLoader` | Input | No | Locates the `.sqlite` database file |
+| 2 | `SchemaAnalyzer` | Input | No | Extracts full schema (tables, columns, types, FKs) |
+| 3 | `TableSelector` | Input | **Yes** | Picks relevant tables + classifies intent & complexity |
+| 4 | `RelationshipGraphBuilder` | Planning | No | Builds FK relationship graph between selected tables |
+| 5 | `QueryPlanner` | Planning | **Yes** | Breaks query into a step-by-step action plan |
+| 6 | `SQLBuilder` | Generation | **Yes** | Generates SQL from plan + schema + critic feedback |
+| 7 | `SQLCritic` | Generation | **Yes** | Validates SQL logic (no execution, pure analysis) |
+| 8 | `SQLiteExecutor` | Execution | No | Executes final SQL, saves `.sql` + `.csv` |
+| 9 | `RefinementLoop` | Generation | No | Orchestrates Builder→Critic loop (max 5 retries) |
+
+---
+
+## 🚀 Getting Started
 
 ### 1. Prerequisites
-- **Python 3.10+** installed.
-- **Git** installed.
-- An API Key for either **OpenAI** (GPT-4) or **AWS Bedrock** (Claude 3.5 Sonnet).
+- **Python 3.10+**
+- **Git**
+- An API key for **OpenAI** (GPT-4o) or **AWS Bedrock** (Claude 3.5 Sonnet)
 
 ### 2. Clone the Repository
 ```bash
-git clone <repository-url>
-cd txt2sql-Nakul
+git clone https://github.com/NG-VikasV/TT_SQL.git
+cd TT_SQL
 ```
 
-### 3. Set Up Virtual Environment (Recommended)
-Create an isolated Python environment to keep dependencies clean.
-
+### 3. Set Up Virtual Environment
 **Windows:**
 ```powershell
 python -m venv venv
@@ -43,7 +102,6 @@ source venv/bin/activate
 ```
 
 ### 4. Install Dependencies
-Install all required packages from `requirements.txt`:
 ```bash
 pip install -r requirements.txt
 ```
@@ -52,83 +110,69 @@ pip install -r requirements.txt
 
 ## ⚙️ Configuration (.env)
 
-You must create a `.env` file in the root directory. This file holds your API keys and configuration secrets.
+Create a `.env` file in the project root:
 
-**Create a file named `.env` and add the following:**
+### 🔒 LLM Provider (Choose One)
 
-### 🔒 Mandatory Variables
-You need at least one LLM provider configured.
-
-**Option A: Using OpenAI (GPT-4o)**
+**Option A — OpenAI (GPT-4o):**
 ```ini
 OPENAI_API_KEY=sk-proj-xxxxxxxxxxxxxxxxxxxxxxxx
 LLM_MODEL=gpt-4o
 ```
 
-**Option B: Using AWS Bedrock (Claude 3.5 Sonnet)**
+**Option B — AWS Bedrock (Claude 3.5 Sonnet):**
 ```ini
 AWS_ACCESS_KEY_ID=AKIAxxxxxxxxxxxx
 AWS_SECRET_ACCESS_KEY=xxxxxxxxxxxxxxxxxxxxxxxxxxxx
 AWS_DEFAULT_REGION=us-east-1
 LLM_MODEL=bedrock/anthropic.claude-3-5-sonnet-20240620-v1:0
 ```
-*(Note: Ensure your AWS user has Bedrock Full Access permissions)*
 
-### 🔓 Optional Variables (RAG & Advanced)
+### 🔓 Optional Variables
 
-**Qdrant (Local Vector Store)**
-Used for storing successful query examples for few-shot learning.
 ```ini
-# Defaults to local memory if not set, but recommended for persistence
+# RAG — Qdrant vector store (few-shot learning)
 QDRANT_URL=http://localhost:6333
 QDRANT_API_KEY=your-api-key-if-cloud-hosted
-```
 
-**Amazon Bedrock Knowledge Base**
-If you want to use AWS's managed RAG solution.
-```ini
+# RAG — Amazon Bedrock Knowledge Base
 BEDROCK_KB_ID=your-knowledge-base-id
-```
 
-**Model Fallbacks**
-Override specific agents to use different models (Optional).
-```ini
+# Model overrides per agent
 PLANNER_MODEL=gpt-4o
 GENERATOR_MODEL=gpt-4o
 ```
 
 ---
 
-## 🧠 RAG Implementation Details
-
-nQuiry uses **Retrieval-Augmented Generation (RAG)** to improve accuracy by finding similar past questions.
-
-### How it Works
-1.  **Vector Store**: The system maintains a database of `(Natural Question, Correct SQL)` pairs.
-2.  **Retrieval**: When you ask a new question, the system searches the vector store for the top 3-5 most semantically similar past questions.
-3.  **Context Injection**: These examples are injected into the Prompt as "Few-Shot Examples".
-4.  **Learning**: When a query is successfully executed and verified (score=100%), it can be automatically upserted back into the vector store, making the system smarter over time.
-
-### Supported Backends
-1.  **Qdrant**: Best for local development or custom Docker deployment.
-2.  **Amazon Bedrock Knowledge Base**: Managed AWS solution for enterprise scale.
-
----
-
 ## 🏃‍♂️ Running the Application
 
-Once installed and configured:
+### Single Question (CLI)
+```bash
+python src/run_single.py
+```
+Edit `target_id` and `model_name` in `src/run_single.py` to configure which task to run.
 
-1.  **Start the UI**:
-    ```bash
-    streamlit run src/app_ui.py
-    ```
+### Batch Processing (CLI) — Recommended
+```bash
+python run_batch.py --dataset spider2-lite.jsonl --model gpt-4o --workers 4
+```
 
-2.  **Use the Dashboard**:
-    - Select a Task ID (from `spider2-lite.jsonl`) or type your own question.
-    - Click **Run Pipeline**.
-    - Watch the **Narrator** explain the steps.
-    - Interact with the **"Show Chart"** button to see visualizations.
+**Batch Runner Options:**
+| Flag | Default | Description |
+|------|---------|-------------|
+| `--dataset` | `spider2-lite1.jsonl` | Path to JSONL dataset |
+| `--model` | `.env` LLM_MODEL | LLM model name |
+| `--workers` | `4` | Parallel worker threads |
+| `--limit` | `0` (all) | Limit number of tasks |
+| `--rag` | `none` | RAG source (`none`, `qdrant`) |
+| `--overwrite` | `false` | Re-run even if results exist |
+
+### Output
+For each processed question, results are saved under `results/<model>/`:
+- `sql/<instance_id>.sql` — Final validated SQL query
+- `csv/<instance_id>.csv` — Execution result data
+- `log/<instance_id>.md` — Detailed execution log
 
 ---
 
@@ -136,14 +180,93 @@ Once installed and configured:
 
 ```text
 TT_SQL/
-├── results/               # Generated SQL, CSVs, and logs
+├── run_batch.py               # 🔥 High-performance batch runner (CLI entry point)
+├── spider2-lite.jsonl          # Spider2-Lite benchmark dataset
+├── requirements.txt            # Python dependencies
+├── pyproject.toml              # Package metadata
+├── .env                        # API keys (git-ignored)
+│
 ├── src/
-│   ├── app_ui.py          # Main Streamlit Dashboard
-│   ├── tt_sql/            # Core Package (Ranked as TT_SQL)
-│       ├── agents/        # Planner, Generator, Narrator Agents
-│       ├── core/          # Orchestrator, LLM Service, State Management
-│       ├── prompts/       # YAML Prompt Templates (Easy to edit)
-├── requirements.txt       # Python Dependencies
-├── .env                   # API Keys (GitIgnored)
-└── README.md              # Documentation
+│   ├── run_single.py           # Single-question CLI runner
+│   ├── batch_runner.py         # Batch runner (imported by run_batch.py)
+│   ├── debug_single.py         # Debug utility
+│   │
+│   └── tt_sql/                 # Core package
+│       ├── agents/
+│       │   ├── input_layer.py          # SQLiteFileLoader, SchemaAnalyzer, TableSelector
+│       │   ├── planning_layer.py       # RelationshipGraphBuilder, QueryPlanner
+│       │   ├── generation_layer.py     # SQLBuilder (MultiCandidateGenerator)
+│       │   ├── critic_layer.py         # SQLCritic
+│       │   ├── execution_layer.py      # SQLiteExecutor
+│       │   ├── loop_layer.py           # RefinementLoop orchestrator
+│       │   └── failure_analysis_agent.py  # Post-mortem analysis (offline)
+│       │
+│       ├── core/
+│       │   ├── pipeline_runner.py      # Main pipeline orchestrator
+│       │   ├── orchestrator.py         # Agent sequencing engine
+│       │   ├── agent_base.py           # BaseAgent class + AgentState
+│       │   ├── llm_service.py          # LLM API wrapper (Bedrock/OpenAI via LiteLLM)
+│       │   ├── state.py                # Pipeline state definitions
+│       │   ├── prompt_loader.py        # YAML prompt loader with variable substitution
+│       │   ├── paths.py                # Centralized path constants
+│       │   ├── logger.py               # Markdown log writer
+│       │   ├── file_coordinator.py     # File I/O coordination
+│       │   ├── evaluator.py            # Result evaluation against gold SQL
+│       │   ├── metrics.py              # Pipeline metrics tracking
+│       │   └── pipeline_config.py      # Config loader
+│       │
+│       ├── prompts/                    # YAML prompt templates
+│       │   ├── table_selector.yaml
+│       │   ├── query_planner.yaml
+│       │   ├── sql_builder.yaml
+│       │   ├── sql_critic.yaml
+│       │   └── failure_analysis.yaml
+│       │
+│       ├── config/
+│       │   └── pipeline_config.yaml    # Agent execution order & settings
+│       │
+│       ├── rag/                        # Optional RAG / vector store
+│       │   ├── vector_store.py
+│       │   └── ingest_tables.py
+│       │
+│       └── utils/                      # Shared utilities
+│
+├── gold/                               # Gold-standard SQL for evaluation
+├── tests/                              # Unit and integration tests
+├── ARCHITECTURE.md                     # Detailed architecture documentation
+└── README.md                           # This file
 ```
+
+---
+
+## 🧠 RAG Implementation
+
+nQuiry supports **Retrieval-Augmented Generation (RAG)** to improve accuracy via few-shot learning:
+
+1. **Vector Store**: Maintains a database of `(Question, Correct SQL)` pairs.
+2. **Retrieval**: Finds top semantically similar past questions for a new query.
+3. **Context Injection**: Injects retrieved examples into the prompt as few-shot examples.
+4. **Continuous Learning**: Successfully executed queries (score=100%) can be upserted back.
+
+**Supported Backends:**
+- **Qdrant** — Local development or Docker deployment
+- **Amazon Bedrock Knowledge Base** — Managed AWS solution
+
+---
+
+## 📊 LLM Call Count
+
+| Pipeline Stage | LLM Calls |
+|---|---|
+| TableSelector (tables + intent + complexity) | 1 |
+| QueryPlanner (step-by-step plan) | 1 |
+| SQLBuilder (per attempt) | 1 |
+| SQLCritic (per attempt) | 1 |
+| **Minimum (1 attempt)** | **4** |
+| **Maximum (5 retries)** | **12** |
+
+---
+
+## 📄 License
+
+This project is developed for research and educational purposes.
