@@ -8,8 +8,9 @@ from tqdm import tqdm
 from dotenv import load_dotenv
 import sys
 
-# Ensure src is in python path
-sys.path.append(os.path.join(os.path.dirname(__file__), "src"))
+# Ensure src is in python path (scripts/ -> project root -> src/)
+PROJECT_ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+sys.path.append(os.path.join(PROJECT_ROOT, "src"))
 
 # Import the new pure-Python pipeline runner
 from tt_sql.core.pipeline_runner import run_analysis_pipeline
@@ -77,7 +78,7 @@ def process_task(task, config):
 
 def main():
     parser = argparse.ArgumentParser(description="High-Performance Text-to-SQL Batch Runner")
-    parser.add_argument("--dataset", type=str, default="spider2-lite1.jsonl", help="Path to JSONL dataset")
+    parser.add_argument("--dataset", type=str, default=os.path.join(PROJECT_ROOT, "data", "spider2-lite1.jsonl"), help="Path to JSONL dataset")
     parser.add_argument("--model", type=str, default=os.getenv("LLM_MODEL", "gpt-4o"), help="Model name")
     parser.add_argument("--workers", type=int, default=4, help="Number of parallel workers")
     parser.add_argument("--limit", type=int, default=0, help="Limit number of tasks (0 for all)")

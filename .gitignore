@@ -5,6 +5,8 @@ resources/
 kb_docs/
 JSON_logs/
 log.txt
+execution_log.md
+failed_ids.csv
 *.log
 
 # Environment and Virtual Env

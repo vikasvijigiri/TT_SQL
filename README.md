@@ -149,19 +149,19 @@ GENERATOR_MODEL=gpt-4o
 
 ### Single Question (CLI)
 ```bash
-python src/run_single.py
+python scripts/run_single.py
 ```
-Edit `target_id` and `model_name` in `src/run_single.py` to configure which task to run.
+Edit `target_id` and `model_name` in `scripts/run_single.py` to configure which task to run.
 
 ### Batch Processing (CLI) — Recommended
 ```bash
-python run_batch.py --dataset spider2-lite.jsonl --model gpt-4o --workers 4
+python scripts/run_batch.py --dataset data/spider2-lite.jsonl --model gpt-4o --workers 4
 ```
 
 **Batch Runner Options:**
 | Flag | Default | Description |
 |------|---------|-------------|
-| `--dataset` | `spider2-lite1.jsonl` | Path to JSONL dataset |
+| `--dataset` | `data/spider2-lite1.jsonl` | Path to JSONL dataset |
 | `--model` | `.env` LLM_MODEL | LLM model name |
 | `--workers` | `4` | Parallel worker threads |
 | `--limit` | `0` (all) | Limit number of tasks |
@@ -180,61 +180,60 @@ For each processed question, results are saved under `results/<model>/`:
 
 ```text
 TT_SQL/
-├── run_batch.py               # 🔥 High-performance batch runner (CLI entry point)
-├── spider2-lite.jsonl          # Spider2-Lite benchmark dataset
-├── requirements.txt            # Python dependencies
+├── README.md                   # This file
+├── ARCHITECTURE.md             # Detailed architecture documentation
 ├── pyproject.toml              # Package metadata
+├── requirements.txt            # Python dependencies
 ├── .env                        # API keys (git-ignored)
 │
-├── src/
-│   ├── run_single.py           # Single-question CLI runner
-│   ├── batch_runner.py         # Batch runner (imported by run_batch.py)
-│   ├── debug_single.py         # Debug utility
-│   │
-│   └── tt_sql/                 # Core package
-│       ├── agents/
-│       │   ├── input_layer.py          # SQLiteFileLoader, SchemaAnalyzer, TableSelector
-│       │   ├── planning_layer.py       # RelationshipGraphBuilder, QueryPlanner
-│       │   ├── generation_layer.py     # SQLBuilder (MultiCandidateGenerator)
-│       │   ├── critic_layer.py         # SQLCritic
-│       │   ├── execution_layer.py      # SQLiteExecutor
-│       │   ├── loop_layer.py           # RefinementLoop orchestrator
-│       │   └── failure_analysis_agent.py  # Post-mortem analysis (offline)
-│       │
-│       ├── core/
-│       │   ├── pipeline_runner.py      # Main pipeline orchestrator
-│       │   ├── orchestrator.py         # Agent sequencing engine
-│       │   ├── agent_base.py           # BaseAgent class + AgentState
-│       │   ├── llm_service.py          # LLM API wrapper (Bedrock/OpenAI via LiteLLM)
-│       │   ├── state.py                # Pipeline state definitions
-│       │   ├── prompt_loader.py        # YAML prompt loader with variable substitution
-│       │   ├── paths.py                # Centralized path constants
-│       │   ├── logger.py               # Markdown log writer
-│       │   ├── file_coordinator.py     # File I/O coordination
-│       │   ├── evaluator.py            # Result evaluation against gold SQL
-│       │   ├── metrics.py              # Pipeline metrics tracking
-│       │   └── pipeline_config.py      # Config loader
-│       │
-│       ├── prompts/                    # YAML prompt templates
-│       │   ├── table_selector.yaml
-│       │   ├── query_planner.yaml
-│       │   ├── sql_builder.yaml
-│       │   ├── sql_critic.yaml
-│       │   └── failure_analysis.yaml
-│       │
-│       ├── config/
-│       │   └── pipeline_config.yaml    # Agent execution order & settings
-│       │
-│       ├── rag/                        # Optional RAG / vector store
-│       │   ├── vector_store.py
-│       │   └── ingest_tables.py
-│       │
-│       └── utils/                      # Shared utilities
+├── scripts/                    # 🔥 CLI entry points
+│   ├── run_batch.py            # High-performance batch runner
+│   ├── run_single.py           # Single-question runner
+│   ├── run_failure_analysis.py # Post-mortem failure analysis
+│   ├── batch_runner.py         # Batch runner helper
+│   └── debug_single.py         # Debug utility
 │
-├── gold/                               # Gold-standard SQL for evaluation
-├── tests/                              # Unit and integration tests
-├── ARCHITECTURE.md                     # Detailed architecture documentation
-└── README.md                           # This file
+├── data/                       # Datasets
+│   ├── spider2-lite.jsonl      # Spider2-Lite benchmark (full)
+│   └── spider2-lite1.jsonl     # Small subset for testing
+│
+├── tools/                      # One-off utilities
+│   ├── clean_gold.py           # Clean gold CSV files
+│   └── collect_failures.py     # Collect failed instance IDs
+│
+├── docs/                       # Extra documentation
+│   └── arch.md                 # Architecture deep-dive notes
+│
+├── src/tt_sql/                 # Core package
+│   ├── agents/
+│   │   ├── input_layer.py          # SQLiteFileLoader, SchemaAnalyzer, TableSelector
+│   │   ├── planning_layer.py       # RelationshipGraphBuilder, QueryPlanner
+│   │   ├── generation_layer.py     # SQLBuilder (MultiCandidateGenerator)
+│   │   ├── critic_layer.py         # SQLCritic
+│   │   ├── execution_layer.py      # SQLiteExecutor
+│   │   ├── loop_layer.py           # RefinementLoop orchestrator
+│   │   └── failure_analysis_agent.py  # Post-mortem analysis
+│   │
+│   ├── core/
+│   │   ├── pipeline_runner.py      # Main pipeline orchestrator
+│   │   ├── orchestrator.py         # Agent sequencing engine
+│   │   ├── agent_base.py           # BaseAgent class + AgentState
+│   │   ├── llm_service.py          # LLM API wrapper (Bedrock/OpenAI)
+│   │   ├── state.py                # Pipeline state definitions
+│   │   ├── prompt_loader.py        # YAML prompt loader
+│   │   ├── paths.py                # Centralized path constants
+│   │   ├── logger.py               # Markdown log writer
+│   │   ├── evaluator.py            # Result evaluation against gold SQL
+│   │   └── metrics.py              # Pipeline metrics tracking
+│   │
+│   ├── prompts/                    # YAML prompt templates
+│   ├── config/                     # Pipeline configuration
+│   ├── rag/                        # Optional RAG / vector store
+│   └── utils/                      # Shared utilities
+│
+├── gold/                           # Gold-standard SQL for evaluation
+├── tests/                          # Unit and integration tests
+└── results/                        # Output (git-ignored)
 ```
 
 ---
