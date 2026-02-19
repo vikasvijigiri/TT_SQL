@@ -1,9 +1,0 @@
-{
-  "relevant_tables": [
-    "drivers",
-    "races",
-    "results",
-    "constructors"
-  ],
-  "reasoning": "To compute the average number of missed races per driver we need to know which drivers participated in which races. The **drivers** table provides driver identifiers and basic information. The **races** table supplies the year and round (first/last) of each Grand Prix, allowing us to determine the total number of races in a season and to locate the race immediately before a driver\u2019s first missed race and the race immediately after the last missed race. The **results** table links drivers to races (and includes the constructorId for each appearance), enabling us to identify gaps in a driver\u2019s participation (i.e., missed races) and to compare the constructorId before and after the hiatus. Finally, the **constructors** table is required to interpret the constructorId values and confirm that a driver switched teams between the pre\u2011hiatus and post\u2011hiatus races. These four tables together provide all the data needed to filter drivers with fewer than three missed races in a year, detect team switches around the hiatus, and calculate the overall average first\u2011round and last\u2011round missed races across all years."
-}

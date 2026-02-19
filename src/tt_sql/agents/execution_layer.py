@@ -65,21 +65,18 @@ class SQLiteExecutorAgent(BaseAgent):
         state.execution_result = result
         self.log(state, f"Executed query. Rows: {result.row_count}. Time: {result.execution_time_ms:.2f}ms")
         
-        # Write execution results to file (for Critic and history)
-        execution_data = {
-            "columns": result.columns,
-            "rows": result.rows,
-            "row_count": result.row_count,
-            "execution_time_ms": result.execution_time_ms,
-            "error_message": result.error_message
-        }
-        self.file_coordinator.write_execution(state.instance_id, execution_data, state.model_name)
-        self.log(state, f"Execution results written to results/execution/{state.instance_id}.json")
-        
-        # Write CSV as well
-        if result.rows:
+        # Write CSV for all states (Parity with logs)
+        if result.error_message:
+            self.file_coordinator.write_csv(
+                state.instance_id, 
+                [["failed", result.error_message]], 
+                ["status", "error"], 
+                state.model_name
+            )
+            self.log(state, "Error CSV written.")
+        else:
             self.file_coordinator.write_csv(state.instance_id, result.rows, result.columns, state.model_name)
-            self.log(state, f"CSV results written to results/csv/{state.instance_id}.csv")
+            self.log(state, f"CSV results written (Rows: {result.row_count}).")
         
         return state
 

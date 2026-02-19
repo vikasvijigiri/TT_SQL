@@ -1,0 +1,22 @@
+row_id,order_id,customer_id,pizza_name,final_ingredients
+,1,101,Meatlovers,
+,2,101,Meatlovers,
+,3,102,Meatlovers,
+,3,102,Vegetarian,
+,6,101,Vegetarian,
+,8,102,Meatlovers,
+1,4,103,Meatlovers,"Meatlovers: Bacon, Cheese, Chicken"
+1,4,103,Meatlovers,"Meatlovers: Bacon, Cheese, Chicken"
+1,4,103,Vegetarian,"Vegetarian: Bacon, Cheese, Chicken"
+1,5,104,Meatlovers,"Meatlovers: Bacon, Cheese, Chicken"
+1,7,105,Vegetarian,"Vegetarian: Bacon, Cheese, Chicken"
+1,9,103,Meatlovers,"Meatlovers: Bacon, Cheese, Chicken"
+1,10,104,Meatlovers,"Meatlovers: Bacon, Cheese, Chicken"
+1,10,104,Meatlovers,"Meatlovers: Bacon, Cheese, Chicken"
+1,10,104,Meatlovers,"Meatlovers: Bacon, Cheese, Chicken"
+1,10,104,Meatlovers,"Meatlovers: Bacon, Cheese, Chicken"
+2,9,103,Meatlovers,"Meatlovers: Bacon, Cheese, Chicken"
+2,10,104,Meatlovers,"Meatlovers: Bacon, Cheese, Chicken"
+2,10,104,Meatlovers,"Meatlovers: Bacon, Cheese, Chicken"
+2,10,104,Meatlovers,"Meatlovers: Bacon, Cheese, Chicken"
+2,10,104,Meatlovers,"Meatlovers: Bacon, Cheese, Chicken"

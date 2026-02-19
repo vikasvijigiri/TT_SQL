@@ -1,1 +1,0 @@
-ERROR: LLM_FAILURE - ERROR: Bedrock Authentication Failed. If you are using a proxy (like on port 4000), please ensure LLM_API_BASE is set in .env to the correct endpoint URL.

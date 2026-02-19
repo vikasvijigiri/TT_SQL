@@ -1,6 +1,0 @@
-{
-  "relevant_tables": [
-    "results"
-  ],
-  "reasoning": "The query calculates points solely from the 'results' table: it aggregates points per driver and per constructor for each year, determines the maximum totals for each category, sums those two maxima, and then selects the three years with the smallest combined sum. No additional attributes from other tables (e.g., driver names or constructor names) are required, so only the 'results' table is needed."
-}

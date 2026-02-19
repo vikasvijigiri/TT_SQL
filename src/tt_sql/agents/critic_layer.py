@@ -12,7 +12,7 @@ class CriticAgent(BaseAgent):
     Decides if the result is satisfactory or requires refinement.
     """
     def __init__(self, llm_service: LLMService):
-        super().__init__(name="Critic")
+        super().__init__(name="SQLCritic")
         self.llm = llm_service
         self.prompt_loader = PromptLoader()
         self.file_coordinator = FileCoordinator()
@@ -39,37 +39,15 @@ class CriticAgent(BaseAgent):
         
         # Read SQL from file if state doesn't have it
         sql_to_criticize = self.file_coordinator.read_sql(state.instance_id, state.model_name) or state.chosen_query
-        
-        # Get schema path
-        schema_path = str(InstancePaths.schema(state.instance_id, state.model_name))
-        
-        # Full user query as the goal
-        current_sub_question = state.user_query
 
-        # Sampling results (CAP TO 500 CHARS)
-        sample_results = ""
-        
-        # Try reading from file first
-        execution_data = self.file_coordinator.read_execution(state.instance_id, state.model_name)
-        if execution_data:
-            err = execution_data.get('error', '')
-            if err:
-                sample_results = f"SQL ERROR: {err}"
-            else:
-                sample_results = f"Columns: {execution_data.get('columns', [])}\nRows (Top 2): {execution_data.get('rows', [])[:2]}\nTotal rows: {len(execution_data.get('rows', []))}"
-        elif state.execution_result:
-            # Fallback to state
-            sample_results = f"Columns: {state.execution_result.columns}\nRows (Top 2): {state.execution_result.rows[:2]}\nTotal rows: {len(state.execution_result.rows)}"
-            
-        if len(sample_results) > 500:
-            sample_results = sample_results[:500] + "... [TRUNCATED]"
-
-        # Token Optimization: Use compact schema string instead of full JSON file
-        # This prevents context window overflow on large schemas
+        # Token Optimization: only send relevant tables (from TableSelector)
         if state.schema_info:
-            schema_context = self._compact_schema(state.schema_info)
+            full_schema = state.schema_info
+            if state.relevant_tables:
+                full_schema = {k: v for k, v in full_schema.items() if k in state.relevant_tables}
+            schema_context = self._compact_schema(full_schema)
         else:
-             # Fallback to reading file and compacting
+             schema_path = str(InstancePaths.schema(state.instance_id, state.model_name))
              try:
                  with open(schema_path, "r", encoding="utf-8") as f:
                      full_schema = json.load(f)
@@ -82,22 +60,25 @@ class CriticAgent(BaseAgent):
         if state.step_by_step_plan:
             action_plan = "\n".join(f"  {i+1}. {s}" for i, s in enumerate(state.step_by_step_plan))
 
+        # Get previous feedback for enforcement checking
+        previous_feedback = getattr(state, 'critic_feedback', '') or 'None (first attempt)'
+
         messages = self.prompt_loader.load_prompt(
-            "critic_critique",
+            "sql_critic",
             user_query=state.user_query,
             action_plan=action_plan,
             sql=sql_to_criticize,
             schema_path=schema_context,
-            execution_result=sample_results or "No execution result available."
+            previous_feedback=previous_feedback
         )
         
         # Get Critique
         response = self.llm.get_json_completion(messages, state=state)
         
         if response:
-            # Parse new structure: is_valid, check_results, feedback
             is_valid = response.get("is_valid", False)
             check_results = response.get("check_results", {})
+            failure_categories = response.get("failure_categories", [])
             feedback = response.get("feedback", [])
             
             state.is_result_valid = is_valid
@@ -110,21 +91,19 @@ class CriticAgent(BaseAgent):
             
             state.critic_feedback = feedback_str.strip()
             
-            # Save full response to result file
-            self.file_coordinator.write_feedback(state.instance_id, response, state.model_name)
+            # Log failure categories and failed checks
+            if failure_categories:
+                self.log(state, f"Failure categories: {', '.join(failure_categories)}")
             
-            # Log failed checks
             failed_checks = [k for k, v in check_results.items() if v == "FAIL"]
             if failed_checks:
                 self.log(state, f"Failed checks: {', '.join(failed_checks)}")
             else:
                 self.log(state, "All checks passed.")
             
-            # Log feedback items
             if feedback:
                 self.log(state, f"Feedback: {feedback_str}")
             
-            # Log full JSON response
             Logger.log_code(json.dumps(response, indent=2), language="json")
         else:
             # Fallback if LLM fails

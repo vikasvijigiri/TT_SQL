@@ -1,9 +1,0 @@
-{
-  "relevant_tables": [
-    "problems",
-    "solutions",
-    "model_scores",
-    "models"
-  ],
-  "reasoning": "The query needs to (1) count how many times each problem appears in the `solutions` table for steps 1, 2, and 3, so the `problems` and `solutions` tables are required. (2) compare test scores of the \"Stack\" model against all other models for the same step and version, which requires the table that stores model test scores (here called `model_scores`) and the table that defines model names/types (`models`). These tables together provide the problem identifiers, occurrence counts, step/version information, and the model test scores needed to evaluate the condition and return the qualifying problems."
-}

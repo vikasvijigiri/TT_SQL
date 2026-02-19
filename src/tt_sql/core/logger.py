@@ -30,9 +30,11 @@ class Logger:
             return
 
         # File output only (no terminal spam)
+        import datetime
+        timestamp = datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")
         try:
             with open(cls._log_file, "a", encoding="utf-8") as f:
-                f.write(f"- **[{level}]** {message}\n")
+                f.write(f"- **[{timestamp}] [{level}]** {message}\n")
         except Exception:
             pass
 
@@ -55,6 +57,26 @@ class Logger:
             try:
                 listener(title, "section")
             except: pass
+
+    @classmethod
+    def log_divider(cls):
+        """Visual divider line."""
+        try:
+            with open(cls._log_file, "a", encoding="utf-8") as f:
+                f.write("\n" + "-" * 50 + "\n" + "-" * 50 + "\n\n")
+        except Exception:
+            pass
+
+    @classmethod
+    def log_stage_header(cls, title: str):
+        """Stage header with dividers above and below."""
+        try:
+            with open(cls._log_file, "a", encoding="utf-8") as f:
+                f.write("\n" + "-" * 50 + "\n")
+                f.write(f"## {title}\n")
+                f.write("-" * 50 + "\n\n")
+        except Exception:
+            pass
 
     @classmethod
     def log_title(cls, title: str):

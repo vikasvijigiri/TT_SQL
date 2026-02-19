@@ -1,7 +1,11 @@
-/resources/
-# Large data and resources
+# Local execution results and logs
+results/
+old_results/
 resources/
-
+kb_docs/
+JSON_logs/
+log.txt
+*.log
 
 # Environment and Virtual Env
 .env
@@ -9,6 +13,3 @@ new_venv/
 venv/
 __pycache__/
 *.pyc
-
-# Local logs
-*.md

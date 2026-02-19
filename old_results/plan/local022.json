@@ -1,9 +1,0 @@
-{
-  "step_by_step_approach": [
-    "Identify matches where a team was defeated.",
-    "Determine which team lost in each of those matches.",
-    "Locate the players who played for the losing team in those matches.",
-    "Select the players whose run total in the match is at least 100.",
-    "Return the names of those selected players."
-  ]
-}

@@ -1,7 +1,0 @@
-{
-  "relevant_tables": [
-    "drivers",
-    "deliveries"
-  ],
-  "reasoning": "To compute the average number of daily deliveries per driver we need a table that stores driver information (e.g., driver_id, name) \u2013 typically `drivers` \u2013 and a table that records each delivery event with a reference to the driver and the delivery date \u2013 typically `deliveries`. By joining these two tables on driver_id and grouping by driver_id and date, we can calculate the daily delivery counts per driver, then average those counts and select the top five drivers with the highest averages."
-}

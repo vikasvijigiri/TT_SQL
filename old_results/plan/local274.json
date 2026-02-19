@@ -1,9 +1,0 @@
-{
-  "step_by_step_approach": [
-    "Find all pick entries that belong to order 421.",
-    "Identify the product associated with each of those pick entries.",
-    "For each product, arrange its pick entries in the order they were taken, using the earliest first (FIFO).",
-    "Calculate the average number of units picked for each product based on the FIFO\u2011ordered entries.",
-    "Return the list of products together with their corresponding average units picked."
-  ]
-}
