@@ -3,8 +3,9 @@ import os
 import json
 from dotenv import load_dotenv
 
-# Ensure src is in path
-sys.path.append(os.path.join(os.path.dirname(__file__)))
+# Ensure src is in path (scripts/ -> project root -> src/)
+PROJECT_ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+sys.path.append(os.path.join(PROJECT_ROOT, "src"))
 
 from tt_sql.core.orchestrator import Orchestrator
 from tt_sql.core.state import AgentState

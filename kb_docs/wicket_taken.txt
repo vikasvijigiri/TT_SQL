@@ -1,9 +1,0 @@
-Table: wicket_taken
-            Columns:
-            - match_id (INTEGER)
-- over_id (INTEGER)
-- ball_id (INTEGER)
-- player_out (INTEGER)
-- kind_out (TEXT)
-- innings_no (INTEGER)
-        

@@ -6,8 +6,9 @@ import argparse
 from pathlib import Path
 import csv
 
-# Add src to python path if running from root
-sys.path.append(str(Path(__file__).parent / "src"))
+# Add src to python path (scripts/ -> project root -> src/)
+PROJECT_ROOT = Path(__file__).resolve().parent.parent
+sys.path.append(str(PROJECT_ROOT / "src"))
 
 from tt_sql.core.llm_service import LLMService
 from tt_sql.agents.failure_analysis_agent import FailureAnalysisAgent
@@ -52,7 +53,7 @@ def main():
     parser = argparse.ArgumentParser(description="Failure Analysis Runner")
     parser.add_argument("--csv", required=True, help="Path to CSV file with failed IDs")
     parser.add_argument("--model", required=True, help="Model name used for the run")
-    parser.add_argument("--dataset", default="spider2-lite.jsonl", help="Path to original dataset")
+    parser.add_argument("--dataset", default=str(PROJECT_ROOT / "data" / "spider2-lite.jsonl"), help="Path to original dataset")
     
     args = parser.parse_args()
 

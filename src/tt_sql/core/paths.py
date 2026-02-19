@@ -47,8 +47,8 @@ RESOURCES_DIR = PROJECT_ROOT / "resources"
 DATABASES_DIR = RESOURCES_DIR
 
 # Evaluation
-EVAL_DIR = PROJECT_ROOT  # Dataset is in root
-SPIDER_DATASET = EVAL_DIR / "spider2-lite.jsonl"
+DATA_DIR = PROJECT_ROOT / "data"
+SPIDER_DATASET = DATA_DIR / "spider2-lite.jsonl"
 
 # Vector store (RAG)
 VECTOR_STORE_DIR = PROJECT_ROOT / "vector_store"

@@ -1,5 +1,0 @@
-Table: team
-            Columns:
-            - team_id (INTEGER)
-- name (TEXT)
-        
