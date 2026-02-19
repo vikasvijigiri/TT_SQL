@@ -1,9 +1,0 @@
-{
-  "step_by_step_approach": [
-    "Gather the number of finished orders for each hub in February",
-    "Gather the number of finished orders for each hub in March",
-    "Calculate the percentage change from February to March for each hub",
-    "Select hubs where the percentage change is greater than 20%",
-    "Return the list of those hubs"
-  ]
-}

@@ -1,9 +1,0 @@
-{
-  "step_by_step_approach": [
-    "Find all visits to the page \"/regist/input\" and note their session identifiers and timestamps.",
-    "Find all visits to the page \"/regist/confirm\" and note their session identifiers and timestamps.",
-    "Identify sessions that appear in both sets of visits.",
-    "For each identified session, confirm that the timestamp of the \"/regist/input\" visit is earlier than the timestamp of the \"/regist/confirm\" visit.",
-    "Count the distinct sessions that satisfy the ordering condition."
-  ]
-}

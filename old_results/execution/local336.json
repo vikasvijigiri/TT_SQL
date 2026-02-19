@@ -1,7 +1,0 @@
-{
-  "columns": [],
-  "rows": [],
-  "row_count": 0,
-  "execution_time_ms": 7.942914962768555,
-  "error_message": "Incorrect number of bindings supplied. The current statement uses 1, and there are 0 supplied."
-}

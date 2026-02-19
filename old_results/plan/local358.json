@@ -1,7 +1,0 @@
-{
-  "step_by_step_approach": [
-    "Identify the age of each user.",
-    "Assign each user to a category: ages 20\u201129 as '20s', 30\u201139 as '30s', 40\u201149 as '40s', 50\u201159 as '50s', and all other ages as 'others'.",
-    "Count how many users fall into each category."
-  ]
-}

@@ -121,15 +121,37 @@ class LLMService:
     def get_completion(self, 
                        messages: List[Dict[str, str]], 
                        temperature: float = 0.0, 
-                       max_tokens: int = 4096) -> str:
+                       max_tokens: int = 8000,
+                       state: Optional[AgentState] = None) -> str:
         if not self.client:
             return "ERROR: LLM Client not initialized. Please check your credentials in .env"
 
+        # --- LOG PROMPT WITH AGENT NAME ---
+        try:
+            import inspect
+            caller_name = "UNKNOWN"
+            for frame_info in inspect.stack():
+                obj = frame_info.frame.f_locals.get("self")
+                if obj and hasattr(obj, "name") and obj is not self:
+                    caller_name = obj.name
+                    break
+
+            log_content = f"\n--- {caller_name.upper()} PROMPT ---\n"
+            for msg in messages:
+                role = msg.get("role", "unknown").upper()
+                content = msg.get("content", "")
+                log_content += f"**[{role}]**:\n{content}\n\n"
+            log_content += "----------------\n"
+            Logger.log(log_content, level="DEBUG") 
+        except Exception:
+            pass
+        # ------------------
+
         try:
             if self.is_bedrock:
-                return self._get_bedrock_completion(messages, temperature, max_tokens)
+                return self._get_bedrock_completion(messages, temperature, max_tokens, state)
             else:
-                return self._get_openai_completion(messages, temperature, max_tokens)
+                return self._get_openai_completion(messages, temperature, max_tokens, state)
         except Exception as e:
             error_msg = str(e)
             if "UnrecognizedClientException" in error_msg:
@@ -137,7 +159,13 @@ class LLMService:
             Logger.log(f"LLM Error: {error_msg}", level="ERROR")
             return f"ERROR: {error_msg}"
 
-    def _get_bedrock_completion(self, messages: List[Dict[str, str]], temperature: float, max_tokens: int) -> str:
+    def _track_usage(self, input_tokens: int, output_tokens: int, state: Optional[AgentState] = None):
+        """Helper to update state with token usage."""
+        if state and hasattr(state, 'token_usage'):
+            state.token_usage['input'] += input_tokens
+            state.token_usage['output'] += output_tokens
+
+    def _get_bedrock_completion(self, messages: List[Dict[str, str]], temperature: float, max_tokens: int, state: Optional[AgentState] = None) -> str:
         # Extract system messages separately - Bedrock Converse doesn't support them in messages array
         system_content = []
         lc_messages = []
@@ -200,6 +228,7 @@ class LLMService:
                     f"📊 Token Usage - Input: {input_tokens} | Output: {output_tokens} | Total: {total_tokens} | Max: {max_tokens}",
                     level="INFO"
                 )
+                self._track_usage(input_tokens, output_tokens, state)
             else:
                 # Debug: log the metadata structure to understand it
                 Logger.log(f"Debug: Response metadata structure: {response.response_metadata if hasattr(response, 'response_metadata') else 'No metadata'}", level="DEBUG")
@@ -220,7 +249,84 @@ class LLMService:
              
         return content.strip() if isinstance(content, str) else str(content)
 
-    def _get_openai_completion(self, messages: List[Dict[str, str]], temperature: float, max_tokens: int) -> str:
+    def get_completion_stream(self, 
+                              messages: List[Dict[str, str]], 
+                              temperature: float = 0.0, 
+                              max_tokens: int = 8000):
+        """Yields completion tokens."""
+        if not self.client:
+            yield "ERROR: LLM Client not initialized."
+            return
+
+        try:
+            if self.is_bedrock:
+                yield from self._get_bedrock_stream(messages, temperature, max_tokens)
+            else:
+                yield from self._get_openai_stream(messages, temperature, max_tokens)
+        except Exception as e:
+            error_msg = str(e)
+            Logger.log(f"LLM Stream Error: {error_msg}", level="ERROR")
+            yield f"ERROR: {error_msg}"
+
+    def _get_bedrock_stream(self, messages: List[Dict[str, str]], temperature: float, max_tokens: int):
+        # Prepare messages (reuse logic from sync method)
+        system_content = []
+        lc_messages = []
+        
+        for msg in messages:
+            role = msg.get("role")
+            content = msg.get("content")
+            if role == "system":
+                system_content.append(content)
+            elif role == "user":
+                lc_messages.append(HumanMessage(content=content))
+            elif role == "assistant":
+                lc_messages.append(AIMessage(content=content))
+            else:
+                lc_messages.append(HumanMessage(content=content))
+
+        if system_content and not lc_messages:
+            lc_messages.append(HumanMessage(content="\n\n".join(system_content)))
+        elif system_content and lc_messages:
+            first_msg_content = lc_messages[0].content
+            combined_content = "\n\n".join(system_content) + "\n\n" + first_msg_content
+            lc_messages[0] = HumanMessage(content=combined_content)
+
+        # Stream via LangChain
+        try:
+            for chunk in self.client.stream(lc_messages, temperature=temperature, max_tokens=max_tokens):
+                if isinstance(chunk, str):
+                    yield chunk
+                elif hasattr(chunk, 'content'):
+                    content = chunk.content
+                    if isinstance(content, list):
+                        # Handle list of blocks (e.g. [{'text': '...'}])
+                        text_parts = []
+                        for block in content:
+                            if isinstance(block, str):
+                                text_parts.append(block)
+                            elif isinstance(block, dict) and 'text' in block:
+                                text_parts.append(block['text'])
+                        yield "".join(text_parts)
+                    else:
+                        yield str(content)
+        except Exception as e:
+            Logger.log(f"Bedrock stream failed: {e}", level="ERROR")
+            yield ""
+
+    def _get_openai_stream(self, messages: List[Dict[str, str]], temperature: float, max_tokens: int):
+        stream = self.client.chat.completions.create(
+            model=self.model,
+            messages=messages,
+            temperature=temperature,
+            max_tokens=max_tokens,
+            stream=True
+        )
+        for chunk in stream:
+            if chunk.choices and chunk.choices[0].delta.content:
+                yield chunk.choices[0].delta.content
+
+    def _get_openai_completion(self, messages: List[Dict[str, str]], temperature: float, max_tokens: int, state: Optional[AgentState] = None) -> str:
         response = self.client.chat.completions.create(
             model=self.model,
             messages=messages,
@@ -239,6 +345,7 @@ class LLMService:
                 f"📊 Token Usage - Input: {input_tokens} | Output: {output_tokens} | Total: {total_tokens} | Max: {max_tokens}",
                 level="INFO"
             )
+            self._track_usage(input_tokens, output_tokens, state)
         
         return response.choices[0].message.content.strip()
 
@@ -248,7 +355,8 @@ class LLMService:
     def get_json_completion(self, 
                             messages: List[Dict[str, str]], 
                             state: Optional[AgentState] = None) -> Any:
-        content = self.get_completion(messages)
+        # Pass state to get_completion for tracking
+        content = self.get_completion(messages, state=state)
         if state:
             state.last_raw_response = content
         

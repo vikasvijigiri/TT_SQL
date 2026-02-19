@@ -1,8 +1,0 @@
-{
-  "relevant_tables": [
-    "orders",
-    "stores",
-    "deliveries"
-  ],
-  "reasoning": "The query requires aggregating order counts per store, which comes from the `orders` table (containing order IDs and a foreign key to the store). Store details (such as store name or ID) are needed from the `stores` table to identify the store with the highest order volume. To compute the ratio of delivered orders, we must check which orders have a corresponding entry in the `deliveries` table with a status of 'DELIVERED'. Therefore, these three tables are essential to answer the question."
-}

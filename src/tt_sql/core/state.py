@@ -58,12 +58,15 @@ class AgentState(BaseModel):
     db_path: str
     instance_id: str = "default"  # Required for file-based tracking Header
     model_name: str = "default_model" # Track which model is running this task
+    sub_questions: List[str] = Field(default_factory=list) # Decomposed questions for multi-part queries
     
     # Analysis
     schema_info: Dict[str, Any] = Field(default_factory=dict)
     query_intent: Optional[str] = None
     complexity_score: Optional[str] = None  # e.g., "LOW", "MEDIUM", "HIGH"
     relevant_tables: List[str] = Field(default_factory=list)
+    context_reasoning: str = "" # Reasoning for table selection
+    
     
     # Intent Classification Details
     intent_entities: List[str] = Field(default_factory=list)
@@ -111,6 +114,10 @@ class AgentState(BaseModel):
     
     # Interaction
     viz_recommendation: Optional[Dict[str, Any]] = None
+    stop_requested: bool = False
+
+    # Usage Tracking
+    token_usage: Dict[str, int] = Field(default_factory=lambda: {"input": 0, "output": 0})
 
     def add_log(self, message: str):
         self.logs.append(message)

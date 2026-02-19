@@ -2,6 +2,7 @@ import sys
 import os
 import json
 import csv
+import argparse
 from dotenv import load_dotenv
 
 # Ensure src is in path
@@ -11,12 +12,13 @@ from tt_sql.core.orchestrator import Orchestrator
 from tt_sql.core.state import AgentState
 from tt_sql.core.llm_service import LLMService
 from tt_sql.core.logger import Logger
+from tt_sql.core.paths import initialize_directories, InstancePaths, SPIDER_DATASET
+from tt_sql.core.file_coordinator import FileCoordinator
 
 # Agents
 from tt_sql.agents.input_layer import (
     SQLiteFileLoaderAgent, 
     SchemaAnalyzerAgent, 
-    QueryIntentClassifierAgent, 
     ContextEnrichmentAgent
 )
 from tt_sql.agents.planning_layer import (
@@ -25,51 +27,63 @@ from tt_sql.agents.planning_layer import (
 )
 from tt_sql.agents.generation_layer import MultiCandidateGeneratorAgent
 from tt_sql.agents.loop_layer import RefinementLoopAgent
+from tt_sql.agents.execution_layer import SQLiteExecutorAgent
 
 def main():
     load_dotenv()
     
-    # Initialize Markdown Logger
-    Logger.set_log_file("run_log.md")
-    Logger.log_section("Batch Runner Started")
+    parser = argparse.ArgumentParser(description="Run Text2SQL Batch Processing")
+    parser.add_argument("--model", type=str, default="bedrock/openai.gpt-oss-safeguard-120b", help="Model name to use")
+    parser.add_argument("--limit", type=int, default=0, help="Limit number of tasks (0 for all)")
+    args = parser.parse_args()
     
-    # 1. Setup paths
-    # Assuming batch_runner.py is in src/
-    base_dir = os.path.dirname(os.path.dirname(__file__)) # Project root
-    jsonl_path = os.path.join(base_dir, "spider2-lite.jsonl")
-    results_dir = os.path.join(base_dir, "results")
-    sql_results_dir = os.path.join(results_dir, "sql")
-    csv_results_dir = os.path.join(results_dir, "csv")
-    schema_results_dir = os.path.join(results_dir, "schema")
+    model_name = args.model
     
-    os.makedirs(sql_results_dir, exist_ok=True)
-    os.makedirs(csv_results_dir, exist_ok=True)
-    os.makedirs(schema_results_dir, exist_ok=True)
+    # 1. Initialize Directories using centralized logic
+    initialize_directories(model_name)
     
-    # 2. Initialize Services & Agents (Reusable)
-    llm_service = LLMService()
+    # Initialize Markdown Logger (Global run log)
+    # We might want to store this in results/{model}/logs/batch_run.md?
+    # For now, let's keep it in the current directory or use a specific path
+    Logger.set_log_file(f"batch_run_{model_name.replace('/', '_')}.md")
+    Logger.log_section(f"Batch Runner Started for Model: {model_name}")
+    
+    # 2. Initialize Services & Agents
+    llm_service = LLMService(model=model_name)
+    file_coordinator = FileCoordinator()
     
     agents = [
         SQLiteFileLoaderAgent(),
         SchemaAnalyzerAgent(),
-        QueryIntentClassifierAgent(llm_service),
         ContextEnrichmentAgent(llm_service),
         RelationshipGraphBuilderAgent(),
         StepByStepPlannerAgent(llm_service),
-        RefinementLoopAgent(llm_service)
+        RefinementLoopAgent(llm_service),
+        # Ensure Executor is included if needed for final execution in pipeline
+        # (It interacts with state, but file saving is handled below or by agents)
+        SQLiteExecutorAgent() 
     ]
     
     orchestrator = Orchestrator(agents)
     
-    # 3. Read JSONL
+    # 3. Read JSONL from centralized path
+    jsonl_path = SPIDER_DATASET
     Logger.log(f"Reading from {jsonl_path}")
+    
     tasks = []
-    with open(jsonl_path, 'r', encoding='utf-8') as f:
-        for line in f:
-            if line.strip():
-                tasks.append(json.loads(line))
-                
-    Logger.log(f"Found {len(tasks)} tasks.")
+    if os.path.exists(jsonl_path):
+        with open(jsonl_path, 'r', encoding='utf-8') as f:
+            for line in f:
+                if line.strip():
+                    tasks.append(json.loads(line))
+    else:
+        Logger.log(f"Dataset not found at {jsonl_path}", level="ERROR")
+        return
+
+    if args.limit > 0:
+        tasks = tasks[:args.limit]
+        
+    Logger.log(f"Found {len(tasks)} tasks to process.")
     
     # 4. Processing Loop
     for i, task in enumerate(tasks):
@@ -81,56 +95,59 @@ def main():
             print(f"Skipping invalid task line {i}")
             continue
             
-        # Construct DB Path
-        # Pattern: C:/Users/VikasVijigiri/Documents/Spider2/spider2-lite/resource/databases/spider2-localdb/{DB}.sqlite
-        db_path = f"C:/Users/VikasVijigiri/Documents/Spider2/spider2-lite/resource/databases/spider2-localdb/{db_name}.sqlite"
+        # Construct DB Path using InstancePaths helper logic
+        # (We use InstancePaths.database which handles defaults)
+        db_path_obj = InstancePaths.database(db_name)
+        db_path = str(db_path_obj)
         
         # Check existence
-        if not os.path.exists(db_path):
+        if not db_path_obj.exists():
             Logger.log(f"[{i+1}/{len(tasks)}] Skipping: DB not found at {db_path}", level="WARN")
-            # Optional: Write a specific failure file?
             continue
             
         Logger.log_section(f"[{i+1}/{len(tasks)}] Processing {instance_id} (DB: {db_name})")
+        print(f"Processing {instance_id}...")
+        
         try:
             # Create Initial State
             initial_state = AgentState(
                 user_query=question,
                 db_path=db_path,
-                instance_id=instance_id
+                instance_id=instance_id,
+                model_name=model_name
             )
             
             # Run Pipeline
             final_state = orchestrator.run_pipeline(initial_state)
             
-            # Save Results
+            # Save Results (using FileCoordinator/InstancePaths for consistency)
             
             # 1. SQL File
-            sql_out_path = os.path.join(sql_results_dir, f"{instance_id}.sql")
             generated_sql = final_state.chosen_query or "-- No SQL Generated"
+            file_coordinator.write_sql(instance_id, generated_sql, model_name)
+            
             Logger.log(f"Final SQL for {instance_id}:")
             Logger.log_code(generated_sql)
             
-            with open(sql_out_path, 'w', encoding='utf-8') as f_sql:
-                f_sql.write(generated_sql)
-                
             # 2. CSV Results File
-            csv_out_path = os.path.join(csv_results_dir, f"{instance_id}.csv")
             if final_state.execution_result and final_state.execution_result.rows:
                 Logger.log(f"Execution successful. Rows: {len(final_state.execution_result.rows)}")
-                with open(csv_out_path, 'w', newline='', encoding='utf-8') as f_csv:
-                    writer = csv.writer(f_csv)
-                    # Write headers if available
-                    if final_state.execution_result.columns:
-                        writer.writerow(final_state.execution_result.columns)
-                    writer.writerows(final_state.execution_result.rows)
+                file_coordinator.write_csv(
+                    instance_id, 
+                    final_state.execution_result.rows, 
+                    final_state.execution_result.columns, 
+                    model_name
+                )
             else:
-                 # Create empty CSV or write error info
+                 # Create error CSV
                  err_msg = final_state.execution_result.error_message if final_state.execution_result else "No result object"
                  Logger.log(f"Execution failed or empty. Error: {err_msg}", level="WARN")
-                 with open(csv_out_path, 'w', newline='', encoding='utf-8') as f_csv:
+                 
+                 # Manual write for error state since file_coordinator.write_csv expects valid rows/cols
+                 # Or we can just write a CSV with a header "Error"
+                 csv_path = InstancePaths.csv(instance_id, model_name)
+                 with open(csv_path, 'w', newline='', encoding='utf-8') as f_csv:
                      writer = csv.writer(f_csv)
-                     # Write error header
                      writer.writerow(["status", "error"])
                      writer.writerow(["failed", err_msg])
 
@@ -138,7 +155,6 @@ def main():
 
         except Exception as e:
             Logger.log(f"CRITICAL ERROR processing {instance_id}: {e}", level="ERROR")
-            # Continue to next task
             continue
 
 if __name__ == "__main__":

@@ -1,4 +1,5 @@
 from typing import List
+import json
 from ..core.agent_base import BaseAgent, AgentState
 from ..core.llm_service import LLMService
 from ..core.prompt_loader import PromptLoader
@@ -9,7 +10,7 @@ class StepByStepPlannerAgent(BaseAgent):
     Generates a high-level plan for answering the user query.
     """
     def __init__(self, llm_service: LLMService):
-        super().__init__(name="StepByStepPlanner")
+        super().__init__(name="QueryPlanner")
         self.llm = llm_service
         self.prompt_loader = PromptLoader()
         self.file_coordinator = FileCoordinator()
@@ -19,31 +20,41 @@ class StepByStepPlannerAgent(BaseAgent):
         
         self.log(state, "PLAN_CATEGORY: ⚡ Execution Roadmap")
         
-        # Get paths
-        intent_path = str(InstancePaths.intent(state.instance_id, state.model_name))
-        context_path = str(InstancePaths.context(state.instance_id, state.model_name))
         
-        # Use file-based inputs
+        # Reconstruct intent context
+        intent_data = {
+            "intent": state.query_intent,
+            "complexity": state.complexity_score
+        }
+        intent_context = json.dumps(intent_data, indent=2)
+        
+        # Reconstruct enriched context
+        context_data = {
+            "relevant_tables": state.relevant_tables,
+            "reasoning": state.context_reasoning
+        }
+        context_context = json.dumps(context_data, indent=2)
+        
+        # Use in-memory inputs
         messages = self.prompt_loader.load_prompt(
-            "query_planning",
+            "query_planner",
             user_query=state.user_query,
-            intent_path=f"file://{intent_path}",
-            context_path=f"file://{context_path}"
+            intent_path=intent_context,
+            context_path=context_context
         )
                     
-        response = self.llm.get_json_completion(messages)
+        response = self.llm.get_json_completion(messages, state=state)
         if response and "step_by_step_approach" in response:
             state.step_by_step_plan = response["step_by_step_approach"]
             
-            # Write plan to results/plan/
-            self.file_coordinator.write_plan(state.instance_id, response, state.model_name)
-            self.log(state, f"Plan written to results/plan/{state.instance_id}.json")
+            # Write plan to results/plan/ for traceability
+            self.file_coordinator.write_plan(state.instance_id, state.step_by_step_plan, state.model_name)
         else:
             state.step_by_step_plan = ["Analyze Schema", "Generate SQL"]
             
         self.log(state, f"Generated execution plan with {len(state.step_by_step_plan)} sub-tasks:")
-        for i, step in enumerate(state.step_by_step_plan):
-            self.log(state, f"PLAN_STEP: {i+6}. {step}")
+        for step in state.step_by_step_plan:
+            self.log(state, f"PLAN_STEP: - {step}")
         return state
 
 class RelationshipGraphBuilderAgent(BaseAgent):

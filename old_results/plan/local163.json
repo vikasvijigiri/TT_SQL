@@ -1,8 +1,0 @@
-{
-  "step_by_step_approach": [
-    "Calculate the average salary for each faculty rank.",
-    "For each faculty member, compute the absolute difference between their salary and the average salary of their rank.",
-    "Identify, within each rank, the faculty member(s) whose salary difference is the smallest.",
-    "Return the rank, first name, last name, and salary of those identified faculty members."
-  ]
-}

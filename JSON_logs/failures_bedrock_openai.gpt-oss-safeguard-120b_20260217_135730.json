@@ -1,0 +1,9 @@
+{
+  "metadata": {
+    "model": "bedrock_openai.gpt-oss-safeguard-120b",
+    "total_samples": 0,
+    "accuracy": 0.0,
+    "timestamp": "20260217_135730"
+  },
+  "failures": []
+}

@@ -1,8 +1,0 @@
-{
-  "relevant_tables": [
-    "orders",
-    "stores",
-    "hubs"
-  ],
-  "reasoning": "To determine the change in finished orders per hub, we need the `orders` table to count orders whose `order_moment_finished` falls in February and March. The `stores` table links each order (via `store_id`) to its parent hub, and the `hubs` table provides the hub identifiers and names to report which hubs experienced the >20% increase."
-}

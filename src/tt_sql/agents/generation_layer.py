@@ -12,7 +12,7 @@ class MultiCandidateGeneratorAgent(BaseAgent):
     Generates multiple SQL candidates (e.g., standard join, CTE, etc.).
     """
     def __init__(self, llm_service: LLMService):
-        super().__init__(name="Generator/corrector")
+        super().__init__(name="SQLBuilder")
         self.llm = llm_service
         self.prompt_loader = PromptLoader()
         self.file_coordinator = FileCoordinator()
@@ -64,9 +64,12 @@ class MultiCandidateGeneratorAgent(BaseAgent):
             except Exception as e:
                 Logger.log(f"RAG retrieval failed: {e}", level="ERROR")
 
-        # Optimize Schema Context using Compact Format (saves tokens)
+        # Optimize Schema Context: only send relevant tables (from TableSelector)
         if state.schema_info:
-             schema_context = self._compact_schema(state.schema_info)
+             full_schema = state.schema_info
+             if state.relevant_tables:
+                 full_schema = {k: v for k, v in full_schema.items() if k in state.relevant_tables}
+             schema_context = self._compact_schema(full_schema)
         else:
              try:
                  with open(schema_path, "r", encoding="utf-8") as f:
@@ -81,22 +84,42 @@ class MultiCandidateGeneratorAgent(BaseAgent):
 
         # Prompt Loading: matches sqlite_generation.yaml
         messages = self.prompt_loader.load_prompt(
-            "sqlite_generation",
+            "sql_builder",
             user_query=state.user_query,
             action_plan=action_plan,
             schema_path=schema_context,
             previous_sql=previous_sql
         )
         
+        # Consolidate RAG context and Critic feedback into the main user message
+        extra_context = ""
         if rag_context:
-            messages.append({"role": "user", "content": rag_context})
+            extra_context += f"\n{rag_context}"
 
-        # Inject Critic feedback if available (brief corrections only)
+        has_critic_feedback = False
         if state.history:
             for item in state.history[-1:]:
                 content = item.get("content", "")
                 if content:
-                    messages.append({"role": "user", "content": f"CRITIC FEEDBACK:\n{content}"})
+                    extra_context += f"\n\nCRITIC FEEDBACK (YOU MUST FIX ALL ISSUES BELOW):\n{content}"
+                    has_critic_feedback = True
+
+        # When critic feedback exists, relabel previous SQL so builder knows it has errors
+        if has_critic_feedback and previous_sql:
+            for msg in messages:
+                if msg["role"] == "user" and "Previous Valid SQL Foundation" in msg["content"]:
+                    msg["content"] = msg["content"].replace(
+                        "Previous Valid SQL Foundation:",
+                        "PREVIOUS SQL (HAS ERRORS — REWRITE FROM SCRATCH):"
+                    )
+                    break
+
+        if extra_context:
+            # Append to the last user message instead of creating new ones
+            for msg in reversed(messages):
+                if msg["role"] == "user":
+                    msg["content"] += extra_context
+                    break
         
         
         candidates = []

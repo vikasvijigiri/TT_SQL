@@ -1,7 +1,0 @@
-{
-  "relevant_tables": [
-    "payment",
-    "customer"
-  ],
-  "reasoning": "The query requires calculating each customer's total lifetime sales (LTV) and the portion of those sales that occur within the first 7 and 30 days after the customer's first purchase. The `payment` table stores the monetary amount of each sale (`amount`) and the exact timestamp of the sale (`payment_date`), which are needed to compute LTV, identify the initial purchase timestamp per customer, and sum sales within the precise 7\u2011day and 30\u2011day windows. The `customer` table provides the list of customers (`customer_id`) to group the payments by, and allows us to filter out customers with zero total sales. No other tables contain sales or timestamp data relevant to this calculation."
-}

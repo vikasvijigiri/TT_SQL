@@ -1,9 +1,0 @@
-{
-  "relevant_tables": [
-    "final_packaging_combinations",
-    "packaging_relationships",
-    "items",
-    "item_quantities"
-  ],
-  "reasoning": "The query asks for the average total quantity of leaf\u2011level items across all final packaging combinations after expanding any nested packaging relationships. \n- **final_packaging_combinations** stores each distinct packaging combination that is considered \"final\" (i.e., the top\u2011level grouping of items). \n- **packaging_relationships** (or a similar bill\u2011of\u2011materials table) captures the hierarchical links between a packaging combination and its component items, including any nested sub\u2011packaging levels, allowing us to recursively expand the hierarchy to the leaf items. \n- **items** provides the master list of all items that can appear at any level of the hierarchy, enabling us to identify which rows in the relationship table are leaf\u2011level (i.e., have no further children). \n- **item_quantities** (or a quantity column within the relationship table) holds the quantity of each component item within a packaging combination. By joining these tables, we can sum the quantities of only the leaf\u2011level items for each final combination and then compute the overall average across all combinations."
-}

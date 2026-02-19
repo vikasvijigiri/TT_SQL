@@ -22,7 +22,7 @@ PIPELINE_CONFIG = CONFIG_DIR / "pipeline_config.yaml"
 
 # Prompts
 PROMPTS_DIR = PACKAGE_DIR / "prompts"
-INTENT_CLASSIFICATION_PROMPT = PROMPTS_DIR / "intent_classification.yaml"
+
 QUERY_PLANNING_PROMPT = PROMPTS_DIR / "query_planning.yaml"
 CONTEXT_ENRICHMENT_PROMPT = PROMPTS_DIR / "context_enrichment.yaml"
 SQLITE_GENERATION_PROMPT = PROMPTS_DIR / "sqlite_generation.yaml"
@@ -47,7 +47,7 @@ RESOURCES_DIR = PROJECT_ROOT / "resources"
 DATABASES_DIR = RESOURCES_DIR
 
 # Evaluation
-EVAL_DIR = PROJECT_ROOT / "evaluation"
+EVAL_DIR = PROJECT_ROOT  # Dataset is in root
 SPIDER_DATASET = EVAL_DIR / "spider2-lite.jsonl"
 
 # Vector store (RAG)
@@ -76,14 +76,9 @@ def initialize_directories(model_name: str = None):
         directories.extend([
             model_dir / "sql",
             model_dir / "csv",
-            model_dir / "logs",
+            model_dir / "log",
             model_dir / "schema",
-            model_dir / "feedback",
-            model_dir / "subtasks",
-            model_dir / "intent",
-            model_dir / "context",
             model_dir / "plan",
-            model_dir / "execution",
         ])
         
     for directory in directories:
@@ -105,44 +100,23 @@ class InstancePaths:
         return get_model_results_dir(model_name) / "csv" / f"{instance_id}.csv"
     
     @staticmethod
+    def log(instance_id: str, model_name: str = "default_model") -> Path:
+        """Path to markdown log file for an instance"""
+        return get_model_results_dir(model_name) / "log" / f"{instance_id}.md"
+
+    @staticmethod
     def schema(instance_id: str, model_name: str = "default_model") -> Path:
         """Path to schema JSON file for an instance"""
         return get_model_results_dir(model_name) / "schema" / f"{instance_id}.json"
     
     @staticmethod
-    def feedback(instance_id: str, model_name: str = "default_model") -> Path:
-        """Path to feedback JSON file for an instance"""
-        return get_model_results_dir(model_name) / "feedback" / f"{instance_id}.json"
-    
-    @staticmethod
-    def subtasks(instance_id: str, model_name: str = "default_model") -> Path:
-        """Path to subtasks JSON file for an instance"""
-        return get_model_results_dir(model_name) / "subtasks" / f"{instance_id}.json"
-    
-    @staticmethod
-    def log(instance_id: str, model_name: str = "default_model") -> Path:
-        """Path to markdown log file for an instance"""
-        return get_model_results_dir(model_name) / "logs" / f"{instance_id}.md"
-    
-    @staticmethod
-    def intent(instance_id: str, model_name: str = "default_model") -> Path:
-        """Path to intent classification JSON file for an instance"""
-        return get_model_results_dir(model_name) / "intent" / f"{instance_id}.json"
-    
-    @staticmethod
-    def context(instance_id: str, model_name: str = "default_model") -> Path:
-        """Path to context enrichment JSON file for an instance"""
-        return get_model_results_dir(model_name) / "context" / f"{instance_id}.json"
-    
-    @staticmethod
     def plan(instance_id: str, model_name: str = "default_model") -> Path:
-        """Path to execution plan JSON file for an instance"""
-        return get_model_results_dir(model_name) / "plan" / f"{instance_id}.json"
+        """Path to plan markdown file for an instance"""
+        return get_model_results_dir(model_name) / "plan" / f"{instance_id}.md"
     
-    @staticmethod
-    def execution(instance_id: str, model_name: str = "default_model") -> Path:
-        """Path to execution results JSON file for an instance"""
-        return get_model_results_dir(model_name) / "execution" / f"{instance_id}.json"
+
+    
+
     
     @staticmethod
     def database(db_name: str) -> Path:

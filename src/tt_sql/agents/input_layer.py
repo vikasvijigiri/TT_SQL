@@ -6,6 +6,24 @@ from ..core.llm_service import LLMService
 from ..core.prompt_loader import PromptLoader
 from ..core.file_coordinator import FileCoordinator
 from ..rag.vector_store import VectorStoreAgent
+import json
+
+def format_schema_to_str(schema_info: Dict[str, Any]) -> str:
+    """Formats schema dict into a compact string: Table(col1, col2)"""
+    if not schema_info: return ""
+    lines = []
+    for table, data in schema_info.items():
+        # Handle potential dictionary structure
+        if isinstance(data, dict) and "columns" in data:
+            cols = data["columns"]
+        elif isinstance(data, list):
+            cols = data
+        else:
+            cols = []
+            
+        col_names = [c.get("name", c) if isinstance(c, dict) else str(c) for c in cols]
+        lines.append(f"{table}({', '.join(col_names)})")
+    return "\n".join(lines)
 
 class SQLiteFileLoaderAgent(BaseAgent):
     """
@@ -87,82 +105,34 @@ class SchemaAnalyzerAgent(BaseAgent):
         
         state.schema_info = schema_info
         
-        # Write schema to results/schema/ for other agents/prompts to read
-        self.file_coordinator.write_schema(state.instance_id, schema_info, state.model_name)
-        self.log(state, f"Schema written to results/schema/{state.instance_id}.json")
-        
-        self.log(state, f"PLAN_STEP: 3. Schema Extracted ({len(tables)} tables identified)")
+        # Write schema to results/{model}/schema/ for downstream agents
+        try:
+            self.file_coordinator.write_schema(state.instance_id, schema_info, state.model_name)
+            self.log(state, f"PLAN_STEP: 3. Schema Extracted & Saved to dynamic path ({len(tables)} tables identified)")
+        except Exception as e:
+            self.log(state, f"Warning: Could not write schema file: {e}", level="WARN")
+            self.log(state, f"PLAN_STEP: 3. Schema Extracted (Memory only) ({len(tables)} tables identified)")
         return state
 
-class QueryIntentClassifierAgent(BaseAgent):
-    """
-    Classifies the user query intent and complexity using LLM.
-    """
-    def __init__(self, llm_service: LLMService):
-        super().__init__(name="QueryIntentClassifier")
-        self.llm = llm_service
-        self.prompt_loader = PromptLoader()
-        self.file_coordinator = FileCoordinator()
 
-    def run(self, state: AgentState) -> AgentState:
-        from ..core.paths import InstancePaths
-        
-        # Get schema file path
-        schema_path = str(InstancePaths.schema(state.instance_id, state.model_name))
-        
-        messages = self.prompt_loader.load_prompt(
-            "intent_classification",
-            user_query=state.user_query,
-            schema_path=f"file://{schema_path}"  # Pass file path, not content
-        )
-                    
-        response = self.llm.get_json_completion(messages)
-        
-        if response:
-            state.query_intent = response.get("intent", "UNKNOWN")
-            state.complexity_score = response.get("complexity", "LOW")
-            
-            # Extract all new fields
-            state.intent_entities = response.get("entities", [])
-            state.intent_metrics = response.get("metrics", [])
-            state.intent_math_operations = response.get("all_maths_operations", [])
-            state.intent_quantities = response.get("quantities_to_be_estimated", [])
-            state.intent_approach = response.get("approach_to_calculate_quantities_to_be_estimated", "")
-            state.intent_dimensions = response.get("dimensions", [])
-            state.intent_filters = response.get("filters", [])
-            state.intent_time_constraints = response.get("time_constraints", [])
-            state.intent_joins = response.get("joins", [])
-            state.intent_sorting = response.get("sorting", [])
-            state.intent_limits = response.get("limits")
-            state.intent_output_format = response.get("output_format")
-            state.intent_output_precision = response.get("output_precision")
-            
-            # Write intent results to file
-            self.file_coordinator.write_intent(state.instance_id, response, state.model_name)
-            self.log(state, f"Intent results written to results/intent/{state.instance_id}.json")
-        else:
-            state.query_intent = "UNKNOWN"
-            state.complexity_score = "LOW"
-            
-        self.log(state, f"INTENT_CLASSIFIED: {state.query_intent}")
-        return state
+
 
 class ContextEnrichmentAgent(BaseAgent):
     """
     Enriches the context by identifying relevant tables/terms.
     """
     def __init__(self, llm_service: LLMService):
-        super().__init__(name="ContextEnrichment")
+        super().__init__(name="TableSelector")
         self.llm = llm_service
         self.prompt_loader = PromptLoader()
         self.file_coordinator = FileCoordinator()
         
     def run(self, state: AgentState) -> AgentState:
-        from ..core.paths import InstancePaths
+        # Prepare inputs from state
+        schema_context = format_schema_to_str(state.schema_info)
         
-        # Get paths
-        schema_path = str(InstancePaths.schema(state.instance_id, state.model_name))
-        intent_path = str(InstancePaths.intent(state.instance_id, state.model_name))
+        # No intent data to pass — the LLM will classify it in this same call
+        intent_context = "Not yet classified — please classify in your response."
         
         kb_context_str = ""
         rag_source = getattr(state, "rag_source", "none")
@@ -225,16 +195,16 @@ class ContextEnrichmentAgent(BaseAgent):
                 else:
                      self.log(state, "No relevant context found in Knowledge Base")
         
-        # Use file-based inputs
+        # Use in-memory inputs
         messages = self.prompt_loader.load_prompt(
-            "table_selection",
+            "table_selector",
             user_query=state.user_query,
-            schema_path=f"file://{schema_path}",
-            intent_path=f"file://{intent_path}",
+            schema_path=schema_context,
+            intent_path=intent_context,
             kb_context=kb_context_str 
         )
                     
-        response = self.llm.get_json_completion(messages)
+        response = self.llm.get_json_completion(messages, state=state)
         
         relevant = []
         if response and "relevant_tables" in response:
@@ -247,7 +217,12 @@ class ContextEnrichmentAgent(BaseAgent):
             relevant = [] 
 
         state.relevant_tables = relevant
-        self.log(state, f"PLAN_STEP: 5. Context Enriched (Tables: {', '.join(relevant)})")
+
+        # Extract intent and complexity from the same response
+        state.query_intent = response.get("intent", "DATA_RETRIEVAL") if response else "DATA_RETRIEVAL"
+        state.complexity_score = response.get("complexity", "MEDIUM") if response else "MEDIUM"
+
+        self.log(state, f"PLAN_STEP: 5. Context Enriched (Tables: {', '.join(relevant)} | Intent: {state.query_intent} | Complexity: {state.complexity_score})")
         
         # Create context data structure
         context_data = {
@@ -255,15 +230,16 @@ class ContextEnrichmentAgent(BaseAgent):
             "reasoning": response.get("reasoning", "") if response else "No response"
         }
         
-        # Write context to results/context/
-        self.file_coordinator.write_context(state.instance_id, context_data, state.model_name)
-        self.log(state, f"Context written to results/context/{state.instance_id}.json")
+        state.context_reasoning = context_data["reasoning"]
+        
+        # Write context to results/context/ - REMOVED
+        # self.file_coordinator.write_context(...)
         
         # Write filtered schema for downstream agents
         # (Generator currently expects this)
         try:
              # We need to read the full schema to filter it
-             schema_info = self.file_coordinator.read_schema(state.instance_id, state.model_name)
+             schema_info = state.schema_info
              if schema_info:
                  filtered_schema = {k: v for k, v in schema_info.items() if k in relevant}
                  # We can overwrite the main schema file or keep it separately?

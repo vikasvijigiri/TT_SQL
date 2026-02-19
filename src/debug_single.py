@@ -47,7 +47,6 @@ def main():
     agents = [
         SQLiteFileLoaderAgent(),
         SchemaAnalyzerAgent(),
-        QueryIntentClassifierAgent(llm_service),
         ContextEnrichmentAgent(llm_service),
         RelationshipGraphBuilderAgent(),
         StepByStepPlannerAgent(llm_service),
