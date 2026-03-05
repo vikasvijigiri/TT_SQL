@@ -1,404 +1,721 @@
 {
-  "product_category_name_translation": {
+  "kpi_invoice_to_order_calc": {
     "columns": [
       {
-        "name": "product_category_name",
-        "type": "TEXT",
+        "column_name": "final_no_days",
+        "type": "bigint",
+        "description": "",
+        "sample_values": [
+          "11",
+          "11"
+        ],
         "pk": false
       },
       {
-        "name": "product_category_name_english",
-        "type": "TEXT",
+        "column_name": "ev_shipped_quantity_oms",
+        "type": "bigint",
+        "description": "",
+        "sample_values": [
+          "0",
+          "0"
+        ],
+        "pk": false
+      },
+      {
+        "column_name": "process_day_by_3pl",
+        "type": "character varying",
+        "description": "",
+        "sample_values": [
+          "352",
+          "352"
+        ],
+        "pk": false
+      },
+      {
+        "column_name": "no_of_days",
+        "type": "bigint",
+        "description": "",
+        "sample_values": [
+          "8",
+          "8"
+        ],
+        "pk": false
+      },
+      {
+        "column_name": "pending_pgi_days",
+        "type": "character varying",
+        "description": "",
+        "sample_values": [
+          "> 4 days",
+          "> 4 days"
+        ],
+        "pk": false
+      },
+      {
+        "column_name": "customer_po_dt",
+        "type": "character varying",
+        "description": "",
+        "sample_values": [
+          "2024-01-01",
+          "2024-01-01"
+        ],
+        "pk": false
+      },
+      {
+        "column_name": "_3pl_dt",
+        "type": "character varying",
+        "description": "",
+        "sample_values": [
+          "2024-01-02",
+          "2024-01-02"
+        ],
+        "pk": false
+      },
+      {
+        "column_name": "so_recp_to_act_shp_days",
+        "type": "double precision",
+        "description": "",
+        "sample_values": [
+          "3.0",
+          "3.0"
+        ],
+        "pk": false
+      },
+      {
+        "column_name": "total_ship_qty",
+        "type": "double precision",
+        "description": "",
+        "sample_values": [
+          "48.0",
+          "768.0"
+        ],
+        "pk": false
+      },
+      {
+        "column_name": "shipped_qty",
+        "type": "double precision",
+        "description": "",
+        "sample_values": [
+          "48.0",
+          "768.0"
+        ],
+        "pk": false
+      },
+      {
+        "column_name": "initial_shipped_qty",
+        "type": "double precision",
+        "description": "",
+        "sample_values": [
+          "48.0",
+          "768.0"
+        ],
+        "pk": false
+      },
+      {
+        "column_name": "total_release_qty",
+        "type": "double precision",
+        "description": "",
+        "sample_values": [
+          "48.0",
+          "768.0"
+        ],
+        "pk": false
+      },
+      {
+        "column_name": "shipping_point",
+        "type": "double precision",
+        "description": "",
+        "sample_values": [
+          "2008.0",
+          "2008.0"
+        ],
+        "pk": false
+      },
+      {
+        "column_name": "ev_pending_release_quantity",
+        "type": "bigint",
+        "description": "",
+        "sample_values": [
+          "0",
+          "0"
+        ],
+        "pk": false
+      },
+      {
+        "column_name": "act_shp_to_act_del_days",
+        "type": "double precision",
+        "description": "",
+        "sample_values": [],
+        "pk": false
+      },
+      {
+        "column_name": "req_del_to_act_del_days",
+        "type": "double precision",
+        "description": "",
+        "sample_values": [],
+        "pk": false
+      },
+      {
+        "column_name": "shippment_no",
+        "type": "character varying",
+        "description": "",
+        "sample_values": [
+          "718647086582"
+        ],
+        "pk": false
+      },
+      {
+        "column_name": "ev_order_quantity",
+        "type": "bigint",
+        "description": "",
+        "sample_values": [
+          "0",
+          "0"
+        ],
+        "pk": false
+      },
+      {
+        "column_name": "ev_warehouse_processing_quantity",
+        "type": "bigint",
+        "description": "",
+        "sample_values": [
+          "0",
+          "0"
+        ],
+        "pk": false
+      },
+      {
+        "column_name": "plant",
+        "type": "double precision",
+        "description": "",
+        "sample_values": [
+          "2006.0",
+          "2006.0"
+        ],
+        "pk": false
+      },
+      {
+        "column_name": "initial_order_qty",
+        "type": "double precision",
+        "description": "",
+        "sample_values": [
+          "48.0",
+          "768.0"
+        ],
+        "pk": false
+      },
+      {
+        "column_name": "reporting_date",
+        "type": "character varying",
+        "description": "",
+        "sample_values": [
+          "2025-05-19",
+          "2025-05-19"
+        ],
+        "pk": false
+      },
+      {
+        "column_name": "final_cust_deliv_dt",
+        "type": "double precision",
+        "description": "",
+        "sample_values": [],
+        "pk": false
+      },
+      {
+        "column_name": "carrier",
+        "type": "character varying",
+        "description": "",
+        "sample_values": [
+          "FDE",
+          "FDE"
+        ],
+        "pk": false
+      },
+      {
+        "column_name": "ev_open_order_quantity",
+        "type": "bigint",
+        "description": "",
+        "sample_values": [
+          "0",
+          "0"
+        ],
+        "pk": false
+      },
+      {
+        "column_name": "order_qty",
+        "type": "double precision",
+        "description": "",
+        "sample_values": [
+          "48.0",
+          "768.0"
+        ],
+        "pk": false
+      },
+      {
+        "column_name": "ev_cancelled_quantity",
+        "type": "bigint",
+        "description": "",
+        "sample_values": [
+          "0",
+          "0"
+        ],
+        "pk": false
+      },
+      {
+        "column_name": "item",
+        "type": "bigint",
+        "description": "",
+        "sample_values": [
+          "10",
+          "20"
+        ],
+        "pk": false
+      },
+      {
+        "column_name": "mandt",
+        "type": "double precision",
+        "description": "",
+        "sample_values": [
+          "100.0",
+          "100.0"
+        ],
+        "pk": false
+      },
+      {
+        "column_name": "land1",
+        "type": "character varying",
+        "description": "",
+        "sample_values": [
+          "US",
+          "US"
+        ],
+        "pk": false
+      },
+      {
+        "column_name": "sold_to",
+        "type": "bigint",
+        "description": "",
+        "sample_values": [
+          "2500048",
+          "2500048"
+        ],
+        "pk": false
+      },
+      {
+        "column_name": "rel_qty",
+        "type": "double precision",
+        "description": "",
+        "sample_values": [
+          "48.0",
+          "768.0"
+        ],
+        "pk": false
+      },
+      {
+        "column_name": "del_to_act_shp_days",
+        "type": "double precision",
+        "description": "",
+        "sample_values": [
+          "2.0",
+          "2.0"
+        ],
+        "pk": false
+      },
+      {
+        "column_name": "po_reciept",
+        "type": "character varying",
+        "description": "",
+        "sample_values": [
+          "2024-01-01",
+          "2024-01-01"
+        ],
+        "pk": false
+      },
+      {
+        "column_name": "sales_doc",
+        "type": "bigint",
+        "description": "",
+        "sample_values": [
+          "10023160",
+          "10023160"
+        ],
+        "pk": false
+      },
+      {
+        "column_name": "abgru",
+        "type": "double precision",
+        "description": "",
+        "sample_values": [],
+        "pk": false
+      },
+      {
+        "column_name": "material_desc",
+        "type": "character varying",
+        "description": "",
+        "sample_values": [
+          "Clonazepam Tab USP 2mg 100",
+          "Clonazepam Tab USP 0.5mg 100"
+        ],
+        "pk": false
+      },
+      {
+        "column_name": "expected_del_date",
+        "type": "character varying",
+        "description": "",
+        "sample_values": [
+          "2024-01-12",
+          "2024-01-12"
+        ],
+        "pk": false
+      },
+      {
+        "column_name": "po_number",
+        "type": "character varying",
+        "description": "",
+        "sample_values": [
+          "215524981",
+          "215524981"
+        ],
+        "pk": false
+      },
+      {
+        "column_name": "pen_rel_qty",
+        "type": "double precision",
+        "description": "",
+        "sample_values": [
+          "0.0",
+          "0.0"
+        ],
         "pk": false
       }
     ],
     "foreign_keys": []
   },
-  "sellers": {
+  "demand-forecast": {
     "columns": [
       {
-        "name": "seller_id",
-        "type": "TEXT",
+        "column_name": "orders_3m",
+        "type": "bigint",
+        "description": "",
+        "sample_values": [
+          "1368",
+          "0"
+        ],
         "pk": false
       },
       {
-        "name": "seller_zip_code_prefix",
-        "type": "INTEGER",
+        "column_name": "shipped_3m",
+        "type": "bigint",
+        "description": "",
+        "sample_values": [
+          "0",
+          "0"
+        ],
         "pk": false
       },
       {
-        "name": "seller_city",
-        "type": "TEXT",
+        "column_name": "orders",
+        "type": "bigint",
+        "description": "",
+        "sample_values": [
+          "0",
+          "0"
+        ],
         "pk": false
       },
       {
-        "name": "seller_state",
-        "type": "TEXT",
+        "column_name": "demand_3m",
+        "type": "bigint",
+        "description": "",
+        "sample_values": [
+          "5468",
+          "3028"
+        ],
+        "pk": false
+      },
+      {
+        "column_name": "shipped",
+        "type": "bigint",
+        "description": "",
+        "sample_values": [
+          "0",
+          "0"
+        ],
+        "pk": false
+      },
+      {
+        "column_name": "prod_desc",
+        "type": "character varying",
+        "description": "",
+        "sample_values": [
+          "Rabeprazole Sod DR Tab 20mg 30",
+          "Rabeprazole Sod DR Tab 20mg 30"
+        ],
+        "pk": false
+      },
+      {
+        "column_name": "prod_family",
+        "type": "character varying",
+        "description": "",
+        "sample_values": [
+          "Rabeprazole Sodium",
+          "Rabeprazole Sodium"
+        ],
+        "pk": false
+      },
+      {
+        "column_name": "month_end_doh",
+        "type": "double precision",
+        "description": "",
+        "sample_values": [
+          "5.10138248847926",
+          "5.10138248847926"
+        ],
+        "pk": false
+      },
+      {
+        "column_name": "demand",
+        "type": "double precision",
+        "description": "",
+        "sample_values": [
+          "196.0",
+          "196.0"
+        ],
+        "pk": false
+      },
+      {
+        "column_name": "month",
+        "type": "timestamp without time zone",
+        "description": "",
+        "sample_values": [
+          "2024-11-01 00:00:00",
+          "2024-12-01 00:00:00"
+        ],
+        "pk": false
+      },
+      {
+        "column_name": "material",
+        "type": "character varying",
+        "description": "",
+        "sample_values": [
+          "40039",
+          "40039"
+        ],
+        "pk": false
+      },
+      {
+        "column_name": "monthend_invent",
+        "type": "double precision",
+        "description": "",
+        "sample_values": [
+          "984.0",
+          "984.0"
+        ],
         "pk": false
       }
     ],
     "foreign_keys": []
   },
-  "customers": {
+  "doh": {
     "columns": [
       {
-        "name": "customer_id",
-        "type": "TEXT",
+        "column_name": "shelf_life_bet_11_and_16",
+        "type": "double precision",
+        "description": "",
+        "sample_values": [
+          "0.0",
+          "0.0"
+        ],
         "pk": false
       },
       {
-        "name": "customer_unique_id",
-        "type": "TEXT",
+        "column_name": "shelf_life__16",
+        "type": "double precision",
+        "description": "",
+        "sample_values": [
+          "8544.0",
+          "72.0"
+        ],
         "pk": false
       },
       {
-        "name": "customer_zip_code_prefix",
-        "type": "INTEGER",
+        "column_name": "shelf_life___11",
+        "type": "double precision",
+        "description": "",
+        "sample_values": [
+          "0.0",
+          "0.0"
+        ],
         "pk": false
       },
       {
-        "name": "customer_city",
-        "type": "TEXT",
+        "column_name": "month3_demand",
+        "type": "double precision",
+        "description": "",
+        "sample_values": [
+          "10198.61954179426",
+          "1889.0"
+        ],
         "pk": false
       },
       {
-        "name": "customer_state",
-        "type": "TEXT",
-        "pk": false
-      }
-    ],
-    "foreign_keys": []
-  },
-  "geolocation": {
-    "columns": [
-      {
-        "name": "geolocation_zip_code_prefix",
-        "type": "INTEGER",
+        "column_name": "month1_demand",
+        "type": "double precision",
+        "description": "",
+        "sample_values": [
+          "10290.952875127594",
+          "1637.0"
+        ],
         "pk": false
       },
       {
-        "name": "geolocation_lat",
-        "type": "REAL",
+        "column_name": "month2_demand",
+        "type": "double precision",
+        "description": "",
+        "sample_values": [
+          "10290.952875127594",
+          "1637.0"
+        ],
         "pk": false
       },
       {
-        "name": "geolocation_lng",
-        "type": "REAL",
+        "column_name": "month4_demand",
+        "type": "double precision",
+        "description": "",
+        "sample_values": [
+          "10198.61954179426",
+          "1889.0"
+        ],
         "pk": false
       },
       {
-        "name": "geolocation_city",
-        "type": "TEXT",
+        "column_name": "prod_desc",
+        "type": "character varying",
+        "description": "",
+        "sample_values": [
+          "Eltravin",
+          "Ulinaril"
+        ],
         "pk": false
       },
       {
-        "name": "geolocation_state",
-        "type": "TEXT",
-        "pk": false
-      }
-    ],
-    "foreign_keys": []
-  },
-  "order_items": {
-    "columns": [
-      {
-        "name": "order_id",
-        "type": "TEXT",
+        "column_name": "prod_family_catg",
+        "type": "character varying",
+        "description": "",
+        "sample_values": [
+          "Stranger",
+          "Stranger"
+        ],
         "pk": false
       },
       {
-        "name": "order_item_id",
-        "type": "INTEGER",
+        "column_name": "sales_mtd",
+        "type": "double precision",
+        "description": "",
+        "sample_values": [
+          "1440.0",
+          "0.0"
+        ],
         "pk": false
       },
       {
-        "name": "product_id",
-        "type": "TEXT",
+        "column_name": "open_deliveries",
+        "type": "double precision",
+        "description": "",
+        "sample_values": [
+          "75240.0",
+          "19889.0"
+        ],
         "pk": false
       },
       {
-        "name": "seller_id",
-        "type": "TEXT",
+        "column_name": "april_need",
+        "type": "double precision",
+        "description": "",
+        "sample_values": [
+          "10482.952875127594",
+          "3257.0"
+        ],
         "pk": false
       },
       {
-        "name": "shipping_limit_date",
-        "type": "TEXT",
+        "column_name": "critical_sku",
+        "type": "character varying",
+        "description": "",
+        "sample_values": [
+          "No",
+          "Yes"
+        ],
         "pk": false
       },
       {
-        "name": "price",
-        "type": "REAL",
+        "column_name": "prod_family",
+        "type": "character varying",
+        "description": "",
+        "sample_values": [
+          "Isosorbide DN",
+          "Loratadine ODT (OTC)"
+        ],
         "pk": false
       },
       {
-        "name": "freight_value",
-        "type": "REAL",
-        "pk": false
-      }
-    ],
-    "foreign_keys": []
-  },
-  "order_payments": {
-    "columns": [
-      {
-        "name": "order_id",
-        "type": "TEXT",
+        "column_name": "rrpl_fg",
+        "type": "double precision",
+        "description": "",
+        "sample_values": [
+          "0.0",
+          "4248.0"
+        ],
         "pk": false
       },
       {
-        "name": "payment_sequential",
-        "type": "INTEGER",
+        "column_name": "qual_stock_qty",
+        "type": "double precision",
+        "description": "",
+        "sample_values": [
+          "0.0",
+          "0.0"
+        ],
         "pk": false
       },
       {
-        "name": "payment_type",
-        "type": "TEXT",
+        "column_name": "advagen_stock",
+        "type": "double precision",
+        "description": "",
+        "sample_values": [
+          "7872.0",
+          "72.0"
+        ],
         "pk": false
       },
       {
-        "name": "payment_installments",
-        "type": "INTEGER",
+        "column_name": "bloc_stock_qty",
+        "type": "double precision",
+        "description": "",
+        "sample_values": [
+          "42.0",
+          "242.0"
+        ],
         "pk": false
       },
       {
-        "name": "payment_value",
-        "type": "REAL",
-        "pk": false
-      }
-    ],
-    "foreign_keys": []
-  },
-  "order_reviews": {
-    "columns": [
-      {
-        "name": "review_id",
-        "type": "TEXT",
+        "column_name": "net_stock",
+        "type": "double precision",
+        "description": "",
+        "sample_values": [
+          "7680.0",
+          "-1548.0"
+        ],
         "pk": false
       },
       {
-        "name": "order_id",
-        "type": "TEXT",
-        "pk": false
-      },
-      {
-        "name": "review_score",
-        "type": "INTEGER",
-        "pk": false
-      },
-      {
-        "name": "review_comment_title",
-        "type": "TEXT",
-        "pk": false
-      },
-      {
-        "name": "review_comment_message",
-        "type": "TEXT",
-        "pk": false
-      },
-      {
-        "name": "review_creation_date",
-        "type": "TEXT",
-        "pk": false
-      },
-      {
-        "name": "review_answer_timestamp",
-        "type": "TEXT",
-        "pk": false
-      }
-    ],
-    "foreign_keys": []
-  },
-  "orders": {
-    "columns": [
-      {
-        "name": "order_id",
-        "type": "TEXT",
-        "pk": false
-      },
-      {
-        "name": "customer_id",
-        "type": "TEXT",
-        "pk": false
-      },
-      {
-        "name": "order_status",
-        "type": "TEXT",
-        "pk": false
-      },
-      {
-        "name": "order_purchase_timestamp",
-        "type": "TEXT",
-        "pk": false
-      },
-      {
-        "name": "order_approved_at",
-        "type": "TEXT",
-        "pk": false
-      },
-      {
-        "name": "order_delivered_carrier_date",
-        "type": "TEXT",
-        "pk": false
-      },
-      {
-        "name": "order_delivered_customer_date",
-        "type": "TEXT",
-        "pk": false
-      },
-      {
-        "name": "order_estimated_delivery_date",
-        "type": "TEXT",
-        "pk": false
-      }
-    ],
-    "foreign_keys": []
-  },
-  "products": {
-    "columns": [
-      {
-        "name": "product_id",
-        "type": "TEXT",
-        "pk": false
-      },
-      {
-        "name": "product_category_name",
-        "type": "TEXT",
-        "pk": false
-      },
-      {
-        "name": "product_name_lenght",
-        "type": "REAL",
-        "pk": false
-      },
-      {
-        "name": "product_description_lenght",
-        "type": "REAL",
-        "pk": false
-      },
-      {
-        "name": "product_photos_qty",
-        "type": "REAL",
-        "pk": false
-      },
-      {
-        "name": "product_weight_g",
-        "type": "REAL",
-        "pk": false
-      },
-      {
-        "name": "product_length_cm",
-        "type": "REAL",
-        "pk": false
-      },
-      {
-        "name": "product_height_cm",
-        "type": "REAL",
-        "pk": false
-      },
-      {
-        "name": "product_width_cm",
-        "type": "REAL",
-        "pk": false
-      }
-    ],
-    "foreign_keys": []
-  },
-  "leads_qualified": {
-    "columns": [
-      {
-        "name": "mql_id",
-        "type": "TEXT",
-        "pk": false
-      },
-      {
-        "name": "first_contact_date",
-        "type": "TEXT",
-        "pk": false
-      },
-      {
-        "name": "landing_page_id",
-        "type": "TEXT",
-        "pk": false
-      },
-      {
-        "name": "origin",
-        "type": "TEXT",
-        "pk": false
-      }
-    ],
-    "foreign_keys": []
-  },
-  "leads_closed": {
-    "columns": [
-      {
-        "name": "mql_id",
-        "type": "TEXT",
-        "pk": false
-      },
-      {
-        "name": "seller_id",
-        "type": "TEXT",
-        "pk": false
-      },
-      {
-        "name": "sdr_id",
-        "type": "TEXT",
-        "pk": false
-      },
-      {
-        "name": "sr_id",
-        "type": "TEXT",
-        "pk": false
-      },
-      {
-        "name": "won_date",
-        "type": "TEXT",
-        "pk": false
-      },
-      {
-        "name": "business_segment",
-        "type": "TEXT",
-        "pk": false
-      },
-      {
-        "name": "lead_type",
-        "type": "TEXT",
-        "pk": false
-      },
-      {
-        "name": "lead_behaviour_profile",
-        "type": "TEXT",
-        "pk": false
-      },
-      {
-        "name": "has_company",
-        "type": "INTEGER",
-        "pk": false
-      },
-      {
-        "name": "has_gtin",
-        "type": "INTEGER",
-        "pk": false
-      },
-      {
-        "name": "average_stock",
-        "type": "TEXT",
-        "pk": false
-      },
-      {
-        "name": "business_type",
-        "type": "TEXT",
-        "pk": false
-      },
-      {
-        "name": "declared_product_catalog_size",
-        "type": "REAL",
-        "pk": false
-      },
-      {
-        "name": "declared_monthly_revenue",
-        "type": "REAL",
+        "column_name": "unrestrict_qty",
+        "type": "double precision",
+        "description": "",
+        "sample_values": [
+          "8544.0",
+          "4248.0"
+        ],
         "pk": false
       }
     ],

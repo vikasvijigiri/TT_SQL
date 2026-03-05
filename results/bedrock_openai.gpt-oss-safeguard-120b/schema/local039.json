@@ -1,648 +1,559 @@
 {
-  "actor": {
+  "doh": {
     "columns": [
       {
-        "name": "actor_id",
-        "type": "numeric",
-        "pk": true
-      },
-      {
-        "name": "first_name",
-        "type": "VARCHAR(45)",
+        "column_name": "month1_demand",
+        "type": "double precision",
+        "description": "",
+        "sample_values": [
+          "10290.952875127594",
+          "1637.0"
+        ],
         "pk": false
       },
       {
-        "name": "last_name",
-        "type": "VARCHAR(45)",
+        "column_name": "month2_demand",
+        "type": "double precision",
+        "description": "",
+        "sample_values": [
+          "10290.952875127594",
+          "1637.0"
+        ],
         "pk": false
       },
       {
-        "name": "last_update",
-        "type": "TIMESTAMP",
+        "column_name": "unrestrict_qty",
+        "type": "double precision",
+        "description": "",
+        "sample_values": [
+          "8544.0",
+          "4248.0"
+        ],
+        "pk": false
+      },
+      {
+        "column_name": "april_need",
+        "type": "double precision",
+        "description": "",
+        "sample_values": [
+          "10482.952875127594",
+          "3257.0"
+        ],
+        "pk": false
+      },
+      {
+        "column_name": "month4_demand",
+        "type": "double precision",
+        "description": "",
+        "sample_values": [
+          "10198.61954179426",
+          "1889.0"
+        ],
+        "pk": false
+      },
+      {
+        "column_name": "month3_demand",
+        "type": "double precision",
+        "description": "",
+        "sample_values": [
+          "10198.61954179426",
+          "1889.0"
+        ],
+        "pk": false
+      },
+      {
+        "column_name": "bloc_stock_qty",
+        "type": "double precision",
+        "description": "",
+        "sample_values": [
+          "42.0",
+          "242.0"
+        ],
+        "pk": false
+      },
+      {
+        "column_name": "critical_sku",
+        "type": "character varying",
+        "description": "",
+        "sample_values": [
+          "No",
+          "Yes"
+        ],
+        "pk": false
+      },
+      {
+        "column_name": "qual_stock_qty",
+        "type": "double precision",
+        "description": "",
+        "sample_values": [
+          "0.0",
+          "0.0"
+        ],
+        "pk": false
+      },
+      {
+        "column_name": "availablity",
+        "type": "double precision",
+        "description": "",
+        "sample_values": [
+          "-67368.0",
+          "-19817.0"
+        ],
+        "pk": false
+      },
+      {
+        "column_name": "advagen_stock",
+        "type": "double precision",
+        "description": "",
+        "sample_values": [
+          "7872.0",
+          "72.0"
+        ],
+        "pk": false
+      },
+      {
+        "column_name": "open_deliveries",
+        "type": "double precision",
+        "description": "",
+        "sample_values": [
+          "75240.0",
+          "19889.0"
+        ],
+        "pk": false
+      },
+      {
+        "column_name": "shelf_life_bet_11_and_16",
+        "type": "double precision",
+        "description": "",
+        "sample_values": [
+          "0.0",
+          "0.0"
+        ],
+        "pk": false
+      },
+      {
+        "column_name": "prod_family_catg",
+        "type": "character varying",
+        "description": "",
+        "sample_values": [
+          "Stranger",
+          "Stranger"
+        ],
+        "pk": false
+      },
+      {
+        "column_name": "penality",
+        "type": "double precision",
+        "description": "",
+        "sample_values": [
+          "10290.952875127594",
+          "1637.0"
+        ],
+        "pk": false
+      },
+      {
+        "column_name": "doh_incl_git_fg",
+        "type": "double precision",
+        "description": "",
+        "sample_values": [
+          "22.38859732385504",
+          "49.480757483200975"
+        ],
+        "pk": false
+      },
+      {
+        "column_name": "strnth",
+        "type": "character varying",
+        "description": "",
+        "sample_values": [
+          "30",
+          "10"
+        ],
+        "pk": false
+      },
+      {
+        "column_name": "net_stock",
+        "type": "double precision",
+        "description": "",
+        "sample_values": [
+          "7680.0",
+          "-1548.0"
+        ],
+        "pk": false
+      },
+      {
+        "column_name": "coverage_shortage",
+        "type": "double precision",
+        "description": "",
+        "sample_values": [
+          "-77850.95287512758",
+          "-23074.0"
+        ],
+        "pk": false
+      },
+      {
+        "column_name": "rrpl_fg",
+        "type": "double precision",
+        "description": "",
+        "sample_values": [
+          "0.0",
+          "4248.0"
+        ],
+        "pk": false
+      },
+      {
+        "column_name": "shelf_life__16",
+        "type": "double precision",
+        "description": "",
+        "sample_values": [
+          "8544.0",
+          "72.0"
+        ],
+        "pk": false
+      },
+      {
+        "column_name": "shelf_life___11",
+        "type": "double precision",
+        "description": "",
+        "sample_values": [
+          "0.0",
+          "0.0"
+        ],
+        "pk": false
+      },
+      {
+        "column_name": "doh_incl_git_fg_wip",
+        "type": "double precision",
+        "description": "",
+        "sample_values": [
+          "22.38859732385504",
+          "135.0030543555284"
+        ],
+        "pk": false
+      },
+      {
+        "column_name": "doh_incl_git",
+        "type": "double precision",
+        "description": "",
+        "sample_values": [
+          "22.38859732385504",
+          "-28.36896762370189"
+        ],
+        "pk": false
+      },
+      {
+        "column_name": "sales_mtd",
+        "type": "double precision",
+        "description": "",
+        "sample_values": [
+          "1440.0",
+          "0.0"
+        ],
+        "pk": false
+      },
+      {
+        "column_name": "doh",
+        "type": "double precision",
+        "description": "",
+        "sample_values": [
+          "22.38859732385504",
+          "-28.36896762370189"
+        ],
+        "pk": false
+      },
+      {
+        "column_name": "open_qty",
+        "type": "double precision",
+        "description": "",
+        "sample_values": [
+          "75240.0",
+          "19889.0"
+        ],
+        "pk": false
+      },
+      {
+        "column_name": "ndc",
+        "type": "double precision",
+        "description": "",
+        "sample_values": [
+          "72888008401.0",
+          "72888002911.0"
+        ],
+        "pk": false
+      },
+      {
+        "column_name": "prod_desc",
+        "type": "character varying",
+        "description": "",
+        "sample_values": [
+          "Eltravin",
+          "Ulinaril"
+        ],
+        "pk": false
+      },
+      {
+        "column_name": "netstock_plus_git",
+        "type": "double precision",
+        "description": "",
+        "sample_values": [
+          "7680.0",
+          "-1548.0"
+        ],
+        "pk": false
+      },
+      {
+        "column_name": "prod_family",
+        "type": "character varying",
+        "description": "",
+        "sample_values": [
+          "Isosorbide DN",
+          "Loratadine ODT (OTC)"
+        ],
+        "pk": false
+      },
+      {
+        "column_name": "material",
+        "type": "character varying",
+        "description": "",
+        "sample_values": [
+          "40215",
+          "40224"
+        ],
+        "pk": false
+      },
+      {
+        "column_name": "rrpl_wip",
+        "type": "double precision",
+        "description": "",
+        "sample_values": [
+          "0.0",
+          "4666.666666"
+        ],
+        "pk": false
+      },
+      {
+        "column_name": "open_lines",
+        "type": "double precision",
+        "description": "",
+        "sample_values": [
+          "192.0",
+          "1620.0"
+        ],
+        "pk": false
+      },
+      {
+        "column_name": "pack_size",
+        "type": "double precision",
+        "description": "",
+        "sample_values": [
+          "100.0",
+          "30.0"
+        ],
+        "pk": false
+      },
+      {
+        "column_name": "forward_coverage",
+        "type": "character varying",
+        "description": "",
+        "sample_values": [
+          "Less than a month",
+          "Less than a month"
+        ],
+        "pk": false
+      },
+      {
+        "column_name": "git",
+        "type": "double precision",
+        "description": "",
+        "sample_values": [
+          "0.0",
+          "0.0"
+        ],
         "pk": false
       }
     ],
     "foreign_keys": []
   },
-  "country": {
+  "process-area-details": {
     "columns": [
       {
-        "name": "country_id",
-        "type": "SMALLINT",
-        "pk": true
-      },
-      {
-        "name": "country",
-        "type": "VARCHAR(50)",
+        "column_name": "area_name",
+        "type": "character varying",
+        "description": "",
+        "sample_values": [
+          "Granulation 1",
+          "Granulation 2"
+        ],
         "pk": false
       },
       {
-        "name": "last_update",
-        "type": "TIMESTAMP",
+        "column_name": "_time_in_opn",
+        "type": "character varying",
+        "description": "",
+        "sample_values": [
+          "67.68%",
+          "99.37%"
+        ],
+        "pk": false
+      },
+      {
+        "column_name": "idle_time_",
+        "type": "character varying",
+        "description": "",
+        "sample_values": [
+          "13.47%",
+          "-29.69%"
+        ],
+        "pk": false
+      },
+      {
+        "column_name": "_time_in_cleaning",
+        "type": "double precision",
+        "description": "",
+        "sample_values": [],
+        "pk": false
+      },
+      {
+        "column_name": "area_group",
+        "type": "character varying",
+        "description": "",
+        "sample_values": [
+          "Granulation",
+          "Granulation"
+        ],
+        "pk": false
+      },
+      {
+        "column_name": "equipment_efficiency",
+        "type": "character varying",
+        "description": "",
+        "sample_values": [
+          "94.22%",
+          "85.39%"
+        ],
+        "pk": false
+      },
+      {
+        "column_name": "overall_efficiency",
+        "type": "character varying",
+        "description": "",
+        "sample_values": [
+          "81.53%",
+          "110.73%"
+        ],
         "pk": false
       }
     ],
     "foreign_keys": []
   },
-  "city": {
+  "manufacturing-tracker": {
     "columns": [
       {
-        "name": "city_id",
-        "type": "INT",
-        "pk": true
-      },
-      {
-        "name": "city",
-        "type": "VARCHAR(50)",
+        "column_name": "idle_hours_mtd",
+        "type": "character varying",
+        "description": "",
+        "sample_values": [
+          "264 hours 58 minutes",
+          "226 hours 53 minutes"
+        ],
         "pk": false
       },
       {
-        "name": "country_id",
-        "type": "SMALLINT",
+        "column_name": "idle_hours",
+        "type": "character varying",
+        "description": "",
+        "sample_values": [
+          "58 hours 12 minutes"
+        ],
         "pk": false
       },
       {
-        "name": "last_update",
-        "type": "TIMESTAMP",
-        "pk": false
-      }
-    ],
-    "foreign_keys": [
-      {
-        "to_table": "country",
-        "from_col": "country_id",
-        "to_col": "country_id"
-      }
-    ]
-  },
-  "address": {
-    "columns": [
-      {
-        "name": "address_id",
-        "type": "INT",
-        "pk": true
-      },
-      {
-        "name": "address",
-        "type": "VARCHAR(50)",
+        "column_name": "cumulative_idle_hours_for_day",
+        "type": "character varying",
+        "description": "",
+        "sample_values": [
+          "25 hours 28 minutes",
+          "0 hours 0 minutes"
+        ],
         "pk": false
       },
       {
-        "name": "address2",
-        "type": "VARCHAR(50)",
+        "column_name": "equipment_name",
+        "type": "character varying",
+        "description": "",
+        "sample_values": [
+          "Coating 2",
+          "Sifting 1"
+        ],
         "pk": false
       },
       {
-        "name": "district",
-        "type": "VARCHAR(20)",
+        "column_name": "name",
+        "type": "character varying",
+        "description": "",
+        "sample_values": [
+          "G-51A",
+          "G-107"
+        ],
         "pk": false
       },
       {
-        "name": "city_id",
-        "type": "INT",
+        "column_name": "startedrecorded_at",
+        "type": "timestamp without time zone",
+        "description": "",
+        "sample_values": [
+          "2025-05-12 17:04:00"
+        ],
         "pk": false
       },
       {
-        "name": "postal_code",
-        "type": "VARCHAR(10)",
+        "column_name": "rn",
+        "type": "bigint",
+        "description": "",
+        "sample_values": [
+          "24",
+          "1"
+        ],
         "pk": false
       },
       {
-        "name": "phone",
-        "type": "VARCHAR(20)",
+        "column_name": "status",
+        "type": "character varying",
+        "description": "",
+        "sample_values": [
+          "Idle",
+          "Under Usage"
+        ],
         "pk": false
       },
       {
-        "name": "last_update",
-        "type": "TIMESTAMP",
-        "pk": false
-      }
-    ],
-    "foreign_keys": [
-      {
-        "to_table": "city",
-        "from_col": "city_id",
-        "to_col": "city_id"
-      }
-    ]
-  },
-  "language": {
-    "columns": [
-      {
-        "name": "language_id",
-        "type": "SMALLINT",
-        "pk": true
-      },
-      {
-        "name": "name",
-        "type": "CHAR(20)",
+        "column_name": "finished_at",
+        "type": "timestamp without time zone",
+        "description": "",
+        "sample_values": [
+          "2025-05-11 15:16:22"
+        ],
         "pk": false
       },
       {
-        "name": "last_update",
-        "type": "TIMESTAMP",
-        "pk": false
-      }
-    ],
-    "foreign_keys": []
-  },
-  "category": {
-    "columns": [
-      {
-        "name": "category_id",
-        "type": "SMALLINT",
-        "pk": true
-      },
-      {
-        "name": "name",
-        "type": "VARCHAR(25)",
+        "column_name": "product_description",
+        "type": "character varying",
+        "description": "",
+        "sample_values": [
+          "Guanfacine Extended Release Tablets USP 2 mg"
+        ],
         "pk": false
       },
       {
-        "name": "last_update",
-        "type": "TIMESTAMP",
+        "column_name": "batch",
+        "type": "double precision",
+        "description": "",
+        "sample_values": [
+          "50734.0"
+        ],
         "pk": false
       }
     ],
     "foreign_keys": []
-  },
-  "customer": {
-    "columns": [
-      {
-        "name": "customer_id",
-        "type": "INT",
-        "pk": true
-      },
-      {
-        "name": "store_id",
-        "type": "INT",
-        "pk": false
-      },
-      {
-        "name": "first_name",
-        "type": "VARCHAR(45)",
-        "pk": false
-      },
-      {
-        "name": "last_name",
-        "type": "VARCHAR(45)",
-        "pk": false
-      },
-      {
-        "name": "email",
-        "type": "VARCHAR(50)",
-        "pk": false
-      },
-      {
-        "name": "address_id",
-        "type": "INT",
-        "pk": false
-      },
-      {
-        "name": "active",
-        "type": "CHAR(1)",
-        "pk": false
-      },
-      {
-        "name": "create_date",
-        "type": "TIMESTAMP",
-        "pk": false
-      },
-      {
-        "name": "last_update",
-        "type": "TIMESTAMP",
-        "pk": false
-      }
-    ],
-    "foreign_keys": [
-      {
-        "to_table": "address",
-        "from_col": "address_id",
-        "to_col": "address_id"
-      },
-      {
-        "to_table": "store",
-        "from_col": "store_id",
-        "to_col": "store_id"
-      }
-    ]
-  },
-  "film": {
-    "columns": [
-      {
-        "name": "film_id",
-        "type": "INT",
-        "pk": true
-      },
-      {
-        "name": "title",
-        "type": "VARCHAR(255)",
-        "pk": false
-      },
-      {
-        "name": "description",
-        "type": "BLOB SUB_TYPE TEXT",
-        "pk": false
-      },
-      {
-        "name": "release_year",
-        "type": "VARCHAR(4)",
-        "pk": false
-      },
-      {
-        "name": "language_id",
-        "type": "SMALLINT",
-        "pk": false
-      },
-      {
-        "name": "original_language_id",
-        "type": "SMALLINT",
-        "pk": false
-      },
-      {
-        "name": "rental_duration",
-        "type": "SMALLINT",
-        "pk": false
-      },
-      {
-        "name": "rental_rate",
-        "type": "DECIMAL(4,2)",
-        "pk": false
-      },
-      {
-        "name": "length",
-        "type": "SMALLINT",
-        "pk": false
-      },
-      {
-        "name": "replacement_cost",
-        "type": "DECIMAL(5,2)",
-        "pk": false
-      },
-      {
-        "name": "rating",
-        "type": "VARCHAR(10)",
-        "pk": false
-      },
-      {
-        "name": "special_features",
-        "type": "VARCHAR(100)",
-        "pk": false
-      },
-      {
-        "name": "last_update",
-        "type": "TIMESTAMP",
-        "pk": false
-      }
-    ],
-    "foreign_keys": [
-      {
-        "to_table": "language",
-        "from_col": "original_language_id",
-        "to_col": "language_id"
-      },
-      {
-        "to_table": "language",
-        "from_col": "language_id",
-        "to_col": "language_id"
-      }
-    ]
-  },
-  "film_actor": {
-    "columns": [
-      {
-        "name": "actor_id",
-        "type": "INT",
-        "pk": true
-      },
-      {
-        "name": "film_id",
-        "type": "INT",
-        "pk": true
-      },
-      {
-        "name": "last_update",
-        "type": "TIMESTAMP",
-        "pk": false
-      }
-    ],
-    "foreign_keys": [
-      {
-        "to_table": "film",
-        "from_col": "film_id",
-        "to_col": "film_id"
-      },
-      {
-        "to_table": "actor",
-        "from_col": "actor_id",
-        "to_col": "actor_id"
-      }
-    ]
-  },
-  "film_category": {
-    "columns": [
-      {
-        "name": "film_id",
-        "type": "INT",
-        "pk": true
-      },
-      {
-        "name": "category_id",
-        "type": "SMALLINT",
-        "pk": true
-      },
-      {
-        "name": "last_update",
-        "type": "TIMESTAMP",
-        "pk": false
-      }
-    ],
-    "foreign_keys": [
-      {
-        "to_table": "category",
-        "from_col": "category_id",
-        "to_col": "category_id"
-      },
-      {
-        "to_table": "film",
-        "from_col": "film_id",
-        "to_col": "film_id"
-      }
-    ]
-  },
-  "film_text": {
-    "columns": [
-      {
-        "name": "film_id",
-        "type": "SMALLINT",
-        "pk": true
-      },
-      {
-        "name": "title",
-        "type": "VARCHAR(255)",
-        "pk": false
-      },
-      {
-        "name": "description",
-        "type": "BLOB SUB_TYPE TEXT",
-        "pk": false
-      }
-    ],
-    "foreign_keys": []
-  },
-  "inventory": {
-    "columns": [
-      {
-        "name": "inventory_id",
-        "type": "INT",
-        "pk": true
-      },
-      {
-        "name": "film_id",
-        "type": "INT",
-        "pk": false
-      },
-      {
-        "name": "store_id",
-        "type": "INT",
-        "pk": false
-      },
-      {
-        "name": "last_update",
-        "type": "TIMESTAMP",
-        "pk": false
-      }
-    ],
-    "foreign_keys": [
-      {
-        "to_table": "film",
-        "from_col": "film_id",
-        "to_col": "film_id"
-      },
-      {
-        "to_table": "store",
-        "from_col": "store_id",
-        "to_col": "store_id"
-      }
-    ]
-  },
-  "staff": {
-    "columns": [
-      {
-        "name": "staff_id",
-        "type": "SMALLINT",
-        "pk": true
-      },
-      {
-        "name": "first_name",
-        "type": "VARCHAR(45)",
-        "pk": false
-      },
-      {
-        "name": "last_name",
-        "type": "VARCHAR(45)",
-        "pk": false
-      },
-      {
-        "name": "address_id",
-        "type": "INT",
-        "pk": false
-      },
-      {
-        "name": "picture",
-        "type": "BLOB",
-        "pk": false
-      },
-      {
-        "name": "email",
-        "type": "VARCHAR(50)",
-        "pk": false
-      },
-      {
-        "name": "store_id",
-        "type": "INT",
-        "pk": false
-      },
-      {
-        "name": "active",
-        "type": "SMALLINT",
-        "pk": false
-      },
-      {
-        "name": "username",
-        "type": "VARCHAR(16)",
-        "pk": false
-      },
-      {
-        "name": "password",
-        "type": "VARCHAR(40)",
-        "pk": false
-      },
-      {
-        "name": "last_update",
-        "type": "TIMESTAMP",
-        "pk": false
-      }
-    ],
-    "foreign_keys": [
-      {
-        "to_table": "address",
-        "from_col": "address_id",
-        "to_col": "address_id"
-      },
-      {
-        "to_table": "store",
-        "from_col": "store_id",
-        "to_col": "store_id"
-      }
-    ]
-  },
-  "store": {
-    "columns": [
-      {
-        "name": "store_id",
-        "type": "INT",
-        "pk": true
-      },
-      {
-        "name": "manager_staff_id",
-        "type": "SMALLINT",
-        "pk": false
-      },
-      {
-        "name": "address_id",
-        "type": "INT",
-        "pk": false
-      },
-      {
-        "name": "last_update",
-        "type": "TIMESTAMP",
-        "pk": false
-      }
-    ],
-    "foreign_keys": [
-      {
-        "to_table": "address",
-        "from_col": "address_id",
-        "to_col": "address_id"
-      },
-      {
-        "to_table": "staff",
-        "from_col": "manager_staff_id",
-        "to_col": "staff_id"
-      }
-    ]
-  },
-  "payment": {
-    "columns": [
-      {
-        "name": "payment_id",
-        "type": "INT",
-        "pk": true
-      },
-      {
-        "name": "customer_id",
-        "type": "INT",
-        "pk": false
-      },
-      {
-        "name": "staff_id",
-        "type": "SMALLINT",
-        "pk": false
-      },
-      {
-        "name": "rental_id",
-        "type": "INT",
-        "pk": false
-      },
-      {
-        "name": "amount",
-        "type": "DECIMAL(5,2)",
-        "pk": false
-      },
-      {
-        "name": "payment_date",
-        "type": "TIMESTAMP",
-        "pk": false
-      },
-      {
-        "name": "last_update",
-        "type": "TIMESTAMP",
-        "pk": false
-      }
-    ],
-    "foreign_keys": [
-      {
-        "to_table": "staff",
-        "from_col": "staff_id",
-        "to_col": "staff_id"
-      },
-      {
-        "to_table": "customer",
-        "from_col": "customer_id",
-        "to_col": "customer_id"
-      },
-      {
-        "to_table": "rental",
-        "from_col": "rental_id",
-        "to_col": "rental_id"
-      }
-    ]
-  },
-  "rental": {
-    "columns": [
-      {
-        "name": "rental_id",
-        "type": "INT",
-        "pk": true
-      },
-      {
-        "name": "rental_date",
-        "type": "TIMESTAMP",
-        "pk": false
-      },
-      {
-        "name": "inventory_id",
-        "type": "INT",
-        "pk": false
-      },
-      {
-        "name": "customer_id",
-        "type": "INT",
-        "pk": false
-      },
-      {
-        "name": "return_date",
-        "type": "TIMESTAMP",
-        "pk": false
-      },
-      {
-        "name": "staff_id",
-        "type": "SMALLINT",
-        "pk": false
-      },
-      {
-        "name": "last_update",
-        "type": "TIMESTAMP",
-        "pk": false
-      }
-    ],
-    "foreign_keys": [
-      {
-        "to_table": "customer",
-        "from_col": "customer_id",
-        "to_col": "customer_id"
-      },
-      {
-        "to_table": "inventory",
-        "from_col": "inventory_id",
-        "to_col": "inventory_id"
-      },
-      {
-        "to_table": "staff",
-        "from_col": "staff_id",
-        "to_col": "staff_id"
-      }
-    ]
   }
 }

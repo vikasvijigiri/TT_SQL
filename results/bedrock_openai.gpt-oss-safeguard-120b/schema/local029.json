@@ -1,359 +1,707 @@
 {
-  "olist_customers": {
+  "kpi_invoice_to_order_calc": {
     "columns": [
       {
-        "name": "customer_id",
-        "type": "TEXT",
+        "column_name": "customer_po_dt",
+        "type": "character varying",
+        "description": "",
+        "sample_values": [
+          "2024-01-01",
+          "2024-01-01"
+        ],
         "pk": false
       },
       {
-        "name": "customer_unique_id",
-        "type": "TEXT",
+        "column_name": "carrier",
+        "type": "character varying",
+        "description": "",
+        "sample_values": [
+          "FDE",
+          "FDE"
+        ],
         "pk": false
       },
       {
-        "name": "customer_zip_code_prefix",
-        "type": "BIGINT",
+        "column_name": "process_day_by_3pl",
+        "type": "character varying",
+        "description": "",
+        "sample_values": [
+          "352",
+          "352"
+        ],
         "pk": false
       },
       {
-        "name": "customer_city",
-        "type": "TEXT",
+        "column_name": "shipped_qty",
+        "type": "double precision",
+        "description": "",
+        "sample_values": [
+          "48.0",
+          "768.0"
+        ],
         "pk": false
       },
       {
-        "name": "customer_state",
-        "type": "TEXT",
+        "column_name": "sold_to",
+        "type": "bigint",
+        "description": "",
+        "sample_values": [
+          "2500048",
+          "2500048"
+        ],
+        "pk": false
+      },
+      {
+        "column_name": "initial_shipped_qty",
+        "type": "double precision",
+        "description": "",
+        "sample_values": [
+          "48.0",
+          "768.0"
+        ],
+        "pk": false
+      },
+      {
+        "column_name": "ev_shipped_quantity_oms",
+        "type": "bigint",
+        "description": "",
+        "sample_values": [
+          "0",
+          "0"
+        ],
+        "pk": false
+      },
+      {
+        "column_name": "order_qty",
+        "type": "double precision",
+        "description": "",
+        "sample_values": [
+          "48.0",
+          "768.0"
+        ],
+        "pk": false
+      },
+      {
+        "column_name": "initial_order_qty",
+        "type": "double precision",
+        "description": "",
+        "sample_values": [
+          "48.0",
+          "768.0"
+        ],
+        "pk": false
+      },
+      {
+        "column_name": "po_reciept",
+        "type": "character varying",
+        "description": "",
+        "sample_values": [
+          "2024-01-01",
+          "2024-01-01"
+        ],
+        "pk": false
+      },
+      {
+        "column_name": "total_release_qty",
+        "type": "double precision",
+        "description": "",
+        "sample_values": [
+          "48.0",
+          "768.0"
+        ],
+        "pk": false
+      },
+      {
+        "column_name": "ev_warehouse_processing_quantity",
+        "type": "bigint",
+        "description": "",
+        "sample_values": [
+          "0",
+          "0"
+        ],
+        "pk": false
+      },
+      {
+        "column_name": "ev_order_quantity",
+        "type": "bigint",
+        "description": "",
+        "sample_values": [
+          "0",
+          "0"
+        ],
+        "pk": false
+      },
+      {
+        "column_name": "ev_open_order_quantity",
+        "type": "bigint",
+        "description": "",
+        "sample_values": [
+          "0",
+          "0"
+        ],
+        "pk": false
+      },
+      {
+        "column_name": "total_ship_qty",
+        "type": "double precision",
+        "description": "",
+        "sample_values": [
+          "48.0",
+          "768.0"
+        ],
+        "pk": false
+      },
+      {
+        "column_name": "_3pl_dt",
+        "type": "character varying",
+        "description": "",
+        "sample_values": [
+          "2024-01-02",
+          "2024-01-02"
+        ],
+        "pk": false
+      },
+      {
+        "column_name": "shipping_point",
+        "type": "double precision",
+        "description": "",
+        "sample_values": [
+          "2008.0",
+          "2008.0"
+        ],
+        "pk": false
+      },
+      {
+        "column_name": "plant",
+        "type": "double precision",
+        "description": "",
+        "sample_values": [
+          "2006.0",
+          "2006.0"
+        ],
+        "pk": false
+      },
+      {
+        "column_name": "ndc",
+        "type": "bigint",
+        "description": "",
+        "sample_values": [
+          "72888015401",
+          "72888015201"
+        ],
+        "pk": false
+      },
+      {
+        "column_name": "ev_pending_release_quantity",
+        "type": "bigint",
+        "description": "",
+        "sample_values": [
+          "0",
+          "0"
+        ],
+        "pk": false
+      },
+      {
+        "column_name": "abgru",
+        "type": "double precision",
+        "description": "",
+        "sample_values": [],
+        "pk": false
+      },
+      {
+        "column_name": "ship_to_region",
+        "type": "character varying",
+        "description": "",
+        "sample_values": [
+          "Michigan",
+          "Michigan"
+        ],
+        "pk": false
+      },
+      {
+        "column_name": "rel_qty",
+        "type": "double precision",
+        "description": "",
+        "sample_values": [
+          "48.0",
+          "768.0"
+        ],
+        "pk": false
+      },
+      {
+        "column_name": "regio",
+        "type": "character varying",
+        "description": "",
+        "sample_values": [
+          "MI",
+          "MI"
+        ],
+        "pk": false
+      },
+      {
+        "column_name": "mandt",
+        "type": "double precision",
+        "description": "",
+        "sample_values": [
+          "100.0",
+          "100.0"
+        ],
+        "pk": false
+      },
+      {
+        "column_name": "key",
+        "type": "bigint",
+        "description": "",
+        "sample_values": [
+          "250004840716",
+          "250004840710"
+        ],
+        "pk": false
+      },
+      {
+        "column_name": "ev_cancelled_quantity",
+        "type": "bigint",
+        "description": "",
+        "sample_values": [
+          "0",
+          "0"
+        ],
+        "pk": false
+      },
+      {
+        "column_name": "ev_key",
+        "type": "bigint",
+        "description": "",
+        "sample_values": [
+          "8004070372888015401",
+          "8004070372888015201"
+        ],
+        "pk": false
+      },
+      {
+        "column_name": "sales_doc",
+        "type": "bigint",
+        "description": "",
+        "sample_values": [
+          "10023160",
+          "10023160"
+        ],
+        "pk": false
+      },
+      {
+        "column_name": "pen_rel_qty",
+        "type": "double precision",
+        "description": "",
+        "sample_values": [
+          "0.0",
+          "0.0"
+        ],
+        "pk": false
+      },
+      {
+        "column_name": "item",
+        "type": "bigint",
+        "description": "",
+        "sample_values": [
+          "10",
+          "20"
+        ],
+        "pk": false
+      },
+      {
+        "column_name": "pending_pgi_days",
+        "type": "character varying",
+        "description": "",
+        "sample_values": [
+          "> 4 days",
+          "> 4 days"
+        ],
+        "pk": false
+      },
+      {
+        "column_name": "po_number",
+        "type": "character varying",
+        "description": "",
+        "sample_values": [
+          "215524981",
+          "215524981"
+        ],
+        "pk": false
+      },
+      {
+        "column_name": "cust_name",
+        "type": "character varying",
+        "description": "",
+        "sample_values": [
+          "MEIJER",
+          "MEIJER"
+        ],
+        "pk": false
+      },
+      {
+        "column_name": "open_deliv_qty",
+        "type": "double precision",
+        "description": "",
+        "sample_values": [
+          "0.0",
+          "0.0"
+        ],
+        "pk": false
+      },
+      {
+        "column_name": "plan_b",
+        "type": "character varying",
+        "description": "",
+        "sample_values": [
+          "no",
+          "no"
+        ],
+        "pk": false
+      },
+      {
+        "column_name": "bolnr",
+        "type": "character varying",
+        "description": "",
+        "sample_values": [
+          "SID7079248-FDE",
+          "SID7079248-FDE"
+        ],
+        "pk": false
+      },
+      {
+        "column_name": "land1",
+        "type": "character varying",
+        "description": "",
+        "sample_values": [
+          "US",
+          "US"
+        ],
+        "pk": false
+      },
+      {
+        "column_name": "material_desc",
+        "type": "character varying",
+        "description": "",
+        "sample_values": [
+          "Clonazepam Tab USP 2mg 100",
+          "Clonazepam Tab USP 0.5mg 100"
+        ],
+        "pk": false
+      },
+      {
+        "column_name": "cust_code",
+        "type": "character varying",
+        "description": "",
+        "sample_values": [
+          "Others",
+          "Others"
+        ],
         "pk": false
       }
     ],
     "foreign_keys": []
   },
-  "olist_sellers": {
+  "demand-forecast": {
     "columns": [
       {
-        "name": "seller_id",
-        "type": "TEXT",
+        "column_name": "orders_3m",
+        "type": "bigint",
+        "description": "",
+        "sample_values": [
+          "1368",
+          "0"
+        ],
         "pk": false
       },
       {
-        "name": "seller_zip_code_prefix",
-        "type": "BIGINT",
+        "column_name": "shipped_3m",
+        "type": "bigint",
+        "description": "",
+        "sample_values": [
+          "0",
+          "0"
+        ],
         "pk": false
       },
       {
-        "name": "seller_city",
-        "type": "TEXT",
+        "column_name": "demand_3m",
+        "type": "bigint",
+        "description": "",
+        "sample_values": [
+          "5468",
+          "3028"
+        ],
         "pk": false
       },
       {
-        "name": "seller_state",
-        "type": "TEXT",
+        "column_name": "orders",
+        "type": "bigint",
+        "description": "",
+        "sample_values": [
+          "0",
+          "0"
+        ],
+        "pk": false
+      },
+      {
+        "column_name": "shipped",
+        "type": "bigint",
+        "description": "",
+        "sample_values": [
+          "0",
+          "0"
+        ],
+        "pk": false
+      },
+      {
+        "column_name": "prod_family",
+        "type": "character varying",
+        "description": "",
+        "sample_values": [
+          "Rabeprazole Sodium",
+          "Rabeprazole Sodium"
+        ],
+        "pk": false
+      },
+      {
+        "column_name": "prod_desc",
+        "type": "character varying",
+        "description": "",
+        "sample_values": [
+          "Rabeprazole Sod DR Tab 20mg 30",
+          "Rabeprazole Sod DR Tab 20mg 30"
+        ],
+        "pk": false
+      },
+      {
+        "column_name": "demand",
+        "type": "double precision",
+        "description": "",
+        "sample_values": [
+          "196.0",
+          "196.0"
+        ],
+        "pk": false
+      },
+      {
+        "column_name": "material",
+        "type": "character varying",
+        "description": "",
+        "sample_values": [
+          "40039",
+          "40039"
+        ],
+        "pk": false
+      },
+      {
+        "column_name": "month",
+        "type": "timestamp without time zone",
+        "description": "",
+        "sample_values": [
+          "2024-11-01 00:00:00",
+          "2024-12-01 00:00:00"
+        ],
+        "pk": false
+      },
+      {
+        "column_name": "monthend_invent",
+        "type": "double precision",
+        "description": "",
+        "sample_values": [
+          "984.0",
+          "984.0"
+        ],
+        "pk": false
+      },
+      {
+        "column_name": "month_end_doh",
+        "type": "double precision",
+        "description": "",
+        "sample_values": [
+          "5.10138248847926",
+          "5.10138248847926"
+        ],
         "pk": false
       }
     ],
     "foreign_keys": []
   },
-  "olist_order_reviews": {
+  "batch-and-packing-tracker": {
     "columns": [
       {
-        "name": "review_id",
-        "type": "TEXT",
+        "column_name": "quality",
+        "type": "timestamp without time zone",
+        "description": "",
+        "sample_values": [],
         "pk": false
       },
       {
-        "name": "order_id",
-        "type": "TEXT",
+        "column_name": "critical_sku",
+        "type": "character varying",
+        "description": "",
+        "sample_values": [
+          "No",
+          "Yes"
+        ],
         "pk": false
       },
       {
-        "name": "review_score",
-        "type": "BIGINT",
+        "column_name": "prod_family",
+        "type": "character varying",
+        "description": "",
+        "sample_values": [
+          "Tramadol"
+        ],
         "pk": false
       },
       {
-        "name": "review_comment_title",
-        "type": "TEXT",
+        "column_name": "receipt_at_ev_date_time",
+        "type": "timestamp without time zone",
+        "description": "",
+        "sample_values": [
+          "2023-06-29 00:00:00"
+        ],
         "pk": false
       },
       {
-        "name": "review_comment_message",
-        "type": "TEXT",
+        "column_name": "prod_desc",
+        "type": "character varying",
+        "description": "",
+        "sample_values": [
+          "Metoprolol Tart.TabUSP50 mg1000'STRU CTX",
+          "Tramadol HCl Tab USP 100mg 100"
+        ],
         "pk": false
       },
       {
-        "name": "review_creation_date",
-        "type": "TEXT",
+        "column_name": "pm_dispense",
+        "type": "timestamp without time zone",
+        "description": "",
+        "sample_values": [
+          "2023-02-03 00:00:00",
+          "2023-04-01 00:00:00"
+        ],
         "pk": false
       },
       {
-        "name": "review_answer_timestamp",
-        "type": "TEXT",
-        "pk": false
-      }
-    ],
-    "foreign_keys": []
-  },
-  "olist_order_items": {
-    "columns": [
-      {
-        "name": "order_id",
-        "type": "TEXT",
+        "column_name": "imprinting",
+        "type": "timestamp without time zone",
+        "description": "",
+        "sample_values": [],
         "pk": false
       },
       {
-        "name": "order_item_id",
-        "type": "BIGINT",
+        "column_name": "fg_new",
+        "type": "character varying",
+        "description": "",
+        "sample_values": [
+          "no",
+          "no"
+        ],
         "pk": false
       },
       {
-        "name": "product_id",
-        "type": "TEXT",
+        "column_name": "eb_batches",
+        "type": "character varying",
+        "description": "",
+        "sample_values": [
+          "Yes",
+          "No"
+        ],
         "pk": false
       },
       {
-        "name": "seller_id",
-        "type": "TEXT",
+        "column_name": "fg_code",
+        "type": "bigint",
+        "description": "",
+        "sample_values": [
+          "40575",
+          "40742"
+        ],
         "pk": false
       },
       {
-        "name": "shipping_limit_date",
-        "type": "TEXT",
+        "column_name": "granulation",
+        "type": "timestamp without time zone",
+        "description": "",
+        "sample_values": [],
         "pk": false
       },
       {
-        "name": "price",
-        "type": "FLOAT",
+        "column_name": "coating",
+        "type": "timestamp without time zone",
+        "description": "",
+        "sample_values": [],
         "pk": false
       },
       {
-        "name": "freight_value",
-        "type": "FLOAT",
-        "pk": false
-      }
-    ],
-    "foreign_keys": []
-  },
-  "olist_products": {
-    "columns": [
-      {
-        "name": "product_id",
-        "type": "TEXT",
+        "column_name": "blending",
+        "type": "timestamp without time zone",
+        "description": "",
+        "sample_values": [],
         "pk": false
       },
       {
-        "name": "product_category_name",
-        "type": "TEXT",
+        "column_name": "batch",
+        "type": "character varying",
+        "description": "",
+        "sample_values": [
+          "230102H1",
+          "230368H1"
+        ],
         "pk": false
       },
       {
-        "name": "product_name_lenght",
-        "type": "FLOAT",
+        "column_name": "packing",
+        "type": "timestamp without time zone",
+        "description": "",
+        "sample_values": [
+          "2023-02-04 00:00:00",
+          "2023-04-05 00:00:00"
+        ],
         "pk": false
       },
       {
-        "name": "product_description_lenght",
-        "type": "FLOAT",
+        "column_name": "current_timestamp",
+        "type": "character varying",
+        "description": "",
+        "sample_values": [
+          "2025-05-13 17:38:04.156 +0530",
+          "2025-05-13 17:38:04.156 +0530"
+        ],
         "pk": false
       },
       {
-        "name": "product_photos_qty",
-        "type": "FLOAT",
+        "column_name": "rm_dispense",
+        "type": "timestamp without time zone",
+        "description": "",
+        "sample_values": [
+          "2023-01-20 00:00:00",
+          "2023-03-15 00:00:00"
+        ],
         "pk": false
       },
       {
-        "name": "product_weight_g",
-        "type": "FLOAT",
+        "column_name": "dispatch_date_time",
+        "type": "timestamp without time zone",
+        "description": "",
+        "sample_values": [],
         "pk": false
       },
       {
-        "name": "product_length_cm",
-        "type": "FLOAT",
+        "column_name": "doh",
+        "type": "double precision",
+        "description": "",
+        "sample_values": [
+          "26.0868344910753"
+        ],
         "pk": false
       },
       {
-        "name": "product_height_cm",
-        "type": "FLOAT",
-        "pk": false
-      },
-      {
-        "name": "product_width_cm",
-        "type": "FLOAT",
-        "pk": false
-      }
-    ],
-    "foreign_keys": []
-  },
-  "olist_geolocation": {
-    "columns": [
-      {
-        "name": "geolocation_zip_code_prefix",
-        "type": "BIGINT",
-        "pk": false
-      },
-      {
-        "name": "geolocation_lat",
-        "type": "FLOAT",
-        "pk": false
-      },
-      {
-        "name": "geolocation_lng",
-        "type": "FLOAT",
-        "pk": false
-      },
-      {
-        "name": "geolocation_city",
-        "type": "TEXT",
-        "pk": false
-      },
-      {
-        "name": "geolocation_state",
-        "type": "TEXT",
-        "pk": false
-      }
-    ],
-    "foreign_keys": []
-  },
-  "product_category_name_translation": {
-    "columns": [
-      {
-        "name": "product_category_name",
-        "type": "TEXT",
-        "pk": false
-      },
-      {
-        "name": "product_category_name_english",
-        "type": "TEXT",
-        "pk": false
-      }
-    ],
-    "foreign_keys": []
-  },
-  "olist_orders": {
-    "columns": [
-      {
-        "name": "order_id",
-        "type": "TEXT",
-        "pk": false
-      },
-      {
-        "name": "customer_id",
-        "type": "TEXT",
-        "pk": false
-      },
-      {
-        "name": "order_status",
-        "type": "TEXT",
-        "pk": false
-      },
-      {
-        "name": "order_purchase_timestamp",
-        "type": "TEXT",
-        "pk": false
-      },
-      {
-        "name": "order_approved_at",
-        "type": "TEXT",
-        "pk": false
-      },
-      {
-        "name": "order_delivered_carrier_date",
-        "type": "TEXT",
-        "pk": false
-      },
-      {
-        "name": "order_delivered_customer_date",
-        "type": "TEXT",
-        "pk": false
-      },
-      {
-        "name": "order_estimated_delivery_date",
-        "type": "TEXT",
-        "pk": false
-      }
-    ],
-    "foreign_keys": []
-  },
-  "olist_order_payments": {
-    "columns": [
-      {
-        "name": "order_id",
-        "type": "TEXT",
-        "pk": false
-      },
-      {
-        "name": "payment_sequential",
-        "type": "BIGINT",
-        "pk": false
-      },
-      {
-        "name": "payment_type",
-        "type": "TEXT",
-        "pk": false
-      },
-      {
-        "name": "payment_installments",
-        "type": "BIGINT",
-        "pk": false
-      },
-      {
-        "name": "payment_value",
-        "type": "FLOAT",
-        "pk": false
-      }
-    ],
-    "foreign_keys": []
-  },
-  "olist_products_dataset": {
-    "columns": [
-      {
-        "name": "index",
-        "type": "BIGINT",
-        "pk": false
-      },
-      {
-        "name": "product_id",
-        "type": "TEXT",
-        "pk": false
-      },
-      {
-        "name": "product_category_name",
-        "type": "TEXT",
-        "pk": false
-      },
-      {
-        "name": "product_name_lenght",
-        "type": "FLOAT",
-        "pk": false
-      },
-      {
-        "name": "product_description_lenght",
-        "type": "FLOAT",
-        "pk": false
-      },
-      {
-        "name": "product_photos_qty",
-        "type": "FLOAT",
-        "pk": false
-      },
-      {
-        "name": "product_weight_g",
-        "type": "FLOAT",
-        "pk": false
-      },
-      {
-        "name": "product_length_cm",
-        "type": "FLOAT",
-        "pk": false
-      },
-      {
-        "name": "product_height_cm",
-        "type": "FLOAT",
-        "pk": false
-      },
-      {
-        "name": "product_width_cm",
-        "type": "FLOAT",
+        "column_name": "compression",
+        "type": "timestamp without time zone",
+        "description": "",
+        "sample_values": [],
         "pk": false
       }
     ],

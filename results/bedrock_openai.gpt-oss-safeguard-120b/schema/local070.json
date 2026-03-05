@@ -1,739 +1,966 @@
 {
-  "aliens_details": {
+  "otif": {
     "columns": [
       {
-        "name": "detail_id",
-        "type": "INTEGER",
+        "column_name": "reporting_date",
+        "type": "character varying",
+        "description": "",
+        "sample_values": [
+          "2025-05-13",
+          "2025-05-13"
+        ],
         "pk": false
       },
       {
-        "name": "favorite_food",
-        "type": "TEXT",
+        "column_name": "final_no_days",
+        "type": "bigint",
+        "description": "",
+        "sample_values": [
+          "14",
+          "14"
+        ],
         "pk": false
       },
       {
-        "name": "feeding_frequency",
-        "type": "TEXT",
+        "column_name": "no_of_days",
+        "type": "bigint",
+        "description": "",
+        "sample_values": [
+          "14",
+          "14"
+        ],
         "pk": false
       },
       {
-        "name": "aggressive",
-        "type": "INTEGER",
+        "column_name": "act_shp_to_act_del_days",
+        "type": "double precision",
+        "description": "",
+        "sample_values": [],
+        "pk": false
+      },
+      {
+        "column_name": "so_recp_to_act_shp_days",
+        "type": "double precision",
+        "description": "",
+        "sample_values": [
+          "2.0",
+          "2.0"
+        ],
+        "pk": false
+      },
+      {
+        "column_name": "delivery_date",
+        "type": "date",
+        "description": "",
+        "sample_values": [
+          "2024-03-05",
+          "2024-03-05"
+        ],
+        "pk": false
+      },
+      {
+        "column_name": "req_del_to_act_del_days",
+        "type": "double precision",
+        "description": "",
+        "sample_values": [],
+        "pk": false
+      },
+      {
+        "column_name": "del_to_act_shp_days",
+        "type": "double precision",
+        "description": "",
+        "sample_values": [
+          "1.0",
+          "1.0"
+        ],
+        "pk": false
+      },
+      {
+        "column_name": "expected_del_date",
+        "type": "date",
+        "description": "",
+        "sample_values": [
+          "2024-03-13",
+          "2024-03-13"
+        ],
+        "pk": false
+      },
+      {
+        "column_name": "cust_names",
+        "type": "character varying",
+        "description": "",
+        "sample_values": [
+          "Sapphire Lake Pharmacy",
+          "Sapphire Lake Pharmacy"
+        ],
+        "pk": false
+      },
+      {
+        "column_name": "transit_status",
+        "type": "character varying",
+        "description": "",
+        "sample_values": [],
+        "pk": false
+      },
+      {
+        "column_name": "cust_name",
+        "type": "character varying",
+        "description": "",
+        "sample_values": [
+          "Sapphire Lake Pharmacy",
+          "Sapphire Lake Pharmacy"
+        ],
+        "pk": false
+      },
+      {
+        "column_name": "cust_key",
+        "type": "bigint",
+        "description": "",
+        "sample_values": [
+          "250001940444",
+          "250001940649"
+        ],
+        "pk": false
+      },
+      {
+        "column_name": "initial_order_qty",
+        "type": "double precision",
+        "description": "",
+        "sample_values": [
+          "24.0",
+          "24.0"
+        ],
+        "pk": false
+      },
+      {
+        "column_name": "order_qty",
+        "type": "double precision",
+        "description": "",
+        "sample_values": [
+          "24.0",
+          "24.0"
+        ],
+        "pk": false
+      },
+      {
+        "column_name": "cancelled_qty",
+        "type": "double precision",
+        "description": "",
+        "sample_values": [
+          "0.0",
+          "0.0"
+        ],
+        "pk": false
+      },
+      {
+        "column_name": "key_2",
+        "type": "double precision",
+        "description": "",
+        "sample_values": [
+          "8.004756972888009e+18",
+          "8.004757072888006e+18"
+        ],
+        "pk": false
+      },
+      {
+        "column_name": "ev_key",
+        "type": "bigint",
+        "description": "",
+        "sample_values": [
+          "8004756972888008301",
+          "8004757072888005201"
+        ],
+        "pk": false
+      },
+      {
+        "column_name": "initial_shipped_qty",
+        "type": "double precision",
+        "description": "",
+        "sample_values": [
+          "24.0",
+          "24.0"
+        ],
+        "pk": false
+      },
+      {
+        "column_name": "shipped_qty",
+        "type": "double precision",
+        "description": "",
+        "sample_values": [
+          "24.0",
+          "24.0"
+        ],
+        "pk": false
+      },
+      {
+        "column_name": "reason_for_cancellation",
+        "type": "character varying",
+        "description": "",
+        "sample_values": [],
+        "pk": false
+      },
+      {
+        "column_name": "cancellation_dt",
+        "type": "character varying",
+        "description": "",
+        "sample_values": [],
+        "pk": false
+      },
+      {
+        "column_name": "on_time_in_full_loss",
+        "type": "double precision",
+        "description": "",
+        "sample_values": [
+          "0.0",
+          "0.0"
+        ],
+        "pk": false
+      },
+      {
+        "column_name": "otif_loss_final_status",
+        "type": "character varying",
+        "description": "",
+        "sample_values": [
+          "Delivered Within Lead Time",
+          "Delivered Within Lead Time"
+        ],
+        "pk": false
+      },
+      {
+        "column_name": "customer_po_dt",
+        "type": "character varying",
+        "description": "",
+        "sample_values": [
+          "2024-02-28",
+          "2024-02-28"
+        ],
+        "pk": false
+      },
+      {
+        "column_name": "land1",
+        "type": "character varying",
+        "description": "",
+        "sample_values": [
+          "US",
+          "US"
+        ],
+        "pk": false
+      },
+      {
+        "column_name": "in_full_loss",
+        "type": "double precision",
+        "description": "",
+        "sample_values": [
+          "0.0",
+          "0.0"
+        ],
+        "pk": false
+      },
+      {
+        "column_name": "final_cust_del_dt",
+        "type": "double precision",
+        "description": "",
+        "sample_values": [],
+        "pk": false
+      },
+      {
+        "column_name": "_3pl_dt",
+        "type": "date",
+        "description": "",
+        "sample_values": [
+          "2024-02-29",
+          "2024-02-29"
+        ],
+        "pk": false
+      },
+      {
+        "column_name": "total_ship_qty",
+        "type": "double precision",
+        "description": "",
+        "sample_values": [
+          "24.0",
+          "24.0"
+        ],
+        "pk": false
+      },
+      {
+        "column_name": "pen_rel_qty",
+        "type": "double precision",
+        "description": "",
+        "sample_values": [
+          "0.0",
+          "0.0"
+        ],
+        "pk": false
+      },
+      {
+        "column_name": "remarks",
+        "type": "double precision",
+        "description": "",
+        "sample_values": [],
+        "pk": false
+      },
+      {
+        "column_name": "plan_b",
+        "type": "character varying",
+        "description": "",
+        "sample_values": [
+          "No",
+          "Yes"
+        ],
+        "pk": false
+      },
+      {
+        "column_name": "item_del_block_desc",
+        "type": "character varying",
+        "description": "",
+        "sample_values": [],
+        "pk": false
+      },
+      {
+        "column_name": "total_processing_del_time",
+        "type": "double precision",
+        "description": "",
+        "sample_values": [
+          "7.0",
+          "7.0"
+        ],
+        "pk": false
+      },
+      {
+        "column_name": "shippment_no",
+        "type": "character varying",
+        "description": "",
+        "sample_values": [],
+        "pk": false
+      },
+      {
+        "column_name": "ndc",
+        "type": "bigint",
+        "description": "",
+        "sample_values": [
+          "72888008301",
+          "72888005201"
+        ],
+        "pk": false
+      },
+      {
+        "column_name": "rel_qty",
+        "type": "double precision",
+        "description": "",
+        "sample_values": [
+          "24.0",
+          "24.0"
+        ],
+        "pk": false
+      },
+      {
+        "column_name": "primary_flag",
+        "type": "character varying",
+        "description": "",
+        "sample_values": [
+          "Y",
+          "Y"
+        ],
+        "pk": false
+      },
+      {
+        "column_name": "regio",
+        "type": "character varying",
+        "description": "",
+        "sample_values": [
+          "UT",
+          "CA"
+        ],
         "pk": false
       }
     ],
     "foreign_keys": []
   },
-  "skills_dim": {
+  "kpi_invoice_to_order_calc": {
     "columns": [
       {
-        "name": "skill_id",
-        "type": "INTEGER",
+        "column_name": "so_recp_to_act_shp_days",
+        "type": "double precision",
+        "description": "",
+        "sample_values": [
+          "3.0",
+          "3.0"
+        ],
         "pk": false
       },
       {
-        "name": "skills",
-        "type": "TEXT",
+        "column_name": "act_shp_to_act_del_days",
+        "type": "double precision",
+        "description": "",
+        "sample_values": [],
         "pk": false
       },
       {
-        "name": "type",
-        "type": "TEXT",
+        "column_name": "reporting_date",
+        "type": "character varying",
+        "description": "",
+        "sample_values": [
+          "2025-05-19",
+          "2025-05-19"
+        ],
+        "pk": false
+      },
+      {
+        "column_name": "del_to_act_shp_days",
+        "type": "double precision",
+        "description": "",
+        "sample_values": [
+          "2.0",
+          "2.0"
+        ],
+        "pk": false
+      },
+      {
+        "column_name": "final_no_days",
+        "type": "bigint",
+        "description": "",
+        "sample_values": [
+          "11",
+          "11"
+        ],
+        "pk": false
+      },
+      {
+        "column_name": "req_del_to_act_del_days",
+        "type": "double precision",
+        "description": "",
+        "sample_values": [],
+        "pk": false
+      },
+      {
+        "column_name": "no_of_days",
+        "type": "bigint",
+        "description": "",
+        "sample_values": [
+          "8",
+          "8"
+        ],
+        "pk": false
+      },
+      {
+        "column_name": "process_day_by_3pl",
+        "type": "character varying",
+        "description": "",
+        "sample_values": [
+          "352",
+          "352"
+        ],
+        "pk": false
+      },
+      {
+        "column_name": "expected_del_date",
+        "type": "character varying",
+        "description": "",
+        "sample_values": [
+          "2024-01-12",
+          "2024-01-12"
+        ],
+        "pk": false
+      },
+      {
+        "column_name": "pending_pgi_days",
+        "type": "character varying",
+        "description": "",
+        "sample_values": [
+          "> 4 days",
+          "> 4 days"
+        ],
+        "pk": false
+      },
+      {
+        "column_name": "cust_name",
+        "type": "character varying",
+        "description": "",
+        "sample_values": [
+          "MEIJER",
+          "MEIJER"
+        ],
+        "pk": false
+      },
+      {
+        "column_name": "final_cust_deliv_dt",
+        "type": "double precision",
+        "description": "",
+        "sample_values": [],
+        "pk": false
+      },
+      {
+        "column_name": "ev_cancelled_quantity",
+        "type": "bigint",
+        "description": "",
+        "sample_values": [
+          "0",
+          "0"
+        ],
+        "pk": false
+      },
+      {
+        "column_name": "ev_key",
+        "type": "bigint",
+        "description": "",
+        "sample_values": [
+          "8004070372888015401",
+          "8004070372888015201"
+        ],
+        "pk": false
+      },
+      {
+        "column_name": "cust_code",
+        "type": "character varying",
+        "description": "",
+        "sample_values": [
+          "Others",
+          "Others"
+        ],
+        "pk": false
+      },
+      {
+        "column_name": "land1",
+        "type": "character varying",
+        "description": "",
+        "sample_values": [
+          "US",
+          "US"
+        ],
+        "pk": false
+      },
+      {
+        "column_name": "regio",
+        "type": "character varying",
+        "description": "",
+        "sample_values": [
+          "MI",
+          "MI"
+        ],
+        "pk": false
+      },
+      {
+        "column_name": "cancelled_qty",
+        "type": "double precision",
+        "description": "",
+        "sample_values": [
+          "0.0",
+          "0.0"
+        ],
+        "pk": false
+      },
+      {
+        "column_name": "final_cust_del_dt",
+        "type": "double precision",
+        "description": "",
+        "sample_values": [],
+        "pk": false
+      },
+      {
+        "column_name": "act_dt_of_shp",
+        "type": "character varying",
+        "description": "",
+        "sample_values": [
+          "2024-01-04",
+          "2024-01-04"
+        ],
+        "pk": false
+      },
+      {
+        "column_name": "primary_flag",
+        "type": "character varying",
+        "description": "",
+        "sample_values": [
+          "Y",
+          "Y"
+        ],
+        "pk": false
+      },
+      {
+        "column_name": "initial_order_qty",
+        "type": "double precision",
+        "description": "",
+        "sample_values": [
+          "48.0",
+          "768.0"
+        ],
+        "pk": false
+      },
+      {
+        "column_name": "reason_for_cancellation",
+        "type": "character varying",
+        "description": "",
+        "sample_values": [],
+        "pk": false
+      },
+      {
+        "column_name": "cancellation_dt",
+        "type": "character varying",
+        "description": "",
+        "sample_values": [],
+        "pk": false
+      },
+      {
+        "column_name": "_3pl_dt",
+        "type": "character varying",
+        "description": "",
+        "sample_values": [
+          "2024-01-02",
+          "2024-01-02"
+        ],
+        "pk": false
+      },
+      {
+        "column_name": "material_desc",
+        "type": "character varying",
+        "description": "",
+        "sample_values": [
+          "Clonazepam Tab USP 2mg 100",
+          "Clonazepam Tab USP 0.5mg 100"
+        ],
+        "pk": false
+      },
+      {
+        "column_name": "pen_rel_qty",
+        "type": "double precision",
+        "description": "",
+        "sample_values": [
+          "0.0",
+          "0.0"
+        ],
+        "pk": false
+      },
+      {
+        "column_name": "initial_shipped_qty",
+        "type": "double precision",
+        "description": "",
+        "sample_values": [
+          "48.0",
+          "768.0"
+        ],
+        "pk": false
+      },
+      {
+        "column_name": "item_del_block_desc",
+        "type": "character varying",
+        "description": "",
+        "sample_values": [],
+        "pk": false
+      },
+      {
+        "column_name": "carrier",
+        "type": "character varying",
+        "description": "",
+        "sample_values": [
+          "FDE",
+          "FDE"
+        ],
+        "pk": false
+      },
+      {
+        "column_name": "plan_b",
+        "type": "character varying",
+        "description": "",
+        "sample_values": [
+          "no",
+          "no"
+        ],
+        "pk": false
+      },
+      {
+        "column_name": "customer_po_dt",
+        "type": "character varying",
+        "description": "",
+        "sample_values": [
+          "2024-01-01",
+          "2024-01-01"
+        ],
+        "pk": false
+      },
+      {
+        "column_name": "mandt",
+        "type": "double precision",
+        "description": "",
+        "sample_values": [
+          "100.0",
+          "100.0"
+        ],
+        "pk": false
+      },
+      {
+        "column_name": "key",
+        "type": "bigint",
+        "description": "",
+        "sample_values": [
+          "250004840716",
+          "250004840710"
+        ],
+        "pk": false
+      },
+      {
+        "column_name": "ndc",
+        "type": "bigint",
+        "description": "",
+        "sample_values": [
+          "72888015401",
+          "72888015201"
+        ],
+        "pk": false
+      },
+      {
+        "column_name": "abgru",
+        "type": "double precision",
+        "description": "",
+        "sample_values": [],
+        "pk": false
+      },
+      {
+        "column_name": "shipped_qty",
+        "type": "double precision",
+        "description": "",
+        "sample_values": [
+          "48.0",
+          "768.0"
+        ],
+        "pk": false
+      },
+      {
+        "column_name": "ev_order_quantity",
+        "type": "bigint",
+        "description": "",
+        "sample_values": [
+          "0",
+          "0"
+        ],
+        "pk": false
+      },
+      {
+        "column_name": "total_ship_qty",
+        "type": "double precision",
+        "description": "",
+        "sample_values": [
+          "48.0",
+          "768.0"
+        ],
+        "pk": false
+      },
+      {
+        "column_name": "item",
+        "type": "bigint",
+        "description": "",
+        "sample_values": [
+          "10",
+          "20"
+        ],
         "pk": false
       }
     ],
     "foreign_keys": []
   },
-  "legislators_terms": {
+  "batch-and-packing-tracker": {
     "columns": [
       {
-        "name": "id_bioguide",
-        "type": "TEXT",
+        "column_name": "receipt_at_ev_date_time",
+        "type": "timestamp without time zone",
+        "description": "",
+        "sample_values": [
+          "2023-06-29 00:00:00"
+        ],
         "pk": false
       },
       {
-        "name": "term_number",
-        "type": "INTEGER",
+        "column_name": "dispatch_date_time",
+        "type": "timestamp without time zone",
+        "description": "",
+        "sample_values": [],
         "pk": false
       },
       {
-        "name": "term_id",
-        "type": "TEXT",
+        "column_name": "current_timestamp",
+        "type": "character varying",
+        "description": "",
+        "sample_values": [
+          "2025-05-13 17:38:04.156 +0530",
+          "2025-05-13 17:38:04.156 +0530"
+        ],
         "pk": false
       },
       {
-        "name": "term_type",
-        "type": "TEXT",
+        "column_name": "eb_batches",
+        "type": "character varying",
+        "description": "",
+        "sample_values": [
+          "Yes",
+          "No"
+        ],
         "pk": false
       },
       {
-        "name": "term_start",
-        "type": "TEXT",
+        "column_name": "fg_code",
+        "type": "bigint",
+        "description": "",
+        "sample_values": [
+          "40575",
+          "40742"
+        ],
         "pk": false
       },
       {
-        "name": "term_end",
-        "type": "TEXT",
+        "column_name": "prod_desc",
+        "type": "character varying",
+        "description": "",
+        "sample_values": [
+          "Metoprolol Tart.TabUSP50 mg1000'STRU CTX",
+          "Tramadol HCl Tab USP 100mg 100"
+        ],
         "pk": false
       },
       {
-        "name": "state",
-        "type": "TEXT",
+        "column_name": "pm_dispense",
+        "type": "timestamp without time zone",
+        "description": "",
+        "sample_values": [
+          "2023-02-03 00:00:00",
+          "2023-04-01 00:00:00"
+        ],
         "pk": false
       },
       {
-        "name": "district",
-        "type": "REAL",
+        "column_name": "fg_new",
+        "type": "character varying",
+        "description": "",
+        "sample_values": [
+          "no",
+          "no"
+        ],
         "pk": false
       },
       {
-        "name": "class",
-        "type": "REAL",
+        "column_name": "batch",
+        "type": "character varying",
+        "description": "",
+        "sample_values": [
+          "230102H1",
+          "230368H1"
+        ],
         "pk": false
       },
       {
-        "name": "party",
-        "type": "TEXT",
+        "column_name": "rm_dispense",
+        "type": "timestamp without time zone",
+        "description": "",
+        "sample_values": [
+          "2023-01-20 00:00:00",
+          "2023-03-15 00:00:00"
+        ],
         "pk": false
       },
       {
-        "name": "how",
-        "type": "TEXT",
+        "column_name": "blending",
+        "type": "timestamp without time zone",
+        "description": "",
+        "sample_values": [],
         "pk": false
       },
       {
-        "name": "url",
-        "type": "TEXT",
+        "column_name": "imprinting",
+        "type": "timestamp without time zone",
+        "description": "",
+        "sample_values": [],
         "pk": false
       },
       {
-        "name": "address",
-        "type": "TEXT",
+        "column_name": "doh_incl_git_fg_wip",
+        "type": "double precision",
+        "description": "",
+        "sample_values": [
+          "26.0868344910753"
+        ],
         "pk": false
       },
       {
-        "name": "phone",
-        "type": "TEXT",
+        "column_name": "doh_incl_git_fg",
+        "type": "double precision",
+        "description": "",
+        "sample_values": [
+          "26.0868344910753"
+        ],
         "pk": false
       },
       {
-        "name": "fax",
-        "type": "TEXT",
+        "column_name": "quality",
+        "type": "timestamp without time zone",
+        "description": "",
+        "sample_values": [],
         "pk": false
       },
       {
-        "name": "contact_form",
-        "type": "TEXT",
+        "column_name": "critical_sku",
+        "type": "character varying",
+        "description": "",
+        "sample_values": [
+          "No",
+          "Yes"
+        ],
         "pk": false
       },
       {
-        "name": "office",
-        "type": "TEXT",
+        "column_name": "packing",
+        "type": "timestamp without time zone",
+        "description": "",
+        "sample_values": [
+          "2023-02-04 00:00:00",
+          "2023-04-05 00:00:00"
+        ],
         "pk": false
       },
       {
-        "name": "state_rank",
-        "type": "TEXT",
+        "column_name": "doh",
+        "type": "double precision",
+        "description": "",
+        "sample_values": [
+          "26.0868344910753"
+        ],
         "pk": false
       },
       {
-        "name": "rss_url",
-        "type": "TEXT",
+        "column_name": "prod_family",
+        "type": "character varying",
+        "description": "",
+        "sample_values": [
+          "Tramadol"
+        ],
         "pk": false
       },
       {
-        "name": "caucus",
-        "type": "TEXT",
+        "column_name": "doh_incl_git",
+        "type": "double precision",
+        "description": "",
+        "sample_values": [
+          "26.0868344910753"
+        ],
         "pk": false
-      }
-    ],
-    "foreign_keys": []
-  },
-  "cities_currencies": {
-    "columns": [
-      {
-        "name": "currency_id",
-        "type": "INTEGER",
-        "pk": false
-      },
-      {
-        "name": "country_code_2",
-        "type": "TEXT",
-        "pk": false
-      },
-      {
-        "name": "currency_name",
-        "type": "TEXT",
-        "pk": false
-      },
-      {
-        "name": "currency_code",
-        "type": "TEXT",
-        "pk": false
-      }
-    ],
-    "foreign_keys": []
-  },
-  "legislators": {
-    "columns": [
-      {
-        "name": "full_name",
-        "type": "TEXT",
-        "pk": false
-      },
-      {
-        "name": "first_name",
-        "type": "TEXT",
-        "pk": false
-      },
-      {
-        "name": "last_name",
-        "type": "TEXT",
-        "pk": false
-      },
-      {
-        "name": "middle_name",
-        "type": "TEXT",
-        "pk": false
-      },
-      {
-        "name": "nickname",
-        "type": "TEXT",
-        "pk": false
-      },
-      {
-        "name": "suffix",
-        "type": "TEXT",
-        "pk": false
-      },
-      {
-        "name": "other_names_end",
-        "type": "TEXT",
-        "pk": false
-      },
-      {
-        "name": "other_names_middle",
-        "type": "REAL",
-        "pk": false
-      },
-      {
-        "name": "other_names_last",
-        "type": "TEXT",
-        "pk": false
-      },
-      {
-        "name": "birthday",
-        "type": "TEXT",
-        "pk": false
-      },
-      {
-        "name": "gender",
-        "type": "TEXT",
-        "pk": false
-      },
-      {
-        "name": "id_bioguide",
-        "type": "TEXT",
-        "pk": false
-      },
-      {
-        "name": "id_bioguide_previous_0",
-        "type": "TEXT",
-        "pk": false
-      },
-      {
-        "name": "id_govtrack",
-        "type": "INTEGER",
-        "pk": false
-      },
-      {
-        "name": "id_icpsr",
-        "type": "REAL",
-        "pk": false
-      },
-      {
-        "name": "id_wikipedia",
-        "type": "TEXT",
-        "pk": false
-      },
-      {
-        "name": "id_wikidata",
-        "type": "TEXT",
-        "pk": false
-      },
-      {
-        "name": "id_google_entity_id",
-        "type": "TEXT",
-        "pk": false
-      },
-      {
-        "name": "id_house_history",
-        "type": "REAL",
-        "pk": false
-      },
-      {
-        "name": "id_house_history_alternate",
-        "type": "REAL",
-        "pk": false
-      },
-      {
-        "name": "id_thomas",
-        "type": "REAL",
-        "pk": false
-      },
-      {
-        "name": "id_cspan",
-        "type": "REAL",
-        "pk": false
-      },
-      {
-        "name": "id_votesmart",
-        "type": "REAL",
-        "pk": false
-      },
-      {
-        "name": "id_lis",
-        "type": "TEXT",
-        "pk": false
-      },
-      {
-        "name": "id_ballotpedia",
-        "type": "TEXT",
-        "pk": false
-      },
-      {
-        "name": "id_opensecrets",
-        "type": "TEXT",
-        "pk": false
-      },
-      {
-        "name": "id_fec_0",
-        "type": "TEXT",
-        "pk": false
-      },
-      {
-        "name": "id_fec_1",
-        "type": "TEXT",
-        "pk": false
-      },
-      {
-        "name": "id_fec_2",
-        "type": "TEXT",
-        "pk": false
-      }
-    ],
-    "foreign_keys": []
-  },
-  "skills_job_dim": {
-    "columns": [
-      {
-        "name": "job_id",
-        "type": "INTEGER",
-        "pk": false
-      },
-      {
-        "name": "skill_id",
-        "type": "INTEGER",
-        "pk": false
-      }
-    ],
-    "foreign_keys": []
-  },
-  "job_postings_fact": {
-    "columns": [
-      {
-        "name": "job_id",
-        "type": "INTEGER",
-        "pk": false
-      },
-      {
-        "name": "company_id",
-        "type": "INTEGER",
-        "pk": false
-      },
-      {
-        "name": "job_title_short",
-        "type": "TEXT",
-        "pk": false
-      },
-      {
-        "name": "job_title",
-        "type": "TEXT",
-        "pk": false
-      },
-      {
-        "name": "job_location",
-        "type": "TEXT",
-        "pk": false
-      },
-      {
-        "name": "job_via",
-        "type": "TEXT",
-        "pk": false
-      },
-      {
-        "name": "job_schedule_type",
-        "type": "TEXT",
-        "pk": false
-      },
-      {
-        "name": "job_work_from_home",
-        "type": "INTEGER",
-        "pk": false
-      },
-      {
-        "name": "search_location",
-        "type": "TEXT",
-        "pk": false
-      },
-      {
-        "name": "job_posted_date",
-        "type": "TEXT",
-        "pk": false
-      },
-      {
-        "name": "job_no_degree_mention",
-        "type": "INTEGER",
-        "pk": false
-      },
-      {
-        "name": "job_health_insurance",
-        "type": "INTEGER",
-        "pk": false
-      },
-      {
-        "name": "job_country",
-        "type": "TEXT",
-        "pk": false
-      },
-      {
-        "name": "salary_rate",
-        "type": "TEXT",
-        "pk": false
-      },
-      {
-        "name": "salary_year_avg",
-        "type": "REAL",
-        "pk": false
-      },
-      {
-        "name": "salary_hour_avg",
-        "type": "REAL",
-        "pk": false
-      }
-    ],
-    "foreign_keys": []
-  },
-  "alien_data": {
-    "columns": [
-      {
-        "name": "id",
-        "type": "INTEGER",
-        "pk": false
-      },
-      {
-        "name": "first_name",
-        "type": "TEXT",
-        "pk": false
-      },
-      {
-        "name": "last_name",
-        "type": "TEXT",
-        "pk": false
-      },
-      {
-        "name": "email",
-        "type": "TEXT",
-        "pk": false
-      },
-      {
-        "name": "gender",
-        "type": "TEXT",
-        "pk": false
-      },
-      {
-        "name": "type",
-        "type": "TEXT",
-        "pk": false
-      },
-      {
-        "name": "birth_year",
-        "type": "INTEGER",
-        "pk": false
-      },
-      {
-        "name": "age",
-        "type": "INTEGER",
-        "pk": false
-      },
-      {
-        "name": "favorite_food",
-        "type": "TEXT",
-        "pk": false
-      },
-      {
-        "name": "feeding_frequency",
-        "type": "TEXT",
-        "pk": false
-      },
-      {
-        "name": "aggressive",
-        "type": "INTEGER",
-        "pk": false
-      },
-      {
-        "name": "occupation",
-        "type": "TEXT",
-        "pk": false
-      },
-      {
-        "name": "current_location",
-        "type": "TEXT",
-        "pk": false
-      },
-      {
-        "name": "state",
-        "type": "TEXT",
-        "pk": false
-      },
-      {
-        "name": "us_region",
-        "type": "TEXT",
-        "pk": false
-      },
-      {
-        "name": "country",
-        "type": "TEXT",
-        "pk": false
-      }
-    ],
-    "foreign_keys": []
-  },
-  "cities_countries": {
-    "columns": [
-      {
-        "name": "country_id",
-        "type": "INTEGER",
-        "pk": false
-      },
-      {
-        "name": "country_name",
-        "type": "TEXT",
-        "pk": false
-      },
-      {
-        "name": "country_code_2",
-        "type": "TEXT",
-        "pk": false
-      },
-      {
-        "name": "country_code_3",
-        "type": "TEXT",
-        "pk": false
-      },
-      {
-        "name": "region",
-        "type": "TEXT",
-        "pk": false
-      },
-      {
-        "name": "sub_region",
-        "type": "TEXT",
-        "pk": false
-      },
-      {
-        "name": "intermediate_region",
-        "type": "TEXT",
-        "pk": false
-      },
-      {
-        "name": "created_on",
-        "type": "TEXT",
-        "pk": false
-      }
-    ],
-    "foreign_keys": []
-  },
-  "legislation_date_dim": {
-    "columns": [
-      {
-        "name": "date",
-        "type": "TEXT",
-        "pk": false
-      },
-      {
-        "name": "month_name",
-        "type": "TEXT",
-        "pk": false
-      },
-      {
-        "name": "day_of_month",
-        "type": "INTEGER",
-        "pk": false
-      }
-    ],
-    "foreign_keys": []
-  },
-  "cities": {
-    "columns": [
-      {
-        "name": "city_id",
-        "type": "INTEGER",
-        "pk": false
-      },
-      {
-        "name": "city_name",
-        "type": "TEXT",
-        "pk": false
-      },
-      {
-        "name": "latitude",
-        "type": "REAL",
-        "pk": false
-      },
-      {
-        "name": "longitude",
-        "type": "REAL",
-        "pk": false
-      },
-      {
-        "name": "country_code_2",
-        "type": "TEXT",
-        "pk": false
-      },
-      {
-        "name": "capital",
-        "type": "INTEGER",
-        "pk": false
-      },
-      {
-        "name": "population",
-        "type": "REAL",
-        "pk": false
-      },
-      {
-        "name": "insert_date",
-        "type": "TEXT",
-        "pk": false
-      }
-    ],
-    "foreign_keys": []
-  },
-  "aliens_location": {
-    "columns": [
-      {
-        "name": "loc_id",
-        "type": "INTEGER",
-        "pk": false
-      },
-      {
-        "name": "current_location",
-        "type": "TEXT",
-        "pk": false
-      },
-      {
-        "name": "state",
-        "type": "TEXT",
-        "pk": false
-      },
-      {
-        "name": "country",
-        "type": "TEXT",
-        "pk": false
-      },
-      {
-        "name": "occupation",
-        "type": "TEXT",
-        "pk": false
-      }
-    ],
-    "foreign_keys": []
-  },
-  "aliens": {
-    "columns": [
-      {
-        "name": "id",
-        "type": "INTEGER",
-        "pk": false
-      },
-      {
-        "name": "first_name",
-        "type": "TEXT",
-        "pk": false
-      },
-      {
-        "name": "last_name",
-        "type": "TEXT",
-        "pk": false
-      },
-      {
-        "name": "email",
-        "type": "TEXT",
-        "pk": false
-      },
-      {
-        "name": "gender",
-        "type": "TEXT",
-        "pk": false
-      },
-      {
-        "name": "type",
-        "type": "TEXT",
-        "pk": false
-      },
-      {
-        "name": "birth_year",
-        "type": "INTEGER",
-        "pk": false
-      }
-    ],
-    "foreign_keys": []
-  },
-  "cities_languages": {
-    "columns": [
-      {
-        "name": "language_id",
-        "type": "INTEGER",
-        "pk": false
-      },
-      {
-        "name": "language",
-        "type": "TEXT",
-        "pk": false
-      },
-      {
-        "name": "country_code_2",
-        "type": "TEXT",
-        "pk": false
-      }
-    ],
-    "foreign_keys": []
-  },
-  "job_company": {
-    "columns": [
-      {
-        "name": "company_id",
-        "type": "INTEGER",
-        "pk": false
-      },
-      {
-        "name": "name",
-        "type": "TEXT",
-        "pk": false
       },
       {
-        "name": "link",
-        "type": "TEXT",
+        "column_name": "granulation",
+        "type": "timestamp without time zone",
+        "description": "",
+        "sample_values": [],
         "pk": false
       },
       {
-        "name": "link_google",
-        "type": "TEXT",
+        "column_name": "coating",
+        "type": "timestamp without time zone",
+        "description": "",
+        "sample_values": [],
         "pk": false
       },
       {
-        "name": "thumbnail",
-        "type": "TEXT",
+        "column_name": "compression",
+        "type": "timestamp without time zone",
+        "description": "",
+        "sample_values": [],
         "pk": false
       }
     ],

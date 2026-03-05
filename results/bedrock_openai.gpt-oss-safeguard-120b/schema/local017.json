@@ -1,619 +1,564 @@
 {
-  "victims": {
+  "process-area-details": {
     "columns": [
       {
-        "name": "id",
-        "type": "INTEGER",
+        "column_name": "_time_in_opn",
+        "type": "character varying",
+        "description": "",
+        "sample_values": [
+          "67.68%",
+          "99.37%"
+        ],
         "pk": false
       },
       {
-        "name": "case_id",
-        "type": "REAL",
+        "column_name": "_time_in_cleaning",
+        "type": "double precision",
+        "description": "",
+        "sample_values": [],
         "pk": false
       },
       {
-        "name": "party_number",
-        "type": "INTEGER",
+        "column_name": "equipment_efficiency",
+        "type": "character varying",
+        "description": "",
+        "sample_values": [
+          "94.22%",
+          "85.39%"
+        ],
         "pk": false
       },
       {
-        "name": "victim_role",
-        "type": "TEXT",
+        "column_name": "idle_time_",
+        "type": "character varying",
+        "description": "",
+        "sample_values": [
+          "13.47%",
+          "-29.69%"
+        ],
         "pk": false
       },
       {
-        "name": "victim_sex",
-        "type": "TEXT",
+        "column_name": "overall_efficiency",
+        "type": "character varying",
+        "description": "",
+        "sample_values": [
+          "81.53%",
+          "110.73%"
+        ],
         "pk": false
       },
       {
-        "name": "victim_age",
-        "type": "REAL",
+        "column_name": "area_group",
+        "type": "character varying",
+        "description": "",
+        "sample_values": [
+          "Granulation",
+          "Granulation"
+        ],
         "pk": false
       },
       {
-        "name": "victim_degree_of_injury",
-        "type": "TEXT",
-        "pk": false
-      },
-      {
-        "name": "victim_seating_position",
-        "type": "TEXT",
-        "pk": false
-      },
-      {
-        "name": "victim_safety_equipment_1",
-        "type": "TEXT",
-        "pk": false
-      },
-      {
-        "name": "victim_safety_equipment_2",
-        "type": "TEXT",
-        "pk": false
-      },
-      {
-        "name": "victim_ejected",
-        "type": "TEXT",
+        "column_name": "area_name",
+        "type": "character varying",
+        "description": "",
+        "sample_values": [
+          "Granulation 1",
+          "Granulation 2"
+        ],
         "pk": false
       }
     ],
     "foreign_keys": []
   },
-  "collisions": {
+  "manuf-delay": {
     "columns": [
       {
-        "name": "case_id",
-        "type": "REAL",
+        "column_name": "dispatch_to_receipt_at_ev",
+        "type": "double precision",
+        "description": "",
+        "sample_values": [],
         "pk": false
       },
       {
-        "name": "jurisdiction",
-        "type": "REAL",
+        "column_name": "quality_release_to_dispatch",
+        "type": "double precision",
+        "description": "",
+        "sample_values": [],
         "pk": false
       },
       {
-        "name": "officer_id",
-        "type": "TEXT",
+        "column_name": "gran_to_blend",
+        "type": "double precision",
+        "description": "",
+        "sample_values": [
+          "3.0"
+        ],
         "pk": false
       },
       {
-        "name": "reporting_district",
-        "type": "TEXT",
+        "column_name": "rm_dispense_to_gran",
+        "type": "double precision",
+        "description": "",
+        "sample_values": [
+          "39.0"
+        ],
         "pk": false
       },
       {
-        "name": "chp_shift",
-        "type": "TEXT",
+        "column_name": "prod_desc",
+        "type": "character varying",
+        "description": "",
+        "sample_values": [
+          "Cor Baclofen Tab USP 10 mg",
+          "Ble Nicotine Pol  Loz 2mg Mint"
+        ],
         "pk": false
       },
       {
-        "name": "population",
-        "type": "TEXT",
+        "column_name": "pm_dispense_to_packing",
+        "type": "double precision",
+        "description": "",
+        "sample_values": [],
         "pk": false
       },
       {
-        "name": "county_city_location",
-        "type": "INTEGER",
+        "column_name": "fg_code",
+        "type": "bigint",
+        "description": "",
+        "sample_values": [
+          "30004",
+          "30085"
+        ],
         "pk": false
       },
       {
-        "name": "county_location",
-        "type": "TEXT",
+        "column_name": "comp_to_coat",
+        "type": "double precision",
+        "description": "",
+        "sample_values": [],
         "pk": false
       },
       {
-        "name": "special_condition",
-        "type": "REAL",
+        "column_name": "blend_to_comp",
+        "type": "double precision",
+        "description": "",
+        "sample_values": [
+          "9.0"
+        ],
         "pk": false
       },
       {
-        "name": "beat_type",
-        "type": "TEXT",
+        "column_name": "prod_family",
+        "type": "character varying",
+        "description": "",
+        "sample_values": [],
         "pk": false
       },
       {
-        "name": "chp_beat_type",
-        "type": "TEXT",
+        "column_name": "packaging_to_quality_release",
+        "type": "double precision",
+        "description": "",
+        "sample_values": [],
         "pk": false
       },
       {
-        "name": "city_division_lapd",
-        "type": "TEXT",
+        "column_name": "coat_to_imprint",
+        "type": "double precision",
+        "description": "",
+        "sample_values": [],
         "pk": false
       },
       {
-        "name": "chp_beat_class",
-        "type": "TEXT",
+        "column_name": "batch",
+        "type": "character varying",
+        "description": "",
+        "sample_values": [
+          "50821",
+          "50556"
+        ],
         "pk": false
       },
       {
-        "name": "beat_number",
-        "type": "TEXT",
-        "pk": false
-      },
-      {
-        "name": "primary_road",
-        "type": "TEXT",
-        "pk": false
-      },
-      {
-        "name": "secondary_road",
-        "type": "TEXT",
-        "pk": false
-      },
-      {
-        "name": "distance",
-        "type": "REAL",
-        "pk": false
-      },
-      {
-        "name": "direction",
-        "type": "TEXT",
-        "pk": false
-      },
-      {
-        "name": "intersection",
-        "type": "REAL",
-        "pk": false
-      },
-      {
-        "name": "weather_1",
-        "type": "TEXT",
-        "pk": false
-      },
-      {
-        "name": "weather_2",
-        "type": "TEXT",
-        "pk": false
-      },
-      {
-        "name": "state_highway_indicator",
-        "type": "REAL",
-        "pk": false
-      },
-      {
-        "name": "caltrans_county",
-        "type": "TEXT",
-        "pk": false
-      },
-      {
-        "name": "caltrans_district",
-        "type": "REAL",
-        "pk": false
-      },
-      {
-        "name": "state_route",
-        "type": "REAL",
-        "pk": false
-      },
-      {
-        "name": "route_suffix",
-        "type": "TEXT",
-        "pk": false
-      },
-      {
-        "name": "postmile_prefix",
-        "type": "TEXT",
-        "pk": false
-      },
-      {
-        "name": "postmile",
-        "type": "REAL",
-        "pk": false
-      },
-      {
-        "name": "location_type",
-        "type": "TEXT",
-        "pk": false
-      },
-      {
-        "name": "ramp_intersection",
-        "type": "TEXT",
-        "pk": false
-      },
-      {
-        "name": "side_of_highway",
-        "type": "TEXT",
-        "pk": false
-      },
-      {
-        "name": "tow_away",
-        "type": "REAL",
-        "pk": false
-      },
-      {
-        "name": "collision_severity",
-        "type": "TEXT",
-        "pk": false
-      },
-      {
-        "name": "killed_victims",
-        "type": "REAL",
-        "pk": false
-      },
-      {
-        "name": "injured_victims",
-        "type": "REAL",
-        "pk": false
-      },
-      {
-        "name": "party_count",
-        "type": "REAL",
-        "pk": false
-      },
-      {
-        "name": "primary_collision_factor",
-        "type": "TEXT",
-        "pk": false
-      },
-      {
-        "name": "pcf_violation_code",
-        "type": "TEXT",
-        "pk": false
-      },
-      {
-        "name": "pcf_violation_category",
-        "type": "TEXT",
-        "pk": false
-      },
-      {
-        "name": "pcf_violation",
-        "type": "REAL",
-        "pk": false
-      },
-      {
-        "name": "pcf_violation_subsection",
-        "type": "TEXT",
-        "pk": false
-      },
-      {
-        "name": "hit_and_run",
-        "type": "TEXT",
-        "pk": false
-      },
-      {
-        "name": "type_of_collision",
-        "type": "TEXT",
-        "pk": false
-      },
-      {
-        "name": "motor_vehicle_involved_with",
-        "type": "TEXT",
-        "pk": false
-      },
-      {
-        "name": "pedestrian_action",
-        "type": "TEXT",
-        "pk": false
-      },
-      {
-        "name": "road_surface",
-        "type": "TEXT",
-        "pk": false
-      },
-      {
-        "name": "road_condition_1",
-        "type": "TEXT",
-        "pk": false
-      },
-      {
-        "name": "road_condition_2",
-        "type": "TEXT",
-        "pk": false
-      },
-      {
-        "name": "lighting",
-        "type": "TEXT",
-        "pk": false
-      },
-      {
-        "name": "control_device",
-        "type": "TEXT",
-        "pk": false
-      },
-      {
-        "name": "chp_road_type",
-        "type": "TEXT",
-        "pk": false
-      },
-      {
-        "name": "pedestrian_collision",
-        "type": "INTEGER",
-        "pk": false
-      },
-      {
-        "name": "bicycle_collision",
-        "type": "INTEGER",
-        "pk": false
-      },
-      {
-        "name": "motorcycle_collision",
-        "type": "INTEGER",
-        "pk": false
-      },
-      {
-        "name": "truck_collision",
-        "type": "INTEGER",
-        "pk": false
-      },
-      {
-        "name": "not_private_property",
-        "type": "REAL",
-        "pk": false
-      },
-      {
-        "name": "alcohol_involved",
-        "type": "REAL",
-        "pk": false
-      },
-      {
-        "name": "statewide_vehicle_type_at_fault",
-        "type": "TEXT",
-        "pk": false
-      },
-      {
-        "name": "chp_vehicle_type_at_fault",
-        "type": "TEXT",
-        "pk": false
-      },
-      {
-        "name": "severe_injury_count",
-        "type": "INTEGER",
-        "pk": false
-      },
-      {
-        "name": "other_visible_injury_count",
-        "type": "INTEGER",
-        "pk": false
-      },
-      {
-        "name": "complaint_of_pain_injury_count",
-        "type": "INTEGER",
-        "pk": false
-      },
-      {
-        "name": "pedestrian_killed_count",
-        "type": "INTEGER",
-        "pk": false
-      },
-      {
-        "name": "pedestrian_injured_count",
-        "type": "INTEGER",
-        "pk": false
-      },
-      {
-        "name": "bicyclist_killed_count",
-        "type": "INTEGER",
-        "pk": false
-      },
-      {
-        "name": "bicyclist_injured_count",
-        "type": "INTEGER",
-        "pk": false
-      },
-      {
-        "name": "motorcyclist_killed_count",
-        "type": "INTEGER",
-        "pk": false
-      },
-      {
-        "name": "motorcyclist_injured_count",
-        "type": "REAL",
-        "pk": false
-      },
-      {
-        "name": "primary_ramp",
-        "type": "TEXT",
-        "pk": false
-      },
-      {
-        "name": "secondary_ramp",
-        "type": "TEXT",
-        "pk": false
-      },
-      {
-        "name": "latitude",
-        "type": "REAL",
-        "pk": false
-      },
-      {
-        "name": "longitude",
-        "type": "REAL",
-        "pk": false
-      },
-      {
-        "name": "collision_date",
-        "type": "TEXT",
-        "pk": false
-      },
-      {
-        "name": "collision_time",
-        "type": "TEXT",
-        "pk": false
-      },
-      {
-        "name": "process_date",
-        "type": "TEXT",
+        "column_name": "imprinting_to_packing",
+        "type": "double precision",
+        "description": "",
+        "sample_values": [],
         "pk": false
       }
     ],
     "foreign_keys": []
   },
-  "case_ids": {
+  "doh": {
     "columns": [
       {
-        "name": "case_id",
-        "type": "REAL",
+        "column_name": "penality",
+        "type": "double precision",
+        "description": "",
+        "sample_values": [
+          "10290.952875127594",
+          "1637.0"
+        ],
         "pk": false
       },
       {
-        "name": "db_year",
-        "type": "INTEGER",
-        "pk": false
-      }
-    ],
-    "foreign_keys": []
-  },
-  "parties": {
-    "columns": [
-      {
-        "name": "id",
-        "type": "INTEGER",
+        "column_name": "april_need",
+        "type": "double precision",
+        "description": "",
+        "sample_values": [
+          "10482.952875127594",
+          "3257.0"
+        ],
         "pk": false
       },
       {
-        "name": "case_id",
-        "type": "REAL",
+        "column_name": "coverage_shortage",
+        "type": "double precision",
+        "description": "",
+        "sample_values": [
+          "-77850.95287512758",
+          "-23074.0"
+        ],
         "pk": false
       },
       {
-        "name": "party_number",
-        "type": "INTEGER",
+        "column_name": "month2_demand",
+        "type": "double precision",
+        "description": "",
+        "sample_values": [
+          "10290.952875127594",
+          "1637.0"
+        ],
         "pk": false
       },
       {
-        "name": "party_type",
-        "type": "TEXT",
+        "column_name": "shelf_life_bet_11_and_16",
+        "type": "double precision",
+        "description": "",
+        "sample_values": [
+          "0.0",
+          "0.0"
+        ],
         "pk": false
       },
       {
-        "name": "at_fault",
-        "type": "INTEGER",
+        "column_name": "unrestrict_qty",
+        "type": "double precision",
+        "description": "",
+        "sample_values": [
+          "8544.0",
+          "4248.0"
+        ],
         "pk": false
       },
       {
-        "name": "party_sex",
-        "type": "TEXT",
+        "column_name": "month4_demand",
+        "type": "double precision",
+        "description": "",
+        "sample_values": [
+          "10198.61954179426",
+          "1889.0"
+        ],
         "pk": false
       },
       {
-        "name": "party_age",
-        "type": "REAL",
+        "column_name": "month1_demand",
+        "type": "double precision",
+        "description": "",
+        "sample_values": [
+          "10290.952875127594",
+          "1637.0"
+        ],
         "pk": false
       },
       {
-        "name": "party_sobriety",
-        "type": "TEXT",
+        "column_name": "shelf_life__16",
+        "type": "double precision",
+        "description": "",
+        "sample_values": [
+          "8544.0",
+          "72.0"
+        ],
         "pk": false
       },
       {
-        "name": "party_drug_physical",
-        "type": "TEXT",
+        "column_name": "month3_demand",
+        "type": "double precision",
+        "description": "",
+        "sample_values": [
+          "10198.61954179426",
+          "1889.0"
+        ],
         "pk": false
       },
       {
-        "name": "direction_of_travel",
-        "type": "TEXT",
+        "column_name": "shelf_life___11",
+        "type": "double precision",
+        "description": "",
+        "sample_values": [
+          "0.0",
+          "0.0"
+        ],
         "pk": false
       },
       {
-        "name": "party_safety_equipment_1",
-        "type": "TEXT",
+        "column_name": "prod_family_catg",
+        "type": "character varying",
+        "description": "",
+        "sample_values": [
+          "Stranger",
+          "Stranger"
+        ],
         "pk": false
       },
       {
-        "name": "party_safety_equipment_2",
-        "type": "TEXT",
+        "column_name": "forward_coverage",
+        "type": "character varying",
+        "description": "",
+        "sample_values": [
+          "Less than a month",
+          "Less than a month"
+        ],
         "pk": false
       },
       {
-        "name": "financial_responsibility",
-        "type": "TEXT",
+        "column_name": "open_deliveries",
+        "type": "double precision",
+        "description": "",
+        "sample_values": [
+          "75240.0",
+          "19889.0"
+        ],
         "pk": false
       },
       {
-        "name": "hazardous_materials",
-        "type": "REAL",
+        "column_name": "rrpl_fg",
+        "type": "double precision",
+        "description": "",
+        "sample_values": [
+          "0.0",
+          "4248.0"
+        ],
         "pk": false
       },
       {
-        "name": "cellphone_in_use",
-        "type": "REAL",
+        "column_name": "ndc",
+        "type": "double precision",
+        "description": "",
+        "sample_values": [
+          "72888008401.0",
+          "72888002911.0"
+        ],
         "pk": false
       },
       {
-        "name": "cellphone_use_type",
-        "type": "TEXT",
+        "column_name": "sales_mtd",
+        "type": "double precision",
+        "description": "",
+        "sample_values": [
+          "1440.0",
+          "0.0"
+        ],
         "pk": false
       },
       {
-        "name": "school_bus_related",
-        "type": "REAL",
+        "column_name": "doh_incl_git_fg",
+        "type": "double precision",
+        "description": "",
+        "sample_values": [
+          "22.38859732385504",
+          "49.480757483200975"
+        ],
         "pk": false
       },
       {
-        "name": "oaf_violation_code",
-        "type": "TEXT",
+        "column_name": "prod_desc",
+        "type": "character varying",
+        "description": "",
+        "sample_values": [
+          "Eltravin",
+          "Ulinaril"
+        ],
         "pk": false
       },
       {
-        "name": "oaf_violation_category",
-        "type": "TEXT",
+        "column_name": "critical_sku",
+        "type": "character varying",
+        "description": "",
+        "sample_values": [
+          "No",
+          "Yes"
+        ],
         "pk": false
       },
       {
-        "name": "oaf_violation_section",
-        "type": "REAL",
+        "column_name": "doh",
+        "type": "double precision",
+        "description": "",
+        "sample_values": [
+          "22.38859732385504",
+          "-28.36896762370189"
+        ],
         "pk": false
       },
       {
-        "name": "oaf_violation_suffix",
-        "type": "TEXT",
+        "column_name": "doh_incl_git_fg_wip",
+        "type": "double precision",
+        "description": "",
+        "sample_values": [
+          "22.38859732385504",
+          "135.0030543555284"
+        ],
         "pk": false
       },
       {
-        "name": "other_associate_factor_1",
-        "type": "TEXT",
+        "column_name": "advagen_stock",
+        "type": "double precision",
+        "description": "",
+        "sample_values": [
+          "7872.0",
+          "72.0"
+        ],
         "pk": false
       },
       {
-        "name": "other_associate_factor_2",
-        "type": "TEXT",
+        "column_name": "material",
+        "type": "character varying",
+        "description": "",
+        "sample_values": [
+          "40215",
+          "40224"
+        ],
         "pk": false
       },
       {
-        "name": "party_number_killed",
-        "type": "INTEGER",
+        "column_name": "bloc_stock_qty",
+        "type": "double precision",
+        "description": "",
+        "sample_values": [
+          "42.0",
+          "242.0"
+        ],
         "pk": false
       },
       {
-        "name": "party_number_injured",
-        "type": "INTEGER",
+        "column_name": "qual_stock_qty",
+        "type": "double precision",
+        "description": "",
+        "sample_values": [
+          "0.0",
+          "0.0"
+        ],
         "pk": false
       },
       {
-        "name": "movement_preceding_collision",
-        "type": "TEXT",
+        "column_name": "net_stock",
+        "type": "double precision",
+        "description": "",
+        "sample_values": [
+          "7680.0",
+          "-1548.0"
+        ],
         "pk": false
       },
       {
-        "name": "vehicle_year",
-        "type": "REAL",
+        "column_name": "prod_family",
+        "type": "character varying",
+        "description": "",
+        "sample_values": [
+          "Isosorbide DN",
+          "Loratadine ODT (OTC)"
+        ],
         "pk": false
       },
       {
-        "name": "vehicle_make",
-        "type": "TEXT",
+        "column_name": "strnth",
+        "type": "character varying",
+        "description": "",
+        "sample_values": [
+          "30",
+          "10"
+        ],
         "pk": false
       },
       {
-        "name": "statewide_vehicle_type",
-        "type": "TEXT",
+        "column_name": "doh_incl_git",
+        "type": "double precision",
+        "description": "",
+        "sample_values": [
+          "22.38859732385504",
+          "-28.36896762370189"
+        ],
         "pk": false
       },
       {
-        "name": "chp_vehicle_type_towing",
-        "type": "TEXT",
+        "column_name": "availablity",
+        "type": "double precision",
+        "description": "",
+        "sample_values": [
+          "-67368.0",
+          "-19817.0"
+        ],
         "pk": false
       },
       {
-        "name": "chp_vehicle_type_towed",
-        "type": "TEXT",
+        "column_name": "open_qty",
+        "type": "double precision",
+        "description": "",
+        "sample_values": [
+          "75240.0",
+          "19889.0"
+        ],
         "pk": false
       },
       {
-        "name": "party_race",
-        "type": "TEXT",
+        "column_name": "rrpl_wip",
+        "type": "double precision",
+        "description": "",
+        "sample_values": [
+          "0.0",
+          "4666.666666"
+        ],
+        "pk": false
+      },
+      {
+        "column_name": "netstock_plus_git",
+        "type": "double precision",
+        "description": "",
+        "sample_values": [
+          "7680.0",
+          "-1548.0"
+        ],
+        "pk": false
+      },
+      {
+        "column_name": "open_lines",
+        "type": "double precision",
+        "description": "",
+        "sample_values": [
+          "192.0",
+          "1620.0"
+        ],
+        "pk": false
+      },
+      {
+        "column_name": "pack_size",
+        "type": "double precision",
+        "description": "",
+        "sample_values": [
+          "100.0",
+          "30.0"
+        ],
+        "pk": false
+      },
+      {
+        "column_name": "git",
+        "type": "double precision",
+        "description": "",
+        "sample_values": [
+          "0.0",
+          "0.0"
+        ],
         "pk": false
       }
     ],

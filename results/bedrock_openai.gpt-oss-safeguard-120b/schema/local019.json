@@ -1,224 +1,605 @@
 {
-  "Promotions": {
+  "manuf-delay": {
     "columns": [
       {
-        "name": "id",
-        "type": "INTEGER",
-        "pk": true
+        "column_name": "batch",
+        "type": "character varying",
+        "description": "",
+        "sample_values": [
+          "50821",
+          "50556"
+        ],
+        "pk": false
       },
       {
-        "name": "name",
-        "type": "TEXT",
+        "column_name": "fg_code",
+        "type": "bigint",
+        "description": "",
+        "sample_values": [
+          "30004",
+          "30085"
+        ],
+        "pk": false
+      },
+      {
+        "column_name": "comp_to_coat",
+        "type": "double precision",
+        "description": "",
+        "sample_values": [],
+        "pk": false
+      },
+      {
+        "column_name": "blend_to_comp",
+        "type": "double precision",
+        "description": "",
+        "sample_values": [
+          "9.0"
+        ],
+        "pk": false
+      },
+      {
+        "column_name": "prod_family",
+        "type": "character varying",
+        "description": "",
+        "sample_values": [],
+        "pk": false
+      },
+      {
+        "column_name": "quality_release_to_dispatch",
+        "type": "double precision",
+        "description": "",
+        "sample_values": [],
+        "pk": false
+      },
+      {
+        "column_name": "coat_to_imprint",
+        "type": "double precision",
+        "description": "",
+        "sample_values": [],
+        "pk": false
+      },
+      {
+        "column_name": "packaging_to_quality_release",
+        "type": "double precision",
+        "description": "",
+        "sample_values": [],
+        "pk": false
+      },
+      {
+        "column_name": "rm_dispense_to_gran",
+        "type": "double precision",
+        "description": "",
+        "sample_values": [
+          "39.0"
+        ],
+        "pk": false
+      },
+      {
+        "column_name": "prod_desc",
+        "type": "character varying",
+        "description": "",
+        "sample_values": [
+          "Cor Baclofen Tab USP 10 mg",
+          "Ble Nicotine Pol  Loz 2mg Mint"
+        ],
+        "pk": false
+      },
+      {
+        "column_name": "gran_to_blend",
+        "type": "double precision",
+        "description": "",
+        "sample_values": [
+          "3.0"
+        ],
+        "pk": false
+      },
+      {
+        "column_name": "pm_dispense_to_packing",
+        "type": "double precision",
+        "description": "",
+        "sample_values": [],
+        "pk": false
+      },
+      {
+        "column_name": "dispatch_to_receipt_at_ev",
+        "type": "double precision",
+        "description": "",
+        "sample_values": [],
+        "pk": false
+      },
+      {
+        "column_name": "imprinting_to_packing",
+        "type": "double precision",
+        "description": "",
+        "sample_values": [],
         "pk": false
       }
     ],
     "foreign_keys": []
   },
-  "sqlite_sequence": {
+  "otif": {
     "columns": [
       {
-        "name": "name",
-        "type": "",
+        "column_name": "ndc",
+        "type": "bigint",
+        "description": "",
+        "sample_values": [
+          "72888008301",
+          "72888005201"
+        ],
         "pk": false
       },
       {
-        "name": "seq",
-        "type": "",
+        "column_name": "final_no_days",
+        "type": "bigint",
+        "description": "",
+        "sample_values": [
+          "14",
+          "14"
+        ],
+        "pk": false
+      },
+      {
+        "column_name": "shippment_no",
+        "type": "character varying",
+        "description": "",
+        "sample_values": [],
+        "pk": false
+      },
+      {
+        "column_name": "on_time_in_full_loss",
+        "type": "double precision",
+        "description": "",
+        "sample_values": [
+          "0.0",
+          "0.0"
+        ],
+        "pk": false
+      },
+      {
+        "column_name": "otif_loss_final_status",
+        "type": "character varying",
+        "description": "",
+        "sample_values": [
+          "Delivered Within Lead Time",
+          "Delivered Within Lead Time"
+        ],
+        "pk": false
+      },
+      {
+        "column_name": "bolnr",
+        "type": "character varying",
+        "description": "",
+        "sample_values": [
+          "SID7187823-FDE",
+          "SID7187801-FDE"
+        ],
+        "pk": false
+      },
+      {
+        "column_name": "cancelled_qty",
+        "type": "double precision",
+        "description": "",
+        "sample_values": [
+          "0.0",
+          "0.0"
+        ],
+        "pk": false
+      },
+      {
+        "column_name": "in_full_loss",
+        "type": "double precision",
+        "description": "",
+        "sample_values": [
+          "0.0",
+          "0.0"
+        ],
+        "pk": false
+      },
+      {
+        "column_name": "no_of_days",
+        "type": "bigint",
+        "description": "",
+        "sample_values": [
+          "14",
+          "14"
+        ],
+        "pk": false
+      },
+      {
+        "column_name": "bol",
+        "type": "character varying",
+        "description": "",
+        "sample_values": [
+          "SID7187823",
+          "SID7187801"
+        ],
+        "pk": false
+      },
+      {
+        "column_name": "land1",
+        "type": "character varying",
+        "description": "",
+        "sample_values": [
+          "US",
+          "US"
+        ],
+        "pk": false
+      },
+      {
+        "column_name": "abgru",
+        "type": "double precision",
+        "description": "",
+        "sample_values": [],
+        "pk": false
+      },
+      {
+        "column_name": "mandt",
+        "type": "double precision",
+        "description": "",
+        "sample_values": [
+          "100.0",
+          "100.0"
+        ],
+        "pk": false
+      },
+      {
+        "column_name": "otif_loss_f1",
+        "type": "character varying",
+        "description": "",
+        "sample_values": [
+          "Delivered Within Lead Time",
+          "Delivered Within Lead Time"
+        ],
+        "pk": false
+      },
+      {
+        "column_name": "plant",
+        "type": "double precision",
+        "description": "",
+        "sample_values": [
+          "2006.0",
+          "2006.0"
+        ],
+        "pk": false
+      },
+      {
+        "column_name": "cust_name",
+        "type": "character varying",
+        "description": "",
+        "sample_values": [
+          "Sapphire Lake Pharmacy",
+          "Sapphire Lake Pharmacy"
+        ],
+        "pk": false
+      },
+      {
+        "column_name": "rel_qty",
+        "type": "double precision",
+        "description": "",
+        "sample_values": [
+          "24.0",
+          "24.0"
+        ],
+        "pk": false
+      },
+      {
+        "column_name": "cust_names",
+        "type": "character varying",
+        "description": "",
+        "sample_values": [
+          "Sapphire Lake Pharmacy",
+          "Sapphire Lake Pharmacy"
+        ],
+        "pk": false
+      },
+      {
+        "column_name": "total_release_qty",
+        "type": "double precision",
+        "description": "",
+        "sample_values": [
+          "24.0",
+          "24.0"
+        ],
+        "pk": false
+      },
+      {
+        "column_name": "final_cust_del_dt",
+        "type": "double precision",
+        "description": "",
+        "sample_values": [],
+        "pk": false
+      },
+      {
+        "column_name": "remarks",
+        "type": "double precision",
+        "description": "",
+        "sample_values": [],
+        "pk": false
+      },
+      {
+        "column_name": "released_on_dt",
+        "type": "date",
+        "description": "",
+        "sample_values": [
+          "2024-02-28",
+          "2024-02-28"
+        ],
+        "pk": false
+      },
+      {
+        "column_name": "cancellation_dt",
+        "type": "character varying",
+        "description": "",
+        "sample_values": [],
+        "pk": false
+      },
+      {
+        "column_name": "carrier",
+        "type": "character varying",
+        "description": "",
+        "sample_values": [
+          "FDE",
+          "FDE"
+        ],
+        "pk": false
+      },
+      {
+        "column_name": "_3pl_dt",
+        "type": "date",
+        "description": "",
+        "sample_values": [
+          "2024-02-29",
+          "2024-02-29"
+        ],
+        "pk": false
+      },
+      {
+        "column_name": "transit_status",
+        "type": "character varying",
+        "description": "",
+        "sample_values": [],
+        "pk": false
+      },
+      {
+        "column_name": "packing_list_no",
+        "type": "double precision",
+        "description": "",
+        "sample_values": [
+          "80047569.0",
+          "80047570.0"
+        ],
+        "pk": false
+      },
+      {
+        "column_name": "shipped_qty",
+        "type": "double precision",
+        "description": "",
+        "sample_values": [
+          "24.0",
+          "24.0"
+        ],
+        "pk": false
+      },
+      {
+        "column_name": "initial_shipped_qty",
+        "type": "double precision",
+        "description": "",
+        "sample_values": [
+          "24.0",
+          "24.0"
+        ],
+        "pk": false
+      },
+      {
+        "column_name": "pen_rel_qty",
+        "type": "double precision",
+        "description": "",
+        "sample_values": [
+          "0.0",
+          "0.0"
+        ],
+        "pk": false
+      },
+      {
+        "column_name": "item",
+        "type": "bigint",
+        "description": "",
+        "sample_values": [
+          "50",
+          "10"
+        ],
+        "pk": false
+      },
+      {
+        "column_name": "on_time",
+        "type": "bigint",
+        "description": "",
+        "sample_values": [
+          "1",
+          "1"
+        ],
+        "pk": false
+      },
+      {
+        "column_name": "act_shp_to_act_del_days",
+        "type": "double precision",
+        "description": "",
+        "sample_values": [],
+        "pk": false
+      },
+      {
+        "column_name": "so_recp_to_act_shp_days",
+        "type": "double precision",
+        "description": "",
+        "sample_values": [
+          "2.0",
+          "2.0"
+        ],
+        "pk": false
+      },
+      {
+        "column_name": "req_del_to_act_del_days",
+        "type": "double precision",
+        "description": "",
+        "sample_values": [],
+        "pk": false
+      },
+      {
+        "column_name": "regio",
+        "type": "character varying",
+        "description": "",
+        "sample_values": [
+          "UT",
+          "CA"
+        ],
+        "pk": false
+      },
+      {
+        "column_name": "delivery_date",
+        "type": "date",
+        "description": "",
+        "sample_values": [
+          "2024-03-05",
+          "2024-03-05"
+        ],
+        "pk": false
+      },
+      {
+        "column_name": "key_2",
+        "type": "double precision",
+        "description": "",
+        "sample_values": [
+          "8.004756972888009e+18",
+          "8.004757072888006e+18"
+        ],
+        "pk": false
+      },
+      {
+        "column_name": "cust_req_del_dt",
+        "type": "character varying",
+        "description": "",
+        "sample_values": [
+          "2024-03-13",
+          "2024-03-13"
+        ],
+        "pk": false
+      },
+      {
+        "column_name": "hdrdelivblock",
+        "type": "character varying",
+        "description": "",
+        "sample_values": [],
         "pk": false
       }
     ],
     "foreign_keys": []
   },
-  "Tables": {
+  "manufacturing-tracker": {
     "columns": [
       {
-        "name": "id",
-        "type": "INTEGER",
-        "pk": true
-      },
-      {
-        "name": "html",
-        "type": "TEXT",
+        "column_name": "name",
+        "type": "character varying",
+        "description": "",
+        "sample_values": [
+          "G-51A",
+          "G-107"
+        ],
         "pk": false
       },
       {
-        "name": "url",
-        "type": "TEXT",
-        "pk": false
-      }
-    ],
-    "foreign_keys": []
-  },
-  "Cards": {
-    "columns": [
-      {
-        "name": "id",
-        "type": "INTEGER",
-        "pk": true
-      },
-      {
-        "name": "table_id",
-        "type": "INTEGER",
+        "column_name": "finished_at",
+        "type": "timestamp without time zone",
+        "description": "",
+        "sample_values": [
+          "2025-05-11 15:16:22"
+        ],
         "pk": false
       },
       {
-        "name": "location_id",
-        "type": "INTEGER",
+        "column_name": "equipment_name",
+        "type": "character varying",
+        "description": "",
+        "sample_values": [
+          "Coating 2",
+          "Sifting 1"
+        ],
         "pk": false
       },
       {
-        "name": "promotion_id",
-        "type": "INTEGER",
+        "column_name": "startedrecorded_at",
+        "type": "timestamp without time zone",
+        "description": "",
+        "sample_values": [
+          "2025-05-12 17:04:00"
+        ],
         "pk": false
       },
       {
-        "name": "event_date",
-        "type": "TEXT",
+        "column_name": "status",
+        "type": "character varying",
+        "description": "",
+        "sample_values": [
+          "Idle",
+          "Under Usage"
+        ],
         "pk": false
       },
       {
-        "name": "event_id",
-        "type": "INTEGER",
+        "column_name": "rn",
+        "type": "bigint",
+        "description": "",
+        "sample_values": [
+          "24",
+          "1"
+        ],
         "pk": false
       },
       {
-        "name": "url",
-        "type": "TEXT",
+        "column_name": "idle_hours_mtd",
+        "type": "character varying",
+        "description": "",
+        "sample_values": [
+          "264 hours 58 minutes",
+          "226 hours 53 minutes"
+        ],
         "pk": false
       },
       {
-        "name": "info_html",
-        "type": "TEXT",
+        "column_name": "batch",
+        "type": "double precision",
+        "description": "",
+        "sample_values": [
+          "50734.0"
+        ],
         "pk": false
       },
       {
-        "name": "match_html",
-        "type": "TEXT",
-        "pk": false
-      }
-    ],
-    "foreign_keys": []
-  },
-  "Locations": {
-    "columns": [
-      {
-        "name": "id",
-        "type": "INTEGER",
-        "pk": true
-      },
-      {
-        "name": "name",
-        "type": "TEXT",
-        "pk": false
-      }
-    ],
-    "foreign_keys": []
-  },
-  "Events": {
-    "columns": [
-      {
-        "name": "id",
-        "type": "INTEGER",
-        "pk": true
-      },
-      {
-        "name": "name",
-        "type": "TEXT",
-        "pk": false
-      }
-    ],
-    "foreign_keys": []
-  },
-  "Matches": {
-    "columns": [
-      {
-        "name": "id",
-        "type": "INTEGER",
-        "pk": true
-      },
-      {
-        "name": "card_id",
-        "type": "INTEGER",
+        "column_name": "idle_hours",
+        "type": "character varying",
+        "description": "",
+        "sample_values": [
+          "58 hours 12 minutes"
+        ],
         "pk": false
       },
       {
-        "name": "winner_id",
-        "type": "TEXT",
+        "column_name": "product_description",
+        "type": "character varying",
+        "description": "",
+        "sample_values": [
+          "Guanfacine Extended Release Tablets USP 2 mg"
+        ],
         "pk": false
       },
       {
-        "name": "win_type",
-        "type": "TEXT",
-        "pk": false
-      },
-      {
-        "name": "loser_id",
-        "type": "TEXT",
-        "pk": false
-      },
-      {
-        "name": "match_type_id",
-        "type": "TEXT",
-        "pk": false
-      },
-      {
-        "name": "duration",
-        "type": "TEXT",
-        "pk": false
-      },
-      {
-        "name": "title_id",
-        "type": "TEXT",
-        "pk": false
-      },
-      {
-        "name": "title_change",
-        "type": "INTEGER",
-        "pk": false
-      }
-    ],
-    "foreign_keys": []
-  },
-  "Belts": {
-    "columns": [
-      {
-        "name": "id",
-        "type": "INTEGER",
-        "pk": true
-      },
-      {
-        "name": "name",
-        "type": "TEXT",
-        "pk": false
-      }
-    ],
-    "foreign_keys": []
-  },
-  "Wrestlers": {
-    "columns": [
-      {
-        "name": "id",
-        "type": "INTEGER",
-        "pk": true
-      },
-      {
-        "name": "name",
-        "type": "",
-        "pk": false
-      }
-    ],
-    "foreign_keys": []
-  },
-  "Match_Types": {
-    "columns": [
-      {
-        "name": "id",
-        "type": "INTEGER",
-        "pk": true
-      },
-      {
-        "name": "name",
-        "type": "TEXT",
+        "column_name": "cumulative_idle_hours_for_day",
+        "type": "character varying",
+        "description": "",
+        "sample_values": [
+          "25 hours 28 minutes",
+          "0 hours 0 minutes"
+        ],
         "pk": false
       }
     ],
