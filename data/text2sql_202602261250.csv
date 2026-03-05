@@ -1,0 +1,524 @@
+db,questions,sql_query
+acme-chatbot,What is the overall OTIF performance for this month?,"SELECT 
+  ROUND(AVG(on_time_in_full_loss::bigint), 2) AS otif_score
+FROM ""acme-chatbot"".otif
+WHERE DATE_TRUNC('month', TO_DATE(reporting_date, 'YYYY-MM-DD')) = DATE_TRUNC('month', CURRENT_DATE);
+        "
+acme-chatbot,Which customers have the lowest OTIF performance this month?,"SELECT 
+  cust_name,
+  ROUND(AVG(on_time_in_full_loss::bigint), 2) AS otif_score
+FROM ""acme-chatbot"".otif
+WHERE DATE_TRUNC('month', TO_DATE(reporting_date, 'YYYY-MM-DD')) = DATE_TRUNC('month', CURRENT_DATE)
+GROUP BY cust_name
+ORDER BY otif_score ASC
+LIMIT 10;"
+acme-chatbot,Which materials (SKUs) had the highest order volume but failed OTIF?,"SELECT 
+  material,
+  material_desc,
+  SUM(order_qty) AS total_order_qty,
+  COUNT(*) FILTER (WHERE on_time = 0) AS otif_failures
+FROM ""acme-chatbot"".otif
+GROUP BY material, material_desc
+ORDER BY otif_failures DESC
+LIMIT 10;"
+acme-chatbot,What is the daily OTIF trend for the last 7 days?,"SELECT 
+  TO_DATE(reporting_date, 'YYYY-MM-DD') AS report_day,
+  ROUND(AVG(on_time_in_full_loss::bigint), 2) AS daily_otif_score
+FROM ""acme-chatbot"".otif
+WHERE TO_DATE(reporting_date, 'YYYY-MM-DD') >= CURRENT_DATE - INTERVAL '7 days'
+GROUP BY report_day
+ORDER BY report_day;"
+acme-chatbot,"How many orders were canceled this month, and why?","SELECT 
+  reason_for_cancellation,
+  COUNT(*) AS cancellation_count
+FROM ""acme-chatbot"".otif
+WHERE cancellation_dt IS NOT NULL
+  AND DATE_TRUNC('month', TO_DATE(reporting_date, 'YYYY-MM-DD')) = DATE_TRUNC('month', CURRENT_DATE)
+GROUP BY reason_for_cancellation
+ORDER BY cancellation_count DESC;"
+acme-chatbot,What is the fill rate distribution by region?,"SELECT 
+  ship_to_region,
+  ROUND(AVG(fill_rate::bigint), 2) AS avg_fill_rate
+FROM ""acme-chatbot"".otif
+GROUP BY ship_to_region
+ORDER BY avg_fill_rate DESC;"
+acme-chatbot,Which carriers are associated with low OTIF performance?,"SELECT 
+  carrier,
+  ROUND(AVG(on_time_in_full_loss::bigint), 2) AS avg_otif
+FROM ""acme-chatbot"".otif
+GROUP BY carrier
+HAVING AVG(on_time_in_full_loss) < 0.9
+ORDER BY avg_otif;"
+acme-chatbot,What is the OTIF loss breakdown by 'otif_loss_f1' reason code?,"SELECT 
+  otif_loss_f1,
+  COUNT(*) AS occurrences,
+  ROUND(AVG(on_time_in_full_loss::int), 2) AS avg_otif
+FROM ""acme-chatbot"".otif
+WHERE otif_loss_f1 IS NOT NULL
+GROUP BY otif_loss_f1
+ORDER BY occurrences DESC;"
+acme-chatbot,Which material are consistently underperforming in OTIF?,"SELECT 
+  material_desc,
+  ROUND(AVG(on_time_in_full_loss::bigint), 2) AS avg_otif,
+  COUNT(*) AS total_orders
+FROM ""acme-chatbot"".otif
+GROUP BY material_desc
+ORDER BY avg_otif;"
+acme-chatbot,What is the average DOH across all products?,"SELECT ROUND(AVG(doh::bigint), 2) AS avg_doh
+FROM ""acme-chatbot"".doh;"
+acme-chatbot,Which SKUs have less than 7 days of inventory (DOH)?,"SELECT material, prod_desc, doh
+FROM ""acme-chatbot"".doh
+WHERE doh < 7
+ORDER BY doh ASC;"
+acme-chatbot,"Which products have the highest total DOH (including GIT, FG, WIP)?","SELECT material, prod_desc, doh_incl_git_fg_wip
+FROM ""acme-chatbot"".doh
+ORDER BY doh_incl_git_fg_wip DESC
+LIMIT 10;"
+acme-chatbot, Which SKUs have zero or negative net stock?,"SELECT material, prod_desc, net_stock
+FROM ""acme-chatbot"".doh
+WHERE net_stock <= 0
+ORDER BY net_stock;"
+acme-chatbot,What is the average DOH by product family?,"SELECT prod_family, ROUND(AVG(doh::bigint), 2) AS avg_doh
+FROM ""acme-chatbot"".doh
+GROUP BY prod_family
+ORDER BY avg_doh DESC;"
+acme-chatbot,Which products have the highest forecasted demand for next 3 months?,"SELECT material, prod_desc, month1_demand as current_demand,month2_demand,month3_demand,month4_demand
+FROM ""acme-chatbot"".doh
+ORDER BY month1_demand DESC
+LIMIT 10;"
+acme-chatbot,Which SKUs are considered critical and have low availability (< 50%)?,"SELECT material, prod_desc, availablity, doh
+FROM ""acme-chatbot"".doh
+WHERE critical_sku = 'Yes' AND availablity < 50
+ORDER BY availablity;"
+acme-chatbot,What is the distribution of shelf life across all SKUs?,"SELECT 
+  COUNT(*) AS total,
+  SUM(CASE WHEN shelf_life___11 > 0 THEN 1 ELSE 0 END) AS shelf_life_lt_11,
+  SUM(CASE WHEN shelf_life_bet_11_and_16 > 0 THEN 1 ELSE 0 END) AS shelf_life_11_to_16,
+  SUM(CASE WHEN shelf_life__16 > 0 THEN 1 ELSE 0 END) AS shelf_life_gt_16
+FROM ""acme-chatbot"".doh;"
+acme-chatbot, Which SKUs are expected to face shortages this month?,"SELECT material, prod_desc, doh, doh_incl_git, coverage_shortage
+FROM ""acme-chatbot"".doh
+WHERE coverage_shortage > 0
+ORDER BY coverage_shortage DESC;"
+acme-chatbot,How has DOH changed over months based on reporting date?,"SELECT 
+  reporting_month,
+  ROUND(AVG(doh::bigint), 2) AS avg_doh,
+  ROUND(AVG(doh_incl_git_fg::bigint), 2) AS avg_doh_incl_git_fg
+FROM ""acme-chatbot"".doh
+GROUP BY reporting_month
+ORDER BY reporting_month;"
+acme-chatbot," How many batches are currently in progress (i.e., not yet dispatched)?","SELECT COUNT(*) AS in_progress_batches
+FROM ""acme-chatbot"".""batch-and-packing-tracker""
+WHERE dispatch_date_time IS NULL;"
+acme-chatbot,What is the average time taken from RM Dispense to Dispatch?,"SELECT 
+  ROUND(AVG(EXTRACT(EPOCH FROM (dispatch_date_time - rm_dispense)) / 3600), 2) AS avg_hours_rm_to_dispatch
+FROM ""acme-chatbot"".""batch-and-packing-tracker""
+WHERE rm_dispense IS NOT NULL AND dispatch_date_time IS NOT NULL;"
+acme-chatbot,Which batches have the longest delay between Blending and Compression?,"SELECT batch, blending, ""compression"",
+       EXTRACT(EPOCH FROM (""compression"" - blending)) / 3600 AS delay_hours
+FROM ""acme-chatbot"".""batch-and-packing-tracker""
+WHERE blending IS NOT NULL AND ""compression"" IS NOT NULL
+ORDER BY delay_hours DESC
+LIMIT 10;"
+acme-chatbot,What is the status of all batches by product family?,"SELECT prod_family, COUNT(*) AS batch_count
+FROM ""acme-chatbot"".""batch-and-packing-tracker""
+GROUP BY prod_family
+ORDER BY batch_count DESC;"
+acme-chatbot,Which batches have skipped one or more manufacturing steps?,"SELECT batch, fg_code, prod_desc
+FROM ""acme-chatbot"".""batch-and-packing-tracker""
+WHERE rm_dispense IS NULL OR granulation IS NULL OR blending IS NULL OR ""compression"" IS NULL
+   OR coating IS NULL OR imprinting IS NULL OR quality IS NULL OR packing IS NULL;"
+acme-chatbot,What is the average DOH by product family?,"SELECT prod_family, ROUND(AVG(doh::bigint), 2) AS avg_doh
+FROM ""acme-chatbot"".""batch-and-packing-tracker""
+GROUP BY prod_family
+ORDER BY avg_doh DESC;"
+acme-chatbot,How many batches are pending quality check?,"SELECT COUNT(*) AS pending_quality_batches
+FROM ""acme-chatbot"".""batch-and-packing-tracker""
+WHERE quality IS NULL;"
+acme-chatbot,What is the daily batch dispatch trend?,"SELECT 
+  DATE(dispatch_date_time) AS dispatch_date,
+  COUNT(*) AS batches_dispatched
+FROM ""acme-chatbot"".""batch-and-packing-tracker""
+WHERE dispatch_date_time IS NOT NULL
+GROUP BY dispatch_date
+ORDER BY dispatch_date DESC;"
+acme-chatbot,Which batches have completed all steps and are ready for EV receipt?,"SELECT batch, fg_code, prod_desc
+FROM ""acme-chatbot"".""batch-and-packing-tracker""
+WHERE dispatch_date_time IS NOT NULL AND receipt_at_ev_date_time IS NULL;"
+acme-chatbot,Which critical SKUs are still not dispatched?,"SELECT batch, fg_code, prod_desc
+FROM ""acme-chatbot"".""batch-and-packing-tracker""
+WHERE critical_sku = 'Yes' AND dispatch_date_time IS NULL;"
+acme-chatbot,What is the total demand for the current month,"SELECT 
+  DATE_TRUNC('month', ""month"") AS month,
+  SUM(demand) AS total_demand
+FROM ""acme-chatbot"".""demand-forecast""
+WHERE ""month"" = DATE_TRUNC('month', CURRENT_DATE)
+GROUP BY month;"
+acme-chatbot,Which top 5 SKUs have the highest 3-month average demand?,"SELECT material, prod_desc, demand_3m
+FROM ""acme-chatbot"".""demand-forecast""
+ORDER BY demand_3m DESC
+LIMIT 5;"
+acme-chatbot,What is the DOH trend by product family over time?,"SELECT 
+  prod_family,
+  DATE_TRUNC('month', ""month"") AS forecast_month,
+  ROUND(AVG(month_end_doh::bigint), 2) AS avg_doh
+FROM ""acme-chatbot"".""demand-forecast""
+GROUP BY prod_family, forecast_month
+ORDER BY forecast_month;"
+acme-chatbot,What is the average demand per product family this year?,"SELECT prod_family, ROUND(AVG(demand::bigint), 2) AS avg_demand
+FROM ""acme-chatbot"".""demand-forecast""
+WHERE EXTRACT(YEAR FROM ""month"") = EXTRACT(YEAR FROM CURRENT_DATE)
+GROUP BY prod_family
+ORDER BY avg_demand DESC;"
+acme-chatbot,How much inventory is available by product family?,"SELECT prod_family, SUM(monthend_invent) AS total_inventory
+FROM ""acme-chatbot"".""demand-forecast""
+GROUP BY prod_family
+ORDER BY total_inventory DESC;"
+acme-chatbot,Which SKUs have demand but no shipments in the last 3 months?,"SELECT material, prod_desc, demand_3m, shipped_3m
+FROM ""acme-chatbot"".""demand-forecast""
+WHERE demand_3m > 0 AND (shipped_3m IS NULL OR shipped_3m = 0);"
+acme-chatbot,What is the overall fill rate (shipped vs demand) for the last 3 months?,"SELECT 
+  ROUND(SUM(shipped_3m::bigint) * 100.0 / NULLIF(SUM(demand_3m::bigint), 0), 2) AS overall_fill_rate_percent
+FROM ""acme-chatbot"".""demand-forecast"";"
+acme-chatbot,Which components have the greatest difference between total stock and total required quantity?,"SELECT component, component_name,
+       SUM(total_stock) - SUM(total_required_qty) AS stock_difference
+FROM ""acme-chatbot"".""material-packing-tracker""
+GROUP BY component, component_name
+ORDER BY stock_difference DESC;"
+acme-chatbot,How many components have demand quantity greater than dispense quantity?,"SELECT COUNT(*) AS demand_gt_dispense
+FROM ""acme-chatbot"".""material-packing-tracker""
+WHERE demand_qty > dispense_qty;"
+acme-chatbot,What is the percentage of components by shortage flag status?,"SELECT shortage_flag,
+       ROUND(100.0 * COUNT(*) / (SELECT COUNT(*) FROM ""acme-chatbot"".""material-packing-tracker""), 2) AS percentage
+FROM ""acme-chatbot"".""material-packing-tracker""
+GROUP BY shortage_flag;"
+acme-chatbot,How many components have both total_required_qty and total_stock above average?,"SELECT COUNT(*) AS count_components
+FROM ""acme-chatbot"".""material-packing-tracker""
+WHERE total_required_qty > (SELECT AVG(total_required_qty) FROM ""acme-chatbot"".""material-packing-tracker"")
+  AND total_stock > (SELECT AVG(total_stock) FROM ""acme-chatbot"".""material-packing-tracker"");"
+acme-chatbot,Which components show the largest increase in stock compared to required quantity?,"SELECT component, component_name, (stock - required_qty) AS excess_stock
+FROM ""acme-chatbot"".""material-packing-tracker""
+ORDER BY excess_stock DESC
+LIMIT 10;"
+acme-chatbot,What is the total batch processed per equipment in the last week?,"SELECT equipment_name, SUM(batch) AS total_batch
+FROM ""acme-chatbot"".""manufacturing-tracker""
+WHERE startedrecorded_at >= CURRENT_DATE - INTERVAL '7 days'
+GROUP BY equipment_name;"
+acme-chatbot,What is the average dispensing quantity by material category?,"SELECT mat_category, AVG(dispense_qty) AS avg_dispense_qty
+FROM ""acme-chatbot"".""material-packing-tracker""
+GROUP BY mat_category;"
+acme-chatbot,What SKUs have the most frequent delivery delays?,"SELECT material, material_desc, COUNT(*) AS delay_count
+FROM ""acme-chatbot"".otif
+WHERE on_time = 0
+GROUP BY material, material_desc
+ORDER BY delay_count DESC
+LIMIT 10;"
+acme-chatbot,Which components have the largest difference between total required quantity and total stock?,"SELECT component, (SUM(total_required_qty) - SUM(total_stock)) AS shortage
+FROM ""acme-chatbot"".""material-packing-tracker""
+GROUP BY component
+ORDER BY shortage DESC
+LIMIT 10;"
+acme-chatbot,What is the average number of days delay for shipments per shipping point?,"SELECT shipping_point, AVG(del_to_act_shp_days) AS avg_delay_days
+FROM ""acme-chatbot"".otif
+where shipping_point is not null
+GROUP BY shipping_point
+ORDER BY avg_delay_days DESC;"
+acme-chatbot,How many shipments were fully lost due to OTIF failures?,"SELECT COUNT(*) AS full_loss_shipments
+FROM ""acme-chatbot"".otif
+WHERE in_full_loss = 1;"
+acme-chatbot,What is the total dispense quantity by blending_code?,"SELECT blending_code, SUM(dispense_qty) AS total_dispense
+FROM ""acme-chatbot"".""material-packing-tracker""
+GROUP BY blending_code;"
+acme-chatbot,What is the average demand quantity for components with priority 3 or higher?,"SELECT AVG(demand_qty) AS avg_demand_high_priority
+FROM ""acme-chatbot"".""material-packing-tracker""
+WHERE priority >= 3;"
+acme-chatbot,Which shipment carriers have the highest OTIF loss rates?,"SELECT carrier, COUNT(*) FILTER (WHERE on_time = 0) * 1.0 / COUNT(*) AS otif_loss_rate
+FROM ""acme-chatbot"".otif
+GROUP BY carrier
+ORDER BY otif_loss_rate DESC;"
+acme-chatbot,What is the total batch processed by product description?,"SELECT product_description, SUM(batch) AS total_batch
+FROM ""acme-chatbot"".""manufacturing-tracker""
+where product_description is not null
+GROUP BY product_description
+ORDER BY total_batch DESC;"
+acme-chatbot,Which FG codes have the most components listed?,"SELECT fg_code, COUNT(DISTINCT component) AS components_count
+FROM ""acme-chatbot"".""material-packing-tracker""
+GROUP BY fg_code
+ORDER BY components_count DESC;"
+acme-chatbot,What is the average time from SO receipt to actual shipment per shipping point?,"SELECT shipping_point, AVG(so_recp_to_act_shp_days) AS avg_days
+FROM ""acme-chatbot"".otif
+GROUP BY shipping_point;"
+acme-chatbot,Which shipment numbers have the most delayed deliveries?,"SELECT shippment_no, COUNT(*) AS delay_count
+FROM ""acme-chatbot"".otif
+WHERE on_time = 0 and shippment_no is not null
+GROUP BY shippment_no
+ORDER BY delay_count DESC
+LIMIT 10;"
+acme-chatbot,Which blending codes have the largest total dispense quantities?,"SELECT blending_code, SUM(dispense_qty) AS total_dispense
+FROM ""acme-chatbot"".""material-packing-tracker""
+GROUP BY blending_code
+ORDER BY total_dispense DESC
+LIMIT 10;"
+acme-chatbot,What is the average open delivery quantity per customer?,"SELECT cust_name, AVG(open_deliv_qty) AS avg_open_delivery_qty
+FROM ""acme-chatbot"".otif
+GROUP BY cust_name
+ORDER BY avg_open_delivery_qty DESC
+LIMIT 10;"
+acme-chatbot,Which material SKUs have an average on_time_in_full_loss score below 80% in the last 60 days?,"SELECT 
+    material,
+    material_desc,
+    ROUND(AVG(on_time_in_full_loss::bigint), 2) AS avg_otif_score
+FROM 
+    ""acme-chatbot"".otif
+WHERE 
+    TO_DATE(reporting_date, 'YYYY-MM-DD') >= CURRENT_DATE - INTERVAL '60 days'
+GROUP BY 
+    material, material_desc
+HAVING 
+    AVG(on_time_in_full_loss) < 0.8
+ORDER BY 
+    avg_otif_score ASC;"
+acme-chatbot,What is the latest available Days on Hand (DOH) value for material 40520?,"SELECT 
+    material,
+    prod_desc,
+    doh,
+    reporting_date
+FROM 
+    ""acme-chatbot"".doh
+WHERE 
+    material = 40520
+ORDER BY 
+    reporting_date DESC
+LIMIT 1;
+
+select * FROM 
+    ""acme-chatbot"".doh;
+
+SELECT 
+    reporting_year,
+    reporting_month,
+    AVG(doh) AS avg_doh
+FROM 
+    ""acme-chatbot"".doh
+WHERE 
+    (reporting_year = EXTRACT(YEAR FROM CURRENT_DATE) AND reporting_month >= EXTRACT(MONTH FROM CURRENT_DATE) - 3)
+    OR (reporting_year = EXTRACT(YEAR FROM CURRENT_DATE) - 1 AND reporting_month >= EXTRACT(MONTH FROM CURRENT_DATE) + 9)
+GROUP BY 
+    reporting_year, reporting_month
+ORDER BY 
+    reporting_year, reporting_month;
+
+-- ""What was the forecast accuracy for Product X during the last month based on actual orders and forecasted demand?""
+SELECT 
+    material,
+    prod_desc,
+    TO_CHAR(""month"", 'YYYY-MM') AS forecast_month,
+    demand AS forecasted_demand,
+    orders AS actual_orders,
+    ROUND(
+        CASE 
+            WHEN demand::bigint = 0 THEN NULL
+            ELSE (1 -(demand::bigint - orders::bigint) / demand::bigint) * 100 
+        END, 
+        2
+    ) AS forecast_accuracy_percentage
+FROM 
+    ""acme-chatbot"".""demand-forecast""
+WHERE 
+    prod_desc ILIKE '%Rabeprazole Sod DR Tab 20mg 30%' 
+    AND ""month"" >= date_trunc('month', CURRENT_DATE - INTERVAL '1 month')
+    AND ""month"" < date_trunc('month', CURRENT_DATE)
+ORDER BY 
+    forecast_month;"
+acme-chatbot,What is the forecast vs. actual demand delta by product family?,"SELECT 
+    prod_family,
+    TO_CHAR(""month"", 'YYYY-MM') AS forecast_month,
+    SUM(demand::bigint) AS total_forecasted_demand,
+    SUM(orders::bigint) AS total_actual_orders,
+    SUM(orders::bigint - demand::bigint) AS demand_delta,
+    ROUND(AVG(orders::bigint - demand::bigint), 2) AS avg_delta_per_product
+FROM 
+    ""acme-chatbot"".""demand-forecast""
+WHERE 
+    ""month"" >= date_trunc('month', CURRENT_DATE - INTERVAL '3 months')
+GROUP BY 
+    prod_family, TO_CHAR(""month"", 'YYYY-MM')
+ORDER BY 
+    forecast_month, prod_family;"
+acme-chatbot,"Are the current month-end inventory levels sufficient to meet the forecasted demand for next month?""","WITH this_month_inventory AS (
+    SELECT 
+        material,
+        prod_desc,
+        prod_family,
+        monthend_invent,
+        month,
+        LEAD(month) OVER (PARTITION BY material ORDER BY month) AS next_month
+    FROM 
+        ""acme-chatbot"".""demand-forecast""
+),
+next_month_demand AS (
+    SELECT 
+        material,
+        month AS demand_month,
+        demand AS forecasted_demand
+    FROM 
+        ""acme-chatbot"".""demand-forecast""
+),
+inventory_vs_demand AS (
+    SELECT 
+        i.material,
+        i.prod_desc,
+        i.prod_family,
+        TO_CHAR(i.month, 'YYYY-MM') AS inventory_month,
+        TO_CHAR(i.next_month, 'YYYY-MM') AS forecast_month,
+        i.monthend_invent,
+        d.forecasted_demand,
+        CASE 
+            WHEN i.monthend_invent >= d.forecasted_demand THEN 'Sufficient'
+            ELSE 'Insufficient'
+        END AS inventory_status
+    FROM 
+        this_month_inventory i
+    LEFT JOIN 
+        next_month_demand d 
+        ON i.material = d.material AND i.next_month = d.demand_month
+)
+SELECT *
+FROM inventory_vs_demand
+ORDER BY inventory_status DESC, forecasted_demand DESC;"
+acme-chatbot,Can you break down week-wise demand projections for the top 10 SKUs with the highest 3-month demand?”,"WITH top10_skus AS (
+    SELECT 
+        material,
+        prod_desc,
+        SUM(demand_3m) AS total_3m_demand
+    FROM 
+        ""acme-chatbot"".""demand-forecast""
+    GROUP BY 
+        material, prod_desc
+    ORDER BY 
+        total_3m_demand DESC
+    LIMIT 10
+),
+weekly_demand AS (
+    SELECT 
+        df.material,
+        df.prod_desc,
+        DATE_TRUNC('week', df.month) AS week_start,
+        SUM(df.demand) AS weekly_demand
+    FROM 
+        ""acme-chatbot"".""demand-forecast"" df
+    JOIN 
+        top10_skus t10 ON df.material = t10.material
+    GROUP BY 
+        df.material, df.prod_desc, DATE_TRUNC('week', df.month)
+)
+SELECT 
+    material,
+    prod_desc,
+    week_start,
+    weekly_demand
+FROM 
+    weekly_demand
+ORDER BY 
+    week_start ASC, weekly_demand DESC;
+
+SELECT 
+    ""name"",
+    equipment_name,
+    batch,
+    startedrecorded_at,
+    finished_at,
+    status
+FROM 
+    ""acme-chatbot"".""manufacturing-tracker""
+WHERE 
+    finished_at IS NULL
+    AND status ILIKE '%in-progress%'  -- captures in-progress or similar text
+ORDER BY 
+    startedrecorded_at ASC;"
+acme-chatbot,Which high-priority materials have the largest dispense-to-demand gaps today?,"SELECT 
+    component,
+    component_name,
+    priority,
+    SUM(dispense_qty) AS total_dispensed,
+    SUM(demand_qty) AS total_demand,
+    (SUM(demand_qty) - SUM(dispense_qty)) AS dispense_gap
+FROM 
+    ""acme-chatbot"".""material-packing-tracker""
+WHERE 
+    priority IS NOT NULL
+    AND demand_qty IS NOT NULL
+    AND dispense_qty IS NOT NULL
+GROUP BY 
+    component, component_name, priority
+HAVING 
+    (SUM(demand_qty) - SUM(dispense_qty)) > 0
+ORDER BY 
+    priority ASC,
+    dispense_gap DESC
+LIMIT 10;"
+acme-chatbot,Which materials currently have insufficient stock affecting production schedules?,"SELECT 
+    component,
+    component_name,
+    fg_code,
+    required_qty,
+    stock,
+    (required_qty - stock) AS shortage_qty,
+    status,
+    mat_category
+FROM 
+    ""acme-chatbot"".""material-packing-tracker""
+WHERE 
+    shortage_flag = 'Yes'
+    OR (stock IS NOT NULL AND required_qty IS NOT NULL AND stock < required_qty)
+ORDER BY 
+    shortage_qty DESC NULLS LAST;
+
+--What percentage of batches scheduled for today’s production have been completed?
+SELECT 
+    status,
+    COUNT(*) AS batch_count
+FROM 
+    ""acme-chatbot"".""manufacturing-tracker""
+WHERE 
+    DATE(startedrecorded_at) = CURRENT_DATE
+GROUP BY 
+    status
+ORDER BY 
+    batch_count DESC;"
+acme-chatbot,What is the overall otif loss percentage?,"SELECT
+    ship_to_region,
+    COUNT(*) AS total_orders,
+    SUM(CASE WHEN on_time_in_full_loss != 0 THEN 1 ELSE 0 END) AS otif_losses,
+    ROUND(
+        100.0 * SUM(CASE WHEN on_time_in_full_loss != 0 THEN 1 ELSE 0 END) / COUNT(*),
+        2
+    ) AS otif_loss_percentage
+FROM
+    ""acme-chatbot"".otif
+WHERE
+    on_time_in_full_loss IS NOT NULL
+    AND ship_to_region IS NOT NULL
+GROUP BY
+    ship_to_region
+ORDER BY
+    otif_loss_percentage DESC;
+        "
+acme-chatbot,What is the overall otif loss percentage by region?,"SELECT
+    ship_to_region,
+    COUNT(*) AS total_orders,
+    SUM(CASE WHEN on_time_in_full_loss != 0 THEN 1 ELSE 0 END) AS otif_losses,
+    ROUND(
+        100.0 * SUM(CASE WHEN on_time_in_full_loss != 0 THEN 1 ELSE 0 END) / COUNT(*),
+        2
+    ) AS otif_loss_percentage
+FROM
+    ""acme-chatbot"".otif
+WHERE
+    on_time_in_full_loss IS NOT NULL
+    AND ship_to_region IS NOT NULL
+GROUP BY
+    ship_to_region
+ORDER BY
+    otif_loss_percentage DESC;
+        "

@@ -24,7 +24,9 @@ class LLMService:
     Service to handle interactions with Large Language Models using official SDKs.
     Supports Amazon Bedrock (Direct via Boto3) and OpenAI.
     """
-    
+    # Class-level cache for LLM clients
+    _CLIENT_CACHE = {} # (provider, model_id) -> client instance
+
     def __init__(self, provider: str = None, model: str = None):
         # Load configs from ENV or defaults
         self.model = model or os.getenv("LLM_MODEL", "gpt-4o")
@@ -32,10 +34,24 @@ class LLMService:
         # Determine if we are using Bedrock
         self.is_bedrock = self.model.lower().startswith("bedrock/")
         
+        self.client = None
+        
+        # Check cache
+        cache_key = ("bedrock" if self.is_bedrock else "openai", self.model)
+        if cache_key in LLMService._CLIENT_CACHE:
+             self.client = LLMService._CLIENT_CACHE[cache_key]
+             if self.is_bedrock:
+                 self.model_id = self.model.split("/", 1)[1] if "/" in self.model else self.model
+             return
+
+        # Initialize and Cache
         if self.is_bedrock:
             self._init_bedrock_client()
         else:
             self._init_openai_client()
+        
+        if self.client:
+             LLMService._CLIENT_CACHE[cache_key] = self.client
 
     def _init_bedrock_client(self):
         if not LANGCHAIN_AVAILABLE:

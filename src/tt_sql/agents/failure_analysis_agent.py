@@ -19,6 +19,39 @@ class FailureAnalysisAgent:
         self.prompt_loader = PromptLoader()
         self.logger = logging.getLogger(__name__)
 
+    def classify_failure(self, 
+                         question: str, 
+                         schema_info: Dict[str, Any], 
+                         plan: str, 
+                         generated_sql: str, 
+                         gold_sql: Optional[str] = None) -> str:
+        """
+        Classifies the failure into a single category.
+        """
+        try:
+            schema_str = self._format_schema(schema_info)
+            messages = self.prompt_loader.load_prompt(
+                "classified_analysis",
+                schema=schema_str,
+                plan=plan,
+                sql=generated_sql,
+                gold_sql=gold_sql or "Not provided"
+            )
+            
+            self.logger.info(f"Classifying failure for query: {question[:50]}...")
+            
+            response = self.llm.get_completion(
+                messages=messages,
+                temperature=0.0,
+                max_tokens=50
+            )
+            
+            return response.strip()
+
+        except Exception as e:
+            self.logger.error(f"Error during failure classification: {e}")
+            return "Other"
+
     def analyze_failure(self, 
                         question: str, 
                         schema_info: Dict[str, Any], 

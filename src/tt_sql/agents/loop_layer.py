@@ -20,7 +20,16 @@ class RefinementLoopAgent(BaseAgent):
         self.prompt_loader = PromptLoader()
         
         self.generator = MultiCandidateGeneratorAgent(llm_service)
-        self.executor = SQLiteExecutorAgent()
+        
+        # Select executor based on DB_TYPE
+        db_type = os.getenv("DB_TYPE", "sqlite").lower()
+        if db_type == "postgres" or db_type == "postgresql":
+            from .execution_layer import PostgresExecutorAgent
+            self.executor = PostgresExecutorAgent()
+        else:
+            from .execution_layer import SQLiteExecutorAgent
+            self.executor = SQLiteExecutorAgent()
+            
         self.critic = CriticAgent(llm_service)
         self.file_coordinator = FileCoordinator()
         self.max_retries = 5
@@ -51,54 +60,63 @@ class RefinementLoopAgent(BaseAgent):
                 break
 
             # Iteration header
-            try:
-                with open(Logger._log_file, "a", encoding="utf-8") as f:
-                    f.write(f"\n## 🔄 Iteration {attempt} / {self.max_retries}\n\n")
-            except: pass
+            Logger.log_title(f"Iteration {attempt} / {self.max_retries}")
 
             # 1. Generate SQL
-            try:
-                with open(Logger._log_file, "a", encoding="utf-8") as f:
-                    f.write(f"### 🔨 SQLBuilder\n\n")
-            except: pass
+            Logger.log_title("SQLBuilder")
             state = self.generator.run(state)
 
             # Guard: skip if SQL is too large
             sql_len = len(state.chosen_query or "")
             if sql_len > 5000:
-                self.log(state, f"⚠️ SQL too large ({sql_len} chars). Skipping.")
+                self.log(state, f"Warning: SQL too large ({sql_len} chars). Skipping.")
                 state.is_result_valid = False
                 break
 
-            # 2. Critic validates SQL logic (NO execution yet)
-            try:
-                with open(Logger._log_file, "a", encoding="utf-8") as f:
-                    f.write(f"\n### 🔍 SQLCritic\n\n")
-            except: pass
+            # 2. Execute SQL with sampling for Critic
+            Logger.log_title("DatabaseExecutor (Sampling)")
+            state.sampling_enabled = True
+            state = self.executor.run(state)
+
+            # 3. Critic validates SQL logic and execution results
+            if state.execution_result and state.execution_result.error_message:
+                self.log(state, f"EXECUTION FAILED on attempt {attempt}: {state.execution_result.error_message}")
+                # We do NOT skip the critic now; we let it analyze the error.
+            
+            Logger.log_title("SQLCritic")
             state = self.critic.run(state)
-
-            # 3. Check if validated
+                
+            # If Critic approves, do final full execution to save full CSV
             if state.is_result_valid:
-                self.log(state, f"✅ VALIDATED on attempt {attempt}.")
-                Logger.log_divider()
-                break
+                self.log(state, f"SUCCESS: Validated by Critic on attempt {attempt}. Executing full query to save outputs.")
+                Logger.log_title("DatabaseExecutor (Full)")
+                state.sampling_enabled = False
+                state = self.executor.run(state)
+                
+                if not state.execution_result.error_message:
+                    Logger.log_divider()
+                    break
+                else:
+                    # Edge case: sampled execution passed, but full execution failed 
+                    self.log(state, f"FINAL FULL EXECUTION FAILED: {state.execution_result.error_message}")
+                    state.is_result_valid = False
 
-            # 4. Pass Critic feedback to Builder for next attempt
+            # 4. If invalid (Critic or Execution failure), pass feedback back to Builder
+            feedback = ""
+            if state.critic_feedback:
+                feedback += f"CRITIC FEEDBACK:\n{state.critic_feedback}\n"
+            
+            if state.execution_result and state.execution_result.error_message:
+                feedback += f"EXECUTION ERROR:\n{state.execution_result.error_message}\n"
+            
             state.history = [{
                 "role": "user",
-                "content": state.critic_feedback
+                "content": feedback
             }]
 
             if attempt == self.max_retries:
-                self.log(state, f"Max retries ({self.max_retries}) reached. Using last attempt.")
+                self.log(state, f"Max retries ({self.max_retries}) reached. Pipeline failed.")
 
             Logger.log_divider()
-
-        # 5. Execute SQL ONLY after critic approves (or max retries)
-        try:
-            with open(Logger._log_file, "a", encoding="utf-8") as f:
-                f.write(f"## ▶️ Final Execution\n\n### 💾 SQLiteExecutor\n\n")
-        except: pass
-        state = self.executor.run(state)
 
         return state

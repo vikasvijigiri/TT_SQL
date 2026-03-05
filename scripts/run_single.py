@@ -15,24 +15,29 @@ from tt_sql.core.paths import initialize_directories, InstancePaths, SPIDER_DATA
 from tt_sql.core.file_coordinator import FileCoordinator
 
 from tt_sql.agents.input_layer import (
-    SQLiteFileLoaderAgent, 
-    SchemaAnalyzerAgent, 
     ContextEnrichmentAgent
 )
 from tt_sql.agents.planning_layer import (
-    StepByStepPlannerAgent, 
-    RelationshipGraphBuilderAgent
+    StepByStepPlannerAgent
 )
 from tt_sql.agents.loop_layer import RefinementLoopAgent
 from tt_sql.agents.execution_layer import SQLiteExecutorAgent
 
+import argparse
+
 def main():
+    parser = argparse.ArgumentParser(description="Run single text-to-SQL instance")
+    parser.add_argument("--use-rag", action="store_true", help="Bypass LLM and use Vector Store similarity for table selection")
+    parser.add_argument("--id", type=str, required=True, help="Task ID to run")
+    parser.add_argument("--dataset", type=str, default=str(SPIDER_DATASET), help="Dataset JSONL file")
+    parser.add_argument("--model", type=str, default=os.getenv("LLM_MODEL", "bedrock/openai.gpt-oss-safeguard-120b"), help="Model name to use")
+    args = parser.parse_args()
+
     load_dotenv()
-    # vital fix: must start with bedrock/ to trigger bedrock client
-    model_name = "bedrock/openai.gpt-oss-safeguard-120b" 
-    target_id = "local020"
+    model_name = args.model
+    target_id = args.id
     
-    print(f"Running single instance: {target_id} with model {model_name}")
+    print(f"Running single instance: {target_id} with model {model_name}. RAG bypass: {args.use_rag}")
     
     initialize_directories(model_name)
     Logger.set_log_file(f"{target_id}.md") # Just filename, let Logger handle path or use InstancePaths logic?
@@ -52,20 +57,17 @@ def main():
     file_coordinator = FileCoordinator()
     
     agents = [
-        SQLiteFileLoaderAgent(),
-        SchemaAnalyzerAgent(),
-        ContextEnrichmentAgent(llm_service),
-        RelationshipGraphBuilderAgent(),
+        ContextEnrichmentAgent(),
         StepByStepPlannerAgent(llm_service),
         RefinementLoopAgent(llm_service),
         SQLiteExecutorAgent() 
     ]
     
     orchestrator = Orchestrator(agents)
+    print(f"Orchestrator loaded agents: {[a.name for a in orchestrator.agents]}")
     
-    # Find task
     task_data = None
-    with open(SPIDER_DATASET, 'r', encoding='utf-8') as f:
+    with open(args.dataset, 'r', encoding='utf-8') as f:
         for line in f:
             t = json.loads(line)
             if t.get("instance_id") == target_id:
@@ -73,7 +75,7 @@ def main():
                 break
                 
     if not task_data:
-        print(f"Task {target_id} not found in {SPIDER_DATASET}")
+        print(f"Task {target_id} not found in {args.dataset}")
         return
 
     db_path = str(InstancePaths.database(task_data['db']))
@@ -82,6 +84,7 @@ def main():
         user_query=task_data['question'],
         db_path=db_path,
         instance_id=target_id,
+        use_rag=args.use_rag,
         model_name=model_name
     )
     

@@ -68,6 +68,7 @@ class MetricsTracker:
                  avg_latency: float, 
                  total_samples: int,
                  rag_source: str = "none",
+                 use_rag: bool = False,
                  passed_count: int = 0,
                  failed_count: int = 0,
                  total_tokens: int = 0,
@@ -90,6 +91,7 @@ class MetricsTracker:
             e["avg_latency"] = avg_latency
             e["total_samples"] = total_samples
             e["rag_source"] = rag_source
+            e["use_rag"] = use_rag
             e["passed"] = passed_count
             e["failed"] = failed_count
             e["total_tokens"] = total_tokens

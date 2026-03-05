@@ -1,4 +1,6 @@
+import os
 import sqlite3
+import psycopg2
 import time
 from ..core.agent_base import BaseAgent, AgentState
 from ..core.state import ExecutionResult
@@ -12,9 +14,33 @@ class SQLiteExecutorAgent(BaseAgent):
     """
     Executes the chosen SQL query against the database.
     """
-    def __init__(self):
+    def __init__(self, db_path: Optional[str] = None):
         super().__init__(name="SQLiteExecutor")
         self.file_coordinator = FileCoordinator()
+        self.db_path = db_path
+        
+    def get_table_schema(self, table_name: str) -> Dict[str, Any]:
+        """Fetch real schema info for a specific table from local SQLite."""
+        if not self.db_path: return {}
+        try:
+            conn = sqlite3.connect(self.db_path)
+            cursor = conn.cursor()
+            cursor.execute(f"PRAGMA table_info('{table_name}')")
+            rows = cursor.fetchall()
+            conn.close()
+            
+            if not rows: return {}
+            
+            columns = []
+            for r in rows:
+                columns.append({
+                    "name": r[1],
+                    "type": r[2],
+                    "pk": bool(r[5])
+                })
+            return {"columns": columns}
+        except:
+            return {}
 
     def run(self, state: AgentState) -> AgentState:
         from ..core.paths import InstancePaths
@@ -52,6 +78,7 @@ class SQLiteExecutorAgent(BaseAgent):
             
         except sqlite3.Error as e:
             result.error_message = str(e)
+            state.error_message = str(e)
             self.log(state, f"Execution Error: {e}")
             
             # Capture error in history for future iterations
@@ -100,6 +127,139 @@ class ResultValidatorAgent(BaseAgent):
         else:
             self.log(state, "Result looks valid (non-empty).")
             
+        return state
+
+
+class PostgresExecutorAgent(BaseAgent):
+    """
+    Executes SQL queries against an Amazon RDS PostgreSQL database.
+    """
+    def __init__(self):
+        super().__init__(name="PostgresExecutor")
+        self.file_coordinator = FileCoordinator()
+
+    def get_table_schema(self, table_name: str) -> Dict[str, Any]:
+        """Fetch real schema info for a specific table from RDS."""
+        host = os.getenv("RDS_HOST")
+        database = os.getenv("RDS_DATABASE", "postgres")
+        user = os.getenv("RDS_USER")
+        password = os.getenv("RDS_PASSWORD")
+        port = os.getenv("RDS_PORT", "5432")
+        schema = os.getenv("SCHEMA", "public").strip().replace('"', '')
+        
+        conn = None
+        try:
+            conn = psycopg2.connect(
+                host=host, database=database, user=user, password=password, port=port,
+                connect_timeout=5
+            )
+            cursor = conn.cursor()
+            cursor.execute(f"""
+                SELECT column_name, data_type 
+                FROM information_schema.columns 
+                WHERE table_schema = '{schema}' AND table_name = '{table_name}'
+                ORDER BY ordinal_position;
+            """)
+            rows = cursor.fetchall()
+            conn.close()
+            
+            if not rows: return {}
+            
+            columns = []
+            for r in rows:
+                columns.append({
+                    "name": r[0],
+                    "type": r[1],
+                    "pk": False
+                })
+            return {"columns": columns}
+        except:
+            if conn: conn.close()
+            return {}
+
+    def run(self, state: AgentState) -> AgentState:
+        if not state.chosen_query:
+            self.log(state, "No query chosen to execute.")
+            return state
+
+        query = state.chosen_query
+        
+        # Load RDS credentials from environment
+        host = os.getenv("RDS_HOST")
+        database = os.getenv("RDS_DATABASE", "postgres")
+        user = os.getenv("RDS_USER")
+        password = os.getenv("RDS_PASSWORD")
+        port = os.getenv("RDS_PORT", "5432")
+        schema = os.getenv("SCHEMA", "public").strip().replace('"', '') # e.g., acme-chatbot
+
+        start_t = time.time()
+        result = ExecutionResult()
+        
+        conn = None
+        try:
+            # Establish connection
+            conn = psycopg2.connect(
+                host=host,
+                database=database,
+                user=user,
+                password=password,
+                port=port,
+                connect_timeout=10
+            )
+            conn.autocommit = True
+            cursor = conn.cursor()
+            
+            # Set schema (search_path)
+            if schema and schema.lower() != "public":
+                cursor.execute(f'SET search_path TO "{schema}", public;')
+                self.log(state, f"Search path set to: {schema}")
+
+            # Execute query
+            cursor.execute(query)
+            
+            # Fetch columns
+            if cursor.description:
+                result.columns = [description[0] for description in cursor.description]
+            
+            # Fetch rows
+            if getattr(state, "sampling_enabled", False):
+                rows = cursor.fetchmany(5)
+                self.log(state, f"Sampling enabled: Fetched top {len(rows)} rows.")
+            else:
+                rows = cursor.fetchall()
+            
+            result.rows = [list(row) for row in rows]
+            result.row_count = len(rows)
+            
+        except Exception as e:
+            result.error_message = str(e)
+            state.error_message = str(e)
+            self.log(state, f"Postgres Execution Error: {e}")
+            
+            # Capture error in history for future iterations
+            error_entry = f"Postgres Error: {str(e)}"
+            if error_entry not in state.execution_error_history:
+                state.execution_error_history.append(error_entry)
+                
+        finally:
+            if conn:
+                conn.close()
+            result.execution_time_ms = (time.time() - start_t) * 1000
+
+        state.execution_result = result
+        self.log(state, f"Executed query on RDS. Rows: {result.row_count}. Time: {result.execution_time_ms:.2f}ms")
+        
+        # Write CSV results
+        if result.error_message:
+            self.file_coordinator.write_csv(
+                state.instance_id, 
+                [["failed", result.error_message]], 
+                ["status", "error"], 
+                state.model_name
+            )
+        else:
+            self.file_coordinator.write_csv(state.instance_id, result.rows, result.columns, state.model_name)
+        
         return state
 
 

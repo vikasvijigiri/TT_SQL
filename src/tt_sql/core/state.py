@@ -56,12 +56,14 @@ class AgentState(BaseModel):
     # Input
     user_query: str
     db_path: str
+    db_name: Optional[str] = None   # raw DB name; used as Qdrant collection override in RAG mode
     instance_id: str = "default"  # Required for file-based tracking Header
     model_name: str = "default_model" # Track which model is running this task
     sub_questions: List[str] = Field(default_factory=list) # Decomposed questions for multi-part queries
     
     # Analysis
     schema_info: Dict[str, Any] = Field(default_factory=dict)
+    rag_columns: List[Dict[str, Any]] = Field(default_factory=list)  # raw RAG retrieved columns
     query_intent: Optional[str] = None
     complexity_score: Optional[str] = None  # e.g., "LOW", "MEDIUM", "HIGH"
     relevant_tables: List[str] = Field(default_factory=list)
@@ -109,6 +111,8 @@ class AgentState(BaseModel):
     current_subtask_index: int = 0
     sampling_enabled: bool = False
     rag_source: str = "qdrant" # Options: "none", "qdrant", "bedrock"
+    use_rag: bool = False # If True, use RAG for table retrieval and bypass LLM
+    rag_limit: int = 2 # Number of tables to retrieve from RAG
     execution_result: Optional[ExecutionResult] = None
     execution_error_history: List[str] = Field(default_factory=list)  # Track all execution errors
     

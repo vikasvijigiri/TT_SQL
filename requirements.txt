@@ -14,3 +14,4 @@ boto3
 matplotlib
 google-cloud-bigquery
 tqdm
+openpyxl

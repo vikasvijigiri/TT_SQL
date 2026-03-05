@@ -1,15 +1,12 @@
 import os
-import sqlite3
+import json
 from typing import Dict, Any, List
 from ..core.agent_base import BaseAgent, AgentState
-from ..core.llm_service import LLMService
-from ..core.prompt_loader import PromptLoader
 from ..core.file_coordinator import FileCoordinator
 from ..rag.vector_store import VectorStoreAgent
-import json
 
-def format_schema_to_str(schema_info: Dict[str, Any]) -> str:
-    """Formats schema dict into a compact string: Table(col1, col2)"""
+def format_schema_to_str(schema_info: Dict[str, Any], detailed: bool = True) -> str:
+    """Formats schema dict into a detailed multi-line or compact string."""
     if not schema_info: return ""
     lines = []
     for table, data in schema_info.items():
@@ -21,245 +18,134 @@ def format_schema_to_str(schema_info: Dict[str, Any]) -> str:
         else:
             cols = []
             
-        col_names = [c.get("name", c) if isinstance(c, dict) else str(c) for c in cols]
-        lines.append(f"{table}({', '.join(col_names)})")
-    return "\n".join(lines)
+        if detailed:
+            lines.append(f"Table: {table}")
+            if not cols:
+                lines.append(" - (No columns found)")
+            for c in cols:
+                if isinstance(c, dict):
+                    cname = c.get("column_name") or c.get("name") or "unknown"
+                    ctype = c.get("type") or c.get("data_type") or ""
+                    desc  = c.get("description") or ""
+                    lines.append(f" - {cname} {f'({ctype})' if ctype else ''}{f' -- {desc}' if desc else ''}")
+                else:
+                    lines.append(f" - {str(c)}")
+            lines.append("") # Blank line
+        else:
+            col_names = []
+            for c in cols:
+                if isinstance(c, dict):
+                    col_names.append(str(c.get("column_name") or c.get("name") or "unknown"))
+                else:
+                    col_names.append(str(c))
+            lines.append(f"{table}({', '.join(col_names)})")
+    return "\n".join(lines).strip()
 
-class SQLiteFileLoaderAgent(BaseAgent):
-    """
-    Validates that the SQLite file exists and is accessible.
-    """
-    def __init__(self):
-        super().__init__(name="SQLiteFileLoader")
 
-    def run(self, state: AgentState) -> AgentState:
-        self.log(state, "PLAN_CATEGORY: 📁 Database Access")
-        db_path = state.db_path
-        
-        if not os.path.exists(db_path):
-             self.log(state, f"ERROR: Database file not found at {db_path}")
-             raise FileNotFoundError(f"Database at {db_path} does not exist.")
-        
-        # Test connection
-        try:
-            conn = sqlite3.connect(db_path)
-            conn.close()
-            self.log(state, f"PLAN_STEP: 1. Database Found at {os.path.basename(db_path)}")
-            self.log(state, "PLAN_STEP: 2. SQL Connection Established")
-        except sqlite3.Error as e:
-            self.log(state, f"ERROR: Failed to open SQLite DB: {e}")
-            raise e
+def format_rag_columns(rag_columns: list) -> str:
+    """Formats the raw RAG retrieved columns list into a detailed, prompt-ready string.
+    Each entry: table_name | column_name | type | description | sample_values
+    """
+    if not rag_columns:
+        return "No RAG columns retrieved."
+    
+    # Group by table
+    tables = {}
+    for col in rag_columns:
+        tname = col.get("table_name", "unknown")
+        if tname not in tables:
+            tables[tname] = []
+        tables[tname].append(col)
+
+    lines = []
+    
+    # Detect dialect for specific warnings
+    db_type = os.getenv("DB_TYPE", "sqlite").lower()
+    is_postgres = db_type in ["postgres", "postgresql"]
+
+    for tname, cols in tables.items():
+        lines.append(f"Table: {tname}")
+        for c in cols:
+            cname = c.get("column_name", "unknown")
+            ctype = c.get("type") or c.get("data_type") or "unknown"
+            desc  = c.get("description") or ""
+            samples = c.get("sample_values") or c.get("samples") or ""
             
-        return state
+            # Type Warning for PostgreSQL
+            type_info = ctype
+            if is_postgres and "varying" in ctype.lower():
+                # If it looks like a date/time but is stored as string
+                if any(k in cname.lower() or k in desc.lower() for k in ["date", "time", "dt", "timestamp"]):
+                    type_info = f"{ctype} !! WARNING: Stored as STRING. Must use TO_DATE(col, 'YYYY-MM-DD') for comparisons !!"
 
-class SchemaAnalyzerAgent(BaseAgent):
-    """
-    Extracts schema information (tables, columns, types) from the SQLite database.
-    """
-    def __init__(self):
-        super().__init__(name="SchemaAnalyzer")
-        self.file_coordinator = FileCoordinator()
-
-    def run(self, state: AgentState) -> AgentState:
-        self.log(state, "PLAN_CATEGORY: 🔍 Semantic Analysis")
-        conn = sqlite3.connect(state.db_path)
-        cursor = conn.cursor()
-        
-        schema_info = {}
-        
-        # Get tables
-        cursor.execute("SELECT name FROM sqlite_master WHERE type='table';")
-        tables = [row[0] for row in cursor.fetchall()]
-        
-        for table in tables:
-            cursor.execute(f"PRAGMA table_info({table});")
-            columns = cursor.fetchall()
-            # Format: (cid, name, type, notnull, dflt_value, pk)
-            col_details = []
-            for col in columns:
-                col_details.append({
-                    "name": col[1],
-                    "type": col[2],
-                    "pk": bool(col[5])
-                })
-            
-            # Simple foreign key check
-            cursor.execute(f"PRAGMA foreign_key_list({table});")
-            fks = cursor.fetchall()
-            # Format: (id, seq, table, from, to, on_update, on_delete, match)
-            fk_details = []
-            for fk in fks:
-                fk_details.append({
-                    "to_table": fk[2],
-                    "from_col": fk[3], 
-                    "to_col": fk[4]
-                })
-                
-            schema_info[table] = {
-                "columns": col_details,
-                "foreign_keys": fk_details
-            }
-            
-        conn.close()
-        
-        
-        state.schema_info = schema_info
-        
-        # Write schema to results/{model}/schema/ for downstream agents
-        try:
-            self.file_coordinator.write_schema(state.instance_id, schema_info, state.model_name)
-            self.log(state, f"PLAN_STEP: 3. Schema Extracted & Saved to dynamic path ({len(tables)} tables identified)")
-        except Exception as e:
-            self.log(state, f"Warning: Could not write schema file: {e}", level="WARN")
-            self.log(state, f"PLAN_STEP: 3. Schema Extracted (Memory only) ({len(tables)} tables identified)")
-        return state
-
+            col_line = f" - {cname} ({type_info})"
+            if desc: col_line += f" -- {desc}"
+            if samples: col_line += f" [Samples: {samples}]"
+            lines.append(col_line)
+        lines.append("") # Blank line
+    
+    return "\n".join(lines).strip()
 
 
 
 class ContextEnrichmentAgent(BaseAgent):
     """
-    Enriches the context by identifying relevant tables/terms.
+    Enriches context using column-level RAG retrieval only.
+    Columns are retrieved from Qdrant; table names follow from column metadata.
+    No LLM call is made in this stage.
     """
-    def __init__(self, llm_service: LLMService):
+    def __init__(self):
         super().__init__(name="TableSelector")
-        self.llm = llm_service
-        self.prompt_loader = PromptLoader()
         self.file_coordinator = FileCoordinator()
         
     def run(self, state: AgentState) -> AgentState:
-        # Prepare inputs from state
-        schema_context = format_schema_to_str(state.schema_info)
-        
-        # No intent data to pass — the LLM will classify it in this same call
-        intent_context = "Not yet classified — please classify in your response."
-        
-        kb_context_str = ""
-        rag_source = getattr(state, "rag_source", "none")
-        
-        # --- 1. Qdrant (Local Vector Store) ---
-        if rag_source == "qdrant":
-             try:
-                 # Instantiate on demand to avoid overhead if not used
-                 vector_store = VectorStoreAgent() 
-                 examples = vector_store.retrieve_similar_examples(state.user_query, limit=3)
-                 
-                 if examples:
-                     kb_context_str += "#### Similar Past Examples (from Qdrant):\n"
-                     for ex in examples:
-                         kb_context_str += f"- **User Query**: {ex['query']}\n  **Correct SQL**: `{ex['sql']}`\n\n"
-                     
-                     self.log(state, f"Retrieved {len(examples)} examples from Qdrant")
-                 else:
-                     self.log(state, "No examples found in Qdrant")
-
-                 # --- RAG TABLE RETRIEVAL ---
-                 rag_tables = vector_store.retrieve_relevant_tables(state.user_query, limit=8)
-                 if rag_tables:
-                     kb_context_str += "\n#### Relevant Table Suggestions (from Vector Search):\n"
-                     kb_context_str += "The following tables were found to be semantically relevant to the query:\n"
-                     for t in rag_tables:
-                         kb_context_str += f"- **{t['table_name']}** (Similarity: {t['score']:.2f})\n"
-                     
-                     self.log(state, f"Retrieved {len(rag_tables)} relevant tables from Qdrant")
-
-             except Exception as e:
-                 self.log(state, f"Qdrant retrieval failed: {e}")
-
-        # --- 2. Amazon Bedrock Knowledge Base ---
-        elif rag_source == "bedrock":
-            kb_id = os.getenv("BEDROCK_KB_ID")
-            
-            if kb_id:
-                self.log(state, f"Querying Knowledge Base ({kb_id})...")
-                
-                kb_chunks = self.llm.retrieve_from_kb(kb_id, state.user_query)
-                if kb_chunks:
-                    # Extract table names using specific format
-                    kb_tables = []
-                    for chunk in kb_chunks:
-                        first_line = chunk.strip().split("\n")[0]
-                        if "Table:" in first_line:
-                            t_name = first_line.replace("Table:", "").strip()
-                            kb_tables.append(t_name)
-                    
-                    # Format context with explicit table list
-                    temp_str = ""
-                    if kb_tables:
-                        temp_str += f"KB Suggested Tables: {', '.join(kb_tables)}\n\n"
-                    
-                    temp_str += "Relevant Domain Knowledge:\n" + "\n---\n".join(kb_chunks)
-                    
-                    kb_context_str += temp_str
-                    self.log(state, f"Injected {len(kb_chunks)} chunks (Tables: {', '.join(kb_tables)})")
-                else:
-                     self.log(state, "No relevant context found in Knowledge Base")
-        
-        # Use in-memory inputs
-        messages = self.prompt_loader.load_prompt(
-            "table_selector",
-            user_query=state.user_query,
-            schema_path=schema_context,
-            intent_path=intent_context,
-            kb_context=kb_context_str 
-        )
-                    
-        response = self.llm.get_json_completion(messages, state=state)
-        
-        relevant = []
-        if response and "relevant_tables" in response:
-            relevant = response["relevant_tables"]
-            # Validate they actually exist (need to read schema file to validate)
-            # For now, trust the LLM or check against schema if loaded
-            # We can load schema to validate if needed
-        else:
-            # Fallback
-            relevant = [] 
-
-        state.relevant_tables = relevant
-
-        # Extract intent and complexity from the same response
-        state.query_intent = response.get("intent", "DATA_RETRIEVAL") if response else "DATA_RETRIEVAL"
-        state.complexity_score = response.get("complexity", "MEDIUM") if response else "MEDIUM"
-
-        self.log(state, f"PLAN_STEP: 5. Context Enriched (Tables: {', '.join(relevant)} | Intent: {state.query_intent} | Complexity: {state.complexity_score})")
-        
-        # Create context data structure
-        context_data = {
-            "relevant_tables": relevant,
-            "reasoning": response.get("reasoning", "") if response else "No response"
-        }
-        
-        state.context_reasoning = context_data["reasoning"]
-        
-        # Write context to results/context/ - REMOVED
-        # self.file_coordinator.write_context(...)
-        
-        # Write filtered schema for downstream agents
-        # (Generator currently expects this)
+        # RAG always runs — collection from QDRANT_COLLECTION in .env
         try:
-             # We need to read the full schema to filter it
-             schema_info = state.schema_info
-             if schema_info:
-                 filtered_schema = {k: v for k, v in schema_info.items() if k in relevant}
-                 # We can overwrite the main schema file or keep it separately?
-                 # Actually, Generator reads the main schema file. 
-                 # Maybe we should create a specific filtered schema file?
-                 # The plan says Generator reads schema from file.
-                 # Let's keep writing filtered schema to results/schema for now as "filtered" version?
-                 # Wait, Generator reads InstancePaths.schema(). 
-                 # If we overwrite it, downstream agents lose full schema.
-                 # But Generator needs filtered schema.
-                 # Let's create a NEW path for filtered schema? Or just put it in context?
-                 # Ah, context file has relevant_tables. Generator should read context and filter schema itself?
-                 # Generator logic: 
-                 # schema_from_file = self.file_coordinator.read_schema(state.instance_id)
-                 # if schema_from_file: ...
-                 
-                 # PROPOSAL: Let Generator use context to filter schema.
-                 # ContextEnrichmentAgent just identifies tables.
-                 pass
+            vector_store = VectorStoreAgent()
+            col_limit = getattr(state, "rag_limit", 2)
+            
+            # Combine the user query and the planner's approach strategy for deeper RAG retrieval
+            search_query = state.user_query
+            if hasattr(state, "step_by_step_plan") and state.step_by_step_plan:
+                approach_str = " ".join(state.step_by_step_plan)
+                search_query = f"{state.user_query}\nApproach:\n{approach_str}"
+                
+            retrieved_columns = vector_store.retrieve_relevant_columns(search_query, limit=col_limit)
+
+            if retrieved_columns:
+                # Group by table_name to build schema_info
+                rag_schema = {}
+                for col in retrieved_columns:
+                    tname = col["table_name"]
+                    if tname not in rag_schema:
+                        rag_schema[tname] = {"columns": [], "foreign_keys": []}
+                    rag_schema[tname]["columns"].append({
+                        "column_name": col.get("column_name", "unknown"),
+                        "type":        col.get("type", "unknown"),
+                        "description": col.get("description", ""),
+                        "sample_values": col.get("sample_values"),
+                        "pk":          col.get("pk", False)
+                    })
+
+                total_cols = sum(len(v["columns"]) for v in rag_schema.values())
+                self.log(state, f"Column RAG: retrieved {total_cols} columns across {len(rag_schema)} table(s).")
+
+                state.schema_info = rag_schema
+                state.rag_columns = retrieved_columns   # store raw list for direct prompt use
+                state.relevant_tables = list(rag_schema.keys())
+                state.query_intent = "DATA_RETRIEVAL"
+                state.complexity_score = "MEDIUM"
+                state.context_reasoning = "Column-Level RAG: schema built from top-scored column retrievals."
+
+                try:
+                    self.file_coordinator.write_schema(state.instance_id, rag_schema, state.model_name)
+                    self.log(state, f"PLAN_STEP: 3. Schema written ({total_cols} columns, {len(rag_schema)} tables).")
+                except Exception as e:
+                    self.log(state, f"Warning: Could not save RAG schema: {e}", level="WARN")
+            else:
+                self.log(state, "RAG returned no columns — check Qdrant collection.", level="WARN")
+
         except Exception as e:
-            self.log(state, f"Error processing schema: {e}", level="ERROR")
-        
+            self.log(state, f"Qdrant retrieval failed: {e}", level="ERROR")
+
         return state

@@ -1,0 +1,1748 @@
+material,prod_desc,prod_family,inventory_month,forecast_month,monthend_invent,forecasted_demand,inventory_status
+40842,Lidocaine Oral Topi Soln USP 2% 100ml,Lidocaine HCL Oral Solution,2025-05,2025-06,324645.0,301898.333333333,Sufficient
+40842,Lidocaine Oral Topi Soln USP 2% 100ml,Lidocaine HCL Oral Solution,2025-04,2025-05,324645.0,301898.333333333,Sufficient
+40842,Lidocaine Oral Topi Soln USP 2% 100ml,Lidocaine HCL Oral Solution,2025-03,2025-04,324645.0,290641.5,Sufficient
+40842,Lidocaine Oral Topi Soln USP 2% 100ml,Lidocaine HCL Oral Solution,2024-12,2025-01,324645.0,283508.533333333,Sufficient
+40842,Lidocaine Oral Topi Soln USP 2% 100ml,Lidocaine HCL Oral Solution,2025-02,2025-03,324645.0,268233.2,Sufficient
+40842,Lidocaine Oral Topi Soln USP 2% 100ml,Lidocaine HCL Oral Solution,2025-01,2025-02,324645.0,268233.2,Sufficient
+40842,Lidocaine Oral Topi Soln USP 2% 100ml,Lidocaine HCL Oral Solution,2024-11,2024-12,324645.0,127751.631311519,Sufficient
+40692,Desvenlafaxine ER Tab 50 mg 30,Desvenlaflaxine,2025-01,2025-02,128448.0,113698.911111111,Sufficient
+40692,Desvenlafaxine ER Tab 50 mg 30,Desvenlaflaxine,2025-02,2025-03,128448.0,113698.911111111,Sufficient
+40692,Desvenlafaxine ER Tab 50 mg 30,Desvenlaflaxine,2025-03,2025-04,128448.0,113578.0,Sufficient
+40700,Tramadol HCl Tab USP 50mg 100,Tramadol,2024-11,2024-12,153420.0,100070.146666666,Sufficient
+40710,Clonazepam Tab USP 0.5mg 100,Clonazepam Tab,2025-01,2025-02,117480.0,99894.0,Sufficient
+40710,Clonazepam Tab USP 0.5mg 100,Clonazepam Tab,2024-12,2025-01,117480.0,98462.0,Sufficient
+40830,Buprenorphine Sl Tab 8 Mg 30,Buprenorphine Sl,2025-04,2025-05,159528.0,86219.1666666666,Sufficient
+40830,Buprenorphine Sl Tab 8 Mg 30,Buprenorphine Sl,2025-05,2025-06,159528.0,86219.1666666666,Sufficient
+40830,Buprenorphine Sl Tab 8 Mg 30,Buprenorphine Sl,2025-03,2025-04,159528.0,86219.1666666666,Sufficient
+40669,Desvenlafaxin ER Tab 100 mg 30,Desvenlaflaxine,2025-05,2025-06,94200.0,85159.156862745,Sufficient
+40669,Desvenlafaxin ER Tab 100 mg 30,Desvenlaflaxine,2025-04,2025-05,94200.0,82809.1568627451,Sufficient
+40669,Desvenlafaxin ER Tab 100 mg 30,Desvenlaflaxine,2025-03,2025-04,94200.0,78020.8235294117,Sufficient
+40669,Desvenlafaxin ER Tab 100 mg 30,Desvenlaflaxine,2025-01,2025-02,94200.0,77908.6901960784,Sufficient
+40669,Desvenlafaxin ER Tab 100 mg 30,Desvenlaflaxine,2025-02,2025-03,94200.0,77884.0235294117,Sufficient
+40830,Buprenorphine Sl Tab 8 Mg 30,Buprenorphine Sl,2025-02,2025-03,159528.0,69942.6666666666,Sufficient
+40830,Buprenorphine Sl Tab 8 Mg 30,Buprenorphine Sl,2025-01,2025-02,159528.0,68642.6666666666,Sufficient
+40830,Buprenorphine Sl Tab 8 Mg 30,Buprenorphine Sl,2024-12,2025-01,159528.0,66327.0,Sufficient
+41065,Metoprolol Tar Tab USP 25mg 1000 UnTS,Metoprolol Tartrate (Uncoated),2025-03,2025-04,69900.0,65102.3,Sufficient
+40700,Tramadol HCl Tab USP 50mg 100,Tramadol,2025-02,2025-03,153420.0,64926.168,Sufficient
+40700,Tramadol HCl Tab USP 50mg 100,Tramadol,2024-12,2025-01,153420.0,64926.168,Sufficient
+40700,Tramadol HCl Tab USP 50mg 100,Tramadol,2025-01,2025-02,153420.0,64926.168,Sufficient
+40700,Tramadol HCl Tab USP 50mg 100,Tramadol,2025-05,2025-06,153420.0,60148.168,Sufficient
+40700,Tramadol HCl Tab USP 50mg 100,Tramadol,2025-03,2025-04,153420.0,59308.168,Sufficient
+40700,Tramadol HCl Tab USP 50mg 100,Tramadol,2025-04,2025-05,153420.0,59308.168,Sufficient
+41065,Metoprolol Tar Tab USP 25mg 1000 UnTS,Metoprolol Tartrate (Uncoated),2025-02,2025-03,69900.0,57291.1333333333,Sufficient
+41065,Metoprolol Tar Tab USP 25mg 1000 UnTS,Metoprolol Tartrate (Uncoated),2024-12,2025-01,69900.0,57291.1333333333,Sufficient
+41065,Metoprolol Tar Tab USP 25mg 1000 UnTS,Metoprolol Tartrate (Uncoated),2025-01,2025-02,69900.0,57291.1333333333,Sufficient
+40937,"Mycophenolate Mof Cap USP 250mg, 100",Mycophenolate Mofetil Cap,2025-02,2025-03,137784.0,56503.3680787811,Sufficient
+40937,"Mycophenolate Mof Cap USP 250mg, 100",Mycophenolate Mofetil Cap,2025-05,2025-06,137784.0,56503.3680787811,Sufficient
+40937,"Mycophenolate Mof Cap USP 250mg, 100",Mycophenolate Mofetil Cap,2025-04,2025-05,137784.0,56503.3680787811,Sufficient
+40937,"Mycophenolate Mof Cap USP 250mg, 100",Mycophenolate Mofetil Cap,2025-01,2025-02,137784.0,56503.3680787811,Sufficient
+40937,"Mycophenolate Mof Cap USP 250mg, 100",Mycophenolate Mofetil Cap,2024-12,2025-01,137784.0,56503.3680787811,Sufficient
+40937,"Mycophenolate Mof Cap USP 250mg, 100",Mycophenolate Mofetil Cap,2025-03,2025-04,137784.0,56503.3680787811,Sufficient
+40710,Clonazepam Tab USP 0.5mg 100,Clonazepam Tab,2025-05,2025-06,117480.0,54226.0,Sufficient
+40710,Clonazepam Tab USP 0.5mg 100,Clonazepam Tab,2025-04,2025-05,117480.0,54226.0,Sufficient
+41064,Metoprolol Tar Tab USP 25mg 100 UnTS,Metoprolol Tartrate (Uncoated),2025-03,2025-04,57120.0,53051.3333333333,Sufficient
+40713,Clonazepam Tab USP 1mg 100,Clonazepam Tab,2024-11,2024-12,69528.0,51630.6666666666,Sufficient
+40710,Clonazepam Tab USP 0.5mg 100,Clonazepam Tab,2025-03,2025-04,117480.0,51490.0,Sufficient
+40710,Clonazepam Tab USP 0.5mg 100,Clonazepam Tab,2025-02,2025-03,117480.0,50850.0,Sufficient
+41064,Metoprolol Tar Tab USP 25mg 100 UnTS,Metoprolol Tartrate (Uncoated),2025-02,2025-03,57120.0,49784.0,Sufficient
+41064,Metoprolol Tar Tab USP 25mg 100 UnTS,Metoprolol Tartrate (Uncoated),2025-01,2025-02,57120.0,49784.0,Sufficient
+41064,Metoprolol Tar Tab USP 25mg 100 UnTS,Metoprolol Tartrate (Uncoated),2024-12,2025-01,57120.0,49718.0,Sufficient
+40828,Buprenorphine Sl Tab 2 Mg 30,Buprenorphine Sl,2024-11,2024-12,51336.0,49422.2791141657,Sufficient
+40713,Clonazepam Tab USP 1mg 100,Clonazepam Tab,2025-02,2025-03,69528.0,48704.0,Sufficient
+40713,Clonazepam Tab USP 1mg 100,Clonazepam Tab,2025-03,2025-04,69528.0,48464.0,Sufficient
+40713,Clonazepam Tab USP 1mg 100,Clonazepam Tab,2024-12,2025-01,69528.0,48200.0,Sufficient
+40713,Clonazepam Tab USP 1mg 100,Clonazepam Tab,2025-01,2025-02,69528.0,47900.0,Sufficient
+40617,Carvedilol Tab USP 6.25mg 100,Carvedilol,2025-02,2025-03,63432.0,46936.5,Sufficient
+40617,Carvedilol Tab USP 6.25mg 100,Carvedilol,2025-01,2025-02,63432.0,46422.5,Sufficient
+40713,Clonazepam Tab USP 1mg 100,Clonazepam Tab,2025-04,2025-05,69528.0,43352.0,Sufficient
+40713,Clonazepam Tab USP 1mg 100,Clonazepam Tab,2025-05,2025-06,69528.0,43352.0,Sufficient
+41069,Metoprolol Tar Tab USP 50mg 1000 UnTS,Metoprolol Tartrate (Uncoated),2025-03,2025-04,44148.0,42738.3333333333,Sufficient
+40617,Carvedilol Tab USP 6.25mg 100,Carvedilol,2024-12,2025-01,63432.0,42713.5,Sufficient
+40617,Carvedilol Tab USP 6.25mg 100,Carvedilol,2025-05,2025-06,63432.0,41922.0,Sufficient
+40617,Carvedilol Tab USP 6.25mg 100,Carvedilol,2025-03,2025-04,63432.0,41922.0,Sufficient
+40617,Carvedilol Tab USP 6.25mg 100,Carvedilol,2025-04,2025-05,63432.0,41922.0,Sufficient
+41062,Metoprolol Tar Tab USP 25mg 500 UnTS,Metoprolol Tartrate (Uncoated),2025-03,2025-04,78408.0,37214.5,Sufficient
+41069,Metoprolol Tar Tab USP 50mg 1000 UnTS,Metoprolol Tartrate (Uncoated),2025-02,2025-03,44148.0,35589.5,Sufficient
+41069,Metoprolol Tar Tab USP 50mg 1000 UnTS,Metoprolol Tartrate (Uncoated),2025-01,2025-02,44148.0,35589.5,Sufficient
+40335,Diclofenac Pot Tab USP 50mg 100,Diclofenac Potassium,2024-12,2025-01,64035.0,33115.0573333333,Sufficient
+40335,Diclofenac Pot Tab USP 50mg 100,Diclofenac Potassium,2025-02,2025-03,64035.0,31882.0573333333,Sufficient
+40335,Diclofenac Pot Tab USP 50mg 100,Diclofenac Potassium,2025-01,2025-02,64035.0,31882.0573333333,Sufficient
+40830,Buprenorphine Sl Tab 8 Mg 30,Buprenorphine Sl,2024-11,2024-12,159528.0,31812.1333333333,Sufficient
+40335,Diclofenac Pot Tab USP 50mg 100,Diclofenac Potassium,2025-05,2025-06,64035.0,31775.0573333333,Sufficient
+40335,Diclofenac Pot Tab USP 50mg 100,Diclofenac Potassium,2025-04,2025-05,64035.0,31775.0573333333,Sufficient
+40335,Diclofenac Pot Tab USP 50mg 100,Diclofenac Potassium,2025-03,2025-04,64035.0,31775.0573333333,Sufficient
+41069,Metoprolol Tar Tab USP 50mg 1000 UnTS,Metoprolol Tartrate (Uncoated),2024-12,2025-01,44148.0,30138.0,Sufficient
+40929,Mycophenolate Mof Tab USP 500mg 100,Mycophenolate Mofetil Tab,2025-05,2025-06,70858.0,29552.0,Sufficient
+40929,Mycophenolate Mof Tab USP 500mg 100,Mycophenolate Mofetil Tab,2025-01,2025-02,70858.0,29552.0,Sufficient
+40929,Mycophenolate Mof Tab USP 500mg 100,Mycophenolate Mofetil Tab,2024-12,2025-01,70858.0,29552.0,Sufficient
+40929,Mycophenolate Mof Tab USP 500mg 100,Mycophenolate Mofetil Tab,2025-04,2025-05,70858.0,29552.0,Sufficient
+40929,Mycophenolate Mof Tab USP 500mg 100,Mycophenolate Mofetil Tab,2025-02,2025-03,70858.0,29552.0,Sufficient
+40929,Mycophenolate Mof Tab USP 500mg 100,Mycophenolate Mofetil Tab,2025-03,2025-04,70858.0,29552.0,Sufficient
+40828,Buprenorphine Sl Tab 2 Mg 30,Buprenorphine Sl,2024-12,2025-01,51336.0,28279.5,Sufficient
+40615,Carvedilol Tab USP 3.125mg 100,Carvedilol,2025-03,2025-04,67536.0,27746.8333333333,Sufficient
+40615,Carvedilol Tab USP 3.125mg 100,Carvedilol,2025-05,2025-06,67536.0,27746.8333333333,Sufficient
+40615,Carvedilol Tab USP 3.125mg 100,Carvedilol,2025-04,2025-05,67536.0,27746.8333333333,Sufficient
+40615,Carvedilol Tab USP 3.125mg 100,Carvedilol,2025-02,2025-03,67536.0,27538.5,Sufficient
+40615,Carvedilol Tab USP 3.125mg 100,Carvedilol,2025-01,2025-02,67536.0,27538.5,Sufficient
+40615,Carvedilol Tab USP 3.125mg 100,Carvedilol,2024-12,2025-01,67536.0,27523.5,Sufficient
+41062,Metoprolol Tar Tab USP 25mg 500 UnTS,Metoprolol Tartrate (Uncoated),2025-05,2025-06,78408.0,27243.8333333333,Sufficient
+41062,Metoprolol Tar Tab USP 25mg 500 UnTS,Metoprolol Tartrate (Uncoated),2025-04,2025-05,78408.0,27243.8333333333,Sufficient
+41062,Metoprolol Tar Tab USP 25mg 500 UnTS,Metoprolol Tartrate (Uncoated),2024-12,2025-01,78408.0,26688.0,Sufficient
+41062,Metoprolol Tar Tab USP 25mg 500 UnTS,Metoprolol Tartrate (Uncoated),2025-01,2025-02,78408.0,26688.0,Sufficient
+41062,Metoprolol Tar Tab USP 25mg 500 UnTS,Metoprolol Tartrate (Uncoated),2025-02,2025-03,78408.0,26688.0,Sufficient
+40617,Carvedilol Tab USP 6.25mg 100,Carvedilol,2024-11,2024-12,63432.0,26019.0666666666,Sufficient
+40686,Nitroglycerine Sub Tab USP 0.4mg 25,Nitroglycerine,2025-05,2025-06,46313.0,24805.1666666666,Sufficient
+40686,Nitroglycerine Sub Tab USP 0.4mg 25,Nitroglycerine,2025-04,2025-05,46313.0,24805.1666666666,Sufficient
+40686,Nitroglycerine Sub Tab USP 0.4mg 25,Nitroglycerine,2025-03,2025-04,46313.0,24805.1666666666,Sufficient
+40686,Nitroglycerine Sub Tab USP 0.4mg 25,Nitroglycerine,2025-02,2025-03,46313.0,24165.6666666666,Sufficient
+40686,Nitroglycerine Sub Tab USP 0.4mg 25,Nitroglycerine,2024-12,2025-01,46313.0,24049.1666666666,Sufficient
+40686,Nitroglycerine Sub Tab USP 0.4mg 25,Nitroglycerine,2025-01,2025-02,46313.0,24035.6666666666,Sufficient
+41064,Metoprolol Tar Tab USP 25mg 100 UnTS,Metoprolol Tartrate (Uncoated),2025-04,2025-05,57120.0,23772.3333333333,Sufficient
+41064,Metoprolol Tar Tab USP 25mg 100 UnTS,Metoprolol Tartrate (Uncoated),2025-05,2025-06,57120.0,23772.3333333333,Sufficient
+40513,Cyclobenzaprine HCl Tab USP 10mg 1000,Cyclobenzaprine HCl,2025-04,2025-05,34140.0,22733.784,Sufficient
+40513,Cyclobenzaprine HCl Tab USP 10mg 1000,Cyclobenzaprine HCl,2025-05,2025-06,34140.0,22733.784,Sufficient
+40153,Diclofenac Sod DR Tab USP 50 mg 100,Diclofenac Sodium Tab,2024-11,2024-12,109296.0,21764.3546666666,Sufficient
+41065,Metoprolol Tar Tab USP 25mg 1000 UnTS,Metoprolol Tartrate (Uncoated),2024-11,2024-12,69900.0,21691.7317923763,Sufficient
+40316,Buspirone HCl Tab USP 30mg 60,Buspirone HCl,2024-11,2024-12,53472.0,21476.0,Sufficient
+40513,Cyclobenzaprine HCl Tab USP 10mg 1000,Cyclobenzaprine HCl,2025-02,2025-03,34140.0,21231.784,Sufficient
+40513,Cyclobenzaprine HCl Tab USP 10mg 1000,Cyclobenzaprine HCl,2025-01,2025-02,34140.0,21135.784,Sufficient
+40513,Cyclobenzaprine HCl Tab USP 10mg 1000,Cyclobenzaprine HCl,2024-12,2025-01,34140.0,21135.784,Sufficient
+40690,Desvenlafaxine ER Tab 25mg 30,Desvenlaflaxine,2024-11,2024-12,48504.0,20987.8066059712,Sufficient
+40513,Cyclobenzaprine HCl Tab USP 10mg 1000,Cyclobenzaprine HCl,2025-03,2025-04,34140.0,20839.784,Sufficient
+40686,Nitroglycerine Sub Tab USP 0.4mg 25,Nitroglycerine,2024-11,2024-12,46313.0,20811.0946022186,Sufficient
+40716,Clonazepam Tab USP 2mg 100,Clonazepam Tab,2025-01,2025-02,42264.0,20415.6666666666,Sufficient
+40716,Clonazepam Tab USP 2mg 100,Clonazepam Tab,2025-02,2025-03,42264.0,20415.6666666666,Sufficient
+40690,Desvenlafaxine ER Tab 25mg 30,Desvenlaflaxine,2024-12,2025-01,48504.0,19988.1555555555,Sufficient
+41074,Metoprolol Tar Tab USP 100mg 1000UnTS,Metoprolol Tartrate (Uncoated),2025-05,2025-06,26964.0,19202.9666666666,Sufficient
+41074,Metoprolol Tar Tab USP 100mg 1000UnTS,Metoprolol Tartrate (Uncoated),2025-04,2025-05,26964.0,19202.9666666666,Sufficient
+40716,Clonazepam Tab USP 2mg 100,Clonazepam Tab,2025-04,2025-05,42264.0,19177.6666666666,Sufficient
+40716,Clonazepam Tab USP 2mg 100,Clonazepam Tab,2025-05,2025-06,42264.0,19177.6666666666,Sufficient
+40716,Clonazepam Tab USP 2mg 100,Clonazepam Tab,2025-03,2025-04,42264.0,19069.6666666666,Sufficient
+40710,Clonazepam Tab USP 0.5mg 100,Clonazepam Tab,2024-11,2024-12,117480.0,18778.8333333333,Sufficient
+40694,Midodrine HCl Tab USP 2.5mg 100,Midodrine,2024-11,2024-12,20088.0,18555.5595133404,Sufficient
+40809,Gabapentin OS 250 mg/5 mL 470 PET US,Gabapentin Oral Solution,2025-05,2025-06,23184.0,17775.5,Sufficient
+40809,Gabapentin OS 250 mg/5 mL 470 PET US,Gabapentin Oral Solution,2025-04,2025-05,23184.0,17775.5,Sufficient
+40621,Carvedilol Tab USP 25mg 100,Carvedilol,2024-12,2025-01,18744.0,17187.5,Sufficient
+40696,Midodrine HCl Tab USP 10mg 100,Midodrine,2024-12,2025-01,20784.0,17062.7408836341,Sufficient
+40692,Desvenlafaxine ER Tab 50 mg 30,Desvenlaflaxine,2024-11,2024-12,128448.0,17035.656862745,Sufficient
+40782,Bisoprolol Fum Tab USP 5 mg 100,Bisoprolol Fumarate,2024-11,2024-12,32472.0,16516.0,Sufficient
+40692,Desvenlafaxine ER Tab 50 mg 30,Desvenlaflaxine,2024-12,2025-01,128448.0,16361.4111111111,Sufficient
+41074,Metoprolol Tar Tab USP 100mg 1000UnTS,Metoprolol Tartrate (Uncoated),2025-03,2025-04,26964.0,16109.9666666666,Sufficient
+40314,Buspirone HCl Tab USP 7.5mg 100,Buspirone HCl,2025-01,2025-02,16344.0,15791.3333333333,Sufficient
+40314,Buspirone HCl Tab USP 7.5mg 100,Buspirone HCl,2025-02,2025-03,16344.0,15791.3333333333,Sufficient
+40314,Buspirone HCl Tab USP 7.5mg 100,Buspirone HCl,2024-12,2025-01,16344.0,15791.3333333333,Sufficient
+40694,Midodrine HCl Tab USP 2.5mg 100,Midodrine,2025-02,2025-03,20088.0,15785.6307563109,Sufficient
+40314,Buspirone HCl Tab USP 7.5mg 100,Buspirone HCl,2025-05,2025-06,16344.0,15741.3333333333,Sufficient
+40314,Buspirone HCl Tab USP 7.5mg 100,Buspirone HCl,2025-03,2025-04,16344.0,15741.3333333333,Sufficient
+40314,Buspirone HCl Tab USP 7.5mg 100,Buspirone HCl,2025-04,2025-05,16344.0,15741.3333333333,Sufficient
+40694,Midodrine HCl Tab USP 2.5mg 100,Midodrine,2025-01,2025-02,20088.0,15673.6307563109,Sufficient
+40658,Metoprolol Tar Tab USP 75mg 100,Metoprolol Tartrate,2025-05,2025-06,28272.0,15560.2143778207,Sufficient
+40658,Metoprolol Tar Tab USP 75mg 100,Metoprolol Tartrate,2025-04,2025-05,28272.0,15560.2143778207,Sufficient
+40621,Carvedilol Tab USP 25mg 100,Carvedilol,2025-05,2025-06,18744.0,15454.8333333333,Sufficient
+40621,Carvedilol Tab USP 25mg 100,Carvedilol,2025-03,2025-04,18744.0,15454.8333333333,Sufficient
+40621,Carvedilol Tab USP 25mg 100,Carvedilol,2025-04,2025-05,18744.0,15454.8333333333,Sufficient
+40621,Carvedilol Tab USP 25mg 100,Carvedilol,2025-02,2025-03,18744.0,15285.0,Sufficient
+40621,Carvedilol Tab USP 25mg 100,Carvedilol,2025-01,2025-02,18744.0,15285.0,Sufficient
+40658,Metoprolol Tar Tab USP 75mg 100,Metoprolol Tartrate,2025-03,2025-04,28272.0,15259.047711154,Sufficient
+40658,Metoprolol Tar Tab USP 75mg 100,Metoprolol Tartrate,2025-02,2025-03,28272.0,15242.3810444874,Sufficient
+40658,Metoprolol Tar Tab USP 75mg 100,Metoprolol Tartrate,2025-01,2025-02,28272.0,15242.3810444874,Sufficient
+40716,Clonazepam Tab USP 2mg 100,Clonazepam Tab,2024-12,2025-01,42264.0,15203.0,Sufficient
+40669,Desvenlafaxin ER Tab 100 mg 30,Desvenlaflaxine,2024-11,2024-12,94200.0,15071.0,Sufficient
+40961,Dorzolamide Ophth Soln 2% base,Dorzolamide Opthal Sol,2025-04,2025-05,67680.0,14764.0,Sufficient
+40961,Dorzolamide Ophth Soln 2% base,Dorzolamide Opthal Sol,2025-05,2025-06,67680.0,14764.0,Sufficient
+40217,Potassium Chl Ora sol 20mEq 30,Potassium Chloride PFOS,2025-04,2025-05,15768.0,14697.8333333333,Sufficient
+40217,Potassium Chl Ora sol 20mEq 30,Potassium Chloride PFOS,2025-05,2025-06,15768.0,14697.8333333333,Sufficient
+40809,Gabapentin OS 250 mg/5 mL 470 PET US,Gabapentin Oral Solution,2025-02,2025-03,23184.0,14667.5,Sufficient
+40809,Gabapentin OS 250 mg/5 mL 470 PET US,Gabapentin Oral Solution,2025-01,2025-02,23184.0,14667.5,Sufficient
+40217,Potassium Chl Ora sol 20mEq 30,Potassium Chloride PFOS,2025-03,2025-04,15768.0,14501.8333333333,Sufficient
+40140,Amantadine HCl Cap USP 100mg 100,Amantadine HCL,2024-11,2024-12,15505.0,14291.4190658011,Sufficient
+41074,Metoprolol Tar Tab USP 100mg 1000UnTS,Metoprolol Tartrate (Uncoated),2025-02,2025-03,26964.0,14104.0,Sufficient
+41074,Metoprolol Tar Tab USP 100mg 1000UnTS,Metoprolol Tartrate (Uncoated),2025-01,2025-02,26964.0,14104.0,Sufficient
+41074,Metoprolol Tar Tab USP 100mg 1000UnTS,Metoprolol Tartrate (Uncoated),2024-12,2025-01,26964.0,14104.0,Sufficient
+40217,Potassium Chl Ora sol 20mEq 30,Potassium Chloride PFOS,2025-01,2025-02,15768.0,14100.8333333333,Sufficient
+40217,Potassium Chl Ora sol 20mEq 30,Potassium Chloride PFOS,2025-02,2025-03,15768.0,14100.8333333333,Sufficient
+40809,Gabapentin OS 250 mg/5 mL 470 PET US,Gabapentin Oral Solution,2024-12,2025-01,23184.0,14032.5,Sufficient
+41074,Metoprolol Tar Tab USP 100mg 1000UnTS,Metoprolol Tartrate (Uncoated),2024-11,2024-12,26964.0,13748.7,Sufficient
+40696,Midodrine HCl Tab USP 10mg 100,Midodrine,2024-11,2024-12,20784.0,13668.2853080568,Sufficient
+40774,Tranexamic Acid Tab USP 650 mg 30,Tranexamic Acid Tab,2024-11,2024-12,30552.0,13593.1032012846,Sufficient
+40970,Desvenlafaxin ER Tab 100 mg 90,Desvenlaflaxine,2024-11,2024-12,14400.0,13527.528,Sufficient
+40682,Acetazolamide Tab USP 250mg 100,Acetazolamide,2024-11,2024-12,18268.0,13361.0802619506,Sufficient
+40658,Metoprolol Tar Tab USP 75mg 100,Metoprolol Tartrate,2024-12,2025-01,28272.0,13333.7143778207,Sufficient
+40809,Gabapentin OS 250 mg/5 mL 470 PET US,Gabapentin Oral Solution,2025-03,2025-04,23184.0,13203.5,Sufficient
+40512,Cyclobenzaprine HCl Tab USP 10mg 500,Cyclobenzaprine HCl,2025-02,2025-03,17436.0,13181.0,Sufficient
+40512,Cyclobenzaprine HCl Tab USP 10mg 500,Cyclobenzaprine HCl,2025-01,2025-02,17436.0,13181.0,Sufficient
+40217,Potassium Chl Ora sol 20mEq 30,Potassium Chloride PFOS,2024-12,2025-01,15768.0,13121.5,Sufficient
+40512,Cyclobenzaprine HCl Tab USP 10mg 500,Cyclobenzaprine HCl,2024-12,2025-01,17436.0,12919.5,Sufficient
+40460,Triamterene & HCTZ Tab USP 37.5/25mg 100,Triamterene HCTZ,2025-04,2025-05,37416.0,12906.4906666666,Sufficient
+40460,Triamterene & HCTZ Tab USP 37.5/25mg 100,Triamterene HCTZ,2025-05,2025-06,37416.0,12906.4906666666,Sufficient
+40694,Midodrine HCl Tab USP 2.5mg 100,Midodrine,2024-12,2025-01,20088.0,12755.9640896442,Sufficient
+40615,Carvedilol Tab USP 3.125mg 100,Carvedilol,2024-11,2024-12,67536.0,12701.7333333333,Sufficient
+40460,Triamterene & HCTZ Tab USP 37.5/25mg 100,Triamterene HCTZ,2024-11,2024-12,37416.0,12455.5229104345,Sufficient
+40294,Amiodarone HCl Tab USP 200mg 60,Amiodarone HCl,2024-11,2024-12,34381.0,12272.0586666666,Sufficient
+40616,Carvedilol Tab USP 3.125mg 500,Carvedilol,2024-11,2024-12,12624.0,12005.7333333333,Sufficient
+40970,Desvenlafaxin ER Tab 100 mg 90,Desvenlaflaxine,2025-03,2025-04,14400.0,11827.5714285714,Sufficient
+40970,Desvenlafaxin ER Tab 100 mg 90,Desvenlaflaxine,2025-02,2025-03,14400.0,11826.7269841269,Sufficient
+40970,Desvenlafaxin ER Tab 100 mg 90,Desvenlaflaxine,2025-01,2025-02,14400.0,11818.0603174603,Sufficient
+41024,Mycophenolic Sod DR Tab 180 mg 120,Mycophenolae Sodium DR Tab,2025-01,2025-02,20472.0,11742.1980476703,Sufficient
+41024,Mycophenolic Sod DR Tab 180 mg 120,Mycophenolae Sodium DR Tab,2025-02,2025-03,20472.0,11742.1980476703,Sufficient
+41024,Mycophenolic Sod DR Tab 180 mg 120,Mycophenolae Sodium DR Tab,2024-12,2025-01,20472.0,11673.6980476703,Sufficient
+40592,Baclofen Tab USP 10mg 100,Baclofen,2024-11,2024-12,112056.0,11547.5,Sufficient
+41024,Mycophenolic Sod DR Tab 180 mg 120,Mycophenolae Sodium DR Tab,2025-04,2025-05,20472.0,11507.1980476703,Sufficient
+41024,Mycophenolic Sod DR Tab 180 mg 120,Mycophenolae Sodium DR Tab,2025-05,2025-06,20472.0,11507.1980476703,Sufficient
+41024,Mycophenolic Sod DR Tab 180 mg 120,Mycophenolae Sodium DR Tab,2025-03,2025-04,20472.0,11507.1980476703,Sufficient
+40880,Guanfacine Tab USP 1mg 100,Guanfacine IR,2024-11,2024-12,21720.0,11310.0444444444,Sufficient
+40512,Cyclobenzaprine HCl Tab USP 10mg 500,Cyclobenzaprine HCl,2025-05,2025-06,17436.0,11240.6666666666,Sufficient
+40512,Cyclobenzaprine HCl Tab USP 10mg 500,Cyclobenzaprine HCl,2025-04,2025-05,17436.0,11240.6666666666,Sufficient
+40600,Amitriptyline HCl Tab USP 10mg 100,Amitriptyline,2025-02,2025-03,12648.0,10668.0,Sufficient
+40600,Amitriptyline HCl Tab USP 10mg 100,Amitriptyline,2025-03,2025-04,12648.0,10668.0,Sufficient
+40600,Amitriptyline HCl Tab USP 10mg 100,Amitriptyline,2024-12,2025-01,12648.0,10668.0,Sufficient
+40600,Amitriptyline HCl Tab USP 10mg 100,Amitriptyline,2025-01,2025-02,12648.0,10668.0,Sufficient
+40512,Cyclobenzaprine HCl Tab USP 10mg 500,Cyclobenzaprine HCl,2025-03,2025-04,17436.0,10343.5,Sufficient
+40460,Triamterene & HCTZ Tab USP 37.5/25mg 100,Triamterene HCTZ,2024-12,2025-01,37416.0,10156.9795555555,Sufficient
+40782,Bisoprolol Fum Tab USP 5 mg 100,Bisoprolol Fumarate,2025-02,2025-03,32472.0,9991.0,Sufficient
+40782,Bisoprolol Fum Tab USP 5 mg 100,Bisoprolol Fumarate,2025-01,2025-02,32472.0,9991.0,Sufficient
+40782,Bisoprolol Fum Tab USP 5 mg 100,Bisoprolol Fumarate,2025-04,2025-05,32472.0,9931.0,Sufficient
+40782,Bisoprolol Fum Tab USP 5 mg 100,Bisoprolol Fumarate,2025-05,2025-06,32472.0,9931.0,Sufficient
+40782,Bisoprolol Fum Tab USP 5 mg 100,Bisoprolol Fumarate,2025-03,2025-04,32472.0,9931.0,Sufficient
+40701,Tramadol HCl Tab USP 50mg 500,Tramadol,2025-04,2025-05,54585.0,9902.0,Sufficient
+40701,Tramadol HCl Tab USP 50mg 500,Tramadol,2025-05,2025-06,54585.0,9902.0,Sufficient
+40701,Tramadol HCl Tab USP 50mg 500,Tramadol,2025-03,2025-04,54585.0,9902.0,Sufficient
+40309,Buspirone HCl Tab USP 10mg 100,Buspirone HCl,2024-11,2024-12,103776.0,9870.0,Sufficient
+40621,Carvedilol Tab USP 25mg 100,Carvedilol,2024-11,2024-12,18744.0,9785.73333333333,Sufficient
+40520,Cyclobenzaprine HCl Tab USP 5mg 100,Cyclobenzaprine HCl,2025-05,2025-06,20616.0,9668.304,Sufficient
+40520,Cyclobenzaprine HCl Tab USP 5mg 100,Cyclobenzaprine HCl,2025-04,2025-05,20616.0,9668.304,Sufficient
+40520,Cyclobenzaprine HCl Tab USP 5mg 100,Cyclobenzaprine HCl,2024-12,2025-01,20616.0,9652.804,Sufficient
+40520,Cyclobenzaprine HCl Tab USP 5mg 100,Cyclobenzaprine HCl,2025-02,2025-03,20616.0,9632.304,Sufficient
+40520,Cyclobenzaprine HCl Tab USP 5mg 100,Cyclobenzaprine HCl,2025-03,2025-04,20616.0,9632.304,Sufficient
+40520,Cyclobenzaprine HCl Tab USP 5mg 100,Cyclobenzaprine HCl,2025-01,2025-02,20616.0,9632.304,Sufficient
+40460,Triamterene & HCTZ Tab USP 37.5/25mg 100,Triamterene HCTZ,2025-03,2025-04,37416.0,9596.824,Sufficient
+40440,Isosorbide Dinitrate Tab USP 5mg 100,Isosorbide DN,2025-05,2025-06,12048.0,9403.5,Sufficient
+40440,Isosorbide Dinitrate Tab USP 5mg 100,Isosorbide DN,2025-04,2025-05,12048.0,9403.49999999999,Sufficient
+40040,Rabeprazole Sod DR Tab 20mg 90,Rabeprazole Sodium,2025-04,2025-05,10488.0,9205.04527938343,Sufficient
+40040,Rabeprazole Sod DR Tab 20mg 90,Rabeprazole Sodium,2025-03,2025-04,10488.0,9205.04527938343,Sufficient
+40040,Rabeprazole Sod DR Tab 20mg 90,Rabeprazole Sodium,2025-05,2025-06,10488.0,9205.04527938343,Sufficient
+41025,Mycophenolic Sod DR Tab 360 mg 120,Mycophenolae Sodium DR Tab,2025-04,2025-05,16680.0,8986.52574653186,Sufficient
+41025,Mycophenolic Sod DR Tab 360 mg 120,Mycophenolae Sodium DR Tab,2025-05,2025-06,16680.0,8986.52574653186,Sufficient
+41025,Mycophenolic Sod DR Tab 360 mg 120,Mycophenolae Sodium DR Tab,2025-03,2025-04,16680.0,8986.52574653186,Sufficient
+40460,Triamterene & HCTZ Tab USP 37.5/25mg 100,Triamterene HCTZ,2025-02,2025-03,37416.0,8980.97955555555,Sufficient
+40460,Triamterene & HCTZ Tab USP 37.5/25mg 100,Triamterene HCTZ,2025-01,2025-02,37416.0,8980.97955555555,Sufficient
+40620,Carvedilol Tab USP 12.5mg 500,Carvedilol,2024-11,2024-12,23760.0,8880.0,Sufficient
+41025,Mycophenolic Sod DR Tab 360 mg 120,Mycophenolae Sodium DR Tab,2025-02,2025-03,16680.0,8873.02574653186,Sufficient
+41025,Mycophenolic Sod DR Tab 360 mg 120,Mycophenolae Sodium DR Tab,2025-01,2025-02,16680.0,8873.02574653186,Sufficient
+40798,Clonazepam Tab USP 2mg 500,Clonazepam Tab,2025-02,2025-03,18720.0,8872.93267142414,Sufficient
+40798,Clonazepam Tab USP 2mg 500,Clonazepam Tab,2025-01,2025-02,18720.0,8872.93267142414,Sufficient
+41025,Mycophenolic Sod DR Tab 360 mg 120,Mycophenolae Sodium DR Tab,2024-12,2025-01,16680.0,8853.02574653186,Sufficient
+40782,Bisoprolol Fum Tab USP 5 mg 100,Bisoprolol Fumarate,2024-12,2025-01,32472.0,8790.0,Sufficient
+40798,Clonazepam Tab USP 2mg 500,Clonazepam Tab,2024-12,2025-01,18720.0,8678.93267142414,Sufficient
+40040,Rabeprazole Sod DR Tab 20mg 90,Rabeprazole Sodium,2025-02,2025-03,10488.0,8622.54527938343,Sufficient
+40040,Rabeprazole Sod DR Tab 20mg 90,Rabeprazole Sodium,2025-01,2025-02,10488.0,8622.54527938343,Sufficient
+40040,Rabeprazole Sod DR Tab 20mg 90,Rabeprazole Sodium,2024-12,2025-01,10488.0,8592.54527938343,Sufficient
+40215,Isosorbide Dinitrate Tab USP 30mg 100,Isosorbide DN,2024-12,2025-01,8544.0,8442.51954179426,Sufficient
+40711,Clonazepam Tab USP 0.5mg 1000,Clonazepam Tab,2025-05,2025-06,11076.0,8384.0,Sufficient
+40711,Clonazepam Tab USP 0.5mg 1000,Clonazepam Tab,2025-04,2025-05,11076.0,8384.0,Sufficient
+40475,Carbi + Levo ER Tab USP 50/200mg 100,Carbidopa and Levdopa ER Tab,2025-03,2025-04,13704.0,8196.5,Sufficient
+40798,Clonazepam Tab USP 2mg 500,Clonazepam Tab,2025-03,2025-04,18720.0,8137.43267142414,Sufficient
+40796,Clonazepam Tab USP 0.5mg 500,Clonazepam Tab,2024-11,2024-12,23136.0,8059.66666666666,Sufficient
+40834,Triamterene & HCTZ Tab USP 37.5/25mg 500,Triamterene HCTZ,2025-05,2025-06,21312.0,8043.35466666666,Sufficient
+40834,Triamterene & HCTZ Tab USP 37.5/25mg 500,Triamterene HCTZ,2025-04,2025-05,21312.0,8043.35466666666,Sufficient
+40512,Cyclobenzaprine HCl Tab USP 10mg 500,Cyclobenzaprine HCl,2024-11,2024-12,17436.0,7984.0,Sufficient
+40491,Carbi + Levo tab USP 25/100mg 100,Carbidopa and Levdopa Tab,2024-11,2024-12,36240.0,7919.33333333333,Sufficient
+40669,Desvenlafaxin ER Tab 100 mg 30,Desvenlaflaxine,2024-12,2025-01,94200.0,7884.02352941176,Sufficient
+40711,Clonazepam Tab USP 0.5mg 1000,Clonazepam Tab,2024-12,2025-01,11076.0,7827.0,Sufficient
+40714,Clonazepam Tab USP 1mg 1000,Clonazepam Tab,2024-11,2024-12,11712.0,7809.33333333333,Sufficient
+40711,Clonazepam Tab USP 0.5mg 1000,Clonazepam Tab,2025-03,2025-04,11076.0,7802.0,Sufficient
+40711,Clonazepam Tab USP 0.5mg 1000,Clonazepam Tab,2025-02,2025-03,11076.0,7802.0,Sufficient
+40711,Clonazepam Tab USP 0.5mg 1000,Clonazepam Tab,2025-01,2025-02,11076.0,7802.0,Sufficient
+40798,Clonazepam Tab USP 2mg 500,Clonazepam Tab,2025-04,2025-05,18720.0,7697.43267142414,Sufficient
+40798,Clonazepam Tab USP 2mg 500,Clonazepam Tab,2025-05,2025-06,18720.0,7697.43267142414,Sufficient
+40701,Tramadol HCl Tab USP 50mg 500,Tramadol,2024-12,2025-01,54585.0,7598.0,Sufficient
+40834,Triamterene & HCTZ Tab USP 37.5/25mg 500,Triamterene HCTZ,2024-12,2025-01,21312.0,7536.86577777777,Sufficient
+40623,Primidone Tab USP 50mg 100,Primidone,2024-11,2024-12,43992.0,7517.912,Sufficient
+40440,Isosorbide Dinitrate Tab USP 5mg 100,Isosorbide DN,2025-03,2025-04,12048.0,7346.49999999999,Sufficient
+40834,Triamterene & HCTZ Tab USP 37.5/25mg 500,Triamterene HCTZ,2025-02,2025-03,21312.0,7303.36577777777,Sufficient
+40834,Triamterene & HCTZ Tab USP 37.5/25mg 500,Triamterene HCTZ,2025-01,2025-02,21312.0,7303.36577777777,Sufficient
+40834,Triamterene & HCTZ Tab USP 37.5/25mg 500,Triamterene HCTZ,2025-03,2025-04,21312.0,7300.188,Sufficient
+40910,Aripiprazole OS 1mg/ml 150 PET US,Aripiprazole Oral Solution,2024-12,2025-01,21699.0,7142.87747458534,Sufficient
+40564,Cyclobenzaprine HCl Tab USP 7.5mg 100,Cyclobenzaprine HCl,2024-11,2024-12,7560.0,7106.0,Sufficient
+40440,Isosorbide Dinitrate Tab USP 5mg 100,Isosorbide DN,2024-12,2025-01,12048.0,7089.0904298459,Sufficient
+40442,Isosorbide Dinitrate Tab USP 10mg 100,Isosorbide DN,2024-11,2024-12,7776.0,7077.55555555555,Sufficient
+40440,Isosorbide Dinitrate Tab USP 5mg 100,Isosorbide DN,2025-01,2025-02,12048.0,6973.05555555555,Sufficient
+40440,Isosorbide Dinitrate Tab USP 5mg 100,Isosorbide DN,2025-02,2025-03,12048.0,6973.05555555555,Sufficient
+40335,Diclofenac Pot Tab USP 50mg 100,Diclofenac Potassium,2024-11,2024-12,64035.0,6967.73333333333,Sufficient
+40701,Tramadol HCl Tab USP 50mg 500,Tramadol,2025-01,2025-02,54585.0,6878.0,Sufficient
+40701,Tramadol HCl Tab USP 50mg 500,Tramadol,2025-02,2025-03,54585.0,6878.0,Sufficient
+41068,Metoprolol Tar Tab USP 50mg 100 UnTS,Metoprolol Tartrate (Uncoated),2025-04,2025-05,28416.0,6587.33333333333,Sufficient
+41068,Metoprolol Tar Tab USP 50mg 100 UnTS,Metoprolol Tartrate (Uncoated),2025-05,2025-06,28416.0,6587.33333333333,Sufficient
+40798,Clonazepam Tab USP 2mg 500,Clonazepam Tab,2024-11,2024-12,18720.0,6562.0,Sufficient
+41069,Metoprolol Tar Tab USP 50mg 1000 UnTS,Metoprolol Tartrate (Uncoated),2024-11,2024-12,44148.0,6537.39918611972,Sufficient
+40910,Aripiprazole OS 1mg/ml 150 PET US,Aripiprazole Oral Solution,2024-11,2024-12,21699.0,6517.21361592806,Sufficient
+40444,Isosorbide Dinitrate Tab USP 20mg 100,Isosorbide DN,2024-11,2024-12,15534.0,6478.28888888888,Sufficient
+40741,Sildenafil Tab USP 20mg 1000,Sildenafil Citrate,2024-11,2024-12,14232.0,6457.46666666666,Sufficient
+40676,Labetalol HCl Tab USP 200mg 100,Labetalol,2025-05,2025-06,19850.0,6380.16666666666,Sufficient
+40676,Labetalol HCl Tab USP 200mg 100,Labetalol,2025-04,2025-05,19850.0,6380.16666666666,Sufficient
+40676,Labetalol HCl Tab USP 200mg 100,Labetalol,2025-03,2025-04,19850.0,6368.16666666666,Sufficient
+40565,Baclofen Tab USP 20mg 100,Baclofen,2024-11,2024-12,31392.0,6364.66666666666,Sufficient
+40667,Carvedilol Tab USP 25mg 1000,Carvedilol,2025-03,2025-04,7764.0,6316.0,Sufficient
+40906,Glipizide Tab USP 5 mg 500,Glipizide,2024-11,2024-12,21168.0,6229.04757021591,Sufficient
+40714,Clonazepam Tab USP 1mg 1000,Clonazepam Tab,2025-05,2025-06,11712.0,6096.5,Sufficient
+40714,Clonazepam Tab USP 1mg 1000,Clonazepam Tab,2025-04,2025-05,11712.0,6096.5,Sufficient
+40475,Carbi + Levo ER Tab USP 50/200mg 100,Carbidopa and Levdopa ER Tab,2025-02,2025-03,13704.0,6076.5,Sufficient
+40475,Carbi + Levo ER Tab USP 50/200mg 100,Carbidopa and Levdopa ER Tab,2025-01,2025-02,13704.0,6076.5,Sufficient
+40627,Primidone Tab USP 250mg100,Primidone,2024-11,2024-12,13656.0,5971.83333333333,Sufficient
+40962,OXCARBAZEPINE OSP USP 300MG/5ML 250GL US,Oxcarbazepine Suspension,2024-11,2024-12,23112.0,5954.46666666666,Sufficient
+40676,Labetalol HCl Tab USP 200mg 100,Labetalol,2025-02,2025-03,19850.0,5936.16666666666,Sufficient
+40654,Metoprolol Tar Tab USP 50mg 100,Metoprolol Tartrate,2025-02,2025-03,23160.0,5765.0,Sufficient
+40654,Metoprolol Tar Tab USP 50mg 100,Metoprolol Tartrate,2025-01,2025-02,23160.0,5764.99999999999,Sufficient
+40962,OXCARBAZEPINE OSP USP 300MG/5ML 250GL US,Oxcarbazepine Suspension,2025-04,2025-05,23112.0,5734.0,Sufficient
+40962,OXCARBAZEPINE OSP USP 300MG/5ML 250GL US,Oxcarbazepine Suspension,2025-05,2025-06,23112.0,5734.0,Sufficient
+40962,OXCARBAZEPINE OSP USP 300MG/5ML 250GL US,Oxcarbazepine Suspension,2025-03,2025-04,23112.0,5734.0,Sufficient
+40905,Glipizide Tab USP 5 mg 100,Glipizide,2024-11,2024-12,81720.0,5701.93333333333,Sufficient
+40962,OXCARBAZEPINE OSP USP 300MG/5ML 250GL US,Oxcarbazepine Suspension,2025-01,2025-02,23112.0,5666.0,Sufficient
+40962,OXCARBAZEPINE OSP USP 300MG/5ML 250GL US,Oxcarbazepine Suspension,2025-02,2025-03,23112.0,5666.0,Sufficient
+40962,OXCARBAZEPINE OSP USP 300MG/5ML 250GL US,Oxcarbazepine Suspension,2024-12,2025-01,23112.0,5666.0,Sufficient
+40882,Guanfacine Tab USP 2mg 100,Guanfacine IR,2024-11,2024-12,32928.0,5506.81904761904,Sufficient
+40521,Cyclobenzaprine HCl Tab USP 10mg 100,Cyclobenzaprine HCl,2025-04,2025-05,10176.0,5486.0,Sufficient
+40521,Cyclobenzaprine HCl Tab USP 10mg 100,Cyclobenzaprine HCl,2025-05,2025-06,10176.0,5486.0,Sufficient
+40521,Cyclobenzaprine HCl Tab USP 10mg 100,Cyclobenzaprine HCl,2025-01,2025-02,10176.0,5480.0,Sufficient
+40521,Cyclobenzaprine HCl Tab USP 10mg 100,Cyclobenzaprine HCl,2025-03,2025-04,10176.0,5480.0,Sufficient
+40521,Cyclobenzaprine HCl Tab USP 10mg 100,Cyclobenzaprine HCl,2025-02,2025-03,10176.0,5480.0,Sufficient
+40521,Cyclobenzaprine HCl Tab USP 10mg 100,Cyclobenzaprine HCl,2024-12,2025-01,10176.0,5480.0,Sufficient
+40564,Cyclobenzaprine HCl Tab USP 7.5mg 100,Cyclobenzaprine HCl,2024-12,2025-01,7560.0,5469.548,Sufficient
+40564,Cyclobenzaprine HCl Tab USP 7.5mg 100,Cyclobenzaprine HCl,2025-01,2025-02,7560.0,5468.048,Sufficient
+40564,Cyclobenzaprine HCl Tab USP 7.5mg 100,Cyclobenzaprine HCl,2025-02,2025-03,7560.0,5468.048,Sufficient
+40676,Labetalol HCl Tab USP 200mg 100,Labetalol,2025-01,2025-02,19850.0,5450.16666666666,Sufficient
+40676,Labetalol HCl Tab USP 200mg 100,Labetalol,2024-12,2025-01,19850.0,5450.16666666666,Sufficient
+40677,Labetalol HCl Tab USP 200mg 500,Labetalol,2024-12,2025-01,6204.0,5330.5,Sufficient
+41068,Metoprolol Tar Tab USP 50mg 100 UnTS,Metoprolol Tartrate (Uncoated),2025-03,2025-04,28416.0,5320.0,Sufficient
+40595,Baclofen Tab USP 10mg 500,Baclofen,2024-11,2024-12,19356.0,5291.5,Sufficient
+40714,Clonazepam Tab USP 1mg 1000,Clonazepam Tab,2024-12,2025-01,11712.0,5290.0,Sufficient
+40714,Clonazepam Tab USP 1mg 1000,Clonazepam Tab,2025-02,2025-03,11712.0,5274.0,Sufficient
+40714,Clonazepam Tab USP 1mg 1000,Clonazepam Tab,2025-01,2025-02,11712.0,5274.0,Sufficient
+40882,Guanfacine Tab USP 2mg 100,Guanfacine IR,2025-01,2025-02,32928.0,5273.5,Sufficient
+40882,Guanfacine Tab USP 2mg 100,Guanfacine IR,2025-02,2025-03,32928.0,5273.5,Sufficient
+40907,Glipizide Tab USP 10mg 100,Glipizide,2024-11,2024-12,37008.0,5272.54933333333,Sufficient
+40714,Clonazepam Tab USP 1mg 1000,Clonazepam Tab,2025-03,2025-04,11712.0,5270.5,Sufficient
+40208,Potassium Chl ER Tab USP 10mEq 100 AB3,Potassium Chloride ER,2025-02,2025-03,31092.0,5248.52475524475,Sufficient
+40208,Potassium Chl ER Tab USP 10mEq 100 AB3,Potassium Chloride ER,2024-12,2025-01,31092.0,5248.52475524475,Sufficient
+40208,Potassium Chl ER Tab USP 10mEq 100 AB3,Potassium Chloride ER,2025-01,2025-02,31092.0,5248.52475524475,Sufficient
+40208,Potassium Chl ER Tab USP 10mEq 100 AB3,Potassium Chloride ER,2025-04,2025-05,31092.0,5246.52475524475,Sufficient
+40208,Potassium Chl ER Tab USP 10mEq 100 AB3,Potassium Chloride ER,2025-05,2025-06,31092.0,5246.52475524475,Sufficient
+40208,Potassium Chl ER Tab USP 10mEq 100 AB3,Potassium Chloride ER,2025-03,2025-04,31092.0,5246.52475524475,Sufficient
+40672,Nitroglycerine Sub Tab USP 0.4mg 100,Nitroglycerine,2025-05,2025-06,23496.0,5084.16666666666,Sufficient
+40672,Nitroglycerine Sub Tab USP 0.4mg 100,Nitroglycerine,2025-03,2025-04,23496.0,5084.16666666666,Sufficient
+40672,Nitroglycerine Sub Tab USP 0.4mg 100,Nitroglycerine,2025-04,2025-05,23496.0,5084.16666666666,Sufficient
+40672,Nitroglycerine Sub Tab USP 0.4mg 100,Nitroglycerine,2024-12,2025-01,23496.0,5068.16666666666,Sufficient
+40672,Nitroglycerine Sub Tab USP 0.4mg 100,Nitroglycerine,2025-02,2025-03,23496.0,5068.16666666666,Sufficient
+40672,Nitroglycerine Sub Tab USP 0.4mg 100,Nitroglycerine,2025-01,2025-02,23496.0,5068.16666666666,Sufficient
+40564,Cyclobenzaprine HCl Tab USP 7.5mg 100,Cyclobenzaprine HCl,2025-05,2025-06,7560.0,4976.548,Sufficient
+40564,Cyclobenzaprine HCl Tab USP 7.5mg 100,Cyclobenzaprine HCl,2025-04,2025-05,7560.0,4976.548,Sufficient
+40564,Cyclobenzaprine HCl Tab USP 7.5mg 100,Cyclobenzaprine HCl,2025-03,2025-04,7560.0,4976.548,Sufficient
+40695,Midodrine HCl Tab USP 5 mg 100,Midodrine,2024-11,2024-12,25896.0,4911.91832927818,Sufficient
+40608,Amitriptyline HCl Tab USP 75mg 100,Amitriptyline,2025-03,2025-04,11616.0,4871.5,Sufficient
+40608,Amitriptyline HCl Tab USP 75mg 100,Amitriptyline,2024-12,2025-01,11616.0,4836.0,Sufficient
+40608,Amitriptyline HCl Tab USP 75mg 100,Amitriptyline,2025-01,2025-02,11616.0,4836.0,Sufficient
+40608,Amitriptyline HCl Tab USP 75mg 100,Amitriptyline,2025-02,2025-03,11616.0,4836.0,Sufficient
+40660,Metoprolol Tar Tab USP 37.5mg 100,Metoprolol Tartrate,2024-11,2024-12,13989.0,4689.97284174142,Sufficient
+41072,Metoprolol Tar Tab USP 100mg 100 UnTS,Metoprolol Tartrate (Uncoated),2025-05,2025-06,26904.0,4543.83333333333,Sufficient
+41072,Metoprolol Tar Tab USP 100mg 100 UnTS,Metoprolol Tartrate (Uncoated),2025-04,2025-05,26904.0,4543.83333333333,Sufficient
+40834,Triamterene & HCTZ Tab USP 37.5/25mg 500,Triamterene HCTZ,2024-11,2024-12,21312.0,4535.41612515042,Sufficient
+40680,Acetazolamide Tab USP 125mg 100,Acetazolamide,2025-01,2025-02,6120.0,4502.46911251532,Sufficient
+40680,Acetazolamide Tab USP 125mg 100,Acetazolamide,2024-12,2025-01,6120.0,4502.46911251532,Sufficient
+40680,Acetazolamide Tab USP 125mg 100,Acetazolamide,2025-02,2025-03,6120.0,4502.46911251532,Sufficient
+40938,"Mycophenolate Mof Cap USP 250mg, 500",Mycophenolate Mofetil Cap,2025-02,2025-03,16908.0,4496.33333333333,Sufficient
+40938,"Mycophenolate Mof Cap USP 250mg, 500",Mycophenolate Mofetil Cap,2025-01,2025-02,16908.0,4496.33333333333,Sufficient
+40293,Amiodarone HCl Tab USP 400mg 30,Amiodarone HCl,2024-11,2024-12,10464.0,4469.85714285714,Sufficient
+40680,Acetazolamide Tab USP 125mg 100,Acetazolamide,2025-05,2025-06,6120.0,4452.46911251532,Sufficient
+40680,Acetazolamide Tab USP 125mg 100,Acetazolamide,2025-04,2025-05,6120.0,4452.46911251532,Sufficient
+40680,Acetazolamide Tab USP 125mg 100,Acetazolamide,2025-03,2025-04,6120.0,4452.46911251532,Sufficient
+40938,"Mycophenolate Mof Cap USP 250mg, 500",Mycophenolate Mofetil Cap,2024-12,2025-01,16908.0,4371.33333333333,Sufficient
+40938,"Mycophenolate Mof Cap USP 250mg, 500",Mycophenolate Mofetil Cap,2025-03,2025-04,16908.0,4355.33333333333,Sufficient
+40938,"Mycophenolate Mof Cap USP 250mg, 500",Mycophenolate Mofetil Cap,2025-04,2025-05,16908.0,4355.33333333333,Sufficient
+40938,"Mycophenolate Mof Cap USP 250mg, 500",Mycophenolate Mofetil Cap,2025-05,2025-06,16908.0,4355.33333333333,Sufficient
+40492,Carbi + Levo tab USP 25/100mg 1000,Carbidopa and Levdopa Tab,2025-05,2025-06,5592.0,4284.0,Sufficient
+40785,Bisoprolol Fum Tab USP 10 mg 100,Bisoprolol Fumarate,2024-12,2025-01,8952.0,4264.0,Sufficient
+40492,Carbi + Levo tab USP 25/100mg 1000,Carbidopa and Levdopa Tab,2025-03,2025-04,5592.0,4240.0,Sufficient
+40492,Carbi + Levo tab USP 25/100mg 1000,Carbidopa and Levdopa Tab,2025-02,2025-03,5592.0,4240.0,Sufficient
+40492,Carbi + Levo tab USP 25/100mg 1000,Carbidopa and Levdopa Tab,2024-12,2025-01,5592.0,4240.0,Sufficient
+40492,Carbi + Levo tab USP 25/100mg 1000,Carbidopa and Levdopa Tab,2025-01,2025-02,5592.0,4240.0,Sufficient
+40492,Carbi + Levo tab USP 25/100mg 1000,Carbidopa and Levdopa Tab,2025-04,2025-05,5592.0,4240.0,Sufficient
+40146,Oxybutynin Cl ER Tab USP 10mg 100,Oxybutynin Chloride ER,2024-11,2024-12,5904.0,4145.93333333333,Sufficient
+40308,Buspirone HCl Tab USP 5mg 500,Buspirone HCl,2025-02,2025-03,19608.0,4121.16666666666,Sufficient
+40308,Buspirone HCl Tab USP 5mg 500,Buspirone HCl,2025-01,2025-02,19608.0,4121.16666666666,Sufficient
+40308,Buspirone HCl Tab USP 5mg 500,Buspirone HCl,2025-04,2025-05,19608.0,4118.16666666666,Sufficient
+40308,Buspirone HCl Tab USP 5mg 500,Buspirone HCl,2025-03,2025-04,19608.0,4118.16666666666,Sufficient
+40308,Buspirone HCl Tab USP 5mg 500,Buspirone HCl,2025-05,2025-06,19608.0,4118.16666666666,Sufficient
+40308,Buspirone HCl Tab USP 5mg 500,Buspirone HCl,2024-12,2025-01,19608.0,4113.66666666666,Sufficient
+40882,Guanfacine Tab USP 2mg 100,Guanfacine IR,2024-12,2025-01,32928.0,4004.0,Sufficient
+40905,Glipizide Tab USP 5 mg 100,Glipizide,2025-04,2025-05,81720.0,3982.66666666666,Sufficient
+40905,Glipizide Tab USP 5 mg 100,Glipizide,2025-05,2025-06,81720.0,3982.66666666666,Sufficient
+40654,Metoprolol Tar Tab USP 50mg 100,Metoprolol Tartrate,2024-11,2024-12,23160.0,3943.2,Sufficient
+40678,Labetalol HCl Tab USP 300mg 100,Labetalol,2025-04,2025-05,4753.0,3934.5,Sufficient
+40678,Labetalol HCl Tab USP 300mg 100,Labetalol,2025-03,2025-04,4753.0,3934.5,Sufficient
+40678,Labetalol HCl Tab USP 300mg 100,Labetalol,2025-05,2025-06,4753.0,3934.5,Sufficient
+40907,Glipizide Tab USP 10mg 100,Glipizide,2025-04,2025-05,37008.0,3893.83333333333,Sufficient
+40907,Glipizide Tab USP 10mg 100,Glipizide,2025-05,2025-06,37008.0,3893.83333333333,Sufficient
+40332,Diclofenac Pot Tab USP 25mg 30,Diclofenac Potassium,2024-11,2024-12,16608.0,3846.32322871142,Sufficient
+40677,Labetalol HCl Tab USP 200mg 500,Labetalol,2025-05,2025-06,6204.0,3844.5,Sufficient
+40677,Labetalol HCl Tab USP 200mg 500,Labetalol,2025-04,2025-05,6204.0,3844.5,Sufficient
+40660,Metoprolol Tar Tab USP 37.5mg 100,Metoprolol Tartrate,2024-12,2025-01,13989.0,3831.57777777777,Sufficient
+40652,Metoprolol Tar tab USP 25mg 100,Metoprolol Tartrate,2025-01,2025-02,27627.0,3809.2,Sufficient
+40652,Metoprolol Tar tab USP 25mg 100,Metoprolol Tartrate,2025-02,2025-03,27627.0,3809.2,Sufficient
+40652,Metoprolol Tar tab USP 25mg 100,Metoprolol Tartrate,2024-12,2025-01,27627.0,3809.2,Sufficient
+40730,Amantadine HCl Cap USP 100mg 500,Amantadine HCL,2024-11,2024-12,4848.0,3789.01180154142,Sufficient
+40509,Dicyclomine HCL Tab USP 20mg 100,Dicyclomine HCl Tab,2024-11,2024-12,124488.0,3784.13995163548,Sufficient
+40907,Glipizide Tab USP 10mg 100,Glipizide,2025-01,2025-02,37008.0,3777.31111111111,Sufficient
+40907,Glipizide Tab USP 10mg 100,Glipizide,2024-12,2025-01,37008.0,3777.31111111111,Sufficient
+40907,Glipizide Tab USP 10mg 100,Glipizide,2025-02,2025-03,37008.0,3777.31111111111,Sufficient
+40678,Labetalol HCl Tab USP 300mg 100,Labetalol,2025-02,2025-03,4753.0,3776.5,Sufficient
+40313,Buspirone HCl Tab USP 15mg 500,Buspirone HCl,2025-04,2025-05,4860.0,3772.66666666666,Sufficient
+40313,Buspirone HCl Tab USP 15mg 500,Buspirone HCl,2024-12,2025-01,4860.0,3772.66666666666,Sufficient
+40313,Buspirone HCl Tab USP 15mg 500,Buspirone HCl,2025-02,2025-03,4860.0,3772.66666666666,Sufficient
+40313,Buspirone HCl Tab USP 15mg 500,Buspirone HCl,2025-05,2025-06,4860.0,3772.66666666666,Sufficient
+40313,Buspirone HCl Tab USP 15mg 500,Buspirone HCl,2025-03,2025-04,4860.0,3772.66666666666,Sufficient
+40313,Buspirone HCl Tab USP 15mg 500,Buspirone HCl,2025-01,2025-02,4860.0,3772.66666666666,Sufficient
+40701,Tramadol HCl Tab USP 50mg 500,Tramadol,2024-11,2024-12,54585.0,3704.46321070234,Sufficient
+40728,Cyclobenzaprine HCl Tab USP 5mg 1000,Cyclobenzaprine HCl,2025-04,2025-05,4800.0,3575.224,Sufficient
+40728,Cyclobenzaprine HCl Tab USP 5mg 1000,Cyclobenzaprine HCl,2025-05,2025-06,4800.0,3575.224,Sufficient
+40728,Cyclobenzaprine HCl Tab USP 5mg 1000,Cyclobenzaprine HCl,2025-03,2025-04,4800.0,3575.224,Sufficient
+40728,Cyclobenzaprine HCl Tab USP 5mg 1000,Cyclobenzaprine HCl,2025-02,2025-03,4800.0,3568.224,Sufficient
+40728,Cyclobenzaprine HCl Tab USP 5mg 1000,Cyclobenzaprine HCl,2025-01,2025-02,4800.0,3568.224,Sufficient
+40728,Cyclobenzaprine HCl Tab USP 5mg 1000,Cyclobenzaprine HCl,2024-12,2025-01,4800.0,3554.224,Sufficient
+40157,Diclofenac Sod DR Tab USP 75mg 1000,Diclofenac Sodium Tab,2024-12,2025-01,3516.0,3490.5,Sufficient
+40157,Diclofenac Sod DR Tab USP 75mg 1000,Diclofenac Sodium Tab,2024-11,2024-12,3516.0,3470.89393659172,Sufficient
+40677,Labetalol HCl Tab USP 200mg 500,Labetalol,2025-03,2025-04,6204.0,3449.5,Sufficient
+40660,Metoprolol Tar Tab USP 37.5mg 100,Metoprolol Tartrate,2025-02,2025-03,13989.0,3431.07777777777,Sufficient
+40660,Metoprolol Tar Tab USP 37.5mg 100,Metoprolol Tartrate,2025-01,2025-02,13989.0,3431.07777777777,Sufficient
+41062,Metoprolol Tar Tab USP 25mg 500 UnTS,Metoprolol Tartrate (Uncoated),2024-11,2024-12,78408.0,3414.8,Sufficient
+45018,Haloperidol OS USP 2MG/ML (15 ML HDPE),Haloperidol Oral Solution,2025-04,2025-05,8400.0,3392.5,Sufficient
+45018,Haloperidol OS USP 2MG/ML (15 ML HDPE),Haloperidol Oral Solution,2025-05,2025-06,8400.0,3392.5,Sufficient
+41072,Metoprolol Tar Tab USP 100mg 100 UnTS,Metoprolol Tartrate (Uncoated),2025-03,2025-04,26904.0,3392.0,Sufficient
+40660,Metoprolol Tar Tab USP 37.5mg 100,Metoprolol Tartrate,2025-05,2025-06,13989.0,3384.11111111111,Sufficient
+40660,Metoprolol Tar Tab USP 37.5mg 100,Metoprolol Tartrate,2025-04,2025-05,13989.0,3384.11111111111,Sufficient
+40677,Labetalol HCl Tab USP 200mg 500,Labetalol,2025-02,2025-03,6204.0,3365.5,Sufficient
+40677,Labetalol HCl Tab USP 200mg 500,Labetalol,2025-01,2025-02,6204.0,3365.5,Sufficient
+40970,Desvenlafaxin ER Tab 100 mg 90,Desvenlaflaxine,2024-12,2025-01,14400.0,3352.22698412698,Sufficient
+40785,Bisoprolol Fum Tab USP 10 mg 100,Bisoprolol Fumarate,2025-01,2025-02,8952.0,3320.0,Sufficient
+40785,Bisoprolol Fum Tab USP 10 mg 100,Bisoprolol Fumarate,2025-02,2025-03,8952.0,3320.0,Sufficient
+40157,Diclofenac Sod DR Tab USP 75mg 1000,Diclofenac Sodium Tab,2025-01,2025-02,3516.0,3314.5,Sufficient
+40157,Diclofenac Sod DR Tab USP 75mg 1000,Diclofenac Sodium Tab,2025-02,2025-03,3516.0,3314.5,Sufficient
+40157,Diclofenac Sod DR Tab USP 75mg 1000,Diclofenac Sodium Tab,2025-03,2025-04,3516.0,3314.5,Sufficient
+40157,Diclofenac Sod DR Tab USP 75mg 1000,Diclofenac Sodium Tab,2025-04,2025-05,3516.0,3314.5,Sufficient
+40157,Diclofenac Sod DR Tab USP 75mg 1000,Diclofenac Sodium Tab,2025-05,2025-06,3516.0,3314.5,Sufficient
+40785,Bisoprolol Fum Tab USP 10 mg 100,Bisoprolol Fumarate,2025-03,2025-04,8952.0,3310.5,Sufficient
+40785,Bisoprolol Fum Tab USP 10 mg 100,Bisoprolol Fumarate,2025-04,2025-05,8952.0,3310.5,Sufficient
+40785,Bisoprolol Fum Tab USP 10 mg 100,Bisoprolol Fumarate,2025-05,2025-06,8952.0,3310.5,Sufficient
+40660,Metoprolol Tar Tab USP 37.5mg 100,Metoprolol Tartrate,2025-03,2025-04,13989.0,3285.94444444444,Sufficient
+40295,Amiodarone HCl Tab USP 200mg 500,Amiodarone HCl,2024-12,2025-01,3372.0,3283.66666666666,Sufficient
+45018,Haloperidol OS USP 2MG/ML (15 ML HDPE),Haloperidol Oral Solution,2025-03,2025-04,8400.0,3230.5,Sufficient
+40910,Aripiprazole OS 1mg/ml 150 PET US,Aripiprazole Oral Solution,2025-01,2025-02,21699.0,3226.37747458533,Sufficient
+40910,Aripiprazole OS 1mg/ml 150 PET US,Aripiprazole Oral Solution,2025-02,2025-03,21699.0,3226.37747458533,Sufficient
+40452,Potassium Chl ER Tab USP 20mEq 500 AB3,Potassium Chloride ER,2024-12,2025-01,5292.0,3215.5,Sufficient
+40452,Potassium Chl ER Tab USP 20mEq 500 AB3,Potassium Chloride ER,2025-01,2025-02,5292.0,3206.0,Sufficient
+40452,Potassium Chl ER Tab USP 20mEq 500 AB3,Potassium Chloride ER,2025-02,2025-03,5292.0,3206.0,Sufficient
+40295,Amiodarone HCl Tab USP 200mg 500,Amiodarone HCl,2025-04,2025-05,3372.0,3183.16666666666,Sufficient
+40295,Amiodarone HCl Tab USP 200mg 500,Amiodarone HCl,2025-05,2025-06,3372.0,3183.16666666666,Sufficient
+40332,Diclofenac Pot Tab USP 25mg 30,Diclofenac Potassium,2025-05,2025-06,16608.0,3122.5,Sufficient
+40332,Diclofenac Pot Tab USP 25mg 30,Diclofenac Potassium,2025-04,2025-05,16608.0,3122.5,Sufficient
+40667,Carvedilol Tab USP 25mg 1000,Carvedilol,2025-01,2025-02,7764.0,3066.5,Sufficient
+40667,Carvedilol Tab USP 25mg 1000,Carvedilol,2025-02,2025-03,7764.0,3066.5,Sufficient
+40905,Glipizide Tab USP 5 mg 100,Glipizide,2025-02,2025-03,81720.0,2997.06666666666,Sufficient
+40905,Glipizide Tab USP 5 mg 100,Glipizide,2025-01,2025-02,81720.0,2997.06666666666,Sufficient
+40905,Glipizide Tab USP 5 mg 100,Glipizide,2024-12,2025-01,81720.0,2997.06666666666,Sufficient
+40452,Potassium Chl ER Tab USP 20mEq 500 AB3,Potassium Chloride ER,2025-04,2025-05,5292.0,2995.0,Sufficient
+40452,Potassium Chl ER Tab USP 20mEq 500 AB3,Potassium Chloride ER,2025-05,2025-06,5292.0,2995.0,Sufficient
+40452,Potassium Chl ER Tab USP 20mEq 500 AB3,Potassium Chloride ER,2025-03,2025-04,5292.0,2995.0,Sufficient
+41072,Metoprolol Tar Tab USP 100mg 100 UnTS,Metoprolol Tartrate (Uncoated),2025-02,2025-03,26904.0,2895.6,Sufficient
+41072,Metoprolol Tar Tab USP 100mg 100 UnTS,Metoprolol Tartrate (Uncoated),2025-01,2025-02,26904.0,2895.6,Sufficient
+41072,Metoprolol Tar Tab USP 100mg 100 UnTS,Metoprolol Tartrate (Uncoated),2024-12,2025-01,26904.0,2895.6,Sufficient
+40667,Carvedilol Tab USP 25mg 1000,Carvedilol,2024-12,2025-01,7764.0,2893.0,Sufficient
+40295,Amiodarone HCl Tab USP 200mg 500,Amiodarone HCl,2025-02,2025-03,3372.0,2861.16666666666,Sufficient
+40295,Amiodarone HCl Tab USP 200mg 500,Amiodarone HCl,2025-03,2025-04,3372.0,2861.16666666666,Sufficient
+40295,Amiodarone HCl Tab USP 200mg 500,Amiodarone HCl,2025-01,2025-02,3372.0,2861.16666666666,Sufficient
+40510,Dicyclomine HCL Tab USP 20mg 1000,Dicyclomine HCl Tab,2025-05,2025-06,10764.0,2818.16666666666,Sufficient
+40657,Metoprolol Tar Tab USP100mg 1000,Metoprolol Tartrate,2024-12,2025-01,3396.0,2782.53333333333,Sufficient
+40657,Metoprolol Tar Tab USP100mg 1000,Metoprolol Tartrate,2025-01,2025-02,3396.0,2782.53333333333,Sufficient
+40657,Metoprolol Tar Tab USP100mg 1000,Metoprolol Tartrate,2025-02,2025-03,3396.0,2782.53333333333,Sufficient
+40332,Diclofenac Pot Tab USP 25mg 30,Diclofenac Potassium,2025-01,2025-02,16608.0,2748.0,Sufficient
+40519,Glipizide Tab USP 5 mg 1000,Glipizide,2025-01,2025-02,5604.0,2706.8,Sufficient
+40519,Glipizide Tab USP 5 mg 1000,Glipizide,2025-02,2025-03,5604.0,2706.8,Sufficient
+40654,Metoprolol Tar Tab USP 50mg 100,Metoprolol Tartrate,2024-12,2025-01,23160.0,2705.0,Sufficient
+40519,Glipizide Tab USP 5 mg 1000,Glipizide,2025-04,2025-05,5604.0,2699.83333333333,Sufficient
+40519,Glipizide Tab USP 5 mg 1000,Glipizide,2025-05,2025-06,5604.0,2699.83333333333,Sufficient
+40332,Diclofenac Pot Tab USP 25mg 30,Diclofenac Potassium,2024-12,2025-01,16608.0,2664.5,Sufficient
+40680,Acetazolamide Tab USP 125mg 100,Acetazolamide,2024-11,2024-12,6120.0,2650.60244584865,Sufficient
+40900,Acyclovir OSP USP 200mg/5ml 473 HD US,Acyclovir Suspension,2025-03,2025-04,3390.0,2644.5,Sufficient
+40529,Cevimeline HCl Cap 30mg 30,Cevimeline HCL,2024-11,2024-12,6288.0,2641.66666666666,Sufficient
+40910,Aripiprazole OS 1mg/ml 150 PET US,Aripiprazole Oral Solution,2025-05,2025-06,21699.0,2580.37747458533,Sufficient
+40910,Aripiprazole OS 1mg/ml 150 PET US,Aripiprazole Oral Solution,2025-04,2025-05,21699.0,2580.37747458533,Sufficient
+40910,Aripiprazole OS 1mg/ml 150 PET US,Aripiprazole Oral Solution,2025-03,2025-04,21699.0,2580.37747458533,Sufficient
+40929,Mycophenolate Mof Tab USP 500mg 100,Mycophenolate Mofetil Tab,2024-11,2024-12,70858.0,2567.75727820844,Sufficient
+40304,Potassium Chl ER Tab USP 20mEq 100 AB3,Potassium Chloride ER,2024-11,2024-12,165087.0,2561.3,Sufficient
+45019,Haloperidol OS USP 2MG/ML (120 ML HDPE),Haloperidol Oral Solution,2025-05,2025-06,11364.0,2546.0,Sufficient
+45019,Haloperidol OS USP 2MG/ML (120 ML HDPE),Haloperidol Oral Solution,2025-04,2025-05,11364.0,2546.0,Sufficient
+40711,Clonazepam Tab USP 0.5mg 1000,Clonazepam Tab,2024-11,2024-12,11076.0,2545.0,Sufficient
+40900,Acyclovir OSP USP 200mg/5ml 473 HD US,Acyclovir Suspension,2025-02,2025-03,3390.0,2500.5,Sufficient
+40678,Labetalol HCl Tab USP 300mg 100,Labetalol,2024-12,2025-01,4753.0,2442.5,Sufficient
+40566,Sildenafil Tab USP 20mg 90,Sildenafil Citrate,2025-01,2025-02,14316.0,2436.0,Sufficient
+40566,Sildenafil Tab USP 20mg 90,Sildenafil Citrate,2025-03,2025-04,14316.0,2436.0,Sufficient
+40566,Sildenafil Tab USP 20mg 90,Sildenafil Citrate,2025-02,2025-03,14316.0,2436.0,Sufficient
+40566,Sildenafil Tab USP 20mg 90,Sildenafil Citrate,2025-05,2025-06,14316.0,2436.0,Sufficient
+40566,Sildenafil Tab USP 20mg 90,Sildenafil Citrate,2024-12,2025-01,14316.0,2436.0,Sufficient
+40566,Sildenafil Tab USP 20mg 90,Sildenafil Citrate,2025-04,2025-05,14316.0,2436.0,Sufficient
+40730,Amantadine HCl Cap USP 100mg 500,Amantadine HCL,2025-04,2025-05,4848.0,2427.0,Sufficient
+40730,Amantadine HCl Cap USP 100mg 500,Amantadine HCL,2025-05,2025-06,4848.0,2427.0,Sufficient
+40510,Dicyclomine HCL Tab USP 20mg 1000,Dicyclomine HCl Tab,2024-11,2024-12,10764.0,2392.09286544671,Sufficient
+40153,Diclofenac Sod DR Tab USP 50 mg 100,Diclofenac Sodium Tab,2025-05,2025-06,109296.0,2280.26666666666,Sufficient
+40153,Diclofenac Sod DR Tab USP 50 mg 100,Diclofenac Sodium Tab,2025-04,2025-05,109296.0,2280.26666666666,Sufficient
+40332,Diclofenac Pot Tab USP 25mg 30,Diclofenac Potassium,2025-02,2025-03,16608.0,2248.0,Sufficient
+40521,Cyclobenzaprine HCl Tab USP 10mg 100,Cyclobenzaprine HCl,2024-11,2024-12,10176.0,2234.66666666666,Sufficient
+40519,Glipizide Tab USP 5 mg 1000,Glipizide,2024-12,2025-01,5604.0,2230.79999999999,Sufficient
+40332,Diclofenac Pot Tab USP 25mg 30,Diclofenac Potassium,2025-03,2025-04,16608.0,2224.5,Sufficient
+40728,Cyclobenzaprine HCl Tab USP 5mg 1000,Cyclobenzaprine HCl,2024-11,2024-12,4800.0,2210.0,Sufficient
+40525,Glipizide Tab USP 10mg 1000,Glipizide,2024-12,2025-01,2700.0,2208.79999999999,Sufficient
+40584,Tramadol HCL Tab 75mg 30,Tramadol,2024-11,2024-12,16464.0,2191.71428571428,Sufficient
+40613,Amitriptyline HCl Tab USP 150mg 100,Amitriptyline,2024-12,2025-01,4452.0,2168.0,Sufficient
+40613,Amitriptyline HCl Tab USP 150mg 100,Amitriptyline,2025-03,2025-04,4452.0,2168.0,Sufficient
+40613,Amitriptyline HCl Tab USP 150mg 100,Amitriptyline,2025-01,2025-02,4452.0,2168.0,Sufficient
+40613,Amitriptyline HCl Tab USP 150mg 100,Amitriptyline,2025-02,2025-03,4452.0,2168.0,Sufficient
+40905,Glipizide Tab USP 5 mg 100,Glipizide,2025-03,2025-04,81720.0,2166.0,Sufficient
+40153,Diclofenac Sod DR Tab USP 50 mg 100,Diclofenac Sodium Tab,2024-12,2025-01,109296.0,2136.66666666666,Sufficient
+40153,Diclofenac Sod DR Tab USP 50 mg 100,Diclofenac Sodium Tab,2025-01,2025-02,109296.0,2136.66666666666,Sufficient
+40153,Diclofenac Sod DR Tab USP 50 mg 100,Diclofenac Sodium Tab,2025-02,2025-03,109296.0,2136.66666666666,Sufficient
+40667,Carvedilol Tab USP 25mg 1000,Carvedilol,2024-11,2024-12,7764.0,2135.0,Sufficient
+40730,Amantadine HCl Cap USP 100mg 500,Amantadine HCL,2024-12,2025-01,4848.0,2101.5,Sufficient
+40730,Amantadine HCl Cap USP 100mg 500,Amantadine HCL,2025-01,2025-02,4848.0,2101.5,Sufficient
+40730,Amantadine HCl Cap USP 100mg 500,Amantadine HCL,2025-02,2025-03,4848.0,2101.5,Sufficient
+40907,Glipizide Tab USP 10mg 100,Glipizide,2025-03,2025-04,37008.0,2090.0,Sufficient
+40730,Amantadine HCl Cap USP 100mg 500,Amantadine HCL,2025-03,2025-04,4848.0,2067.0,Sufficient
+40906,Glipizide Tab USP 5 mg 500,Glipizide,2024-12,2025-01,21168.0,2044.52222222222,Sufficient
+40906,Glipizide Tab USP 5 mg 500,Glipizide,2025-02,2025-03,21168.0,2044.52222222222,Sufficient
+40906,Glipizide Tab USP 5 mg 500,Glipizide,2025-01,2025-02,21168.0,2044.52222222222,Sufficient
+45018,Haloperidol OS USP 2MG/ML (15 ML HDPE),Haloperidol Oral Solution,2025-02,2025-03,8400.0,2034.0,Sufficient
+45019,Haloperidol OS USP 2MG/ML (120 ML HDPE),Haloperidol Oral Solution,2025-03,2025-04,11364.0,2019.16666666666,Sufficient
+40675,Labetalol HCl Tab USP 100mg 500,Labetalol,2025-04,2025-05,3444.0,2016.89999999999,Sufficient
+40675,Labetalol HCl Tab USP 100mg 500,Labetalol,2025-05,2025-06,3444.0,2016.89999999999,Sufficient
+41156,Ivermectin Tab USP 3mg 2X10,Ivermectin Tab,2025-05,2025-06,53952.0,1994.0,Sufficient
+41156,Ivermectin Tab USP 3mg 2X10,Ivermectin Tab,2025-04,2025-05,53952.0,1994.0,Sufficient
+40446,Isosorbide Dinitrate Tab USP 40mg 100,Isosorbide DN,2025-04,2025-05,3624.0,1958.5,Sufficient
+40446,Isosorbide Dinitrate Tab USP 40mg 100,Isosorbide DN,2025-05,2025-06,3624.0,1958.5,Sufficient
+40446,Isosorbide Dinitrate Tab USP 40mg 100,Isosorbide DN,2024-12,2025-01,3624.0,1920.0,Sufficient
+40510,Dicyclomine HCL Tab USP 20mg 1000,Dicyclomine HCl Tab,2025-04,2025-05,10764.0,1917.66666666666,Sufficient
+40908,Glipizide Tab USP 10mg 500,Glipizide,2025-05,2025-06,4464.0,1912.5,Sufficient
+40908,Glipizide Tab USP 10mg 500,Glipizide,2025-04,2025-05,4464.0,1912.49999999999,Sufficient
+40452,Potassium Chl ER Tab USP 20mEq 500 AB3,Potassium Chloride ER,2024-11,2024-12,5292.0,1912.4,Sufficient
+45018,Haloperidol OS USP 2MG/ML (15 ML HDPE),Haloperidol Oral Solution,2024-11,2024-12,8400.0,1908.57605512489,Sufficient
+40675,Labetalol HCl Tab USP 100mg 500,Labetalol,2025-02,2025-03,3444.0,1903.77777777777,Sufficient
+40675,Labetalol HCl Tab USP 100mg 500,Labetalol,2025-01,2025-02,3444.0,1903.77777777777,Sufficient
+40675,Labetalol HCl Tab USP 100mg 500,Labetalol,2024-12,2025-01,3444.0,1903.77777777777,Sufficient
+40446,Isosorbide Dinitrate Tab USP 40mg 100,Isosorbide DN,2025-03,2025-04,3624.0,1882.5,Sufficient
+40446,Isosorbide Dinitrate Tab USP 40mg 100,Isosorbide DN,2025-01,2025-02,3624.0,1882.5,Sufficient
+40446,Isosorbide Dinitrate Tab USP 40mg 100,Isosorbide DN,2025-02,2025-03,3624.0,1882.5,Sufficient
+40675,Labetalol HCl Tab USP 100mg 500,Labetalol,2025-03,2025-04,3444.0,1840.06666666666,Sufficient
+40603,Amitriptyline HCl Tab USP 10mg 1000,Amitriptyline,2025-03,2025-04,2952.0,1836.0,Sufficient
+40603,Amitriptyline HCl Tab USP 10mg 1000,Amitriptyline,2024-12,2025-01,2952.0,1834.0,Sufficient
+40603,Amitriptyline HCl Tab USP 10mg 1000,Amitriptyline,2025-02,2025-03,2952.0,1834.0,Sufficient
+40603,Amitriptyline HCl Tab USP 10mg 1000,Amitriptyline,2025-01,2025-02,2952.0,1834.0,Sufficient
+40908,Glipizide Tab USP 10mg 500,Glipizide,2025-01,2025-02,4464.0,1768.48888888888,Sufficient
+40908,Glipizide Tab USP 10mg 500,Glipizide,2024-12,2025-01,4464.0,1768.48888888888,Sufficient
+40908,Glipizide Tab USP 10mg 500,Glipizide,2025-02,2025-03,4464.0,1768.48888888888,Sufficient
+41068,Metoprolol Tar Tab USP 50mg 100 UnTS,Metoprolol Tartrate (Uncoated),2024-11,2024-12,28416.0,1726.0,Sufficient
+40139,Amantadine HCl Cap USP 100mg 30,Amantadine HCL,2024-12,2025-01,9720.0,1672.0,Sufficient
+40139,Amantadine HCl Cap USP 100mg 30,Amantadine HCL,2025-01,2025-02,9720.0,1669.5,Sufficient
+40139,Amantadine HCl Cap USP 100mg 30,Amantadine HCL,2025-02,2025-03,9720.0,1669.5,Sufficient
+40139,Amantadine HCl Cap USP 100mg 30,Amantadine HCL,2025-04,2025-05,9720.0,1619.5,Sufficient
+40139,Amantadine HCl Cap USP 100mg 30,Amantadine HCL,2025-05,2025-06,9720.0,1619.5,Sufficient
+40139,Amantadine HCl Cap USP 100mg 30,Amantadine HCL,2025-03,2025-04,9720.0,1603.5,Sufficient
+40928,Mycophenolate Mof Tab USP 500mg 500,Mycophenolate Mofetil Tab,2024-11,2024-12,5242.0,1592.97162253903,Sufficient
+40906,Glipizide Tab USP 5 mg 500,Glipizide,2025-04,2025-05,21168.0,1535.0,Sufficient
+40906,Glipizide Tab USP 5 mg 500,Glipizide,2025-05,2025-06,21168.0,1535.0,Sufficient
+45019,Haloperidol OS USP 2MG/ML (120 ML HDPE),Haloperidol Oral Solution,2025-02,2025-03,11364.0,1511.0,Sufficient
+40880,Guanfacine Tab USP 1mg 100,Guanfacine IR,2025-03,2025-04,21720.0,1480.0,Sufficient
+40679,Labetalol HCl Tab USP 300mg 500,Labetalol,2024-12,2025-01,1729.0,1455.53333333333,Sufficient
+40928,Mycophenolate Mof Tab USP 500mg 500,Mycophenolate Mofetil Tab,2025-03,2025-04,5242.0,1432.16666666666,Sufficient
+40928,Mycophenolate Mof Tab USP 500mg 500,Mycophenolate Mofetil Tab,2025-04,2025-05,5242.0,1432.16666666666,Sufficient
+40928,Mycophenolate Mof Tab USP 500mg 500,Mycophenolate Mofetil Tab,2025-05,2025-06,5242.0,1432.16666666666,Sufficient
+40525,Glipizide Tab USP 10mg 1000,Glipizide,2025-03,2025-04,2700.0,1422.0,Sufficient
+40500,Pot. Chl ER Tab USP 15mEq 100 AB1 KlorCon,Potassium Chloride Klorcon,2025-02,2025-03,1416.0,1379.0,Sufficient
+40500,Pot. Chl ER Tab USP 15mEq 100 AB1 KlorCon,Potassium Chloride Klorcon,2025-01,2025-02,1416.0,1379.0,Sufficient
+40500,Pot. Chl ER Tab USP 15mEq 100 AB1 KlorCon,Potassium Chloride Klorcon,2025-03,2025-04,1416.0,1379.0,Sufficient
+40500,Pot. Chl ER Tab USP 15mEq 100 AB1 KlorCon,Potassium Chloride Klorcon,2025-04,2025-05,1416.0,1379.0,Sufficient
+40510,Dicyclomine HCL Tab USP 20mg 1000,Dicyclomine HCl Tab,2025-03,2025-04,10764.0,1375.5,Sufficient
+40519,Glipizide Tab USP 5 mg 1000,Glipizide,2025-03,2025-04,5604.0,1356.0,Sufficient
+40153,Diclofenac Sod DR Tab USP 50 mg 100,Diclofenac Sodium Tab,2025-03,2025-04,109296.0,1350.26666666666,Sufficient
+45018,Haloperidol OS USP 2MG/ML (15 ML HDPE),Haloperidol Oral Solution,2025-01,2025-02,8400.0,1348.0,Sufficient
+45018,Haloperidol OS USP 2MG/ML (15 ML HDPE),Haloperidol Oral Solution,2024-12,2025-01,8400.0,1348.0,Sufficient
+40816,Potassium Chl Ora sol 20mEq 50,Potassium Chloride PFOS,2024-12,2025-01,1392.0,1266.5,Sufficient
+40809,Gabapentin OS 250 mg/5 mL 470 PET US,Gabapentin Oral Solution,2024-11,2024-12,23184.0,1259.064,Sufficient
+40488,Carbi + Levo tab USP 10/100mg 100,Carbidopa and Levdopa Tab,2024-12,2025-01,5304.0,1255.0,Sufficient
+40937,"Mycophenolate Mof Cap USP 250mg, 100",Mycophenolate Mofetil Cap,2024-11,2024-12,137784.0,1235.25487339862,Sufficient
+40880,Guanfacine Tab USP 1mg 100,Guanfacine IR,2025-04,2025-05,21720.0,1230.0,Sufficient
+40880,Guanfacine Tab USP 1mg 100,Guanfacine IR,2025-05,2025-06,21720.0,1230.0,Sufficient
+40453,Potassium Chl ER Tab USP 10mEq 1000 AB3,Potassium Chloride ER,2025-04,2025-05,1344.0,1216.0,Sufficient
+40453,Potassium Chl ER Tab USP 10mEq 1000 AB3,Potassium Chloride ER,2025-02,2025-03,1344.0,1216.0,Sufficient
+40453,Potassium Chl ER Tab USP 10mEq 1000 AB3,Potassium Chloride ER,2025-03,2025-04,1344.0,1216.0,Sufficient
+40453,Potassium Chl ER Tab USP 10mEq 1000 AB3,Potassium Chloride ER,2025-05,2025-06,1344.0,1216.0,Sufficient
+40453,Potassium Chl ER Tab USP 10mEq 1000 AB3,Potassium Chloride ER,2024-12,2025-02,1344.0,1216.0,Sufficient
+40841,"Baclofen Oral Sol. 5mg/5ml, 473ml",Baclofeb Oral Solution,2025-05,2025-06,8412.0,1216.0,Sufficient
+40841,"Baclofen Oral Sol. 5mg/5ml, 473ml",Baclofeb Oral Solution,2025-04,2025-05,8412.0,1216.0,Sufficient
+40841,"Baclofen Oral Sol. 5mg/5ml, 473ml",Baclofeb Oral Solution,2025-03,2025-04,8412.0,1216.0,Sufficient
+40928,Mycophenolate Mof Tab USP 500mg 500,Mycophenolate Mofetil Tab,2025-02,2025-03,5242.0,1212.16666666666,Sufficient
+40928,Mycophenolate Mof Tab USP 500mg 500,Mycophenolate Mofetil Tab,2025-01,2025-02,5242.0,1212.16666666666,Sufficient
+40928,Mycophenolate Mof Tab USP 500mg 500,Mycophenolate Mofetil Tab,2024-12,2025-01,5242.0,1212.16666666666,Sufficient
+40841,"Baclofen Oral Sol. 5mg/5ml, 473ml",Baclofeb Oral Solution,2025-02,2025-03,8412.0,1212.0,Sufficient
+40725,Nor HCL OS USP 10mg/5mL Bas 473 PET US,Nortriptyline HCL Oral Solution,2025-04,2025-05,1935.0,1209.94945848375,Sufficient
+40725,Nor HCL OS USP 10mg/5mL Bas 473 PET US,Nortriptyline HCL Oral Solution,2025-05,2025-06,1935.0,1209.94945848375,Sufficient
+40725,Nor HCL OS USP 10mg/5mL Bas 473 PET US,Nortriptyline HCL Oral Solution,2025-03,2025-04,1935.0,1209.94945848375,Sufficient
+40725,Nor HCL OS USP 10mg/5mL Bas 473 PET US,Nortriptyline HCL Oral Solution,2025-02,2025-03,1935.0,1209.94945848375,Sufficient
+41064,Metoprolol Tar Tab USP 25mg 100 UnTS,Metoprolol Tartrate (Uncoated),2024-11,2024-12,57120.0,1208.33333333333,Sufficient
+40510,Dicyclomine HCL Tab USP 20mg 1000,Dicyclomine HCl Tab,2025-02,2025-03,10764.0,1201.0,Sufficient
+40510,Dicyclomine HCL Tab USP 20mg 1000,Dicyclomine HCl Tab,2025-01,2025-02,10764.0,1201.0,Sufficient
+40488,Carbi + Levo tab USP 10/100mg 100,Carbidopa and Levdopa Tab,2025-01,2025-02,5304.0,1194.0,Sufficient
+40488,Carbi + Levo tab USP 10/100mg 100,Carbidopa and Levdopa Tab,2025-02,2025-03,5304.0,1194.0,Sufficient
+40509,Dicyclomine HCL Tab USP 20mg 100,Dicyclomine HCl Tab,2025-05,2025-06,124488.0,1170.16666666666,Sufficient
+40509,Dicyclomine HCL Tab USP 20mg 100,Dicyclomine HCl Tab,2025-04,2025-05,124488.0,1170.16666666666,Sufficient
+40841,"Baclofen Oral Sol. 5mg/5ml, 473ml",Baclofeb Oral Solution,2025-01,2025-02,8412.0,1168.0,Sufficient
+40841,"Baclofen Oral Sol. 5mg/5ml, 473ml",Baclofeb Oral Solution,2024-12,2025-01,8412.0,1168.0,Sufficient
+40725,Nor HCL OS USP 10mg/5mL Bas 473 PET US,Nortriptyline HCL Oral Solution,2024-12,2025-01,1935.0,1161.94945848375,Sufficient
+40725,Nor HCL OS USP 10mg/5mL Bas 473 PET US,Nortriptyline HCL Oral Solution,2025-01,2025-02,1935.0,1161.94945848375,Sufficient
+40510,Dicyclomine HCL Tab USP 20mg 1000,Dicyclomine HCl Tab,2024-12,2025-01,10764.0,1156.0,Sufficient
+40488,Carbi + Levo tab USP 10/100mg 100,Carbidopa and Levdopa Tab,2025-03,2025-04,5304.0,1124.0,Sufficient
+40488,Carbi + Levo tab USP 10/100mg 100,Carbidopa and Levdopa Tab,2025-05,2025-06,5304.0,1124.0,Sufficient
+40488,Carbi + Levo tab USP 10/100mg 100,Carbidopa and Levdopa Tab,2025-04,2025-05,5304.0,1124.0,Sufficient
+40566,Sildenafil Tab USP 20mg 90,Sildenafil Citrate,2024-11,2024-12,14316.0,1110.0,Sufficient
+45019,Haloperidol OS USP 2MG/ML (120 ML HDPE),Haloperidol Oral Solution,2024-12,2025-01,11364.0,1095.0,Sufficient
+45019,Haloperidol OS USP 2MG/ML (120 ML HDPE),Haloperidol Oral Solution,2025-01,2025-02,11364.0,1095.0,Sufficient
+40816,Potassium Chl Ora sol 20mEq 50,Potassium Chloride PFOS,2025-05,2025-06,1392.0,1070.0,Sufficient
+40816,Potassium Chl Ora sol 20mEq 50,Potassium Chloride PFOS,2025-03,2025-04,1392.0,1070.0,Sufficient
+40816,Potassium Chl Ora sol 20mEq 50,Potassium Chloride PFOS,2025-04,2025-05,1392.0,1070.0,Sufficient
+40754,Lithium OS USP 8 mEq Per 5 mL 500 HD US,Lithium Oral Solution,2024-12,2025-01,1081.0,1049.7666413902,Sufficient
+40754,Lithium OS USP 8 mEq Per 5 mL 500 HD US,Lithium Oral Solution,2025-02,2025-03,1081.0,1022.7666413902,Sufficient
+40754,Lithium OS USP 8 mEq Per 5 mL 500 HD US,Lithium Oral Solution,2025-01,2025-02,1081.0,1022.7666413902,Sufficient
+40754,Lithium OS USP 8 mEq Per 5 mL 500 HD US,Lithium Oral Solution,2025-03,2025-04,1081.0,1020.43330805687,Sufficient
+40864,Cevimeline HCl Cap 30mg 100,Cevimeline HCL,2025-04,2025-05,2520.0,993.5,Sufficient
+40864,Cevimeline HCl Cap 30mg 100,Cevimeline HCL,2025-05,2025-06,2520.0,993.5,Sufficient
+40308,Buspirone HCl Tab USP 5mg 500,Buspirone HCl,2024-11,2024-12,19608.0,990.0,Sufficient
+40938,"Mycophenolate Mof Cap USP 250mg, 500",Mycophenolate Mofetil Cap,2024-11,2024-12,16908.0,988.282641107561,Sufficient
+40679,Labetalol HCl Tab USP 300mg 500,Labetalol,2025-05,2025-06,1729.0,976.866666666666,Sufficient
+40679,Labetalol HCl Tab USP 300mg 500,Labetalol,2025-04,2025-05,1729.0,976.866666666666,Sufficient
+40628,Primidone Tab USP 250mg 500,Primidone,2024-11,2024-12,3336.0,968.0,Sufficient
+41072,Metoprolol Tar Tab USP 100mg 100 UnTS,Metoprolol Tartrate (Uncoated),2024-11,2024-12,26904.0,959.476098369715,Sufficient
+41024,Mycophenolic Sod DR Tab 180 mg 120,Mycophenolae Sodium DR Tab,2024-11,2024-12,20472.0,921.923809523809,Sufficient
+40908,Glipizide Tab USP 10mg 500,Glipizide,2025-03,2025-04,4464.0,912.0,Sufficient
+40879,Diclofenac Sod DR Tab USP 75mg 500,Diclofenac Sodium Tab,2024-11,2024-12,29868.0,904.733333333333,Sufficient
+40679,Labetalol HCl Tab USP 300mg 500,Labetalol,2025-02,2025-03,1729.0,903.533333333333,Sufficient
+40679,Labetalol HCl Tab USP 300mg 500,Labetalol,2025-03,2025-04,1729.0,901.866666666666,Sufficient
+41025,Mycophenolic Sod DR Tab 360 mg 120,Mycophenolae Sodium DR Tab,2024-11,2024-12,16680.0,891.644444444444,Sufficient
+40835,Triamterene & HCTZ Tab USP 75/50 mg 500,Triamterene HCTZ,2025-05,2025-06,3972.0,883.197333333333,Sufficient
+40835,Triamterene & HCTZ Tab USP 75/50 mg 500,Triamterene HCTZ,2025-04,2025-05,3972.0,883.197333333333,Sufficient
+40679,Labetalol HCl Tab USP 300mg 500,Labetalol,2025-01,2025-02,1729.0,879.533333333333,Sufficient
+40139,Amantadine HCl Cap USP 100mg 30,Amantadine HCL,2024-11,2024-12,9720.0,876.0,Sufficient
+40608,Amitriptyline HCl Tab USP 75mg 100,Amitriptyline,2025-05,2025-06,11616.0,871.5,Sufficient
+40608,Amitriptyline HCl Tab USP 75mg 100,Amitriptyline,2025-04,2025-05,11616.0,871.5,Sufficient
+40906,Glipizide Tab USP 5 mg 500,Glipizide,2025-03,2025-04,21168.0,824.0,Sufficient
+40741,Sildenafil Tab USP 20mg 1000,Sildenafil Citrate,2024-12,2025-01,14232.0,810.5,Sufficient
+40741,Sildenafil Tab USP 20mg 1000,Sildenafil Citrate,2025-02,2025-03,14232.0,798.5,Sufficient
+40741,Sildenafil Tab USP 20mg 1000,Sildenafil Citrate,2025-01,2025-02,14232.0,798.5,Sufficient
+40311,Buspirone HCl Tab USP 15mg 60,Buspirone HCl,2024-11,2024-12,7680.0,784.0,Sufficient
+40603,Amitriptyline HCl Tab USP 10mg 1000,Amitriptyline,2025-04,2025-05,2952.0,752.0,Sufficient
+40603,Amitriptyline HCl Tab USP 10mg 1000,Amitriptyline,2025-05,2025-06,2952.0,752.0,Sufficient
+40741,Sildenafil Tab USP 20mg 1000,Sildenafil Citrate,2025-03,2025-04,14232.0,724.5,Sufficient
+40741,Sildenafil Tab USP 20mg 1000,Sildenafil Citrate,2025-04,2025-05,14232.0,724.5,Sufficient
+40741,Sildenafil Tab USP 20mg 1000,Sildenafil Citrate,2025-05,2025-06,14232.0,724.5,Sufficient
+40835,Triamterene & HCTZ Tab USP 75/50 mg 500,Triamterene HCTZ,2025-03,2025-04,3972.0,710.864,Sufficient
+40317,Buspirone HCl Tab USP 30mg 500,Buspirone HCl,2025-01,2025-02,1368.0,702.277777777777,Sufficient
+40317,Buspirone HCl Tab USP 30mg 500,Buspirone HCl,2025-02,2025-03,1368.0,702.277777777777,Sufficient
+40491,Carbi + Levo tab USP 25/100mg 100,Carbidopa and Levdopa Tab,2025-02,2025-03,36240.0,700.0,Sufficient
+40491,Carbi + Levo tab USP 25/100mg 100,Carbidopa and Levdopa Tab,2025-01,2025-02,36240.0,700.0,Sufficient
+40491,Carbi + Levo tab USP 25/100mg 100,Carbidopa and Levdopa Tab,2024-12,2025-01,36240.0,700.0,Sufficient
+40317,Buspirone HCl Tab USP 30mg 500,Buspirone HCl,2025-05,2025-06,1368.0,694.777777777777,Sufficient
+40317,Buspirone HCl Tab USP 30mg 500,Buspirone HCl,2025-04,2025-05,1368.0,694.777777777777,Sufficient
+40317,Buspirone HCl Tab USP 30mg 500,Buspirone HCl,2024-12,2025-01,1368.0,694.777777777777,Sufficient
+40317,Buspirone HCl Tab USP 30mg 500,Buspirone HCl,2025-03,2025-04,1368.0,694.777777777777,Sufficient
+40315,Buspirone HCl Tab USP 7.5mg 500,Buspirone HCl,2025-03,2025-04,1188.0,693.0,Sufficient
+40315,Buspirone HCl Tab USP 7.5mg 500,Buspirone HCl,2025-05,2025-06,1188.0,693.0,Sufficient
+40315,Buspirone HCl Tab USP 7.5mg 500,Buspirone HCl,2025-04,2025-05,1188.0,693.0,Sufficient
+40472,Carbi + Levo ER Tab USP 25/100mg 100,Carbidopa and Levdopa ER Tab,2024-12,2025-01,5064.0,684.0,Sufficient
+40835,Triamterene & HCTZ Tab USP 75/50 mg 500,Triamterene HCTZ,2025-01,2025-02,3972.0,680.686222222222,Sufficient
+40835,Triamterene & HCTZ Tab USP 75/50 mg 500,Triamterene HCTZ,2025-02,2025-03,3972.0,680.686222222222,Sufficient
+40315,Buspirone HCl Tab USP 7.5mg 500,Buspirone HCl,2025-02,2025-03,1188.0,675.5,Sufficient
+40315,Buspirone HCl Tab USP 7.5mg 500,Buspirone HCl,2025-01,2025-02,1188.0,675.5,Sufficient
+40835,Triamterene & HCTZ Tab USP 75/50 mg 500,Triamterene HCTZ,2024-12,2025-01,3972.0,656.686222222222,Sufficient
+40315,Buspirone HCl Tab USP 7.5mg 500,Buspirone HCl,2024-12,2025-01,1188.0,645.5,Sufficient
+40679,Labetalol HCl Tab USP 300mg 500,Labetalol,2024-11,2024-12,1729.0,635.455555555555,Sufficient
+40208,Potassium Chl ER Tab USP 10mEq 100 AB3,Potassium Chloride ER,2024-11,2024-12,31092.0,626.311111111111,Sufficient
+40651,Metolazone Tab USP 10mg 100,Metolazone,2024-11,2024-12,888.0,609.266666666666,Sufficient
+40816,Potassium Chl Ora sol 20mEq 50,Potassium Chloride PFOS,2024-11,2024-12,1392.0,603.4,Sufficient
+40509,Dicyclomine HCL Tab USP 20mg 100,Dicyclomine HCl Tab,2024-12,2025-01,124488.0,587.5,Sufficient
+40509,Dicyclomine HCL Tab USP 20mg 100,Dicyclomine HCl Tab,2025-01,2025-02,124488.0,585.5,Sufficient
+40509,Dicyclomine HCL Tab USP 20mg 100,Dicyclomine HCl Tab,2025-02,2025-03,124488.0,585.5,Sufficient
+40882,Guanfacine Tab USP 2mg 100,Guanfacine IR,2025-04,2025-05,32928.0,568.0,Sufficient
+40882,Guanfacine Tab USP 2mg 100,Guanfacine IR,2025-03,2025-04,32928.0,568.0,Sufficient
+40882,Guanfacine Tab USP 2mg 100,Guanfacine IR,2025-05,2025-06,32928.0,568.0,Sufficient
+40781,Bisoprolol Fum Tab USP 5 mg 30,Bisoprolol Fumarate,2024-12,2025-01,6960.0,540.0,Sufficient
+40781,Bisoprolol Fum Tab USP 5 mg 30,Bisoprolol Fumarate,2025-01,2025-02,6960.0,540.0,Sufficient
+40529,Cevimeline HCl Cap 30mg 30,Cevimeline HCL,2025-01,2025-02,6288.0,532.0,Sufficient
+40529,Cevimeline HCl Cap 30mg 30,Cevimeline HCL,2025-02,2025-03,6288.0,532.0,Sufficient
+40864,Cevimeline HCl Cap 30mg 100,Cevimeline HCL,2025-03,2025-04,2520.0,517.5,Sufficient
+40600,Amitriptyline HCl Tab USP 10mg 100,Amitriptyline,2024-11,2024-12,12648.0,514.5,Sufficient
+40529,Cevimeline HCl Cap 30mg 30,Cevimeline HCL,2024-12,2025-01,6288.0,503.5,Sufficient
+40900,Acyclovir OSP USP 200mg/5ml 473 HD US,Acyclovir Suspension,2025-01,2025-02,3390.0,500.5,Sufficient
+40649,Metolazone Tab USP 2.5mg 100,Metolazone,2024-11,2024-12,744.0,472.466666666666,Sufficient
+40212,Bumetanide tab usp 0.5mg 100,Bumetanide Tabs,2025-03,2025-04,1272.0,454.0,Sufficient
+40654,Metoprolol Tar Tab USP 50mg 100,Metoprolol Tartrate,2025-05,2025-06,23160.0,444.0,Sufficient
+40654,Metoprolol Tar Tab USP 50mg 100,Metoprolol Tartrate,2025-04,2025-05,23160.0,444.0,Sufficient
+40651,Metolazone Tab USP 10mg 100,Metolazone,2024-12,2025-01,888.0,440.015974440894,Sufficient
+40651,Metolazone Tab USP 10mg 100,Metolazone,2025-02,2025-03,888.0,438.015974440894,Sufficient
+40651,Metolazone Tab USP 10mg 100,Metolazone,2025-01,2025-02,888.0,438.015974440894,Sufficient
+40584,Tramadol HCL Tab 75mg 30,Tramadol,2025-05,2025-06,16464.0,435.0,Sufficient
+40584,Tramadol HCL Tab 75mg 30,Tramadol,2025-04,2025-05,16464.0,435.0,Sufficient
+40584,Tramadol HCL Tab 75mg 30,Tramadol,2025-03,2025-04,16464.0,435.0,Sufficient
+40307,Buspirone HCl Tab USP 5mg 100,Buspirone HCl,2024-11,2024-12,98184.0,432.0,Sufficient
+40651,Metolazone Tab USP 10mg 100,Metolazone,2025-05,2025-06,888.0,421.515974440894,Sufficient
+40651,Metolazone Tab USP 10mg 100,Metolazone,2025-03,2025-04,888.0,421.515974440894,Sufficient
+40651,Metolazone Tab USP 10mg 100,Metolazone,2025-04,2025-05,888.0,421.515974440894,Sufficient
+40606,Amitriptyline HCl Tab USP 50mg 100,Amitriptyline,2024-11,2024-12,4680.0,401.0,Sufficient
+40841,"Baclofen Oral Sol. 5mg/5ml, 473ml",Baclofeb Oral Solution,2024-11,2024-12,8412.0,400.761710794297,Sufficient
+40500,Pot. Chl ER Tab USP 15mEq 100 AB1 KlorCon,Potassium Chloride Klorcon,2024-11,2024-12,1416.0,385.791757049891,Sufficient
+40666,Carvedilol Tab USP 12.5mg 1000,Carvedilol,2024-11,2024-12,6108.0,354.0,Sufficient
+40593,Potassium Chl ER Tab 15mEq 100  KTAB,Potassium Chloride ER,2025-02,2025-03,528.0,351.0,Sufficient
+40593,Potassium Chl ER Tab 15mEq 100  KTAB,Potassium Chloride ER,2025-01,2025-02,528.0,351.0,Sufficient
+40313,Buspirone HCl Tab USP 15mg 500,Buspirone HCl,2024-11,2024-12,4860.0,345.0,Sufficient
+40607,Amitriptyline HCl Tab USP 50mg 1000,Amitriptyline,2025-05,2025-06,552.0,338.0,Sufficient
+40607,Amitriptyline HCl Tab USP 50mg 1000,Amitriptyline,2025-04,2025-05,552.0,336.0,Sufficient
+40593,Potassium Chl ER Tab 15mEq 100  KTAB,Potassium Chloride ER,2024-12,2025-01,528.0,331.0,Sufficient
+40727,Baclofen Tab USP 20mg 500,Baclofen,2025-05,2025-06,672.0,304.0,Sufficient
+40727,Baclofen Tab USP 20mg 500,Baclofen,2025-04,2025-05,672.0,304.0,Sufficient
+40727,Baclofen Tab USP 20mg 500,Baclofen,2025-03,2025-04,672.0,304.0,Sufficient
+40145,Oxybutynin Cl ER Tab USP 5mg 100,Oxybutynin Chloride ER,2024-11,2024-12,13200.0,296.933333333333,Sufficient
+40509,Dicyclomine HCL Tab USP 20mg 100,Dicyclomine HCl Tab,2025-03,2025-04,124488.0,293.0,Sufficient
+40312,Buspirone HCl Tab USP 15mg 100,Buspirone HCl,2024-11,2024-12,35760.0,274.0,Sufficient
+40613,Amitriptyline HCl Tab USP 150mg 100,Amitriptyline,2025-05,2025-06,4452.0,269.0,Sufficient
+40593,Potassium Chl ER Tab 15mEq 100  KTAB,Potassium Chloride ER,2025-05,2025-06,528.0,266.0,Sufficient
+40593,Potassium Chl ER Tab 15mEq 100  KTAB,Potassium Chloride ER,2025-04,2025-05,528.0,266.0,Sufficient
+40593,Potassium Chl ER Tab 15mEq 100  KTAB,Potassium Chloride ER,2025-03,2025-04,528.0,266.0,Sufficient
+40143,Pregabalin ER tab 165mg 30,Pregabalin tab ER,2025-05,2025-06,3696.0,263.0,Sufficient
+40143,Pregabalin ER tab 165mg 30,Pregabalin tab ER,2025-04,2025-05,3696.0,258.0,Sufficient
+40613,Amitriptyline HCl Tab USP 150mg 100,Amitriptyline,2025-04,2025-05,4452.0,252.0,Sufficient
+40143,Pregabalin ER tab 165mg 30,Pregabalin tab ER,2025-03,2025-04,3696.0,248.0,Sufficient
+40143,Pregabalin ER tab 165mg 30,Pregabalin tab ER,2025-02,2025-03,3696.0,248.0,Sufficient
+40143,Pregabalin ER tab 165mg 30,Pregabalin tab ER,2025-01,2025-02,3696.0,248.0,Sufficient
+40040,Rabeprazole Sod DR Tab 20mg 90,Rabeprazole Sodium,2024-11,2024-12,10488.0,221.8,Sufficient
+40529,Cevimeline HCl Cap 30mg 30,Cevimeline HCL,2025-03,2025-04,6288.0,221.0,Sufficient
+40529,Cevimeline HCl Cap 30mg 30,Cevimeline HCL,2025-04,2025-05,6288.0,221.0,Sufficient
+40529,Cevimeline HCl Cap 30mg 30,Cevimeline HCL,2025-05,2025-06,6288.0,221.0,Sufficient
+40154,Diclofenac Sod DR Tab USP 50mg 1000,Diclofenac Sodium Tab,2025-05,2025-06,1428.0,196.0,Sufficient
+40154,Diclofenac Sod DR Tab USP 50mg 1000,Diclofenac Sodium Tab,2025-04,2025-05,1428.0,196.0,Sufficient
+40039,Rabeprazole Sod DR Tab 20mg 30,Rabeprazole Sodium,2024-11,2024-12,984.0,196.0,Sufficient
+40143,Pregabalin ER tab 165mg 30,Pregabalin tab ER,2024-12,2025-01,3696.0,193.0,Sufficient
+40727,Baclofen Tab USP 20mg 500,Baclofen,2025-01,2025-02,672.0,192.0,Sufficient
+40727,Baclofen Tab USP 20mg 500,Baclofen,2025-02,2025-03,672.0,192.0,Sufficient
+40727,Baclofen Tab USP 20mg 500,Baclofen,2024-12,2025-01,672.0,192.0,Sufficient
+40443,Isosorbide Dinitrate Tab USP 10mg 1000,Isosorbide DN,2025-04,2025-05,204.0,190.0,Sufficient
+40443,Isosorbide Dinitrate Tab USP 10mg 1000,Isosorbide DN,2025-05,2025-06,204.0,190.0,Sufficient
+40706,Sildenafil Tab USP 100mg 1000,Sildenafil Citrate,2025-04,2025-05,684.0,179.033333333333,Sufficient
+40706,Sildenafil Tab USP 100mg 1000,Sildenafil Citrate,2025-05,2025-06,684.0,179.033333333333,Sufficient
+40445,Isosorbide Dinitrate Tab USP 20mg 1000,Isosorbide DN,2025-04,2025-05,612.0,178.533333333333,Sufficient
+40445,Isosorbide Dinitrate Tab USP 20mg 1000,Isosorbide DN,2025-05,2025-06,612.0,178.533333333333,Sufficient
+40443,Isosorbide Dinitrate Tab USP 10mg 1000,Isosorbide DN,2025-03,2025-04,204.0,145.833333333333,Sufficient
+40443,Isosorbide Dinitrate Tab USP 10mg 1000,Isosorbide DN,2024-12,2025-01,204.0,145.366666666666,Sufficient
+40443,Isosorbide Dinitrate Tab USP 10mg 1000,Isosorbide DN,2025-02,2025-03,204.0,145.366666666666,Sufficient
+40443,Isosorbide Dinitrate Tab USP 10mg 1000,Isosorbide DN,2025-01,2025-02,204.0,145.366666666666,Sufficient
+40514,Bisoprolol Fum tab USP 10mg 30,Bisoprolol Fumarate,2024-12,2025-01,1704.0,142.0,Sufficient
+40514,Bisoprolol Fum tab USP 10mg 30,Bisoprolol Fumarate,2025-01,2025-02,1704.0,142.0,Sufficient
+40608,Amitriptyline HCl Tab USP 75mg 100,Amitriptyline,2024-11,2024-12,11616.0,139.0,Sufficient
+40706,Sildenafil Tab USP 100mg 1000,Sildenafil Citrate,2025-03,2025-04,684.0,137.866666666666,Sufficient
+40628,Primidone Tab USP 250mg 500,Primidone,2025-01,2025-02,3336.0,132.5,Sufficient
+40628,Primidone Tab USP 250mg 500,Primidone,2025-02,2025-03,3336.0,132.5,Sufficient
+40445,Isosorbide Dinitrate Tab USP 20mg 1000,Isosorbide DN,2024-12,2025-01,612.0,129.322222222222,Sufficient
+40445,Isosorbide Dinitrate Tab USP 20mg 1000,Isosorbide DN,2025-01,2025-02,612.0,129.322222222222,Sufficient
+40445,Isosorbide Dinitrate Tab USP 20mg 1000,Isosorbide DN,2025-02,2025-03,612.0,129.322222222222,Sufficient
+40705,Sildenafil Tab USP 50mg 1000,Sildenafil Citrate,2025-04,2025-05,576.0,128.833333333333,Sufficient
+40705,Sildenafil Tab USP 50mg 1000,Sildenafil Citrate,2025-05,2025-06,576.0,128.833333333333,Sufficient
+40445,Isosorbide Dinitrate Tab USP 20mg 1000,Isosorbide DN,2025-03,2025-04,612.0,126.366666666666,Sufficient
+40706,Sildenafil Tab USP 100mg 1000,Sildenafil Citrate,2024-11,2024-12,684.0,126.317358892438,Sufficient
+40703,Sildenafil Tab USP 25mg 500,Sildenafil Citrate,2025-05,2025-06,456.0,120.333333333333,Sufficient
+40703,Sildenafil Tab USP 25mg 500,Sildenafil Citrate,2025-04,2025-05,456.0,120.333333333333,Sufficient
+40214,Bumetanide tab usp 2mg 100,Bumetanide Tabs,2025-02,2025-03,4896.0,120.0,Sufficient
+40214,Bumetanide tab usp 2mg 100,Bumetanide Tabs,2025-03,2025-04,4896.0,120.0,Sufficient
+40214,Bumetanide tab usp 2mg 100,Bumetanide Tabs,2025-01,2025-02,4896.0,120.0,Sufficient
+40214,Bumetanide tab usp 2mg 100,Bumetanide Tabs,2024-12,2025-01,4896.0,120.0,Sufficient
+40213,Bumetanide tab usp 1mg 100,Bumetanide Tabs,2025-03,2025-04,2208.0,120.0,Sufficient
+40213,Bumetanide tab usp 1mg 100,Bumetanide Tabs,2025-02,2025-03,2208.0,120.0,Sufficient
+40213,Bumetanide tab usp 1mg 100,Bumetanide Tabs,2025-01,2025-02,2208.0,120.0,Sufficient
+40213,Bumetanide tab usp 1mg 100,Bumetanide Tabs,2024-12,2025-01,2208.0,120.0,Sufficient
+40628,Primidone Tab USP 250mg 500,Primidone,2024-12,2025-01,3336.0,117.5,Sufficient
+40628,Primidone Tab USP 250mg 500,Primidone,2025-04,2025-05,3336.0,117.0,Sufficient
+40628,Primidone Tab USP 250mg 500,Primidone,2025-05,2025-06,3336.0,117.0,Sufficient
+40628,Primidone Tab USP 250mg 500,Primidone,2025-03,2025-04,3336.0,117.0,Sufficient
+40604,Amitriptyline HCl Tab USP 25mg 100,Amitriptyline,2024-11,2024-12,2544.0,106.0,Sufficient
+40879,Diclofenac Sod DR Tab USP 75mg 500,Diclofenac Sodium Tab,2025-04,2025-05,29868.0,100.0,Sufficient
+40879,Diclofenac Sod DR Tab USP 75mg 500,Diclofenac Sodium Tab,2025-05,2025-06,29868.0,100.0,Sufficient
+40879,Diclofenac Sod DR Tab USP 75mg 500,Diclofenac Sodium Tab,2025-03,2025-04,29868.0,100.0,Sufficient
+40703,Sildenafil Tab USP 25mg 500,Sildenafil Citrate,2025-02,2025-03,456.0,76.0,Sufficient
+40705,Sildenafil Tab USP 50mg 1000,Sildenafil Citrate,2025-03,2025-04,576.0,76.0,Sufficient
+40703,Sildenafil Tab USP 25mg 500,Sildenafil Citrate,2024-12,2025-01,456.0,76.0,Sufficient
+40703,Sildenafil Tab USP 25mg 500,Sildenafil Citrate,2025-01,2025-02,456.0,76.0,Sufficient
+40879,Diclofenac Sod DR Tab USP 75mg 500,Diclofenac Sodium Tab,2024-12,2025-01,29868.0,74.0,Sufficient
+40879,Diclofenac Sod DR Tab USP 75mg 500,Diclofenac Sodium Tab,2025-01,2025-02,29868.0,74.0,Sufficient
+40879,Diclofenac Sod DR Tab USP 75mg 500,Diclofenac Sodium Tab,2025-02,2025-03,29868.0,74.0,Sufficient
+40703,Sildenafil Tab USP 25mg 500,Sildenafil Citrate,2025-03,2025-04,456.0,70.0,Sufficient
+40706,Sildenafil Tab USP 100mg 1000,Sildenafil Citrate,2024-12,2025-01,684.0,68.8666666666666,Sufficient
+40706,Sildenafil Tab USP 100mg 1000,Sildenafil Citrate,2025-01,2025-02,684.0,68.8666666666666,Sufficient
+40706,Sildenafil Tab USP 100mg 1000,Sildenafil Citrate,2025-02,2025-03,684.0,68.8666666666666,Sufficient
+40613,Amitriptyline HCl Tab USP 150mg 100,Amitriptyline,2024-11,2024-12,4452.0,63.0,Sufficient
+40584,Tramadol HCL Tab 75mg 30,Tramadol,2025-02,2025-03,16464.0,53.0,Sufficient
+40584,Tramadol HCL Tab 75mg 30,Tramadol,2024-12,2025-02,16464.0,53.0,Sufficient
+40489,Carbi + Levo tab USP 10/100mg 1000,Carbidopa and Levdopa Tab,2025-04,2025-05,1464.0,50.0,Sufficient
+40489,Carbi + Levo tab USP 10/100mg 1000,Carbidopa and Levdopa Tab,2025-05,2025-06,1464.0,50.0,Sufficient
+40489,Carbi + Levo tab USP 10/100mg 1000,Carbidopa and Levdopa Tab,2025-03,2025-04,1464.0,50.0,Sufficient
+40212,Bumetanide tab usp 0.5mg 100,Bumetanide Tabs,2024-12,2025-01,1272.0,48.0,Sufficient
+40212,Bumetanide tab usp 0.5mg 100,Bumetanide Tabs,2025-02,2025-03,1272.0,48.0,Sufficient
+40212,Bumetanide tab usp 0.5mg 100,Bumetanide Tabs,2025-01,2025-02,1272.0,48.0,Sufficient
+40866,Loperamide HCL Cap USP 2mg 500,Loperamide Caps,2024-12,2025-01,156.0,46.9333333333333,Sufficient
+40866,Loperamide HCL Cap USP 2mg 500,Loperamide Caps,2025-01,2025-02,156.0,46.9333333333333,Sufficient
+41068,Metoprolol Tar Tab USP 50mg 100 UnTS,Metoprolol Tartrate (Uncoated),2024-12,2025-01,28416.0,32.0,Sufficient
+41068,Metoprolol Tar Tab USP 50mg 100 UnTS,Metoprolol Tartrate (Uncoated),2025-01,2025-02,28416.0,32.0,Sufficient
+41068,Metoprolol Tar Tab USP 50mg 100 UnTS,Metoprolol Tartrate (Uncoated),2025-02,2025-03,28416.0,32.0,Sufficient
+40514,Bisoprolol Fum tab USP 10mg 30,Bisoprolol Fumarate,2025-05,2025-06,1704.0,30.0,Sufficient
+40705,Sildenafil Tab USP 50mg 1000,Sildenafil Citrate,2025-01,2025-02,576.0,26.9333333333333,Sufficient
+40705,Sildenafil Tab USP 50mg 1000,Sildenafil Citrate,2024-12,2025-01,576.0,26.9333333333333,Sufficient
+40705,Sildenafil Tab USP 50mg 1000,Sildenafil Citrate,2025-02,2025-03,576.0,26.9333333333333,Sufficient
+40514,Bisoprolol Fum tab USP 10mg 30,Bisoprolol Fumarate,2025-02,2025-03,1704.0,26.0,Sufficient
+40514,Bisoprolol Fum tab USP 10mg 30,Bisoprolol Fumarate,2025-04,2025-05,1704.0,26.0,Sufficient
+40514,Bisoprolol Fum tab USP 10mg 30,Bisoprolol Fumarate,2025-03,2025-04,1704.0,26.0,Sufficient
+40866,Loperamide HCL Cap USP 2mg 500,Loperamide Caps,2025-03,2025-04,156.0,16.0,Sufficient
+40489,Carbi + Levo tab USP 10/100mg 1000,Carbidopa and Levdopa Tab,2024-11,2024-12,1464.0,16.0,Sufficient
+40866,Loperamide HCL Cap USP 2mg 500,Loperamide Caps,2025-04,2025-05,156.0,16.0,Sufficient
+40866,Loperamide HCL Cap USP 2mg 500,Loperamide Caps,2025-05,2025-06,156.0,16.0,Sufficient
+40817,Carbi + Levo tab USP 10/100mg 500,Carbidopa and Levdopa Tab,2025-05,2025-06,1644.0,12.0,Sufficient
+40817,Carbi + Levo tab USP 10/100mg 500,Carbidopa and Levdopa Tab,2025-03,2025-04,1644.0,12.0,Sufficient
+40817,Carbi + Levo tab USP 10/100mg 500,Carbidopa and Levdopa Tab,2025-04,2025-05,1644.0,12.0,Sufficient
+40603,Amitriptyline HCl Tab USP 10mg 1000,Amitriptyline,2024-11,2024-12,2952.0,9.0,Sufficient
+40475,Carbi + Levo ER Tab USP 50/200mg 100,Carbidopa and Levdopa ER Tab,2024-12,2025-01,13704.0,4.0,Sufficient
+40815,Potassium Chl ER Tab USP 10mEq 500 AB3,Potassium Chloride ER,2025-04,2025-06,1176.0,4.0,Sufficient
+40606,Amitriptyline HCl Tab USP 50mg 100,Amitriptyline,2025-05,2025-06,4680.0,2.0,Sufficient
+40600,Amitriptyline HCl Tab USP 10mg 100,Amitriptyline,2025-04,2025-05,12648.0,2.0,Sufficient
+40900,Acyclovir OSP USP 200mg/5ml 473 HD US,Acyclovir Suspension,2024-12,2025-01,3390.0,2.0,Sufficient
+41155,Ivermectin Tab USP 6mg 2X10,Ivermectin Tab,2025-05,2025-06,6957.0,2.0,Sufficient
+41155,Ivermectin Tab USP 6mg 2X10,Ivermectin Tab,2025-04,2025-05,6957.0,2.0,Sufficient
+40604,Amitriptyline HCl Tab USP 25mg 100,Amitriptyline,2025-04,2025-05,2544.0,2.0,Sufficient
+41155,Ivermectin Tab USP 6mg 2X10,Ivermectin Tab,2025-03,2025-04,6957.0,2.0,Sufficient
+40604,Amitriptyline HCl Tab USP 25mg 100,Amitriptyline,2025-05,2025-06,2544.0,2.0,Sufficient
+40817,Carbi + Levo tab USP 10/100mg 500,Carbidopa and Levdopa Tab,2024-11,2024-12,1644.0,2.0,Sufficient
+40600,Amitriptyline HCl Tab USP 10mg 100,Amitriptyline,2025-05,2025-06,12648.0,2.0,Sufficient
+40606,Amitriptyline HCl Tab USP 50mg 100,Amitriptyline,2025-04,2025-05,4680.0,2.0,Sufficient
+40815,Potassium Chl ER Tab USP 10mEq 500 AB3,Potassium Chloride ER,2024-11,2024-12,1176.0,2.0,Sufficient
+40647,Lamotrigine Tab USP 200 mg 60,Lamotrigine IR,2025-03,2025-04,1824.0,0.0,Sufficient
+40154,Diclofenac Sod DR Tab USP 50mg 1000,Diclofenac Sodium Tab,2025-03,2025-04,1428.0,0.0,Sufficient
+40216,Isosorbide Dinitrate Tab USP 30mg 1000,Isosorbide DN,2025-03,2025-04,396.0,0.0,Sufficient
+40441,Isosorbide Dinitrate Tab USP 5mg 1000,Isosorbide DN,2024-12,2025-03,204.0,0.0,Sufficient
+40441,Isosorbide Dinitrate Tab USP 5mg 1000,Isosorbide DN,2025-03,2025-05,204.0,0.0,Sufficient
+40474,Carbi + Levo ER Tab USP 50/200mg 30,Carbidopa and Levdopa ER Tab,2025-03,2025-04,120.0,0.0,Sufficient
+40485,Carbi + Levo tab USP 25/250mg 100,Carbidopa and Levdopa Tab,2025-03,2025-04,12120.0,0.0,Sufficient
+40485,Carbi + Levo tab USP 25/250mg 100,Carbidopa and Levdopa Tab,2025-04,2025-05,12120.0,0.0,Sufficient
+40489,Carbi + Levo tab USP 10/100mg 1000,Carbidopa and Levdopa Tab,2024-12,2025-03,1464.0,0.0,Sufficient
+40491,Carbi + Levo tab USP 25/100mg 100,Carbidopa and Levdopa Tab,2025-03,2025-04,36240.0,0.0,Sufficient
+40491,Carbi + Levo tab USP 25/100mg 100,Carbidopa and Levdopa Tab,2025-04,2025-05,36240.0,0.0,Sufficient
+40589,Gabapentin Tab USP 800mg 500,Gabapentin Tab,2025-03,2025-04,0.0,0.0,Sufficient
+40639,Lamotrigine Tab USP 25mg 100,Lamotrigine IR,2025-03,2025-04,0.0,0.0,Sufficient
+40640,Lamotrigine Tab USP 25mg 500,Lamotrigine IR,2025-03,2025-04,0.0,0.0,Sufficient
+40641,Lamotrigine Tab Usp 25 mg 1000,Lamotrigine IR,2025-03,2025-04,0.0,0.0,Sufficient
+40642,Lamotrigine Tab USP 100 mg 100,Lamotrigine IR,2025-03,2025-04,0.0,0.0,Sufficient
+40642,Lamotrigine Tab USP 100 mg 100,Lamotrigine IR,2025-04,2025-05,0.0,0.0,Sufficient
+40643,Lamotrigine Tab USP 100 mg 500,Lamotrigine IR,2025-03,2025-04,6708.0,0.0,Sufficient
+40643,Lamotrigine Tab USP 100 mg 500,Lamotrigine IR,2025-04,2025-05,6708.0,0.0,Sufficient
+40644,Lamotrigine Tab USP 100 mg 1000,Lamotrigine IR,2025-03,2025-04,0.0,0.0,Sufficient
+40646,Lamotrigine Tab USP 150 mg 500,Lamotrigine IR,2025-02,2025-03,0.0,0.0,Sufficient
+40646,Lamotrigine Tab USP 150 mg 500,Lamotrigine IR,2025-03,2025-04,0.0,0.0,Sufficient
+40646,Lamotrigine Tab USP 150 mg 500,Lamotrigine IR,2025-04,2025-05,0.0,0.0,Sufficient
+40647,Lamotrigine Tab USP 200 mg 60,Lamotrigine IR,2025-04,2025-05,1824.0,0.0,Sufficient
+40648,Lamotrigine Tab USP 200 mg 500,Lamotrigine IR,2025-03,2025-04,0.0,0.0,Sufficient
+40652,Metoprolol Tar tab USP 25mg 100,Metoprolol Tartrate,2025-03,2025-04,27627.0,0.0,Sufficient
+40652,Metoprolol Tar tab USP 25mg 100,Metoprolol Tartrate,2025-04,2025-05,27627.0,0.0,Sufficient
+40653,Metoprolol Tar Tab USP 25mg 1000,Metoprolol Tartrate,2025-03,2025-04,204.0,0.0,Sufficient
+40654,Metoprolol Tar Tab USP 50mg 100,Metoprolol Tartrate,2025-03,2025-04,23160.0,0.0,Sufficient
+40655,Metoprolol Tar Tab USP 50mg 1000,Metoprolol Tartrate,2025-03,2025-04,373.0,0.0,Sufficient
+40655,Metoprolol Tar Tab USP 50mg 1000,Metoprolol Tartrate,2025-04,2025-05,373.0,0.0,Sufficient
+40656,Metoprolol Tar Tab USP100mg 100,Metoprolol Tartrate,2025-03,2025-04,144.0,0.0,Sufficient
+40656,Metoprolol Tar Tab USP100mg 100,Metoprolol Tartrate,2025-04,2025-05,144.0,0.0,Sufficient
+40657,Metoprolol Tar Tab USP100mg 1000,Metoprolol Tartrate,2025-03,2025-04,3396.0,0.0,Sufficient
+40657,Metoprolol Tar Tab USP100mg 1000,Metoprolol Tartrate,2025-04,2025-05,3396.0,0.0,Sufficient
+40707,Metoprolol Tar Tab USP 25mg 500,Metoprolol Tartrate,2025-03,2025-04,176.0,0.0,Sufficient
+40781,Bisoprolol Fum Tab USP 5 mg 30,Bisoprolol Fumarate,2025-02,2025-03,6960.0,0.0,Sufficient
+40781,Bisoprolol Fum Tab USP 5 mg 30,Bisoprolol Fumarate,2025-03,2025-04,6960.0,0.0,Sufficient
+40815,Potassium Chl ER Tab USP 10mEq 500 AB3,Potassium Chloride ER,2024-12,2025-03,1176.0,0.0,Sufficient
+40815,Potassium Chl ER Tab USP 10mEq 500 AB3,Potassium Chloride ER,2025-03,2025-04,1176.0,0.0,Sufficient
+40817,Carbi + Levo tab USP 10/100mg 500,Carbidopa and Levdopa Tab,2024-12,2025-03,1644.0,0.0,Sufficient
+40832,Carbi + Levo tab USP 25/100mg 500,Carbidopa and Levdopa Tab,2025-03,2025-04,60.0,0.0,Sufficient
+40832,Carbi + Levo tab USP 25/100mg 500,Carbidopa and Levdopa Tab,2025-04,2025-05,60.0,0.0,Sufficient
+40833,Carbi + Levo tab USP 25/250mg 500,Carbidopa and Levdopa Tab,2025-03,2025-04,96.0,0.0,Sufficient
+40833,Carbi + Levo tab USP 25/250mg 500,Carbidopa and Levdopa Tab,2025-04,2025-05,96.0,0.0,Sufficient
+40866,Loperamide HCL Cap USP 2mg 500,Loperamide Caps,2025-02,2025-03,156.0,0.0,Sufficient
+40873,Gabapentin Tab USP 600mg 100,Gabapentin Tab,2025-03,2025-04,0.0,0.0,Sufficient
+40874,Gabapentin Tab USP 800mg 100,Gabapentin Tab,2025-03,2025-05,0.0,0.0,Sufficient
+40886,Ipratropium Bro. Nasal Spray 0.06% 15 ml,Ipratropium Bro. Nasal Spray,2024-12,2025-03,12402.0,0.0,Sufficient
+40925,Venlafaxin HCl ER Cap USP 75 mg 90,Venlafaxin HCl ER Cap,2025-03,2025-04,0.0,0.0,Sufficient
+40926,Venlafaxin HCl ER Cap USP 37.5 mg 90,Venlafaxin HCl ER Cap,2025-03,2025-04,0.0,0.0,Sufficient
+40927,Venlafaxin HCl ER Cap USP 150 mg 90,Venlafaxin HCl ER Cap,2025-03,2025-04,0.0,0.0,Sufficient
+40474,Carbi + Levo ER Tab USP 50/200mg 30,Carbidopa and Levdopa ER Tab,2025-04,,120.0,,Insufficient
+40649,Metolazone Tab USP 2.5mg 100,Metolazone,2025-06,,744.0,,Insufficient
+40648,Lamotrigine Tab USP 200 mg 500,Lamotrigine IR,2025-04,,0.0,,Insufficient
+40647,Lamotrigine Tab USP 200 mg 60,Lamotrigine IR,2025-05,,1824.0,,Insufficient
+40650,Metolazone Tab USP 5mg 100,Metolazone,2025-06,,1728.0,,Insufficient
+40624,Primidone Tab USP 50mg 500,Primidone,2025-06,,24.0,,Insufficient
+40646,Lamotrigine Tab USP 150 mg 500,Lamotrigine IR,2025-05,,0.0,,Insufficient
+40142,Pregabalin ER tab 82.5mg 30,Pregabalin tab ER,2025-06,,0.0,,Insufficient
+41072,Metoprolol Tar Tab USP 100mg 100 UnTS,Metoprolol Tartrate (Uncoated),2025-06,,26904.0,,Insufficient
+40644,Lamotrigine Tab USP 100 mg 1000,Lamotrigine IR,2025-04,,0.0,,Insufficient
+40143,Pregabalin ER tab 165mg 30,Pregabalin tab ER,2025-06,,3696.0,,Insufficient
+40651,Metolazone Tab USP 10mg 100,Metolazone,2025-06,,888.0,,Insufficient
+40643,Lamotrigine Tab USP 100 mg 500,Lamotrigine IR,2025-05,,6708.0,,Insufficient
+40642,Lamotrigine Tab USP 100 mg 100,Lamotrigine IR,2025-05,,0.0,,Insufficient
+40623,Primidone Tab USP 50mg 100,Primidone,2025-06,,43992.0,,Insufficient
+40641,Lamotrigine Tab Usp 25 mg 1000,Lamotrigine IR,2025-04,,0.0,,Insufficient
+40640,Lamotrigine Tab USP 25mg 500,Lamotrigine IR,2025-04,,0.0,,Insufficient
+40652,Metoprolol Tar tab USP 25mg 100,Metoprolol Tartrate,2025-05,,27627.0,,Insufficient
+40639,Lamotrigine Tab USP 25mg 100,Lamotrigine IR,2025-04,,0.0,,Insufficient
+41069,Metoprolol Tar Tab USP 50mg 1000 UnTS,Metoprolol Tartrate (Uncoated),2025-06,,44148.0,,Insufficient
+40628,Primidone Tab USP 250mg 500,Primidone,2025-06,,3336.0,,Insufficient
+40653,Metoprolol Tar Tab USP 25mg 1000,Metoprolol Tartrate,2025-04,,204.0,,Insufficient
+41074,Metoprolol Tar Tab USP 100mg 1000UnTS,Metoprolol Tartrate (Uncoated),2025-06,,26964.0,,Insufficient
+40654,Metoprolol Tar Tab USP 50mg 100,Metoprolol Tartrate,2025-06,,23160.0,,Insufficient
+40627,Primidone Tab USP 250mg100,Primidone,2025-06,,13656.0,,Insufficient
+40144,Pregabalin ER tab 330mg 30,Pregabalin tab ER,2025-06,,0.0,,Insufficient
+41068,Metoprolol Tar Tab USP 50mg 100 UnTS,Metoprolol Tartrate (Uncoated),2025-06,,28416.0,,Insufficient
+40655,Metoprolol Tar Tab USP 50mg 1000,Metoprolol Tartrate,2025-05,,373.0,,Insufficient
+40145,Oxybutynin Cl ER Tab USP 5mg 100,Oxybutynin Chloride ER,2025-06,,13200.0,,Insufficient
+40140,Amantadine HCl Cap USP 100mg 100,Amantadine HCL,2025-06,,15505.0,,Insufficient
+41155,Ivermectin Tab USP 6mg 2X10,Ivermectin Tab,2025-06,,6957.0,,Insufficient
+40656,Metoprolol Tar Tab USP100mg 100,Metoprolol Tartrate,2025-05,,144.0,,Insufficient
+41065,Metoprolol Tar Tab USP 25mg 1000 UnTS,Metoprolol Tartrate (Uncoated),2025-06,,69900.0,,Insufficient
+40622,Carvedilol Tab USP 25mg 500,Carvedilol,2025-06,,20676.0,,Insufficient
+40657,Metoprolol Tar Tab USP100mg 1000,Metoprolol Tartrate,2025-05,,3396.0,,Insufficient
+40621,Carvedilol Tab USP 25mg 100,Carvedilol,2025-06,,18744.0,,Insufficient
+40658,Metoprolol Tar Tab USP 75mg 100,Metoprolol Tartrate,2025-06,,28272.0,,Insufficient
+40620,Carvedilol Tab USP 12.5mg 500,Carvedilol,2025-06,,23760.0,,Insufficient
+40660,Metoprolol Tar Tab USP 37.5mg 100,Metoprolol Tartrate,2025-06,,13989.0,,Insufficient
+40146,Oxybutynin Cl ER Tab USP 10mg 100,Oxybutynin Chloride ER,2025-06,,5904.0,,Insufficient
+41064,Metoprolol Tar Tab USP 25mg 100 UnTS,Metoprolol Tartrate (Uncoated),2025-06,,57120.0,,Insufficient
+40664,Carvedilol Tab USP 6.25mg 1000,Carvedilol,2025-06,,6636.0,,Insufficient
+40147,Oxybutynin Cl ER Tab USP 15mg 100,Oxybutynin Chloride ER,2025-06,,4176.0,,Insufficient
+41062,Metoprolol Tar Tab USP 25mg 500 UnTS,Metoprolol Tartrate (Uncoated),2025-06,,78408.0,,Insufficient
+41027,Fluticasone Pro NS USP 50 mcg,Fluticasone Nasal Spray,2025-06,,,,Insufficient
+41025,Mycophenolic Sod DR Tab 360 mg 120,Mycophenolae Sodium DR Tab,2025-06,,16680.0,,Insufficient
+40151,Diclofenac Sod DR Tab USP 25mg 100,Diclofenac Sodium Tab,2025-06,,384.0,,Insufficient
+40665,Carvedilol Tab USP 3.125mg 1000,Carvedilol,2025-06,,4464.0,,Insufficient
+40619,Carvedilol Tab USP 12.5mg 100,Carvedilol,2025-06,,3552.0,,Insufficient
+40152,Diclofenac Sod DR Tab USP 50mg 60,Diclofenac Sodium Tab,2025-03,,,,Insufficient
+40153,Diclofenac Sod DR Tab USP 50 mg 100,Diclofenac Sodium Tab,2025-06,,109296.0,,Insufficient
+40154,Diclofenac Sod DR Tab USP 50mg 1000,Diclofenac Sodium Tab,2025-06,,1428.0,,Insufficient
+41024,Mycophenolic Sod DR Tab 180 mg 120,Mycophenolae Sodium DR Tab,2025-06,,20472.0,,Insufficient
+40155,Diclofenac Sod DR Tab USP 75mg 60,Diclofenac Sodium Tab,2025-06,,0.0,,Insufficient
+40666,Carvedilol Tab USP 12.5mg 1000,Carvedilol,2025-06,,6108.0,,Insufficient
+40972,Desvenlafaxine ER Tab 50 mg 500,Desvenlaflaxine,2025-06,,,,Insufficient
+40970,Desvenlafaxin ER Tab 100 mg 90,Desvenlaflaxine,2025-06,,14400.0,,Insufficient
+40969,Desvenlafaxine ER Tab 50 mg 90,Desvenlaflaxine,2025-06,,5112.0,,Insufficient
+40962,OXCARBAZEPINE OSP USP 300MG/5ML 250GL US,Oxcarbazepine Suspension,2025-06,,23112.0,,Insufficient
+40156,Diclofenac Sod DR Tab USP 75mg 100,Diclofenac Sodium Tab,2025-06,,336.0,,Insufficient
+40157,Diclofenac Sod DR Tab USP 75mg 1000,Diclofenac Sodium Tab,2025-06,,3516.0,,Insufficient
+40961,Dorzolamide Ophth Soln 2% base,Dorzolamide Opthal Sol,2025-06,,67680.0,,Insufficient
+40667,Carvedilol Tab USP 25mg 1000,Carvedilol,2025-06,,7764.0,,Insufficient
+40938,"Mycophenolate Mof Cap USP 250mg, 500",Mycophenolate Mofetil Cap,2025-06,,16908.0,,Insufficient
+40161,Tizanidine HCl Cap 2mg 150,Tizanidine HCl,2025-06,,817.0,,Insufficient
+40618,Carvedilol Tab USP 6.25mg 500,Carvedilol,2025-06,,18984.0,,Insufficient
+40669,Desvenlafaxin ER Tab 100 mg 30,Desvenlaflaxine,2025-06,,94200.0,,Insufficient
+40937,"Mycophenolate Mof Cap USP 250mg, 100",Mycophenolate Mofetil Cap,2025-06,,137784.0,,Insufficient
+40162,Tizanidine HCl Cap 4mg 150,Tizanidine HCl,2025-06,,361.0,,Insufficient
+40929,Mycophenolate Mof Tab USP 500mg 100,Mycophenolate Mofetil Tab,2025-06,,70858.0,,Insufficient
+40163,Tizanidine HCl Cap 6mg 150,Tizanidine HCl,2025-06,,432.0,,Insufficient
+40208,Potassium Chl ER Tab USP 10mEq 100 AB3,Potassium Chloride ER,2025-06,,31092.0,,Insufficient
+40928,Mycophenolate Mof Tab USP 500mg 500,Mycophenolate Mofetil Tab,2025-06,,5242.0,,Insufficient
+40212,Bumetanide tab usp 0.5mg 100,Bumetanide Tabs,2025-06,,1272.0,,Insufficient
+40671,Nitroglycerine Sub Tab USP 0.3mg 100,Nitroglycerine,2025-06,,2304.0,,Insufficient
+40617,Carvedilol Tab USP 6.25mg 100,Carvedilol,2025-06,,63432.0,,Insufficient
+40616,Carvedilol Tab USP 3.125mg 500,Carvedilol,2025-06,,12624.0,,Insufficient
+40672,Nitroglycerine Sub Tab USP 0.4mg 100,Nitroglycerine,2025-06,,23496.0,,Insufficient
+40213,Bumetanide tab usp 1mg 100,Bumetanide Tabs,2025-06,,2208.0,,Insufficient
+40214,Bumetanide tab usp 2mg 100,Bumetanide Tabs,2025-06,,4896.0,,Insufficient
+40927,Venlafaxin HCl ER Cap USP 150 mg 90,Venlafaxin HCl ER Cap,2025-04,,0.0,,Insufficient
+45019,Haloperidol OS USP 2MG/ML (120 ML HDPE),Haloperidol Oral Solution,2025-06,,11364.0,,Insufficient
+40926,Venlafaxin HCl ER Cap USP 37.5 mg 90,Venlafaxin HCl ER Cap,2025-04,,0.0,,Insufficient
+40925,Venlafaxin HCl ER Cap USP 75 mg 90,Venlafaxin HCl ER Cap,2025-04,,0.0,,Insufficient
+40910,Aripiprazole OS 1mg/ml 150 PET US,Aripiprazole Oral Solution,2025-06,,21699.0,,Insufficient
+40674,Labetalol HCl Tab USP 100mg 100,Labetalol,2025-06,,3766.0,,Insufficient
+40615,Carvedilol Tab USP 3.125mg 100,Carvedilol,2025-06,,67536.0,,Insufficient
+40675,Labetalol HCl Tab USP 100mg 500,Labetalol,2025-06,,3444.0,,Insufficient
+40613,Amitriptyline HCl Tab USP 150mg 100,Amitriptyline,2025-06,,4452.0,,Insufficient
+40609,Amitriptyline HCl Tab USP 100mg 100,Amitriptyline,2025-06,,48.0,,Insufficient
+40215,Isosorbide Dinitrate Tab USP 30mg 100,Isosorbide DN,2025-06,,8544.0,,Insufficient
+40908,Glipizide Tab USP 10mg 500,Glipizide,2025-06,,4464.0,,Insufficient
+40216,Isosorbide Dinitrate Tab USP 30mg 1000,Isosorbide DN,2025-04,,396.0,,Insufficient
+40676,Labetalol HCl Tab USP 200mg 100,Labetalol,2025-06,,19850.0,,Insufficient
+40217,Potassium Chl Ora sol 20mEq 30,Potassium Chloride PFOS,2025-06,,15768.0,,Insufficient
+40907,Glipizide Tab USP 10mg 100,Glipizide,2025-06,,37008.0,,Insufficient
+40608,Amitriptyline HCl Tab USP 75mg 100,Amitriptyline,2025-06,,11616.0,,Insufficient
+40607,Amitriptyline HCl Tab USP 50mg 1000,Amitriptyline,2025-06,,552.0,,Insufficient
+40218,Potassium Chl Ora sol 20mEq 100,Potassium Chloride PFOS,2025-06,,2193.0,,Insufficient
+40677,Labetalol HCl Tab USP 200mg 500,Labetalol,2025-06,,6204.0,,Insufficient
+40906,Glipizide Tab USP 5 mg 500,Glipizide,2025-06,,21168.0,,Insufficient
+40224,Loratadine OD Tab USP 10mg 3x10,Loratadine ODT (OTC),2025-06,,72.0,,Insufficient
+40905,Glipizide Tab USP 5 mg 100,Glipizide,2025-06,,81720.0,,Insufficient
+40225,Loratadine OD Tab USP 10mg 1x10,Loratadine ODT (OTC),2025-06,,72.0,,Insufficient
+40900,Acyclovir OSP USP 200mg/5ml 473 HD US,Acyclovir Suspension,2025-06,,3390.0,,Insufficient
+40606,Amitriptyline HCl Tab USP 50mg 100,Amitriptyline,2025-06,,4680.0,,Insufficient
+40678,Labetalol HCl Tab USP 300mg 100,Labetalol,2025-06,,4753.0,,Insufficient
+40887,Ipratropium Bro. Nasal Spray 0.03% 30 ml,Ipratropium Bro. Nasal Spray,2025-06,,24.0,,Insufficient
+40605,Amitriptyline HCl Tab USP 25mg 1000,Amitriptyline,2025-06,,0.0,,Insufficient
+40886,Ipratropium Bro. Nasal Spray 0.06% 15 ml,Ipratropium Bro. Nasal Spray,2025-06,,12402.0,,Insufficient
+40679,Labetalol HCl Tab USP 300mg 500,Labetalol,2025-06,,1729.0,,Insufficient
+40882,Guanfacine Tab USP 2mg 100,Guanfacine IR,2025-06,,32928.0,,Insufficient
+40604,Amitriptyline HCl Tab USP 25mg 100,Amitriptyline,2025-06,,2544.0,,Insufficient
+40292,Amiodarone HCl Tab USP 100mg 30,Amiodarone HCl,2025-06,,2592.0,,Insufficient
+40680,Acetazolamide Tab USP 125mg 100,Acetazolamide,2025-06,,6120.0,,Insufficient
+40880,Guanfacine Tab USP 1mg 100,Guanfacine IR,2025-06,,21720.0,,Insufficient
+40682,Acetazolamide Tab USP 250mg 100,Acetazolamide,2025-06,,18268.0,,Insufficient
+40293,Amiodarone HCl Tab USP 400mg 30,Amiodarone HCl,2025-06,,10464.0,,Insufficient
+40603,Amitriptyline HCl Tab USP 10mg 1000,Amitriptyline,2025-06,,2952.0,,Insufficient
+40602,Diclofenac Pot tab 50mg 500,Diclofenac Potassium,2025-06,,1980.0,,Insufficient
+40879,Diclofenac Sod DR Tab USP 75mg 500,Diclofenac Sodium Tab,2025-06,,29868.0,,Insufficient
+40686,Nitroglycerine Sub Tab USP 0.4mg 25,Nitroglycerine,2025-06,,46313.0,,Insufficient
+40690,Desvenlafaxine ER Tab 25mg 30,Desvenlaflaxine,2025-06,,48504.0,,Insufficient
+40601,Baclofen Tab USP 5mg 100,Baclofen,2025-06,,24360.0,,Insufficient
+40692,Desvenlafaxine ER Tab 50 mg 30,Desvenlaflaxine,2025-06,,128448.0,,Insufficient
+40694,Midodrine HCl Tab USP 2.5mg 100,Midodrine,2025-06,,20088.0,,Insufficient
+40695,Midodrine HCl Tab USP 5 mg 100,Midodrine,2025-06,,25896.0,,Insufficient
+40600,Amitriptyline HCl Tab USP 10mg 100,Amitriptyline,2025-06,,12648.0,,Insufficient
+40595,Baclofen Tab USP 10mg 500,Baclofen,2025-06,,19356.0,,Insufficient
+40696,Midodrine HCl Tab USP 10mg 100,Midodrine,2025-06,,20784.0,,Insufficient
+40593,Potassium Chl ER Tab 15mEq 100  KTAB,Potassium Chloride ER,2025-06,,528.0,,Insufficient
+40700,Tramadol HCl Tab USP 50mg 100,Tramadol,2025-06,,153420.0,,Insufficient
+40294,Amiodarone HCl Tab USP 200mg 60,Amiodarone HCl,2025-06,,34381.0,,Insufficient
+40592,Baclofen Tab USP 10mg 100,Baclofen,2025-06,,112056.0,,Insufficient
+40701,Tramadol HCl Tab USP 50mg 500,Tramadol,2025-06,,54585.0,,Insufficient
+40702,Tramadol HCl Tab USP 50mg 1000,Tramadol,2025-06,,15006.0,,Insufficient
+40874,Gabapentin Tab USP 800mg 100,Gabapentin Tab,2025-05,,0.0,,Insufficient
+40591,Gabapentin Tab USP 600mg 500,Gabapentin Tab,2025-04,,0.0,,Insufficient
+40589,Gabapentin Tab USP 800mg 500,Gabapentin Tab,2025-04,,0.0,,Insufficient
+40584,Tramadol HCL Tab 75mg 30,Tramadol,2025-06,,16464.0,,Insufficient
+40566,Sildenafil Tab USP 20mg 90,Sildenafil Citrate,2025-06,,14316.0,,Insufficient
+40565,Baclofen Tab USP 20mg 100,Baclofen,2025-06,,31392.0,,Insufficient
+40703,Sildenafil Tab USP 25mg 500,Sildenafil Citrate,2025-06,,456.0,,Insufficient
+40873,Gabapentin Tab USP 600mg 100,Gabapentin Tab,2025-04,,0.0,,Insufficient
+40705,Sildenafil Tab USP 50mg 1000,Sildenafil Citrate,2025-06,,576.0,,Insufficient
+40564,Cyclobenzaprine HCl Tab USP 7.5mg 100,Cyclobenzaprine HCl,2025-06,,7560.0,,Insufficient
+40529,Cevimeline HCl Cap 30mg 30,Cevimeline HCL,2025-06,,6288.0,,Insufficient
+40525,Glipizide Tab USP 10mg 1000,Glipizide,2025-06,,2700.0,,Insufficient
+40866,Loperamide HCL Cap USP 2mg 500,Loperamide Caps,2025-06,,156.0,,Insufficient
+40295,Amiodarone HCl Tab USP 200mg 500,Amiodarone HCl,2025-06,,3372.0,,Insufficient
+40706,Sildenafil Tab USP 100mg 1000,Sildenafil Citrate,2025-06,,684.0,,Insufficient
+40865,Loperamide HCL Cap USP 2mg 100,Loperamide Caps,2025-06,,6072.0,,Insufficient
+41156,Ivermectin Tab USP 3mg 2X10,Ivermectin Tab,2025-06,,53952.0,,Insufficient
+40864,Cevimeline HCl Cap 30mg 100,Cevimeline HCL,2025-06,,2520.0,,Insufficient
+40707,Metoprolol Tar Tab USP 25mg 500,Metoprolol Tartrate,2025-06,,176.0,,Insufficient
+40521,Cyclobenzaprine HCl Tab USP 10mg 100,Cyclobenzaprine HCl,2025-06,,10176.0,,Insufficient
+40520,Cyclobenzaprine HCl Tab USP 5mg 100,Cyclobenzaprine HCl,2025-06,,20616.0,,Insufficient
+40519,Glipizide Tab USP 5 mg 1000,Glipizide,2025-06,,5604.0,,Insufficient
+40514,Bisoprolol Fum tab USP 10mg 30,Bisoprolol Fumarate,2025-06,,1704.0,,Insufficient
+40710,Clonazepam Tab USP 0.5mg 100,Clonazepam Tab,2025-06,,117480.0,,Insufficient
+40513,Cyclobenzaprine HCl Tab USP 10mg 1000,Cyclobenzaprine HCl,2025-06,,34140.0,,Insufficient
+40512,Cyclobenzaprine HCl Tab USP 10mg 500,Cyclobenzaprine HCl,2025-06,,17436.0,,Insufficient
+40511,Cyclobenzaprine HCl Tab USP 5mg 500,Cyclobenzaprine HCl,2025-06,,5844.0,,Insufficient
+40855,DHE NS USP 4 mg/ml 8's,Dihydroergotamine Spray,2025-06,,973.0,,Insufficient
+40711,Clonazepam Tab USP 0.5mg 1000,Clonazepam Tab,2025-06,,11076.0,,Insufficient
+40854,DHE NS USP 4 mg/ml 1's,Dihydroergotamine Spray,2025-06,,17.0,,Insufficient
+40842,Lidocaine Oral Topi Soln USP 2% 100ml,Lidocaine HCL Oral Solution,2025-06,,324645.0,,Insufficient
+40304,Potassium Chl ER Tab USP 20mEq 100 AB3,Potassium Chloride ER,2025-06,,165087.0,,Insufficient
+40510,Dicyclomine HCL Tab USP 20mg 1000,Dicyclomine HCl Tab,2025-06,,10764.0,,Insufficient
+40509,Dicyclomine HCL Tab USP 20mg 100,Dicyclomine HCl Tab,2025-06,,124488.0,,Insufficient
+40713,Clonazepam Tab USP 1mg 100,Clonazepam Tab,2025-06,,69528.0,,Insufficient
+40500,Pot. Chl ER Tab USP 15mEq 100 AB1 KlorCon,Potassium Chloride Klorcon,2025-06,,1416.0,,Insufficient
+40497,Tramadol HCL Tab USP 25mg 30,Tramadol,2025-06,,3240.0,,Insufficient
+40714,Clonazepam Tab USP 1mg 1000,Clonazepam Tab,2025-06,,11712.0,,Insufficient
+40492,Carbi + Levo tab USP 25/100mg 1000,Carbidopa and Levdopa Tab,2025-06,,5592.0,,Insufficient
+40716,Clonazepam Tab USP 2mg 100,Clonazepam Tab,2025-06,,42264.0,,Insufficient
+40841,"Baclofen Oral Sol. 5mg/5ml, 473ml",Baclofeb Oral Solution,2025-06,,8412.0,,Insufficient
+40491,Carbi + Levo tab USP 25/100mg 100,Carbidopa and Levdopa Tab,2025-05,,36240.0,,Insufficient
+40489,Carbi + Levo tab USP 10/100mg 1000,Carbidopa and Levdopa Tab,2025-06,,1464.0,,Insufficient
+40488,Carbi + Levo tab USP 10/100mg 100,Carbidopa and Levdopa Tab,2025-06,,5304.0,,Insufficient
+40307,Buspirone HCl Tab USP 5mg 100,Buspirone HCl,2025-06,,98184.0,,Insufficient
+40486,Carbi + Levo tab USP 25/250mg 1000,Carbidopa and Levdopa Tab,2025-06,,96.0,,Insufficient
+40308,Buspirone HCl Tab USP 5mg 500,Buspirone HCl,2025-06,,19608.0,,Insufficient
+40725,Nor HCL OS USP 10mg/5mL Bas 473 PET US,Nortriptyline HCL Oral Solution,2025-06,,1935.0,,Insufficient
+40835,Triamterene & HCTZ Tab USP 75/50 mg 500,Triamterene HCTZ,2025-06,,3972.0,,Insufficient
+40726,Baclofen Tab USP 10mg 1000,Baclofen,2025-06,,10536.0,,Insufficient
+40309,Buspirone HCl Tab USP 10mg 100,Buspirone HCl,2025-06,,103776.0,,Insufficient
+40834,Triamterene & HCTZ Tab USP 37.5/25mg 500,Triamterene HCTZ,2025-06,,21312.0,,Insufficient
+40310,Buspirone HCl Tab USP 10mg 500,Buspirone HCl,2025-06,,5772.0,,Insufficient
+40833,Carbi + Levo tab USP 25/250mg 500,Carbidopa and Levdopa Tab,2025-05,,96.0,,Insufficient
+40727,Baclofen Tab USP 20mg 500,Baclofen,2025-06,,672.0,,Insufficient
+40485,Carbi + Levo tab USP 25/250mg 100,Carbidopa and Levdopa Tab,2025-05,,12120.0,,Insufficient
+40475,Carbi + Levo ER Tab USP 50/200mg 100,Carbidopa and Levdopa ER Tab,2025-06,,13704.0,,Insufficient
+45018,Haloperidol OS USP 2MG/ML (15 ML HDPE),Haloperidol Oral Solution,2025-06,,8400.0,,Insufficient
+40832,Carbi + Levo tab USP 25/100mg 500,Carbidopa and Levdopa Tab,2025-05,,60.0,,Insufficient
+40472,Carbi + Levo ER Tab USP 25/100mg 100,Carbidopa and Levdopa ER Tab,2025-06,,5064.0,,Insufficient
+40728,Cyclobenzaprine HCl Tab USP 5mg 1000,Cyclobenzaprine HCl,2025-06,,4800.0,,Insufficient
+40039,Rabeprazole Sod DR Tab 20mg 30,Rabeprazole Sodium,2025-06,,984.0,,Insufficient
+40040,Rabeprazole Sod DR Tab 20mg 90,Rabeprazole Sodium,2025-06,,10488.0,,Insufficient
+40830,Buprenorphine Sl Tab 8 Mg 30,Buprenorphine Sl,2025-06,,159528.0,,Insufficient
+40311,Buspirone HCl Tab USP 15mg 60,Buspirone HCl,2025-06,,7680.0,,Insufficient
+40729,Baclofen Tab USP 20mg 1000,Baclofen,2025-06,,3120.0,,Insufficient
+40471,Carbi + Levo ER Tab USP 25/100mg 30,Carbidopa and Levdopa ER Tab,2025-04,,720.0,,Insufficient
+40730,Amantadine HCl Cap USP 100mg 500,Amantadine HCL,2025-06,,4848.0,,Insufficient
+40828,Buprenorphine Sl Tab 2 Mg 30,Buprenorphine Sl,2025-06,,51336.0,,Insufficient
+40734,"POTASSIUM CHLORIDE ORAL SOLUTION USP,20%",Potassium Chloride Oral Solution,2025-06,,4755.0,,Insufficient
+40463,Triamterene & HCTZ Tab USP 75/50mg 100,Triamterene HCTZ,2025-06,,3720.0,,Insufficient
+40817,Carbi + Levo tab USP 10/100mg 500,Carbidopa and Levdopa Tab,2025-06,,1644.0,,Insufficient
+40312,Buspirone HCl Tab USP 15mg 100,Buspirone HCl,2025-06,,35760.0,,Insufficient
+40313,Buspirone HCl Tab USP 15mg 500,Buspirone HCl,2025-06,,4860.0,,Insufficient
+40741,Sildenafil Tab USP 20mg 1000,Sildenafil Citrate,2025-06,,14232.0,,Insufficient
+40742,Tramadol HCl Tab USP 100mg 100,Tramadol,2025-06,,23032.0,,Insufficient
+40139,Amantadine HCl Cap USP 100mg 30,Amantadine HCL,2025-06,,9720.0,,Insufficient
+40460,Triamterene & HCTZ Tab USP 37.5/25mg 100,Triamterene HCTZ,2025-06,,37416.0,,Insufficient
+40453,Potassium Chl ER Tab USP 10mEq 1000 AB3,Potassium Chloride ER,2025-06,,1344.0,,Insufficient
+40816,Potassium Chl Ora sol 20mEq 50,Potassium Chloride PFOS,2025-06,,1392.0,,Insufficient
+40314,Buspirone HCl Tab USP 7.5mg 100,Buspirone HCl,2025-06,,16344.0,,Insufficient
+40315,Buspirone HCl Tab USP 7.5mg 500,Buspirone HCl,2025-06,,1188.0,,Insufficient
+40754,Lithium OS USP 8 mEq Per 5 mL 500 HD US,Lithium Oral Solution,2025-06,,1081.0,,Insufficient
+40759,Pot Chl OS USP 10% (20mEq/15ml) 473HD US,Potassium Chloride Oral Solution,2025-06,,21375.0,,Insufficient
+40452,Potassium Chl ER Tab USP 20mEq 500 AB3,Potassium Chloride ER,2025-06,,5292.0,,Insufficient
+40774,Tranexamic Acid Tab USP 650 mg 30,Tranexamic Acid Tab,2025-06,,30552.0,,Insufficient
+40446,Isosorbide Dinitrate Tab USP 40mg 100,Isosorbide DN,2025-06,,3624.0,,Insufficient
+40781,Bisoprolol Fum Tab USP 5 mg 30,Bisoprolol Fumarate,2025-04,,6960.0,,Insufficient
+40445,Isosorbide Dinitrate Tab USP 20mg 1000,Isosorbide DN,2025-06,,612.0,,Insufficient
+40444,Isosorbide Dinitrate Tab USP 20mg 100,Isosorbide DN,2025-06,,15534.0,,Insufficient
+40782,Bisoprolol Fum Tab USP 5 mg 100,Bisoprolol Fumarate,2025-06,,32472.0,,Insufficient
+40815,Potassium Chl ER Tab USP 10mEq 500 AB3,Potassium Chloride ER,2025-06,,1176.0,,Insufficient
+40443,Isosorbide Dinitrate Tab USP 10mg 1000,Isosorbide DN,2025-06,,204.0,,Insufficient
+40442,Isosorbide Dinitrate Tab USP 10mg 100,Isosorbide DN,2025-06,,7776.0,,Insufficient
+40785,Bisoprolol Fum Tab USP 10 mg 100,Bisoprolol Fumarate,2025-06,,8952.0,,Insufficient
+40796,Clonazepam Tab USP 0.5mg 500,Clonazepam Tab,2025-06,,23136.0,,Insufficient
+40797,Clonazepam Tab USP 1mg 500,Clonazepam Tab,2025-06,,19176.0,,Insufficient
+40441,Isosorbide Dinitrate Tab USP 5mg 1000,Isosorbide DN,2025-05,,204.0,,Insufficient
+40440,Isosorbide Dinitrate Tab USP 5mg 100,Isosorbide DN,2025-06,,12048.0,,Insufficient
+40798,Clonazepam Tab USP 2mg 500,Clonazepam Tab,2025-06,,18720.0,,Insufficient
+40335,Diclofenac Pot Tab USP 50mg 100,Diclofenac Potassium,2025-06,,64035.0,,Insufficient
+40332,Diclofenac Pot Tab USP 25mg 30,Diclofenac Potassium,2025-06,,16608.0,,Insufficient
+40317,Buspirone HCl Tab USP 30mg 500,Buspirone HCl,2025-06,,1368.0,,Insufficient
+40316,Buspirone HCl Tab USP 30mg 60,Buspirone HCl,2025-06,,53472.0,,Insufficient
+40809,Gabapentin OS 250 mg/5 mL 470 PET US,Gabapentin Oral Solution,2025-06,,23184.0,,Insufficient
+41027,Fluticasone Pro NS USP 50 mcg,Fluticasone Nasal Spray,2024-12,2025-06,,234404.896666666,Insufficient
+40304,Potassium Chl ER Tab USP 20mEq 100 AB3,Potassium Chloride ER,2025-02,2025-03,165087.0,192089.786462527,Insufficient
+40304,Potassium Chl ER Tab USP 20mEq 100 AB3,Potassium Chloride ER,2025-01,2025-02,165087.0,192089.786462527,Insufficient
+40304,Potassium Chl ER Tab USP 20mEq 100 AB3,Potassium Chloride ER,2024-12,2025-01,165087.0,191201.786462527,Insufficient
+40304,Potassium Chl ER Tab USP 20mEq 100 AB3,Potassium Chloride ER,2025-05,2025-06,165087.0,185240.81472884,Insufficient
+40304,Potassium Chl ER Tab USP 20mEq 100 AB3,Potassium Chloride ER,2025-04,2025-05,165087.0,185240.81472884,Insufficient
+40304,Potassium Chl ER Tab USP 20mEq 100 AB3,Potassium Chloride ER,2025-03,2025-04,165087.0,181722.81472884,Insufficient
+40309,Buspirone HCl Tab USP 10mg 100,Buspirone HCl,2025-02,2025-03,103776.0,143966.0,Insufficient
+40309,Buspirone HCl Tab USP 10mg 100,Buspirone HCl,2025-01,2025-02,103776.0,143966.0,Insufficient
+40309,Buspirone HCl Tab USP 10mg 100,Buspirone HCl,2024-12,2025-01,103776.0,143966.0,Insufficient
+40309,Buspirone HCl Tab USP 10mg 100,Buspirone HCl,2025-03,2025-04,103776.0,136634.0,Insufficient
+40309,Buspirone HCl Tab USP 10mg 100,Buspirone HCl,2025-04,2025-05,103776.0,136634.0,Insufficient
+40309,Buspirone HCl Tab USP 10mg 100,Buspirone HCl,2025-05,2025-06,103776.0,136634.0,Insufficient
+40692,Desvenlafaxine ER Tab 50 mg 30,Desvenlaflaxine,2025-05,2025-06,128448.0,133908.5,Insufficient
+40692,Desvenlafaxine ER Tab 50 mg 30,Desvenlaflaxine,2025-04,2025-05,128448.0,133908.5,Insufficient
+40592,Baclofen Tab USP 10mg 100,Baclofen,2024-12,2025-01,112056.0,115956.0,Insufficient
+40592,Baclofen Tab USP 10mg 100,Baclofen,2025-02,2025-03,112056.0,115943.5,Insufficient
+40592,Baclofen Tab USP 10mg 100,Baclofen,2025-01,2025-02,112056.0,115943.5,Insufficient
+40592,Baclofen Tab USP 10mg 100,Baclofen,2025-05,2025-06,112056.0,115875.0,Insufficient
+40592,Baclofen Tab USP 10mg 100,Baclofen,2025-04,2025-05,112056.0,115875.0,Insufficient
+40592,Baclofen Tab USP 10mg 100,Baclofen,2025-03,2025-04,112056.0,115875.0,Insufficient
+40653,Metoprolol Tar Tab USP 25mg 1000,Metoprolol Tartrate,2024-11,2024-12,204.0,112954.933333333,Insufficient
+40781,Bisoprolol Fum Tab USP 5 mg 30,Bisoprolol Fumarate,2024-11,2024-12,6960.0,111913.864,Insufficient
+40726,Baclofen Tab USP 10mg 1000,Baclofen,2024-11,2024-12,10536.0,109626.0,Insufficient
+40312,Buspirone HCl Tab USP 15mg 100,Buspirone HCl,2025-01,2025-02,35760.0,106802.333333333,Insufficient
+40312,Buspirone HCl Tab USP 15mg 100,Buspirone HCl,2024-12,2025-01,35760.0,106802.333333333,Insufficient
+40307,Buspirone HCl Tab USP 5mg 100,Buspirone HCl,2025-01,2025-02,98184.0,105699.272727272,Insufficient
+40307,Buspirone HCl Tab USP 5mg 100,Buspirone HCl,2025-02,2025-03,98184.0,105699.272727272,Insufficient
+40307,Buspirone HCl Tab USP 5mg 100,Buspirone HCl,2024-12,2025-01,98184.0,105699.272727272,Insufficient
+40307,Buspirone HCl Tab USP 5mg 100,Buspirone HCl,2025-05,2025-06,98184.0,105195.272727272,Insufficient
+40307,Buspirone HCl Tab USP 5mg 100,Buspirone HCl,2025-03,2025-04,98184.0,105195.272727272,Insufficient
+40307,Buspirone HCl Tab USP 5mg 100,Buspirone HCl,2025-04,2025-05,98184.0,105195.272727272,Insufficient
+40886,Ipratropium Bro. Nasal Spray 0.06% 15 ml,Ipratropium Bro. Nasal Spray,2025-04,2025-05,12402.0,98545.0,Insufficient
+40312,Buspirone HCl Tab USP 15mg 100,Buspirone HCl,2025-02,2025-03,35760.0,96802.3333333333,Insufficient
+40312,Buspirone HCl Tab USP 15mg 100,Buspirone HCl,2025-05,2025-06,35760.0,96802.3333333333,Insufficient
+40312,Buspirone HCl Tab USP 15mg 100,Buspirone HCl,2025-04,2025-05,35760.0,96802.3333333333,Insufficient
+40312,Buspirone HCl Tab USP 15mg 100,Buspirone HCl,2025-03,2025-04,35760.0,96802.3333333333,Insufficient
+40886,Ipratropium Bro. Nasal Spray 0.06% 15 ml,Ipratropium Bro. Nasal Spray,2025-05,2025-06,12402.0,95909.5,Insufficient
+40716,Clonazepam Tab USP 2mg 100,Clonazepam Tab,2024-11,2024-12,42264.0,93999.9202721088,Insufficient
+41065,Metoprolol Tar Tab USP 25mg 1000 UnTS,Metoprolol Tartrate (Uncoated),2025-04,2025-05,69900.0,92900.3,Insufficient
+40886,Ipratropium Bro. Nasal Spray 0.06% 15 ml,Ipratropium Bro. Nasal Spray,2025-03,2025-04,12402.0,90708.0,Insufficient
+41065,Metoprolol Tar Tab USP 25mg 1000 UnTS,Metoprolol Tartrate (Uncoated),2025-05,2025-06,69900.0,82776.3,Insufficient
+40702,Tramadol HCl Tab USP 50mg 1000,Tramadol,2024-11,2024-12,15006.0,82237.3158399808,Insufficient
+40900,Acyclovir OSP USP 200mg/5ml 473 HD US,Acyclovir Suspension,2024-11,2024-12,3390.0,77035.28307999,Insufficient
+40865,Loperamide HCL Cap USP 2mg 100,Loperamide Caps,2024-11,2024-12,6072.0,71691.4793870931,Insufficient
+40864,Cevimeline HCl Cap 30mg 100,Cevimeline HCL,2024-11,2024-12,2520.0,71128.8466666666,Insufficient
+40513,Cyclobenzaprine HCl Tab USP 10mg 1000,Cyclobenzaprine HCl,2024-11,2024-12,34140.0,67780.0,Insufficient
+40828,Buprenorphine Sl Tab 2 Mg 30,Buprenorphine Sl,2025-04,2025-05,51336.0,66952.6666666666,Insufficient
+40828,Buprenorphine Sl Tab 2 Mg 30,Buprenorphine Sl,2025-05,2025-06,51336.0,66952.6666666666,Insufficient
+40828,Buprenorphine Sl Tab 2 Mg 30,Buprenorphine Sl,2025-03,2025-04,51336.0,63203.1666666666,Insufficient
+40774,Tranexamic Acid Tab USP 650 mg 30,Tranexamic Acid Tab,2025-05,2025-06,30552.0,62830.3333333333,Insufficient
+40774,Tranexamic Acid Tab USP 650 mg 30,Tranexamic Acid Tab,2025-04,2025-05,30552.0,62714.3333333333,Insufficient
+40774,Tranexamic Acid Tab USP 650 mg 30,Tranexamic Acid Tab,2025-02,2025-03,30552.0,60641.1428571428,Insufficient
+40774,Tranexamic Acid Tab USP 650 mg 30,Tranexamic Acid Tab,2025-01,2025-02,30552.0,60641.1428571428,Insufficient
+40658,Metoprolol Tar Tab USP 75mg 100,Metoprolol Tartrate,2024-11,2024-12,28272.0,60517.0655692082,Insufficient
+40796,Clonazepam Tab USP 0.5mg 500,Clonazepam Tab,2025-01,2025-02,23136.0,60466.4475672687,Insufficient
+40796,Clonazepam Tab USP 0.5mg 500,Clonazepam Tab,2025-02,2025-03,23136.0,60466.4475672687,Insufficient
+40796,Clonazepam Tab USP 0.5mg 500,Clonazepam Tab,2024-12,2025-01,23136.0,60340.4475672687,Insufficient
+40690,Desvenlafaxine ER Tab 25mg 30,Desvenlaflaxine,2025-04,2025-05,48504.0,60293.3777777777,Insufficient
+40690,Desvenlafaxine ER Tab 25mg 30,Desvenlaflaxine,2025-05,2025-06,48504.0,60293.3777777777,Insufficient
+40774,Tranexamic Acid Tab USP 650 mg 30,Tranexamic Acid Tab,2025-03,2025-04,30552.0,59578.0,Insufficient
+40652,Metoprolol Tar tab USP 25mg 100,Metoprolol Tartrate,2024-11,2024-12,27627.0,59383.8666666666,Insufficient
+40797,Clonazepam Tab USP 1mg 500,Clonazepam Tab,2025-02,2025-03,19176.0,57586.7521334764,Insufficient
+40797,Clonazepam Tab USP 1mg 500,Clonazepam Tab,2025-01,2025-02,19176.0,57586.7521334764,Insufficient
+40797,Clonazepam Tab USP 1mg 500,Clonazepam Tab,2024-12,2025-01,19176.0,57572.7521334764,Insufficient
+40828,Buprenorphine Sl Tab 2 Mg 30,Buprenorphine Sl,2025-01,2025-02,51336.0,56940.6666666666,Insufficient
+40828,Buprenorphine Sl Tab 2 Mg 30,Buprenorphine Sl,2025-02,2025-03,51336.0,56940.6666666666,Insufficient
+40316,Buspirone HCl Tab USP 30mg 60,Buspirone HCl,2025-02,2025-03,53472.0,56439.5534089191,Insufficient
+40316,Buspirone HCl Tab USP 30mg 60,Buspirone HCl,2025-01,2025-02,53472.0,56439.5534089191,Insufficient
+40734,"POTASSIUM CHLORIDE ORAL SOLUTION USP,20%",Potassium Chloride Oral Solution,2024-11,2024-12,4755.0,55907.6568743562,Insufficient
+40690,Desvenlafaxine ER Tab 25mg 30,Desvenlaflaxine,2025-03,2025-04,48504.0,55767.0444444444,Insufficient
+40316,Buspirone HCl Tab USP 30mg 60,Buspirone HCl,2024-12,2025-01,53472.0,55521.5534089191,Insufficient
+40294,Amiodarone HCl Tab USP 200mg 60,Amiodarone HCl,2025-02,2025-03,34381.0,55445.0,Insufficient
+40294,Amiodarone HCl Tab USP 200mg 60,Amiodarone HCl,2025-01,2025-02,34381.0,55445.0,Insufficient
+40316,Buspirone HCl Tab USP 30mg 60,Buspirone HCl,2025-05,2025-06,53472.0,55435.0534089191,Insufficient
+40316,Buspirone HCl Tab USP 30mg 60,Buspirone HCl,2025-03,2025-04,53472.0,55435.0534089191,Insufficient
+40316,Buspirone HCl Tab USP 30mg 60,Buspirone HCl,2025-04,2025-05,53472.0,55435.0534089191,Insufficient
+40887,Ipratropium Bro. Nasal Spray 0.03% 30 ml,Ipratropium Bro. Nasal Spray,2025-04,2025-05,24.0,55266.0,Insufficient
+40887,Ipratropium Bro. Nasal Spray 0.03% 30 ml,Ipratropium Bro. Nasal Spray,2025-05,2025-06,24.0,55266.0,Insufficient
+40294,Amiodarone HCl Tab USP 200mg 60,Amiodarone HCl,2024-12,2025-01,34381.0,55112.0,Insufficient
+40690,Desvenlafaxine ER Tab 25mg 30,Desvenlaflaxine,2025-02,2025-03,48504.0,55058.1555555555,Insufficient
+40690,Desvenlafaxine ER Tab 25mg 30,Desvenlaflaxine,2025-01,2025-02,48504.0,55058.1555555555,Insufficient
+40294,Amiodarone HCl Tab USP 200mg 60,Amiodarone HCl,2025-03,2025-04,34381.0,54981.0,Insufficient
+40294,Amiodarone HCl Tab USP 200mg 60,Amiodarone HCl,2025-05,2025-06,34381.0,54981.0,Insufficient
+40294,Amiodarone HCl Tab USP 200mg 60,Amiodarone HCl,2025-04,2025-05,34381.0,54981.0,Insufficient
+40774,Tranexamic Acid Tab USP 650 mg 30,Tranexamic Acid Tab,2024-12,2025-01,30552.0,54365.1428571428,Insufficient
+40796,Clonazepam Tab USP 0.5mg 500,Clonazepam Tab,2025-03,2025-04,23136.0,52999.2516279641,Insufficient
+40797,Clonazepam Tab USP 1mg 500,Clonazepam Tab,2025-03,2025-04,19176.0,52183.2521334764,Insufficient
+40797,Clonazepam Tab USP 1mg 500,Clonazepam Tab,2025-04,2025-05,19176.0,51311.2521334764,Insufficient
+40797,Clonazepam Tab USP 1mg 500,Clonazepam Tab,2025-05,2025-06,19176.0,51311.2521334764,Insufficient
+40887,Ipratropium Bro. Nasal Spray 0.03% 30 ml,Ipratropium Bro. Nasal Spray,2024-12,2025-04,24.0,50458.0,Insufficient
+41069,Metoprolol Tar Tab USP 50mg 1000 UnTS,Metoprolol Tartrate (Uncoated),2025-05,2025-06,44148.0,50090.8333333333,Insufficient
+41069,Metoprolol Tar Tab USP 50mg 1000 UnTS,Metoprolol Tartrate (Uncoated),2025-04,2025-05,44148.0,50090.8333333333,Insufficient
+40796,Clonazepam Tab USP 0.5mg 500,Clonazepam Tab,2025-04,2025-05,23136.0,49887.2516279641,Insufficient
+40796,Clonazepam Tab USP 0.5mg 500,Clonazepam Tab,2025-05,2025-06,23136.0,49887.2516279641,Insufficient
+40695,Midodrine HCl Tab USP 5 mg 100,Midodrine,2025-05,2025-06,25896.0,49121.5,Insufficient
+40695,Midodrine HCl Tab USP 5 mg 100,Midodrine,2025-04,2025-05,25896.0,49121.5,Insufficient
+40623,Primidone Tab USP 50mg 100,Primidone,2025-02,2025-03,43992.0,48153.8333333333,Insufficient
+40623,Primidone Tab USP 50mg 100,Primidone,2025-01,2025-02,43992.0,48153.8333333333,Insufficient
+40215,Isosorbide Dinitrate Tab USP 30mg 100,Isosorbide DN,2024-11,2024-12,8544.0,48115.7666666666,Insufficient
+40623,Primidone Tab USP 50mg 100,Primidone,2024-12,2025-01,43992.0,47902.8333333333,Insufficient
+40759,Pot Chl OS USP 10% (20mEq/15ml) 473HD US,Potassium Chloride Oral Solution,2024-11,2024-12,21375.0,47316.4444444444,Insufficient
+40623,Primidone Tab USP 50mg 100,Primidone,2025-05,2025-06,43992.0,47270.3333333333,Insufficient
+40623,Primidone Tab USP 50mg 100,Primidone,2025-04,2025-05,43992.0,47270.3333333333,Insufficient
+40623,Primidone Tab USP 50mg 100,Primidone,2025-03,2025-04,43992.0,47270.3333333333,Insufficient
+40759,Pot Chl OS USP 10% (20mEq/15ml) 473HD US,Potassium Chloride Oral Solution,2025-04,2025-05,21375.0,46015.7025490663,Insufficient
+40759,Pot Chl OS USP 10% (20mEq/15ml) 473HD US,Potassium Chloride Oral Solution,2025-05,2025-06,21375.0,46015.7025490663,Insufficient
+40142,Pregabalin ER tab 82.5mg 30,Pregabalin tab ER,2024-11,2024-12,0.0,45359.6480621737,Insufficient
+40695,Midodrine HCl Tab USP 5 mg 100,Midodrine,2025-03,2025-04,25896.0,43160.0,Insufficient
+40565,Baclofen Tab USP 20mg 100,Baclofen,2025-02,2025-03,31392.0,42682.0,Insufficient
+40565,Baclofen Tab USP 20mg 100,Baclofen,2025-01,2025-02,31392.0,42682.0,Insufficient
+40565,Baclofen Tab USP 20mg 100,Baclofen,2025-03,2025-04,31392.0,42351.5,Insufficient
+40565,Baclofen Tab USP 20mg 100,Baclofen,2025-05,2025-06,31392.0,42351.5,Insufficient
+40565,Baclofen Tab USP 20mg 100,Baclofen,2025-04,2025-05,31392.0,42351.5,Insufficient
+40140,Amantadine HCl Cap USP 100mg 100,Amantadine HCL,2025-05,2025-06,15505.0,41939.6190658012,Insufficient
+40140,Amantadine HCl Cap USP 100mg 100,Amantadine HCL,2025-04,2025-05,15505.0,41939.6190658011,Insufficient
+40156,Diclofenac Sod DR Tab USP 75mg 100,Diclofenac Sodium Tab,2024-11,2024-12,336.0,41855.8333333333,Insufficient
+40601,Baclofen Tab USP 5mg 100,Baclofen,2025-01,2025-02,24360.0,41357.864,Insufficient
+40601,Baclofen Tab USP 5mg 100,Baclofen,2025-02,2025-03,24360.0,41357.864,Insufficient
+40759,Pot Chl OS USP 10% (20mEq/15ml) 473HD US,Potassium Chloride Oral Solution,2025-03,2025-04,21375.0,41352.0358823996,Insufficient
+40601,Baclofen Tab USP 5mg 100,Baclofen,2025-04,2025-05,24360.0,41077.364,Insufficient
+40601,Baclofen Tab USP 5mg 100,Baclofen,2025-03,2025-04,24360.0,41077.364,Insufficient
+40601,Baclofen Tab USP 5mg 100,Baclofen,2025-05,2025-06,24360.0,41077.364,Insufficient
+40601,Baclofen Tab USP 5mg 100,Baclofen,2024-12,2025-01,24360.0,40787.864,Insufficient
+40759,Pot Chl OS USP 10% (20mEq/15ml) 473HD US,Potassium Chloride Oral Solution,2024-12,2025-01,21375.0,40701.9247712885,Insufficient
+40759,Pot Chl OS USP 10% (20mEq/15ml) 473HD US,Potassium Chloride Oral Solution,2025-01,2025-02,21375.0,40487.0914379552,Insufficient
+40759,Pot Chl OS USP 10% (20mEq/15ml) 473HD US,Potassium Chloride Oral Solution,2025-02,2025-03,21375.0,40487.0914379552,Insufficient
+40601,Baclofen Tab USP 5mg 100,Baclofen,2024-11,2024-12,24360.0,40389.5,Insufficient
+40565,Baclofen Tab USP 20mg 100,Baclofen,2024-12,2025-01,31392.0,39784.0,Insufficient
+40672,Nitroglycerine Sub Tab USP 0.4mg 100,Nitroglycerine,2024-11,2024-12,23496.0,38985.3333333333,Insufficient
+40707,Metoprolol Tar Tab USP 25mg 500,Metoprolol Tartrate,2024-11,2024-12,176.0,38605.0479999999,Insufficient
+40622,Carvedilol Tab USP 25mg 500,Carvedilol,2025-02,2025-03,20676.0,38186.2666666666,Insufficient
+40622,Carvedilol Tab USP 25mg 500,Carvedilol,2025-01,2025-02,20676.0,38186.2666666666,Insufficient
+40622,Carvedilol Tab USP 25mg 500,Carvedilol,2024-12,2025-01,20676.0,38126.2666666666,Insufficient
+40622,Carvedilol Tab USP 25mg 500,Carvedilol,2025-04,2025-05,20676.0,37199.0333333333,Insufficient
+40622,Carvedilol Tab USP 25mg 500,Carvedilol,2025-03,2025-04,20676.0,37199.0333333333,Insufficient
+40622,Carvedilol Tab USP 25mg 500,Carvedilol,2025-05,2025-06,20676.0,37199.0333333333,Insufficient
+40797,Clonazepam Tab USP 1mg 500,Clonazepam Tab,2024-11,2024-12,19176.0,36646.2040606954,Insufficient
+40620,Carvedilol Tab USP 12.5mg 500,Carvedilol,2025-04,2025-05,23760.0,35566.536231884,Insufficient
+40620,Carvedilol Tab USP 12.5mg 500,Carvedilol,2025-03,2025-04,23760.0,35566.536231884,Insufficient
+40620,Carvedilol Tab USP 12.5mg 500,Carvedilol,2025-05,2025-06,23760.0,35566.536231884,Insufficient
+40675,Labetalol HCl Tab USP 100mg 500,Labetalol,2024-11,2024-12,3444.0,35509.1862028142,Insufficient
+40880,Guanfacine Tab USP 1mg 100,Guanfacine IR,2025-02,2025-03,21720.0,35440.1666666666,Insufficient
+40880,Guanfacine Tab USP 1mg 100,Guanfacine IR,2025-01,2025-02,21720.0,35440.1666666666,Insufficient
+40217,Potassium Chl Ora sol 20mEq 30,Potassium Chloride PFOS,2024-11,2024-12,15768.0,35358.2809037731,Insufficient
+40618,Carvedilol Tab USP 6.25mg 500,Carvedilol,2025-03,2025-04,18984.0,35257.0,Insufficient
+40618,Carvedilol Tab USP 6.25mg 500,Carvedilol,2025-05,2025-06,18984.0,35257.0,Insufficient
+40618,Carvedilol Tab USP 6.25mg 500,Carvedilol,2025-04,2025-05,18984.0,35256.9999999999,Insufficient
+40618,Carvedilol Tab USP 6.25mg 500,Carvedilol,2024-12,2025-01,18984.0,34657.5,Insufficient
+40620,Carvedilol Tab USP 12.5mg 500,Carvedilol,2024-12,2025-01,23760.0,34641.8695652173,Insufficient
+40620,Carvedilol Tab USP 12.5mg 500,Carvedilol,2025-01,2025-02,23760.0,34639.3695652173,Insufficient
+40620,Carvedilol Tab USP 12.5mg 500,Carvedilol,2025-02,2025-03,23760.0,34639.3695652173,Insufficient
+40618,Carvedilol Tab USP 6.25mg 500,Carvedilol,2025-01,2025-02,18984.0,34635.3333333333,Insufficient
+40618,Carvedilol Tab USP 6.25mg 500,Carvedilol,2025-02,2025-03,18984.0,34635.3333333333,Insufficient
+40292,Amiodarone HCl Tab USP 100mg 30,Amiodarone HCl,2025-04,2025-05,2592.0,34519.3333333333,Insufficient
+40292,Amiodarone HCl Tab USP 100mg 30,Amiodarone HCl,2025-05,2025-06,2592.0,33505.3333333333,Insufficient
+40520,Cyclobenzaprine HCl Tab USP 5mg 100,Cyclobenzaprine HCl,2024-11,2024-12,20616.0,33334.6666666666,Insufficient
+40695,Midodrine HCl Tab USP 5 mg 100,Midodrine,2025-02,2025-03,25896.0,32520.5333333333,Insufficient
+40695,Midodrine HCl Tab USP 5 mg 100,Midodrine,2024-12,2025-01,25896.0,32408.5333333333,Insufficient
+40695,Midodrine HCl Tab USP 5 mg 100,Midodrine,2025-01,2025-02,25896.0,32408.5333333333,Insufficient
+40696,Midodrine HCl Tab USP 10mg 100,Midodrine,2025-05,2025-06,20784.0,31476.8228583281,Insufficient
+40696,Midodrine HCl Tab USP 10mg 100,Midodrine,2025-04,2025-05,20784.0,31476.8228583281,Insufficient
+40880,Guanfacine Tab USP 1mg 100,Guanfacine IR,2024-12,2025-01,21720.0,31134.0,Insufficient
+40618,Carvedilol Tab USP 6.25mg 500,Carvedilol,2024-11,2024-12,18984.0,30448.86,Insufficient
+40472,Carbi + Levo ER Tab USP 25/100mg 100,Carbidopa and Levdopa ER Tab,2025-05,2025-06,5064.0,30150.3333333333,Insufficient
+40140,Amantadine HCl Cap USP 100mg 100,Amantadine HCL,2025-03,2025-04,15505.0,29972.6190658012,Insufficient
+40472,Carbi + Levo ER Tab USP 25/100mg 100,Carbidopa and Levdopa ER Tab,2025-04,2025-05,5064.0,29958.3333333333,Insufficient
+45019,Haloperidol OS USP 2MG/ML (120 ML HDPE),Haloperidol Oral Solution,2024-11,2024-12,11364.0,29706.6333333333,Insufficient
+40472,Carbi + Levo ER Tab USP 25/100mg 100,Carbidopa and Levdopa ER Tab,2024-11,2024-12,5064.0,28703.5345666991,Insufficient
+40676,Labetalol HCl Tab USP 200mg 100,Labetalol,2024-11,2024-12,19850.0,28494.9494530484,Insufficient
+40702,Tramadol HCl Tab USP 50mg 1000,Tramadol,2025-02,2025-03,15006.0,28434.0,Insufficient
+40702,Tramadol HCl Tab USP 50mg 1000,Tramadol,2025-03,2025-04,15006.0,27615.0,Insufficient
+40151,Diclofenac Sod DR Tab USP 25mg 100,Diclofenac Sodium Tab,2024-11,2024-12,384.0,27283.7666666666,Insufficient
+40475,Carbi + Levo ER Tab USP 50/200mg 100,Carbidopa and Levdopa ER Tab,2025-05,2025-06,13704.0,27025.8333333333,Insufficient
+40702,Tramadol HCl Tab USP 50mg 1000,Tramadol,2025-05,2025-06,15006.0,26799.0,Insufficient
+40702,Tramadol HCl Tab USP 50mg 1000,Tramadol,2025-04,2025-05,15006.0,26799.0,Insufficient
+40140,Amantadine HCl Cap USP 100mg 100,Amantadine HCL,2025-01,2025-02,15505.0,26755.2857324678,Insufficient
+40140,Amantadine HCl Cap USP 100mg 100,Amantadine HCL,2025-02,2025-03,15505.0,26755.2857324678,Insufficient
+40696,Midodrine HCl Tab USP 10mg 100,Midodrine,2025-03,2025-04,20784.0,26476.1561916614,Insufficient
+40146,Oxybutynin Cl ER Tab USP 10mg 100,Oxybutynin Chloride ER,2024-12,2025-01,5904.0,26001.5,Insufficient
+40146,Oxybutynin Cl ER Tab USP 10mg 100,Oxybutynin Chloride ER,2025-05,2025-06,5904.0,25922.0,Insufficient
+40742,Tramadol HCl Tab USP 100mg 100,Tramadol,2024-12,2025-01,23032.0,25850.08307999,Insufficient
+40314,Buspirone HCl Tab USP 7.5mg 100,Buspirone HCl,2024-11,2024-12,16344.0,25700.0,Insufficient
+40146,Oxybutynin Cl ER Tab USP 10mg 100,Oxybutynin Chloride ER,2025-03,2025-04,5904.0,25609.0,Insufficient
+40146,Oxybutynin Cl ER Tab USP 10mg 100,Oxybutynin Chloride ER,2025-04,2025-05,5904.0,25609.0,Insufficient
+40146,Oxybutynin Cl ER Tab USP 10mg 100,Oxybutynin Chloride ER,2025-01,2025-02,5904.0,25609.0,Insufficient
+40146,Oxybutynin Cl ER Tab USP 10mg 100,Oxybutynin Chloride ER,2025-02,2025-03,5904.0,25609.0,Insufficient
+40595,Baclofen Tab USP 10mg 500,Baclofen,2025-05,2025-06,19356.0,25461.3333333333,Insufficient
+40595,Baclofen Tab USP 10mg 500,Baclofen,2025-04,2025-05,19356.0,25461.3333333333,Insufficient
+40742,Tramadol HCl Tab USP 100mg 100,Tramadol,2025-05,2025-06,23032.0,25078.1164133233,Insufficient
+40742,Tramadol HCl Tab USP 100mg 100,Tramadol,2025-02,2025-03,23032.0,24964.08307999,Insufficient
+40742,Tramadol HCl Tab USP 100mg 100,Tramadol,2025-03,2025-04,23032.0,24959.28307999,Insufficient
+40742,Tramadol HCl Tab USP 100mg 100,Tramadol,2025-04,2025-05,23032.0,24886.1164133233,Insufficient
+40702,Tramadol HCl Tab USP 50mg 1000,Tramadol,2024-12,2025-01,15006.0,24794.0,Insufficient
+40511,Cyclobenzaprine HCl Tab USP 5mg 500,Cyclobenzaprine HCl,2024-11,2024-12,5844.0,24786.0697142857,Insufficient
+40702,Tramadol HCl Tab USP 50mg 1000,Tramadol,2025-01,2025-02,15006.0,24626.5,Insufficient
+40742,Tramadol HCl Tab USP 100mg 100,Tramadol,2025-01,2025-02,23032.0,24508.08307999,Insufficient
+40622,Carvedilol Tab USP 25mg 500,Carvedilol,2024-11,2024-12,20676.0,24506.3028985507,Insufficient
+40595,Baclofen Tab USP 10mg 500,Baclofen,2024-12,2025-01,19356.0,24357.3333333333,Insufficient
+40595,Baclofen Tab USP 10mg 500,Baclofen,2025-01,2025-02,19356.0,24271.3333333333,Insufficient
+40595,Baclofen Tab USP 10mg 500,Baclofen,2025-02,2025-03,19356.0,24271.3333333333,Insufficient
+40595,Baclofen Tab USP 10mg 500,Baclofen,2025-03,2025-04,19356.0,24271.3333333333,Insufficient
+40729,Baclofen Tab USP 20mg 1000,Baclofen,2024-11,2024-12,3120.0,23617.8333333333,Insufficient
+40742,Tramadol HCl Tab USP 100mg 100,Tramadol,2024-11,2024-12,23032.0,23484.9146666666,Insufficient
+40472,Carbi + Levo ER Tab USP 25/100mg 100,Carbidopa and Levdopa ER Tab,2025-03,2025-04,5064.0,23154.5,Insufficient
+40444,Isosorbide Dinitrate Tab USP 20mg 100,Isosorbide DN,2025-04,2025-05,15534.0,22812.8170258047,Insufficient
+40444,Isosorbide Dinitrate Tab USP 20mg 100,Isosorbide DN,2025-05,2025-06,15534.0,22812.8170258047,Insufficient
+40442,Isosorbide Dinitrate Tab USP 10mg 100,Isosorbide DN,2025-05,2025-06,7776.0,22775.1666666666,Insufficient
+40442,Isosorbide Dinitrate Tab USP 10mg 100,Isosorbide DN,2025-04,2025-05,7776.0,22775.1666666666,Insufficient
+40492,Carbi + Levo tab USP 25/100mg 1000,Carbidopa and Levdopa Tab,2024-11,2024-12,5592.0,22170.9393939393,Insufficient
+40525,Glipizide Tab USP 10mg 1000,Glipizide,2024-11,2024-12,2700.0,21922.8325180136,Insufficient
+40616,Carvedilol Tab USP 3.125mg 500,Carvedilol,2025-04,2025-05,12624.0,21684.5,Insufficient
+40616,Carvedilol Tab USP 3.125mg 500,Carvedilol,2025-05,2025-06,12624.0,21684.5,Insufficient
+40616,Carvedilol Tab USP 3.125mg 500,Carvedilol,2025-03,2025-04,12624.0,21684.5,Insufficient
+40140,Amantadine HCl Cap USP 100mg 100,Amantadine HCL,2024-12,2025-01,15505.0,21215.2857324678,Insufficient
+40696,Midodrine HCl Tab USP 10mg 100,Midodrine,2025-02,2025-03,20784.0,21155.7408836341,Insufficient
+40696,Midodrine HCl Tab USP 10mg 100,Midodrine,2025-01,2025-02,20784.0,21043.7408836341,Insufficient
+40616,Carvedilol Tab USP 3.125mg 500,Carvedilol,2025-02,2025-03,12624.0,20720.0,Insufficient
+40694,Midodrine HCl Tab USP 2.5mg 100,Midodrine,2025-05,2025-06,20088.0,20462.4573713368,Insufficient
+40694,Midodrine HCl Tab USP 2.5mg 100,Midodrine,2025-03,2025-04,20088.0,20462.4573713368,Insufficient
+40694,Midodrine HCl Tab USP 2.5mg 100,Midodrine,2025-04,2025-05,20088.0,20462.4573713368,Insufficient
+40616,Carvedilol Tab USP 3.125mg 500,Carvedilol,2024-12,2025-01,12624.0,20450.0,Insufficient
+40616,Carvedilol Tab USP 3.125mg 500,Carvedilol,2025-01,2025-02,12624.0,20450.0,Insufficient
+40444,Isosorbide Dinitrate Tab USP 20mg 100,Isosorbide DN,2025-01,2025-02,15534.0,20432.9392480269,Insufficient
+40444,Isosorbide Dinitrate Tab USP 20mg 100,Isosorbide DN,2025-02,2025-03,15534.0,20432.9392480269,Insufficient
+40444,Isosorbide Dinitrate Tab USP 20mg 100,Isosorbide DN,2024-12,2025-01,15534.0,20409.4392480269,Insufficient
+40444,Isosorbide Dinitrate Tab USP 20mg 100,Isosorbide DN,2025-03,2025-04,15534.0,20403.150359138,Insufficient
+40682,Acetazolamide Tab USP 250mg 100,Acetazolamide,2025-03,2025-04,18268.0,20186.0358175061,Insufficient
+40682,Acetazolamide Tab USP 250mg 100,Acetazolamide,2025-05,2025-06,18268.0,20186.0358175061,Insufficient
+40682,Acetazolamide Tab USP 250mg 100,Acetazolamide,2025-04,2025-05,18268.0,20186.0358175061,Insufficient
+40627,Primidone Tab USP 250mg100,Primidone,2024-12,2025-01,13656.0,19911.6845180136,Insufficient
+40442,Isosorbide Dinitrate Tab USP 10mg 100,Isosorbide DN,2025-03,2025-04,7776.0,19780.0,Insufficient
+40908,Glipizide Tab USP 10mg 500,Glipizide,2024-11,2024-12,4464.0,19767.9298587479,Insufficient
+40832,Carbi + Levo tab USP 25/100mg 500,Carbidopa and Levdopa Tab,2024-11,2024-12,60.0,19709.56,Insufficient
+40442,Isosorbide Dinitrate Tab USP 10mg 100,Isosorbide DN,2025-01,2025-02,7776.0,19227.0333333333,Insufficient
+40442,Isosorbide Dinitrate Tab USP 10mg 100,Isosorbide DN,2025-02,2025-03,7776.0,19227.0333333333,Insufficient
+40442,Isosorbide Dinitrate Tab USP 10mg 100,Isosorbide DN,2024-12,2025-01,7776.0,19170.0333333333,Insufficient
+40627,Primidone Tab USP 250mg100,Primidone,2025-02,2025-03,13656.0,19098.0,Insufficient
+40627,Primidone Tab USP 250mg100,Primidone,2025-01,2025-02,13656.0,19098.0,Insufficient
+40497,Tramadol HCL Tab USP 25mg 30,Tramadol,2025-05,2025-06,3240.0,18939.8333333333,Insufficient
+40497,Tramadol HCL Tab USP 25mg 30,Tramadol,2025-04,2025-05,3240.0,18891.8333333333,Insufficient
+40497,Tramadol HCL Tab USP 25mg 30,Tramadol,2025-02,2025-03,3240.0,18887.1333333333,Insufficient
+40497,Tramadol HCL Tab USP 25mg 30,Tramadol,2025-03,2025-04,3240.0,18872.1666666666,Insufficient
+40627,Primidone Tab USP 250mg100,Primidone,2025-03,2025-04,13656.0,18736.1845180136,Insufficient
+40682,Acetazolamide Tab USP 250mg 100,Acetazolamide,2024-12,2025-01,18268.0,18520.3691508395,Insufficient
+40311,Buspirone HCl Tab USP 15mg 60,Buspirone HCl,2024-12,2025-01,7680.0,18432.0,Insufficient
+40682,Acetazolamide Tab USP 250mg 100,Acetazolamide,2025-02,2025-03,18268.0,18414.3691508395,Insufficient
+40682,Acetazolamide Tab USP 250mg 100,Acetazolamide,2025-01,2025-02,18268.0,18414.3691508395,Insufficient
+40145,Oxybutynin Cl ER Tab USP 5mg 100,Oxybutynin Chloride ER,2024-12,2025-01,13200.0,18135.5,Insufficient
+40145,Oxybutynin Cl ER Tab USP 5mg 100,Oxybutynin Chloride ER,2025-02,2025-03,13200.0,17988.5,Insufficient
+40145,Oxybutynin Cl ER Tab USP 5mg 100,Oxybutynin Chloride ER,2025-01,2025-02,13200.0,17988.5,Insufficient
+40627,Primidone Tab USP 250mg100,Primidone,2025-04,2025-05,13656.0,17976.1845180136,Insufficient
+40627,Primidone Tab USP 250mg100,Primidone,2025-05,2025-06,13656.0,17976.1845180136,Insufficient
+40145,Oxybutynin Cl ER Tab USP 5mg 100,Oxybutynin Chloride ER,2025-03,2025-04,13200.0,17811.0,Insufficient
+40145,Oxybutynin Cl ER Tab USP 5mg 100,Oxybutynin Chloride ER,2025-04,2025-05,13200.0,17811.0,Insufficient
+40145,Oxybutynin Cl ER Tab USP 5mg 100,Oxybutynin Chloride ER,2025-05,2025-06,13200.0,17811.0,Insufficient
+40664,Carvedilol Tab USP 6.25mg 1000,Carvedilol,2024-11,2024-12,6636.0,17562.0,Insufficient
+40497,Tramadol HCL Tab USP 25mg 30,Tramadol,2025-01,2025-02,3240.0,17327.1333333333,Insufficient
+40497,Tramadol HCL Tab USP 25mg 30,Tramadol,2024-12,2025-01,3240.0,17137.1333333333,Insufficient
+40785,Bisoprolol Fum Tab USP 10 mg 100,Bisoprolol Fumarate,2024-11,2024-12,8952.0,16642.1,Insufficient
+40514,Bisoprolol Fum tab USP 10mg 30,Bisoprolol Fumarate,2024-11,2024-12,1704.0,16610.5,Insufficient
+40865,Loperamide HCL Cap USP 2mg 100,Loperamide Caps,2025-05,2025-06,6072.0,16347.939508408,Insufficient
+40865,Loperamide HCL Cap USP 2mg 100,Loperamide Caps,2025-04,2025-05,6072.0,16347.939508408,Insufficient
+40292,Amiodarone HCl Tab USP 100mg 30,Amiodarone HCl,2025-03,2025-04,2592.0,16169.3333333333,Insufficient
+40726,Baclofen Tab USP 10mg 1000,Baclofen,2025-02,2025-03,10536.0,16145.1666666666,Insufficient
+40726,Baclofen Tab USP 10mg 1000,Baclofen,2025-05,2025-06,10536.0,16145.1666666666,Insufficient
+40726,Baclofen Tab USP 10mg 1000,Baclofen,2025-04,2025-05,10536.0,16145.1666666666,Insufficient
+40726,Baclofen Tab USP 10mg 1000,Baclofen,2025-01,2025-02,10536.0,16145.1666666666,Insufficient
+40726,Baclofen Tab USP 10mg 1000,Baclofen,2025-03,2025-04,10536.0,16145.1666666666,Insufficient
+40865,Loperamide HCL Cap USP 2mg 100,Loperamide Caps,2025-03,2025-04,6072.0,16059.939508408,Insufficient
+40726,Baclofen Tab USP 10mg 1000,Baclofen,2024-12,2025-01,10536.0,15953.1666666666,Insufficient
+40865,Loperamide HCL Cap USP 2mg 100,Loperamide Caps,2025-02,2025-03,6072.0,15929.939508408,Insufficient
+40865,Loperamide HCL Cap USP 2mg 100,Loperamide Caps,2025-01,2025-02,6072.0,15929.939508408,Insufficient
+40311,Buspirone HCl Tab USP 15mg 60,Buspirone HCl,2025-05,2025-06,7680.0,15807.5,Insufficient
+40293,Amiodarone HCl Tab USP 400mg 30,Amiodarone HCl,2025-05,2025-06,10464.0,15790.5,Insufficient
+40292,Amiodarone HCl Tab USP 100mg 30,Amiodarone HCl,2024-12,2025-01,2592.0,15687.3333333333,Insufficient
+40463,Triamterene & HCTZ Tab USP 75/50mg 100,Triamterene HCTZ,2024-11,2024-12,3720.0,15360.6786813701,Insufficient
+40292,Amiodarone HCl Tab USP 100mg 30,Amiodarone HCl,2025-01,2025-02,2592.0,15007.3333333333,Insufficient
+40292,Amiodarone HCl Tab USP 100mg 30,Amiodarone HCl,2025-02,2025-03,2592.0,15007.3333333333,Insufficient
+40475,Carbi + Levo ER Tab USP 50/200mg 100,Carbidopa and Levdopa ER Tab,2025-04,2025-05,13704.0,14747.8333333333,Insufficient
+40970,Desvenlafaxin ER Tab 100 mg 90,Desvenlaflaxine,2025-05,2025-06,14400.0,14741.5714285714,Insufficient
+40970,Desvenlafaxin ER Tab 100 mg 90,Desvenlaflaxine,2025-04,2025-05,14400.0,14729.0714285714,Insufficient
+40475,Carbi + Levo ER Tab USP 50/200mg 100,Carbidopa and Levdopa ER Tab,2024-11,2024-12,13704.0,13848.0471248724,Insufficient
+40855,DHE NS USP 4 mg/ml 8's,Dihydroergotamine Spray,2024-11,2024-12,973.0,13830.4093333333,Insufficient
+40674,Labetalol HCl Tab USP 100mg 100,Labetalol,2024-11,2024-12,3766.0,13195.6363114134,Insufficient
+40293,Amiodarone HCl Tab USP 400mg 30,Amiodarone HCl,2025-04,2025-05,10464.0,13124.5,Insufficient
+40293,Amiodarone HCl Tab USP 400mg 30,Amiodarone HCl,2025-03,2025-04,10464.0,13118.5,Insufficient
+40865,Loperamide HCL Cap USP 2mg 100,Loperamide Caps,2024-12,2025-01,6072.0,12967.439508408,Insufficient
+40754,Lithium OS USP 8 mEq Per 5 mL 500 HD US,Lithium Oral Solution,2024-11,2024-12,1081.0,12801.6,Insufficient
+40440,Isosorbide Dinitrate Tab USP 5mg 100,Isosorbide DN,2024-11,2024-12,12048.0,12066.1555555555,Insufficient
+40293,Amiodarone HCl Tab USP 400mg 30,Amiodarone HCl,2025-02,2025-03,10464.0,11998.6248654467,Insufficient
+40293,Amiodarone HCl Tab USP 400mg 30,Amiodarone HCl,2025-01,2025-02,10464.0,11998.6248654467,Insufficient
+40293,Amiodarone HCl Tab USP 400mg 30,Amiodarone HCl,2024-12,2025-01,10464.0,11860.6248654467,Insufficient
+40664,Carvedilol Tab USP 6.25mg 1000,Carvedilol,2025-04,2025-05,6636.0,11739.1666666666,Insufficient
+40664,Carvedilol Tab USP 6.25mg 1000,Carvedilol,2025-05,2025-06,6636.0,11739.1666666666,Insufficient
+40664,Carvedilol Tab USP 6.25mg 1000,Carvedilol,2025-02,2025-03,6636.0,11641.1666666666,Insufficient
+40664,Carvedilol Tab USP 6.25mg 1000,Carvedilol,2025-01,2025-02,6636.0,11641.1666666666,Insufficient
+40664,Carvedilol Tab USP 6.25mg 1000,Carvedilol,2025-03,2025-04,6636.0,11641.1666666666,Insufficient
+40519,Glipizide Tab USP 5 mg 1000,Glipizide,2024-11,2024-12,5604.0,11562.0,Insufficient
+40593,Potassium Chl ER Tab 15mEq 100  KTAB,Potassium Chloride ER,2024-11,2024-12,528.0,11418.0,Insufficient
+40295,Amiodarone HCl Tab USP 200mg 500,Amiodarone HCl,2024-11,2024-12,3372.0,11380.0,Insufficient
+40969,Desvenlafaxine ER Tab 50 mg 90,Desvenlaflaxine,2025-05,2025-06,5112.0,11379.0,Insufficient
+40969,Desvenlafaxine ER Tab 50 mg 90,Desvenlaflaxine,2025-04,2025-05,5112.0,10878.0,Insufficient
+40667,Carvedilol Tab USP 25mg 1000,Carvedilol,2025-05,2025-06,7764.0,10846.0,Insufficient
+40666,Carvedilol Tab USP 12.5mg 1000,Carvedilol,2025-05,2025-06,6108.0,10836.6666666666,Insufficient
+40666,Carvedilol Tab USP 12.5mg 1000,Carvedilol,2025-04,2025-05,6108.0,10836.6666666666,Insufficient
+40666,Carvedilol Tab USP 12.5mg 1000,Carvedilol,2025-01,2025-02,6108.0,10760.1666666666,Insufficient
+40666,Carvedilol Tab USP 12.5mg 1000,Carvedilol,2025-02,2025-03,6108.0,10760.1666666666,Insufficient
+40666,Carvedilol Tab USP 12.5mg 1000,Carvedilol,2025-03,2025-04,6108.0,10754.6666666666,Insufficient
+40311,Buspirone HCl Tab USP 15mg 60,Buspirone HCl,2025-02,2025-03,7680.0,10639.5,Insufficient
+40311,Buspirone HCl Tab USP 15mg 60,Buspirone HCl,2025-03,2025-04,7680.0,10639.5,Insufficient
+40311,Buspirone HCl Tab USP 15mg 60,Buspirone HCl,2025-04,2025-05,7680.0,10639.5,Insufficient
+40311,Buspirone HCl Tab USP 15mg 60,Buspirone HCl,2025-01,2025-02,7680.0,10639.5,Insufficient
+40653,Metoprolol Tar Tab USP 25mg 1000,Metoprolol Tartrate,2024-12,2025-01,204.0,10592.0,Insufficient
+40445,Isosorbide Dinitrate Tab USP 20mg 1000,Isosorbide DN,2024-11,2024-12,612.0,10469.6,Insufficient
+40215,Isosorbide Dinitrate Tab USP 30mg 100,Isosorbide DN,2025-04,2025-05,8544.0,10290.9528751275,Insufficient
+40215,Isosorbide Dinitrate Tab USP 30mg 100,Isosorbide DN,2025-05,2025-06,8544.0,10290.9528751275,Insufficient
+40619,Carvedilol Tab USP 12.5mg 100,Carvedilol,2024-11,2024-12,3552.0,10264.0,Insufficient
+40604,Amitriptyline HCl Tab USP 25mg 100,Amitriptyline,2025-03,2025-04,2544.0,10168.0,Insufficient
+40604,Amitriptyline HCl Tab USP 25mg 100,Amitriptyline,2025-01,2025-02,2544.0,10168.0,Insufficient
+40604,Amitriptyline HCl Tab USP 25mg 100,Amitriptyline,2024-12,2025-01,2544.0,10168.0,Insufficient
+40604,Amitriptyline HCl Tab USP 25mg 100,Amitriptyline,2025-02,2025-03,2544.0,10168.0,Insufficient
+40664,Carvedilol Tab USP 6.25mg 1000,Carvedilol,2024-12,2025-01,6636.0,10144.6666666666,Insufficient
+40667,Carvedilol Tab USP 25mg 1000,Carvedilol,2025-04,2025-05,7764.0,9672.0,Insufficient
+40887,Ipratropium Bro. Nasal Spray 0.03% 30 ml,Ipratropium Bro. Nasal Spray,2024-11,2024-12,24.0,9644.87747458534,Insufficient
+40602,Diclofenac Pot tab 50mg 500,Diclofenac Potassium,2024-11,2024-12,1980.0,9578.06666666666,Insufficient
+40655,Metoprolol Tar Tab USP 50mg 1000,Metoprolol Tartrate,2024-12,2025-01,373.0,9518.53333333333,Insufficient
+40147,Oxybutynin Cl ER Tab USP 15mg 100,Oxybutynin Chloride ER,2025-02,2025-03,4176.0,9493.0,Insufficient
+40147,Oxybutynin Cl ER Tab USP 15mg 100,Oxybutynin Chloride ER,2025-01,2025-02,4176.0,9493.0,Insufficient
+40147,Oxybutynin Cl ER Tab USP 15mg 100,Oxybutynin Chloride ER,2025-05,2025-06,4176.0,9464.0,Insufficient
+40147,Oxybutynin Cl ER Tab USP 15mg 100,Oxybutynin Chloride ER,2025-03,2025-04,4176.0,9464.0,Insufficient
+40147,Oxybutynin Cl ER Tab USP 15mg 100,Oxybutynin Chloride ER,2025-04,2025-05,4176.0,9464.0,Insufficient
+40655,Metoprolol Tar Tab USP 50mg 1000,Metoprolol Tartrate,2025-01,2025-02,373.0,9461.53333333333,Insufficient
+40655,Metoprolol Tar Tab USP 50mg 1000,Metoprolol Tartrate,2025-02,2025-03,373.0,9461.53333333333,Insufficient
+40147,Oxybutynin Cl ER Tab USP 15mg 100,Oxybutynin Chloride ER,2024-12,2025-01,4176.0,9433.5,Insufficient
+40835,Triamterene & HCTZ Tab USP 75/50 mg 500,Triamterene HCTZ,2024-11,2024-12,3972.0,9422.8833639404,Insufficient
+40472,Carbi + Levo ER Tab USP 25/100mg 100,Carbidopa and Levdopa ER Tab,2025-02,2025-03,5064.0,9270.5,Insufficient
+40969,Desvenlafaxine ER Tab 50 mg 90,Desvenlaflaxine,2024-11,2024-12,5112.0,9134.49365079365,Insufficient
+40215,Isosorbide Dinitrate Tab USP 30mg 100,Isosorbide DN,2025-03,2025-04,8544.0,9016.95287512759,Insufficient
+40707,Metoprolol Tar Tab USP 25mg 500,Metoprolol Tartrate,2024-12,2025-01,176.0,8839.66666666666,Insufficient
+40666,Carvedilol Tab USP 12.5mg 1000,Carvedilol,2024-12,2025-01,6108.0,8620.66666666666,Insufficient
+40488,Carbi + Levo tab USP 10/100mg 100,Carbidopa and Levdopa Tab,2024-11,2024-12,5304.0,8615.77777777777,Insufficient
+40511,Cyclobenzaprine HCl Tab USP 5mg 500,Cyclobenzaprine HCl,2025-05,2025-06,5844.0,8612.896,Insufficient
+40511,Cyclobenzaprine HCl Tab USP 5mg 500,Cyclobenzaprine HCl,2025-04,2025-05,5844.0,8600.896,Insufficient
+40215,Isosorbide Dinitrate Tab USP 30mg 100,Isosorbide DN,2025-02,2025-03,8544.0,8573.01954179426,Insufficient
+40215,Isosorbide Dinitrate Tab USP 30mg 100,Isosorbide DN,2025-01,2025-02,8544.0,8573.01954179426,Insufficient
+40707,Metoprolol Tar Tab USP 25mg 500,Metoprolol Tartrate,2025-01,2025-02,176.0,8553.16666666666,Insufficient
+40707,Metoprolol Tar Tab USP 25mg 500,Metoprolol Tartrate,2025-02,2025-03,176.0,8553.16666666666,Insufficient
+40606,Amitriptyline HCl Tab USP 50mg 100,Amitriptyline,2025-01,2025-02,4680.0,8336.0,Insufficient
+40606,Amitriptyline HCl Tab USP 50mg 100,Amitriptyline,2024-12,2025-01,4680.0,8336.0,Insufficient
+40606,Amitriptyline HCl Tab USP 50mg 100,Amitriptyline,2025-02,2025-03,4680.0,8336.0,Insufficient
+40606,Amitriptyline HCl Tab USP 50mg 100,Amitriptyline,2025-03,2025-04,4680.0,8336.0,Insufficient
+40678,Labetalol HCl Tab USP 300mg 100,Labetalol,2024-11,2024-12,4753.0,8257.77875212574,Insufficient
+40213,Bumetanide tab usp 1mg 100,Bumetanide Tabs,2025-04,2025-05,2208.0,8253.5,Insufficient
+40213,Bumetanide tab usp 1mg 100,Bumetanide Tabs,2025-05,2025-06,2208.0,8253.5,Insufficient
+40653,Metoprolol Tar Tab USP 25mg 1000,Metoprolol Tartrate,2025-01,2025-02,204.0,8216.5,Insufficient
+40653,Metoprolol Tar Tab USP 25mg 1000,Metoprolol Tartrate,2025-02,2025-03,204.0,8216.5,Insufficient
+40969,Desvenlafaxine ER Tab 50 mg 90,Desvenlaflaxine,2024-12,2025-01,5112.0,8104.83333333333,Insufficient
+40969,Desvenlafaxine ER Tab 50 mg 90,Desvenlaflaxine,2025-01,2025-02,5112.0,8098.33333333333,Insufficient
+40969,Desvenlafaxine ER Tab 50 mg 90,Desvenlaflaxine,2025-02,2025-03,5112.0,8098.33333333333,Insufficient
+40900,Acyclovir OSP USP 200mg/5ml 473 HD US,Acyclovir Suspension,2025-05,2025-06,3390.0,7959.83333333333,Insufficient
+40900,Acyclovir OSP USP 200mg/5ml 473 HD US,Acyclovir Suspension,2025-04,2025-05,3390.0,7959.83333333333,Insufficient
+40511,Cyclobenzaprine HCl Tab USP 5mg 500,Cyclobenzaprine HCl,2025-01,2025-02,5844.0,7930.896,Insufficient
+40511,Cyclobenzaprine HCl Tab USP 5mg 500,Cyclobenzaprine HCl,2025-02,2025-03,5844.0,7930.896,Insufficient
+40511,Cyclobenzaprine HCl Tab USP 5mg 500,Cyclobenzaprine HCl,2024-12,2025-01,5844.0,7929.896,Insufficient
+40292,Amiodarone HCl Tab USP 100mg 30,Amiodarone HCl,2024-11,2024-12,2592.0,7929.10266666666,Insufficient
+40619,Carvedilol Tab USP 12.5mg 100,Carvedilol,2024-12,2025-01,3552.0,7825.0,Insufficient
+40511,Cyclobenzaprine HCl Tab USP 5mg 500,Cyclobenzaprine HCl,2025-03,2025-04,5844.0,7712.896,Insufficient
+40619,Carvedilol Tab USP 12.5mg 100,Carvedilol,2025-05,2025-06,3552.0,7697.66666666666,Insufficient
+40619,Carvedilol Tab USP 12.5mg 100,Carvedilol,2025-03,2025-04,3552.0,7697.66666666666,Insufficient
+40619,Carvedilol Tab USP 12.5mg 100,Carvedilol,2025-04,2025-05,3552.0,7697.66666666666,Insufficient
+40619,Carvedilol Tab USP 12.5mg 100,Carvedilol,2025-02,2025-03,3552.0,7567.5,Insufficient
+40619,Carvedilol Tab USP 12.5mg 100,Carvedilol,2025-01,2025-02,3552.0,7567.5,Insufficient
+40147,Oxybutynin Cl ER Tab USP 15mg 100,Oxybutynin Chloride ER,2024-11,2024-12,4176.0,7531.04771115409,Insufficient
+40162,Tizanidine HCl Cap 4mg 150,Tizanidine HCl,2024-11,2024-12,361.0,7462.26730277259,Insufficient
+40214,Bumetanide tab usp 2mg 100,Bumetanide Tabs,2025-04,2025-05,4896.0,7447.0,Insufficient
+40214,Bumetanide tab usp 2mg 100,Bumetanide Tabs,2025-05,2025-06,4896.0,7447.0,Insufficient
+40677,Labetalol HCl Tab USP 200mg 500,Labetalol,2024-11,2024-12,6204.0,7403.38822697969,Insufficient
+40657,Metoprolol Tar Tab USP100mg 1000,Metoprolol Tartrate,2024-11,2024-12,3396.0,7171.73333333333,Insufficient
+40665,Carvedilol Tab USP 3.125mg 1000,Carvedilol,2025-04,2025-05,4464.0,7118.0,Insufficient
+40665,Carvedilol Tab USP 3.125mg 1000,Carvedilol,2025-05,2025-06,4464.0,7118.0,Insufficient
+40665,Carvedilol Tab USP 3.125mg 1000,Carvedilol,2025-03,2025-04,4464.0,7072.0,Insufficient
+40665,Carvedilol Tab USP 3.125mg 1000,Carvedilol,2025-01,2025-02,4464.0,7072.0,Insufficient
+40665,Carvedilol Tab USP 3.125mg 1000,Carvedilol,2025-02,2025-03,4464.0,7072.0,Insufficient
+40443,Isosorbide Dinitrate Tab USP 10mg 1000,Isosorbide DN,2024-11,2024-12,204.0,6974.53333333333,Insufficient
+40609,Amitriptyline HCl Tab USP 100mg 100,Amitriptyline,2025-03,2025-04,48.0,6752.0,Insufficient
+40609,Amitriptyline HCl Tab USP 100mg 100,Amitriptyline,2024-12,2025-01,48.0,6752.0,Insufficient
+40609,Amitriptyline HCl Tab USP 100mg 100,Amitriptyline,2025-01,2025-02,48.0,6752.0,Insufficient
+40609,Amitriptyline HCl Tab USP 100mg 100,Amitriptyline,2025-02,2025-03,48.0,6752.0,Insufficient
+40969,Desvenlafaxine ER Tab 50 mg 90,Desvenlaflaxine,2025-03,2025-04,5112.0,6723.33333333333,Insufficient
+40472,Carbi + Levo ER Tab USP 25/100mg 100,Carbidopa and Levdopa ER Tab,2025-01,2025-02,5064.0,6586.5,Insufficient
+40310,Buspirone HCl Tab USP 10mg 500,Buspirone HCl,2025-05,2025-06,5772.0,6523.5,Insufficient
+40161,Tizanidine HCl Cap 2mg 150,Tizanidine HCl,2024-11,2024-12,817.0,6502.20060004298,Insufficient
+40162,Tizanidine HCl Cap 4mg 150,Tizanidine HCl,2025-04,2025-05,361.0,6487.83333333333,Insufficient
+40162,Tizanidine HCl Cap 4mg 150,Tizanidine HCl,2025-05,2025-06,361.0,6487.83333333333,Insufficient
+40310,Buspirone HCl Tab USP 10mg 500,Buspirone HCl,2025-02,2025-03,5772.0,6485.0,Insufficient
+40310,Buspirone HCl Tab USP 10mg 500,Buspirone HCl,2025-01,2025-02,5772.0,6485.0,Insufficient
+40310,Buspirone HCl Tab USP 10mg 500,Buspirone HCl,2025-04,2025-05,5772.0,6483.0,Insufficient
+40310,Buspirone HCl Tab USP 10mg 500,Buspirone HCl,2025-03,2025-04,5772.0,6483.0,Insufficient
+40734,"POTASSIUM CHLORIDE ORAL SOLUTION USP,20%",Potassium Chloride Oral Solution,2025-05,2025-06,4755.0,6475.20527536231,Insufficient
+40734,"POTASSIUM CHLORIDE ORAL SOLUTION USP,20%",Potassium Chloride Oral Solution,2025-04,2025-05,4755.0,6475.20527536231,Insufficient
+40310,Buspirone HCl Tab USP 10mg 500,Buspirone HCl,2024-12,2025-01,5772.0,6462.0,Insufficient
+40310,Buspirone HCl Tab USP 10mg 500,Buspirone HCl,2024-11,2024-12,5772.0,6372.0,Insufficient
+40665,Carvedilol Tab USP 3.125mg 1000,Carvedilol,2024-11,2024-12,4464.0,6338.5,Insufficient
+40671,Nitroglycerine Sub Tab USP 0.3mg 100,Nitroglycerine,2024-11,2024-12,2304.0,6266.2,Insufficient
+40734,"POTASSIUM CHLORIDE ORAL SOLUTION USP,20%",Potassium Chloride Oral Solution,2025-03,2025-04,4755.0,5930.37194202898,Insufficient
+40734,"POTASSIUM CHLORIDE ORAL SOLUTION USP,20%",Potassium Chloride Oral Solution,2025-01,2025-02,4755.0,5926.47194202898,Insufficient
+40734,"POTASSIUM CHLORIDE ORAL SOLUTION USP,20%",Potassium Chloride Oral Solution,2025-02,2025-03,4755.0,5926.47194202898,Insufficient
+40463,Triamterene & HCTZ Tab USP 75/50mg 100,Triamterene HCTZ,2025-04,2025-05,3720.0,5855.01466666666,Insufficient
+40463,Triamterene & HCTZ Tab USP 75/50mg 100,Triamterene HCTZ,2025-05,2025-06,3720.0,5855.01466666666,Insufficient
+40678,Labetalol HCl Tab USP 300mg 100,Labetalol,2025-01,2025-02,4753.0,5842.5,Insufficient
+40665,Carvedilol Tab USP 3.125mg 1000,Carvedilol,2024-12,2025-01,4464.0,5824.0,Insufficient
+40734,"POTASSIUM CHLORIDE ORAL SOLUTION USP,20%",Potassium Chloride Oral Solution,2024-12,2025-01,4755.0,5654.97194202898,Insufficient
+40218,Potassium Chl Ora sol 20mEq 100,Potassium Chloride PFOS,2024-11,2024-12,2193.0,5639.3408836341,Insufficient
+40602,Diclofenac Pot tab 50mg 500,Diclofenac Potassium,2025-05,2025-06,1980.0,5530.78266666666,Insufficient
+40602,Diclofenac Pot tab 50mg 500,Diclofenac Potassium,2025-04,2025-05,1980.0,5530.78266666666,Insufficient
+40729,Baclofen Tab USP 20mg 1000,Baclofen,2025-02,2025-03,3120.0,5266.4,Insufficient
+40729,Baclofen Tab USP 20mg 1000,Baclofen,2025-01,2025-02,3120.0,5266.4,Insufficient
+40729,Baclofen Tab USP 20mg 1000,Baclofen,2025-04,2025-05,3120.0,5250.4,Insufficient
+40729,Baclofen Tab USP 20mg 1000,Baclofen,2025-03,2025-04,3120.0,5250.4,Insufficient
+40729,Baclofen Tab USP 20mg 1000,Baclofen,2025-05,2025-06,3120.0,5250.4,Insufficient
+40163,Tizanidine HCl Cap 6mg 150,Tizanidine HCl,2024-11,2024-12,432.0,5211.79070467022,Insufficient
+40463,Triamterene & HCTZ Tab USP 75/50mg 100,Triamterene HCTZ,2024-12,2025-01,3720.0,5193.11466666666,Insufficient
+40463,Triamterene & HCTZ Tab USP 75/50mg 100,Triamterene HCTZ,2025-03,2025-04,3720.0,5166.848,Insufficient
+40497,Tramadol HCL Tab USP 25mg 30,Tramadol,2024-11,2024-12,3240.0,5074.97677128857,Insufficient
+40729,Baclofen Tab USP 20mg 1000,Baclofen,2024-12,2025-01,3120.0,5074.4,Insufficient
+40463,Triamterene & HCTZ Tab USP 75/50mg 100,Triamterene HCTZ,2025-02,2025-03,3720.0,5063.11466666666,Insufficient
+40463,Triamterene & HCTZ Tab USP 75/50mg 100,Triamterene HCTZ,2025-01,2025-02,3720.0,5063.11466666666,Insufficient
+40446,Isosorbide Dinitrate Tab USP 40mg 100,Isosorbide DN,2024-11,2024-12,3624.0,4999.23333333333,Insufficient
+40453,Potassium Chl ER Tab USP 10mEq 1000 AB3,Potassium Chloride ER,2024-11,2024-12,1344.0,4966.67338497405,Insufficient
+40646,Lamotrigine Tab USP 150 mg 500,Lamotrigine IR,2024-11,2024-12,0.0,4854.02715825857,Insufficient
+40225,Loratadine OD Tab USP 10mg 1x10,Loratadine ODT (OTC),2025-05,2025-06,72.0,4693.0,Insufficient
+40144,Pregabalin ER tab 330mg 30,Pregabalin tab ER,2024-11,2024-12,0.0,4661.34672228843,Insufficient
+40674,Labetalol HCl Tab USP 100mg 100,Labetalol,2025-05,2025-06,3766.0,4573.16666666666,Insufficient
+40225,Loratadine OD Tab USP 10mg 1x10,Loratadine ODT (OTC),2024-12,2025-01,72.0,4554.5,Insufficient
+40674,Labetalol HCl Tab USP 100mg 100,Labetalol,2025-04,2025-05,3766.0,4489.16666666666,Insufficient
+40674,Labetalol HCl Tab USP 100mg 100,Labetalol,2025-03,2025-04,3766.0,4489.16666666666,Insufficient
+40225,Loratadine OD Tab USP 10mg 1x10,Loratadine ODT (OTC),2025-04,2025-05,72.0,4482.0,Insufficient
+40225,Loratadine OD Tab USP 10mg 1x10,Loratadine ODT (OTC),2025-01,2025-02,72.0,4482.0,Insufficient
+40225,Loratadine OD Tab USP 10mg 1x10,Loratadine ODT (OTC),2025-02,2025-03,72.0,4482.0,Insufficient
+40225,Loratadine OD Tab USP 10mg 1x10,Loratadine ODT (OTC),2025-03,2025-04,72.0,4482.0,Insufficient
+40655,Metoprolol Tar Tab USP 50mg 1000,Metoprolol Tartrate,2024-11,2024-12,373.0,4208.29556741414,Insufficient
+40317,Buspirone HCl Tab USP 30mg 500,Buspirone HCl,2024-11,2024-12,1368.0,4102.0,Insufficient
+40674,Labetalol HCl Tab USP 100mg 100,Labetalol,2025-02,2025-03,3766.0,4043.16666666666,Insufficient
+40674,Labetalol HCl Tab USP 100mg 100,Labetalol,2024-12,2025-01,3766.0,4043.16666666666,Insufficient
+40674,Labetalol HCl Tab USP 100mg 100,Labetalol,2025-01,2025-02,3766.0,4043.16666666666,Insufficient
+40143,Pregabalin ER tab 165mg 30,Pregabalin tab ER,2024-11,2024-12,3696.0,3901.67097734932,Insufficient
+40162,Tizanidine HCl Cap 4mg 150,Tizanidine HCl,2025-03,2025-04,361.0,3886.0,Insufficient
+40649,Metolazone Tab USP 2.5mg 100,Metolazone,2025-02,2025-03,744.0,3750.05727820844,Insufficient
+40218,Potassium Chl Ora sol 20mEq 100,Potassium Chloride PFOS,2025-05,2025-06,2193.0,3710.16666666666,Insufficient
+40218,Potassium Chl Ora sol 20mEq 100,Potassium Chloride PFOS,2025-04,2025-05,2193.0,3710.16666666666,Insufficient
+40649,Metolazone Tab USP 2.5mg 100,Metolazone,2024-12,2025-01,744.0,3683.55727820844,Insufficient
+40649,Metolazone Tab USP 2.5mg 100,Metolazone,2025-05,2025-06,744.0,3673.05727820844,Insufficient
+40649,Metolazone Tab USP 2.5mg 100,Metolazone,2025-03,2025-04,744.0,3673.05727820844,Insufficient
+40649,Metolazone Tab USP 2.5mg 100,Metolazone,2025-04,2025-05,744.0,3673.05727820844,Insufficient
+40649,Metolazone Tab USP 2.5mg 100,Metolazone,2025-01,2025-02,744.0,3656.05727820844,Insufficient
+40602,Diclofenac Pot tab 50mg 500,Diclofenac Potassium,2025-03,2025-04,1980.0,3628.616,Insufficient
+40218,Potassium Chl Ora sol 20mEq 100,Potassium Chloride PFOS,2025-03,2025-04,2193.0,3413.0,Insufficient
+40864,Cevimeline HCl Cap 30mg 100,Cevimeline HCL,2025-01,2025-02,2520.0,3328.0,Insufficient
+40864,Cevimeline HCl Cap 30mg 100,Cevimeline HCL,2025-02,2025-03,2520.0,3328.0,Insufficient
+40864,Cevimeline HCl Cap 30mg 100,Cevimeline HCL,2024-12,2025-01,2520.0,3327.5,Insufficient
+40525,Glipizide Tab USP 10mg 1000,Glipizide,2025-05,2025-06,2700.0,3235.16666666666,Insufficient
+40525,Glipizide Tab USP 10mg 1000,Glipizide,2025-04,2025-05,2700.0,3231.16666666666,Insufficient
+40525,Glipizide Tab USP 10mg 1000,Glipizide,2025-01,2025-02,2700.0,3218.8,Insufficient
+40525,Glipizide Tab USP 10mg 1000,Glipizide,2025-02,2025-03,2700.0,3218.79999999999,Insufficient
+40602,Diclofenac Pot tab 50mg 500,Diclofenac Potassium,2024-12,2025-01,1980.0,3073.54933333333,Insufficient
+40854,DHE NS USP 4 mg/ml 1's,Dihydroergotamine Spray,2024-11,2024-12,17.0,3046.84444444444,Insufficient
+40039,Rabeprazole Sod DR Tab 20mg 30,Rabeprazole Sodium,2025-02,2025-03,984.0,3020.0,Insufficient
+40039,Rabeprazole Sod DR Tab 20mg 30,Rabeprazole Sodium,2025-01,2025-02,984.0,3020.0,Insufficient
+40039,Rabeprazole Sod DR Tab 20mg 30,Rabeprazole Sodium,2024-12,2025-01,984.0,3020.0,Insufficient
+40650,Metolazone Tab USP 5mg 100,Metolazone,2025-02,2025-03,1728.0,2976.2382892057,Insufficient
+40650,Metolazone Tab USP 5mg 100,Metolazone,2025-01,2025-02,1728.0,2960.2382892057,Insufficient
+40602,Diclofenac Pot tab 50mg 500,Diclofenac Potassium,2025-02,2025-03,1980.0,2936.04933333333,Insufficient
+40602,Diclofenac Pot tab 50mg 500,Diclofenac Potassium,2025-01,2025-02,1980.0,2936.04933333333,Insufficient
+40212,Bumetanide tab usp 0.5mg 100,Bumetanide Tabs,2025-05,2025-06,1272.0,2904.0,Insufficient
+40212,Bumetanide tab usp 0.5mg 100,Bumetanide Tabs,2025-04,2025-05,1272.0,2903.99999999999,Insufficient
+40650,Metolazone Tab USP 5mg 100,Metolazone,2025-04,2025-05,1728.0,2882.7382892057,Insufficient
+40650,Metolazone Tab USP 5mg 100,Metolazone,2025-03,2025-04,1728.0,2882.7382892057,Insufficient
+40650,Metolazone Tab USP 5mg 100,Metolazone,2025-05,2025-06,1728.0,2882.7382892057,Insufficient
+40650,Metolazone Tab USP 5mg 100,Metolazone,2024-12,2025-01,1728.0,2797.7382892057,Insufficient
+40163,Tizanidine HCl Cap 6mg 150,Tizanidine HCl,2025-05,2025-06,432.0,2745.5,Insufficient
+40163,Tizanidine HCl Cap 6mg 150,Tizanidine HCl,2025-04,2025-05,432.0,2719.0,Insufficient
+40039,Rabeprazole Sod DR Tab 20mg 30,Rabeprazole Sodium,2025-04,2025-05,984.0,2636.0,Insufficient
+40039,Rabeprazole Sod DR Tab 20mg 30,Rabeprazole Sodium,2025-05,2025-06,984.0,2636.0,Insufficient
+40039,Rabeprazole Sod DR Tab 20mg 30,Rabeprazole Sodium,2025-03,2025-04,984.0,2636.0,Insufficient
+40218,Potassium Chl Ora sol 20mEq 100,Potassium Chloride PFOS,2025-02,2025-03,2193.0,2513.0,Insufficient
+40218,Potassium Chl Ora sol 20mEq 100,Potassium Chloride PFOS,2025-01,2025-02,2193.0,2513.0,Insufficient
+40671,Nitroglycerine Sub Tab USP 0.3mg 100,Nitroglycerine,2025-05,2025-06,2304.0,2511.33333333333,Insufficient
+40671,Nitroglycerine Sub Tab USP 0.3mg 100,Nitroglycerine,2025-03,2025-04,2304.0,2511.33333333333,Insufficient
+40671,Nitroglycerine Sub Tab USP 0.3mg 100,Nitroglycerine,2025-04,2025-05,2304.0,2511.33333333333,Insufficient
+40218,Potassium Chl Ora sol 20mEq 100,Potassium Chloride PFOS,2024-12,2025-01,2193.0,2500.0,Insufficient
+40671,Nitroglycerine Sub Tab USP 0.3mg 100,Nitroglycerine,2024-12,2025-01,2304.0,2484.33333333333,Insufficient
+40671,Nitroglycerine Sub Tab USP 0.3mg 100,Nitroglycerine,2025-01,2025-02,2304.0,2481.83333333333,Insufficient
+40671,Nitroglycerine Sub Tab USP 0.3mg 100,Nitroglycerine,2025-02,2025-03,2304.0,2481.83333333333,Insufficient
+40725,Nor HCL OS USP 10mg/5mL Bas 473 PET US,Nortriptyline HCL Oral Solution,2024-11,2024-12,1935.0,2462.2,Insufficient
+40866,Loperamide HCL Cap USP 2mg 500,Loperamide Caps,2024-11,2024-12,156.0,2445.46666666666,Insufficient
+40315,Buspirone HCl Tab USP 7.5mg 500,Buspirone HCl,2024-11,2024-12,1188.0,2442.66666666666,Insufficient
+40151,Diclofenac Sod DR Tab USP 25mg 100,Diclofenac Sodium Tab,2025-05,2025-06,384.0,2389.25,Insufficient
+40151,Diclofenac Sod DR Tab USP 25mg 100,Diclofenac Sodium Tab,2025-04,2025-05,384.0,2389.25,Insufficient
+40605,Amitriptyline HCl Tab USP 25mg 1000,Amitriptyline,2024-12,2025-01,0.0,2334.0,Insufficient
+40605,Amitriptyline HCl Tab USP 25mg 1000,Amitriptyline,2025-02,2025-03,0.0,2334.0,Insufficient
+40605,Amitriptyline HCl Tab USP 25mg 1000,Amitriptyline,2025-01,2025-02,0.0,2334.0,Insufficient
+40605,Amitriptyline HCl Tab USP 25mg 1000,Amitriptyline,2025-03,2025-04,0.0,2334.0,Insufficient
+40151,Diclofenac Sod DR Tab USP 25mg 100,Diclofenac Sodium Tab,2025-01,2025-02,384.0,2253.25,Insufficient
+40151,Diclofenac Sod DR Tab USP 25mg 100,Diclofenac Sodium Tab,2025-02,2025-03,384.0,2245.25,Insufficient
+40151,Diclofenac Sod DR Tab USP 25mg 100,Diclofenac Sodium Tab,2025-03,2025-04,384.0,2245.25,Insufficient
+40151,Diclofenac Sod DR Tab USP 25mg 100,Diclofenac Sodium Tab,2024-12,2025-01,384.0,2137.25,Insufficient
+40162,Tizanidine HCl Cap 4mg 150,Tizanidine HCl,2025-01,2025-02,361.0,2071.53333333333,Insufficient
+40162,Tizanidine HCl Cap 4mg 150,Tizanidine HCl,2025-02,2025-03,361.0,2071.53333333333,Insufficient
+40212,Bumetanide tab usp 0.5mg 100,Bumetanide Tabs,2024-11,2024-12,1272.0,2066.0,Insufficient
+40624,Primidone Tab USP 50mg 500,Primidone,2025-03,2025-04,24.0,2006.0,Insufficient
+40624,Primidone Tab USP 50mg 500,Primidone,2025-02,2025-03,24.0,2006.0,Insufficient
+40624,Primidone Tab USP 50mg 500,Primidone,2025-04,2025-05,24.0,2006.0,Insufficient
+40624,Primidone Tab USP 50mg 500,Primidone,2025-05,2025-06,24.0,2006.0,Insufficient
+40624,Primidone Tab USP 50mg 500,Primidone,2025-01,2025-02,24.0,2006.0,Insufficient
+40225,Loratadine OD Tab USP 10mg 1x10,Loratadine ODT (OTC),2024-11,2024-12,72.0,1986.0,Insufficient
+40754,Lithium OS USP 8 mEq Per 5 mL 500 HD US,Lithium Oral Solution,2025-04,2025-05,1081.0,1860.43330805687,Insufficient
+40754,Lithium OS USP 8 mEq Per 5 mL 500 HD US,Lithium Oral Solution,2025-05,2025-06,1081.0,1860.43330805687,Insufficient
+40624,Primidone Tab USP 50mg 500,Primidone,2024-11,2024-12,24.0,1822.0,Insufficient
+40650,Metolazone Tab USP 5mg 100,Metolazone,2024-11,2024-12,1728.0,1820.87777777777,Insufficient
+40224,Loratadine OD Tab USP 10mg 3x10,Loratadine ODT (OTC),2025-02,2025-03,72.0,1747.5,Insufficient
+40224,Loratadine OD Tab USP 10mg 3x10,Loratadine ODT (OTC),2025-01,2025-02,72.0,1747.5,Insufficient
+40224,Loratadine OD Tab USP 10mg 3x10,Loratadine ODT (OTC),2024-12,2025-01,72.0,1696.0,Insufficient
+40163,Tizanidine HCl Cap 6mg 150,Tizanidine HCl,2025-03,2025-04,432.0,1671.5,Insufficient
+40224,Loratadine OD Tab USP 10mg 3x10,Loratadine ODT (OTC),2025-04,2025-05,72.0,1637.0,Insufficient
+40224,Loratadine OD Tab USP 10mg 3x10,Loratadine ODT (OTC),2025-03,2025-04,72.0,1637.0,Insufficient
+40224,Loratadine OD Tab USP 10mg 3x10,Loratadine ODT (OTC),2025-05,2025-06,72.0,1637.0,Insufficient
+40500,Pot. Chl ER Tab USP 15mEq 100 AB1 KlorCon,Potassium Chloride Klorcon,2025-05,2025-06,1416.0,1598.5,Insufficient
+40855,DHE NS USP 4 mg/ml 8's,Dihydroergotamine Spray,2025-05,2025-06,973.0,1595.5,Insufficient
+40855,DHE NS USP 4 mg/ml 8's,Dihydroergotamine Spray,2025-04,2025-05,973.0,1595.49999999999,Insufficient
+40816,Potassium Chl Ora sol 20mEq 50,Potassium Chloride PFOS,2025-02,2025-03,1392.0,1464.5,Insufficient
+40816,Potassium Chl Ora sol 20mEq 50,Potassium Chloride PFOS,2025-01,2025-02,1392.0,1464.5,Insufficient
+40855,DHE NS USP 4 mg/ml 8's,Dihydroergotamine Spray,2025-03,2025-04,973.0,1451.33333333333,Insufficient
+40224,Loratadine OD Tab USP 10mg 3x10,Loratadine ODT (OTC),2024-11,2024-12,72.0,1440.0,Insufficient
+40500,Pot. Chl ER Tab USP 15mEq 100 AB1 KlorCon,Potassium Chloride Klorcon,2024-12,2025-01,1416.0,1420.0,Insufficient
+40855,DHE NS USP 4 mg/ml 8's,Dihydroergotamine Spray,2025-01,2025-02,973.0,1417.5,Insufficient
+40855,DHE NS USP 4 mg/ml 8's,Dihydroergotamine Spray,2025-02,2025-03,973.0,1417.5,Insufficient
+40855,DHE NS USP 4 mg/ml 8's,Dihydroergotamine Spray,2024-12,2025-01,973.0,1281.0,Insufficient
+40607,Amitriptyline HCl Tab USP 50mg 1000,Amitriptyline,2024-11,2024-12,552.0,1118.5,Insufficient
+40609,Amitriptyline HCl Tab USP 100mg 100,Amitriptyline,2025-05,2025-06,48.0,1103.0,Insufficient
+40609,Amitriptyline HCl Tab USP 100mg 100,Amitriptyline,2025-04,2025-05,48.0,1086.0,Insufficient
+40162,Tizanidine HCl Cap 4mg 150,Tizanidine HCl,2024-12,2025-01,361.0,1059.03333333333,Insufficient
+40656,Metoprolol Tar Tab USP100mg 100,Metoprolol Tartrate,2024-11,2024-12,144.0,1031.15555555555,Insufficient
+40656,Metoprolol Tar Tab USP100mg 100,Metoprolol Tartrate,2024-12,2025-01,144.0,1010.0,Insufficient
+40656,Metoprolol Tar Tab USP100mg 100,Metoprolol Tartrate,2025-02,2025-03,144.0,1010.0,Insufficient
+40656,Metoprolol Tar Tab USP100mg 100,Metoprolol Tartrate,2025-01,2025-02,144.0,1010.0,Insufficient
+40854,DHE NS USP 4 mg/ml 1's,Dihydroergotamine Spray,2025-05,2025-06,17.0,1009.0,Insufficient
+40854,DHE NS USP 4 mg/ml 1's,Dihydroergotamine Spray,2025-04,2025-05,17.0,1009.0,Insufficient
+40854,DHE NS USP 4 mg/ml 1's,Dihydroergotamine Spray,2025-03,2025-04,17.0,1009.0,Insufficient
+40854,DHE NS USP 4 mg/ml 1's,Dihydroergotamine Spray,2025-01,2025-02,17.0,1008.0,Insufficient
+40854,DHE NS USP 4 mg/ml 1's,Dihydroergotamine Spray,2025-02,2025-03,17.0,1008.0,Insufficient
+40607,Amitriptyline HCl Tab USP 50mg 1000,Amitriptyline,2025-03,2025-04,552.0,1002.0,Insufficient
+40607,Amitriptyline HCl Tab USP 50mg 1000,Amitriptyline,2025-02,2025-03,552.0,1002.0,Insufficient
+40607,Amitriptyline HCl Tab USP 50mg 1000,Amitriptyline,2025-01,2025-02,552.0,1002.0,Insufficient
+40607,Amitriptyline HCl Tab USP 50mg 1000,Amitriptyline,2024-12,2025-01,552.0,1002.0,Insufficient
+40161,Tizanidine HCl Cap 2mg 150,Tizanidine HCl,2025-04,2025-05,817.0,976.0,Insufficient
+40161,Tizanidine HCl Cap 2mg 150,Tizanidine HCl,2025-05,2025-06,817.0,976.0,Insufficient
+40156,Diclofenac Sod DR Tab USP 75mg 100,Diclofenac Sodium Tab,2024-12,2025-01,336.0,950.5,Insufficient
+40705,Sildenafil Tab USP 50mg 1000,Sildenafil Citrate,2024-11,2024-12,576.0,942.0,Insufficient
+40163,Tizanidine HCl Cap 6mg 150,Tizanidine HCl,2025-02,2025-03,432.0,933.011111111111,Insufficient
+40163,Tizanidine HCl Cap 6mg 150,Tizanidine HCl,2025-01,2025-02,432.0,933.011111111111,Insufficient
+40163,Tizanidine HCl Cap 6mg 150,Tizanidine HCl,2024-12,2025-01,432.0,933.011111111111,Insufficient
+40161,Tizanidine HCl Cap 2mg 150,Tizanidine HCl,2025-01,2025-02,817.0,933.0,Insufficient
+40161,Tizanidine HCl Cap 2mg 150,Tizanidine HCl,2025-02,2025-03,817.0,933.0,Insufficient
+40161,Tizanidine HCl Cap 2mg 150,Tizanidine HCl,2025-03,2025-04,817.0,925.0,Insufficient
+40854,DHE NS USP 4 mg/ml 1's,Dihydroergotamine Spray,2024-12,2025-01,17.0,908.5,Insufficient
+40605,Amitriptyline HCl Tab USP 25mg 1000,Amitriptyline,2024-11,2024-12,0.0,877.0,Insufficient
+40161,Tizanidine HCl Cap 2mg 150,Tizanidine HCl,2024-12,2025-01,817.0,846.5,Insufficient
+40703,Sildenafil Tab USP 25mg 500,Sildenafil Citrate,2024-11,2024-12,456.0,806.0,Insufficient
+40833,Carbi + Levo tab USP 25/250mg 500,Carbidopa and Levdopa Tab,2024-11,2024-12,96.0,741.857142857142,Insufficient
+40605,Amitriptyline HCl Tab USP 25mg 1000,Amitriptyline,2025-05,2025-06,0.0,672.0,Insufficient
+40605,Amitriptyline HCl Tab USP 25mg 1000,Amitriptyline,2025-04,2025-05,0.0,668.0,Insufficient
+40624,Primidone Tab USP 50mg 500,Primidone,2024-12,2025-01,24.0,666.0,Insufficient
+41027,Fluticasone Pro NS USP 50 mcg,Fluticasone Nasal Spray,2024-11,2024-12,,665.059116365899,Insufficient
+40832,Carbi + Levo tab USP 25/100mg 500,Carbidopa and Levdopa Tab,2025-01,2025-02,60.0,422.0,Insufficient
+40832,Carbi + Levo tab USP 25/100mg 500,Carbidopa and Levdopa Tab,2024-12,2025-01,60.0,422.0,Insufficient
+40832,Carbi + Levo tab USP 25/100mg 500,Carbidopa and Levdopa Tab,2025-02,2025-03,60.0,422.0,Insufficient
+40144,Pregabalin ER tab 330mg 30,Pregabalin tab ER,2025-02,2025-03,0.0,377.602666666666,Insufficient
+40144,Pregabalin ER tab 330mg 30,Pregabalin tab ER,2025-01,2025-02,0.0,377.602666666666,Insufficient
+40144,Pregabalin ER tab 330mg 30,Pregabalin tab ER,2025-04,2025-05,0.0,373.102666666666,Insufficient
+40144,Pregabalin ER tab 330mg 30,Pregabalin tab ER,2025-05,2025-06,0.0,373.102666666666,Insufficient
+40144,Pregabalin ER tab 330mg 30,Pregabalin tab ER,2025-03,2025-04,0.0,369.102666666666,Insufficient
+40609,Amitriptyline HCl Tab USP 100mg 100,Amitriptyline,2024-11,2024-12,48.0,353.5,Insufficient
+40156,Diclofenac Sod DR Tab USP 75mg 100,Diclofenac Sodium Tab,2025-05,2025-06,336.0,353.0,Insufficient
+40156,Diclofenac Sod DR Tab USP 75mg 100,Diclofenac Sodium Tab,2025-02,2025-03,336.0,353.0,Insufficient
+40156,Diclofenac Sod DR Tab USP 75mg 100,Diclofenac Sodium Tab,2025-03,2025-04,336.0,353.0,Insufficient
+40156,Diclofenac Sod DR Tab USP 75mg 100,Diclofenac Sodium Tab,2025-01,2025-02,336.0,353.0,Insufficient
+40156,Diclofenac Sod DR Tab USP 75mg 100,Diclofenac Sodium Tab,2025-04,2025-05,336.0,353.0,Insufficient
+40144,Pregabalin ER tab 330mg 30,Pregabalin tab ER,2024-12,2025-01,0.0,330.936,Insufficient
+40972,Desvenlafaxine ER Tab 50 mg 500,Desvenlaflaxine,2024-12,2025-04,,320.0,Insufficient
+40972,Desvenlafaxine ER Tab 50 mg 500,Desvenlaflaxine,2025-05,2025-06,,250.0,Insufficient
+40972,Desvenlafaxine ER Tab 50 mg 500,Desvenlaflaxine,2025-04,2025-05,,250.0,Insufficient
+40155,Diclofenac Sod DR Tab USP 75mg 60,Diclofenac Sodium Tab,2024-11,2024-12,0.0,244.933333333333,Insufficient
+40707,Metoprolol Tar Tab USP 25mg 500,Metoprolol Tartrate,2025-05,2025-06,176.0,218.0,Insufficient
+40707,Metoprolol Tar Tab USP 25mg 500,Metoprolol Tartrate,2025-04,2025-05,176.0,218.0,Insufficient
+40155,Diclofenac Sod DR Tab USP 75mg 60,Diclofenac Sodium Tab,2025-02,2025-03,0.0,196.0,Insufficient
+40155,Diclofenac Sod DR Tab USP 75mg 60,Diclofenac Sodium Tab,2025-01,2025-02,0.0,196.0,Insufficient
+40155,Diclofenac Sod DR Tab USP 75mg 60,Diclofenac Sodium Tab,2024-12,2025-01,0.0,196.0,Insufficient
+40155,Diclofenac Sod DR Tab USP 75mg 60,Diclofenac Sodium Tab,2025-04,2025-05,0.0,194.0,Insufficient
+40155,Diclofenac Sod DR Tab USP 75mg 60,Diclofenac Sodium Tab,2025-03,2025-04,0.0,194.0,Insufficient
+40155,Diclofenac Sod DR Tab USP 75mg 60,Diclofenac Sodium Tab,2025-05,2025-06,0.0,194.0,Insufficient
+40142,Pregabalin ER tab 82.5mg 30,Pregabalin tab ER,2025-05,2025-06,0.0,178.5,Insufficient
+40142,Pregabalin ER tab 82.5mg 30,Pregabalin tab ER,2025-04,2025-05,0.0,178.5,Insufficient
+40142,Pregabalin ER tab 82.5mg 30,Pregabalin tab ER,2025-03,2025-04,0.0,176.5,Insufficient
+40142,Pregabalin ER tab 82.5mg 30,Pregabalin tab ER,2025-02,2025-03,0.0,176.0,Insufficient
+40142,Pregabalin ER tab 82.5mg 30,Pregabalin tab ER,2025-01,2025-02,0.0,176.0,Insufficient
+40486,Carbi + Levo tab USP 25/250mg 1000,Carbidopa and Levdopa Tab,2024-11,2024-12,96.0,129.0,Insufficient
+40833,Carbi + Levo tab USP 25/250mg 500,Carbidopa and Levdopa Tab,2024-12,2025-01,96.0,116.0,Insufficient
+40646,Lamotrigine Tab USP 150 mg 500,Lamotrigine IR,2025-01,2025-02,0.0,109.5,Insufficient
+40646,Lamotrigine Tab USP 150 mg 500,Lamotrigine IR,2024-12,2025-01,0.0,109.5,Insufficient
+40833,Carbi + Levo tab USP 25/250mg 500,Carbidopa and Levdopa Tab,2025-02,2025-03,96.0,107.0,Insufficient
+40833,Carbi + Levo tab USP 25/250mg 500,Carbidopa and Levdopa Tab,2025-01,2025-02,96.0,107.0,Insufficient
+40486,Carbi + Levo tab USP 25/250mg 1000,Carbidopa and Levdopa Tab,2025-02,2025-03,96.0,104.0,Insufficient
+40486,Carbi + Levo tab USP 25/250mg 1000,Carbidopa and Levdopa Tab,2025-01,2025-02,96.0,104.0,Insufficient
+40486,Carbi + Levo tab USP 25/250mg 1000,Carbidopa and Levdopa Tab,2024-12,2025-01,96.0,104.0,Insufficient
+40486,Carbi + Levo tab USP 25/250mg 1000,Carbidopa and Levdopa Tab,2025-03,2025-04,96.0,102.0,Insufficient
+40486,Carbi + Levo tab USP 25/250mg 1000,Carbidopa and Levdopa Tab,2025-04,2025-05,96.0,102.0,Insufficient
+40486,Carbi + Levo tab USP 25/250mg 1000,Carbidopa and Levdopa Tab,2025-05,2025-06,96.0,102.0,Insufficient
+40142,Pregabalin ER tab 82.5mg 30,Pregabalin tab ER,2024-12,2025-01,0.0,92.0,Insufficient
