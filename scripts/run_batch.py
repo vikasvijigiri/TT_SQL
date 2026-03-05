@@ -47,12 +47,15 @@ def process_task(task, config):
         start_t = time.time()
         
         # Run Pipeline
-        final_state, _, is_fatal, _ = run_analysis_pipeline(
+        final_state, _, is_fatal, captured_text = run_analysis_pipeline(
             question=question,
             db_name=db_name,
             instance_id=iid,
             model_name=config["model_name"],
             rag_source=config.get("rag_source", "none"),
+            use_rag=config.get("use_rag", False),
+            rag_limit=config.get("rag_limit", 5),
+            verbose=config.get("verbose", False),
             output_handler=None, # Use silent handler usually
             stop_checker=None
         )
@@ -60,15 +63,23 @@ def process_task(task, config):
         duration = time.time() - start_t
         status = "FAILED" if is_fatal else "SUCCESS"
         
+        error_msg = "Unknown Error"
+        if final_state and final_state.error_message:
+            error_msg = final_state.error_message
+        elif is_fatal and captured_text:
+            error_msg = captured_text.strip().split('\n')[-1] # Put last line of error log
+            
         return {
             "instance_id": iid,
             "status": status,
             "time": duration,
-            "error": final_state.error_message if final_state else "Unknown Error"
+            "error": error_msg,
+            "full_error": captured_text
         }
         
     except Exception as e:
-        logger.error(f"Error processing {iid}: {e}")
+        import traceback
+        logger.error(f"Error processing {iid}:\n{traceback.format_exc()}")
         return {
             "instance_id": iid,
             "status": "ERROR",
@@ -82,10 +93,18 @@ def main():
     parser.add_argument("--model", type=str, default=os.getenv("LLM_MODEL", "gpt-4o"), help="Model name")
     parser.add_argument("--workers", type=int, default=4, help="Number of parallel workers")
     parser.add_argument("--limit", type=int, default=0, help="Limit number of tasks (0 for all)")
-    parser.add_argument("--rag", type=str, default="none", help="RAG source (none, qdrant)")
+    parser.add_argument("--rag", type=str, default="qdrant", help="RAG source (none, qdrant)")
+    parser.add_argument("--use-rag", action="store_true", default=True, help="Use Qdrant vector store for column retrieval")
+    parser.add_argument("--top-2", action="store_true", help="Limit to top 2 tables only (RAG)")
     parser.add_argument("--overwrite", action="store_true", default=False, help="Re-run even if CSV results already exist")
+    parser.add_argument("--verbose", action="store_true", help="Enable verbose terminal logging")
     
     args = parser.parse_args()
+    
+    # Enable verbose terminal logging if requested
+    if args.verbose:
+        from tt_sql.core.logger import Logger
+        Logger._verbose = True
     
     # Initialize AWS/OpenAI envs if needed (handled by load_dotenv)
     
@@ -102,6 +121,9 @@ def main():
     config = {
         "model_name": args.model,
         "rag_source": args.rag,
+        "use_rag": args.use_rag,
+        "rag_limit": 2 if args.top_2 else 2, # Defaults to 2 now anyway as requested
+        "verbose": args.verbose,
         "skip_existing": not args.overwrite
     }
     
@@ -123,14 +145,14 @@ def main():
                 
                 # Real-time status logging
                 if result["status"] == "SUCCESS":
-                    tqdm.write(f"✅ {result['instance_id']} ({result['time']:.1f}s)")
+                    tqdm.write(f"[PASS] {result['instance_id']} ({result['time']:.1f}s)")
                 elif result["status"] == "SKIPPED":
                     pass # Silent skip
                 else:
-                    tqdm.write(f"❌ {result['instance_id']} ({result['error']})")
+                    tqdm.write(f"[FAIL] {result['instance_id']} ({result['error']})")
                     
             except Exception as exc:
-                tqdm.write(f"💥 Task {task.get('instance_id')} generated an exception: {exc}")
+                tqdm.write(f"[ERROR] Task {task.get('instance_id')} generated an exception: {exc}")
 
     # Summary
     passed = len([r for r in results if r["status"] == "SUCCESS"])
@@ -138,11 +160,12 @@ def main():
     skipped = len([r for r in results if r["status"] == "SKIPPED"])
     
     logger.info("="*40)
-    logger.info(f"🎉 Batch Complete")
-    logger.info(f"✅ Passed: {passed}")
-    logger.info(f"❌ Failed: {failed}")
-    logger.info(f"⏭️ Skipped: {skipped}")
+    logger.info("Batch Complete")
+    logger.info(f"Passed: {passed}")
+    logger.info(f"Failed: {failed}")
+    logger.info(f"Skipped: {skipped}")
     logger.info("="*40)
 
 if __name__ == "__main__":
     main()
+

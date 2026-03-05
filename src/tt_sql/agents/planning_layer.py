@@ -4,6 +4,7 @@ from ..core.agent_base import BaseAgent, AgentState
 from ..core.llm_service import LLMService
 from ..core.prompt_loader import PromptLoader
 from ..core.file_coordinator import FileCoordinator
+from .input_layer import format_rag_columns
 
 class StepByStepPlannerAgent(BaseAgent):
     """
@@ -18,7 +19,7 @@ class StepByStepPlannerAgent(BaseAgent):
     def run(self, state: AgentState) -> AgentState:
         from ..core.paths import InstancePaths
         
-        self.log(state, "PLAN_CATEGORY: ⚡ Execution Roadmap")
+        self.log(state, "PLAN_CATEGORY: Execution Roadmap")
         
         
         # Reconstruct intent context
@@ -28,19 +29,14 @@ class StepByStepPlannerAgent(BaseAgent):
         }
         intent_context = json.dumps(intent_data, indent=2)
         
-        # Reconstruct enriched context
-        context_data = {
-            "relevant_tables": state.relevant_tables,
-            "reasoning": state.context_reasoning
-        }
-        context_context = json.dumps(context_data, indent=2)
-        
+        # Format raw RAG columns directly for the planner prompt
+        schema_str = format_rag_columns(state.rag_columns) if state.rag_columns else "No RAG schema available."
+
         # Use in-memory inputs
         messages = self.prompt_loader.load_prompt(
             "query_planner",
             user_query=state.user_query,
-            intent_path=intent_context,
-            context_path=context_context
+            intent_path=intent_context
         )
                     
         response = self.llm.get_json_completion(messages, state=state)
@@ -57,18 +53,4 @@ class StepByStepPlannerAgent(BaseAgent):
             self.log(state, f"PLAN_STEP: - {step}")
         return state
 
-class RelationshipGraphBuilderAgent(BaseAgent):
-    """
-    Builds a graph of table relationships (PK/FK).
-    """
-    def __init__(self):
-        super().__init__(name="RelationshipGraphBuilder")
 
-    def run(self, state: AgentState) -> AgentState:
-        # State already has schema info with FKs from SchemaAnalyzer
-        # This agent would enhance it by inferring missing links or visualizing
-        
-        # For this MVP, we just pass. 
-        # Future: use networkx or similar to build a graph object and store in state
-        self.log(state, "Relationship graph implicit in schema info.")
-        return state

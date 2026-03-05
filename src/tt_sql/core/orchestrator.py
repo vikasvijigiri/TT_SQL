@@ -38,6 +38,12 @@ class Orchestrator:
         
         # We use a ThreadPoolExecutor for a watchdog timeout
         with ThreadPoolExecutor(max_workers=1) as executor:
+            log_file_path = Logger._get_log_file()
+            
+            def log_wrapper(a, s, lf):
+                Logger.bind_log_file(lf)
+                return a.run(s)
+
             for agent in self.agents:
                 try:
                     # Skip RefinementLoop header since it manages its own internal agent headers
@@ -49,7 +55,7 @@ class Orchestrator:
                     current_state.current_step = agent.name
                     
                     # Execute Agent with 240s timeout
-                    future = executor.submit(agent.run, current_state)
+                    future = executor.submit(log_wrapper, agent, current_state, log_file_path)
                     try:
                         current_state = future.result(timeout=240)
                     except TimeoutError:
@@ -67,7 +73,10 @@ class Orchestrator:
                          break
                          
                 except Exception as e:
+                    import traceback
                     error_msg = f"Orchestrator caught exception in {agent.name}: {str(e)}"
+                    print(f"DEBUG ORCHESTRATOR ERROR: {error_msg}")
+                    print(traceback.format_exc())
                     current_state.add_log(error_msg)
                     Logger.log(error_msg, level="ERROR")
                     break

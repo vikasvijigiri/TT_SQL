@@ -1,4 +1,5 @@
 import json
+import os
 from typing import List
 from ..core.agent_base import BaseAgent, AgentState
 from ..core.state import CandidateQuery
@@ -6,6 +7,7 @@ from ..core.llm_service import LLMService
 from ..core.prompt_loader import PromptLoader
 from ..core.logger import Logger
 from ..core.file_coordinator import FileCoordinator
+from .input_layer import format_rag_columns
 
 class MultiCandidateGeneratorAgent(BaseAgent):
     """
@@ -18,23 +20,28 @@ class MultiCandidateGeneratorAgent(BaseAgent):
         self.file_coordinator = FileCoordinator()
 
     def _compact_schema(self, schema: dict) -> str:
-        """Converts JSON schema to a compact string: Table(col1, col2)"""
+        """Converts JSON schema to a detailed multi-line string."""
         if not schema: return ""
         lines = []
         if isinstance(schema, dict):
              for table, data in schema.items():
-                # Handle potential dictionary structure (tables -> {columns: [...]})
-                # Check for 'columns' key or if data is a list
                 cols = []
                 if isinstance(data, dict) and "columns" in data:
                     cols = data["columns"]
                 elif isinstance(data, list):
                     cols = data
                 
-                # Extract names
-                col_names = [c.get("name", c) if isinstance(c, dict) else str(c) for c in cols]
-                lines.append(f"{table}({', '.join(col_names)})")
-        return "\n".join(lines)
+                lines.append(f"Table: {table}")
+                for c in cols:
+                    if isinstance(c, dict):
+                        cname = c.get("column_name") or c.get("name") or "unknown"
+                        ctype = c.get("type") or c.get("data_type") or ""
+                        desc  = c.get("description") or ""
+                        lines.append(f" - {cname} {f'({ctype})' if ctype else ''}{f' -- {desc}' if desc else ''}")
+                    else:
+                        lines.append(f" - {str(c)}")
+                lines.append("")
+        return "\n".join(lines).strip()
 
     def run(self, state: AgentState) -> AgentState:
         from ..core.paths import InstancePaths
@@ -49,52 +56,58 @@ class MultiCandidateGeneratorAgent(BaseAgent):
         if previous_sql.startswith("ERROR:"):
             previous_sql = ""  # Don't pass error strings as SQL
 
-        rag_context = ""
-        rag_source = getattr(state, "rag_source", "none")
-        if rag_source == "qdrant":
-            try:
-                from ..rag.vector_store import VectorStoreAgent
-                rag_agent = VectorStoreAgent()
-                examples = rag_agent.retrieve_similar_examples(state.user_query)
-                if examples:
-                    rag_context = "\nSIMILAR PAST EXAMPLES (FOR REFERENCE):\n"
-                    for i, ex in enumerate(examples):
-                        rag_context += f"Example {i+1}:\nQuery: {ex['query']}\nSQL: {ex['sql']}\n\n"
-                    self.log(state, f"Injected {len(examples)} RAG examples into prompt.")
-            except Exception as e:
-                Logger.log(f"RAG retrieval failed: {e}", level="ERROR")
-
-        # Optimize Schema Context: only send relevant tables (from TableSelector)
-        if state.schema_info:
-             full_schema = state.schema_info
-             if state.relevant_tables:
-                 full_schema = {k: v for k, v in full_schema.items() if k in state.relevant_tables}
-             schema_context = self._compact_schema(full_schema)
+        # RAG-only schema: use raw retrieved columns
+        if state.rag_columns:
+            schema_context = format_rag_columns(state.rag_columns)
         else:
-             try:
-                 with open(schema_path, "r", encoding="utf-8") as f:
-                     schema_context = self._compact_schema(json.load(f))
-             except:
-                 schema_context = "Schema not available."
+            self.log(state, "WARNING: No RAG schema available — schema context is empty.", level="WARN")
+            schema_context = "RAG schema not available."
 
         # Build action plan text
         action_plan = "No plan available."
         if state.step_by_step_plan:
             action_plan = "\n".join(f"  {i+1}. {s}" for i, s in enumerate(state.step_by_step_plan))
 
-        # Prompt Loading: matches sqlite_generation.yaml
+        # Dialect Detection
+        db_type = os.getenv("DB_TYPE", "sqlite").lower()
+        if db_type in ["postgres", "postgresql"]:
+            dialect = "PostgreSQL"
+            dialect_instructions = (
+                " - YOU MUST ONLY USE POSTGRESQL COMMANDS. ANY SQLITE-SPECIFIC SYNTAX WILL CAUSE A FATAL ERROR.\n"
+                " - Use CURRENT_DATE for the current date. NEVER use date('now').\n"
+                " - Use INTERVAL for date arithmetic (e.g., col + INTERVAL '1 month').\n"
+                " - Use DATE_TRUNC('month', col) for month-level grouping or filtering.\n"
+                " - Use ILIKE for case-insensitive matching.\n"
+                " - ROUND OFF: ALWAYS round numeric results, percentages, and averages to 2 decimal places using ROUND(v::numeric, 2).\n"
+                " - DATE CASTING: For columns containing dates as strings (character varying), you MUST use TO_DATE(col, 'YYYY-MM-DD') before comparison or truncation.\n"
+                " - Use NULLIF(denominator, 0) to prevent division by zero.\n"
+                " - SCHEMA QUALIFICATION: You MUST always qualify table names with the schema name in double quotes: \"acme-chatbot\".table_name (e.g. FROM \"acme-chatbot\".otif).\n"
+                " - PRIORITIZE INBUILT FUNCTIONS: Use native PostgreSQL functions (e.g., DATE_TRUNC, COALESCE, GREATEST, LEAST) whenever possible instead of complex manual logic."
+            )
+        else:
+            dialect = "SQLite"
+            dialect_instructions = (
+                " - Use SQLite syntax only.\n"
+                " - Use date('now') for current date.\n"
+                " - Use datetime(col, '+1 month') for date arithmetic.\n"
+                " - For division: CAST(x AS REAL) / y.\n"
+                " - No ILIKE, use LOWER(col) = LOWER('val').\n"
+                " - No POWER() function, use x * x."
+            )
+
+        # Prompt Loading: matches sql_builder.yaml
         messages = self.prompt_loader.load_prompt(
             "sql_builder",
             user_query=state.user_query,
             action_plan=action_plan,
             schema_path=schema_context,
-            previous_sql=previous_sql
+            previous_sql=previous_sql,
+            dialect=dialect,
+            dialect_instructions=dialect_instructions
         )
         
-        # Consolidate RAG context and Critic feedback into the main user message
+        # Consolidate Critic feedback into the main user message
         extra_context = ""
-        if rag_context:
-            extra_context += f"\n{rag_context}"
 
         has_critic_feedback = False
         if state.history:
@@ -107,10 +120,10 @@ class MultiCandidateGeneratorAgent(BaseAgent):
         # When critic feedback exists, relabel previous SQL so builder knows it has errors
         if has_critic_feedback and previous_sql:
             for msg in messages:
-                if msg["role"] == "user" and "Previous Valid SQL Foundation" in msg["content"]:
+                if msg["role"] == "user" and "Previous Valid SQL Foundation:\n" in msg["content"]:
                     msg["content"] = msg["content"].replace(
-                        "Previous Valid SQL Foundation:",
-                        "PREVIOUS SQL (HAS ERRORS — REWRITE FROM SCRATCH):"
+                        "Previous Valid SQL Foundation:\n",
+                        "PREVIOUS SQL (HAS ERRORS AND CONTINUES TO FAIL — YOU MUST FIX ALL ISSUES BELOW):\n"
                     )
                     break
 

@@ -1,6 +1,6 @@
 import os
 import json
-from typing import Optional, Union, List, Any
+from typing import Optional, Union, List, Any, Dict
 from .paths import InstancePaths
 
 class FileCoordinator:

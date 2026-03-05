@@ -1,10 +1,12 @@
 import json
+import os
 from typing import Dict, Any, List
 from ..core.agent_base import BaseAgent, AgentState
 from ..core.llm_service import LLMService
 from ..core.prompt_loader import PromptLoader
 from ..core.file_coordinator import FileCoordinator
 from ..core.logger import Logger
+from .input_layer import format_rag_columns
 
 class CriticAgent(BaseAgent):
     """
@@ -30,7 +32,7 @@ class CriticAgent(BaseAgent):
             else:
                 cols = []
 
-            col_names = [c.get("name", c) if isinstance(c, dict) else str(c) for c in cols]
+            col_names = [c.get("column_name", c.get("name", c)) if isinstance(c, dict) else str(c) for c in cols]
             lines.append(f"{table}({', '.join(col_names)})")
         return "\n".join(lines)
 
@@ -40,28 +42,59 @@ class CriticAgent(BaseAgent):
         # Read SQL from file if state doesn't have it
         sql_to_criticize = self.file_coordinator.read_sql(state.instance_id, state.model_name) or state.chosen_query
 
-        # Token Optimization: only send relevant tables (from TableSelector)
-        if state.schema_info:
-            full_schema = state.schema_info
-            if state.relevant_tables:
-                full_schema = {k: v for k, v in full_schema.items() if k in state.relevant_tables}
-            schema_context = self._compact_schema(full_schema)
+        # RAG-only schema: use raw retrieved columns
+        if state.rag_columns:
+            schema_context = format_rag_columns(state.rag_columns)
         else:
-             schema_path = str(InstancePaths.schema(state.instance_id, state.model_name))
-             try:
-                 with open(schema_path, "r", encoding="utf-8") as f:
-                     full_schema = json.load(f)
-                 schema_context = self._compact_schema(full_schema)
-             except:
-                 schema_context = "Schema not available."
+            self.log(state, "WARNING: No RAG schema available — schema context is empty.", level="WARN")
+            schema_context = "RAG schema not available."
 
         # Build action plan text
         action_plan = "No plan available."
         if state.step_by_step_plan:
             action_plan = "\n".join(f"  {i+1}. {s}" for i, s in enumerate(state.step_by_step_plan))
 
+        # Format execution results
+        execution_context = "No execution results available."
+        if state.execution_result:
+            if state.execution_result.error_message:
+                execution_context = f"EXECUTION FAILED WITH DATABASE ERROR:\n{state.execution_result.error_message}\n\nAnalyze this error and explain how to fix the SQL to avoid it."
+            else:
+                columns = state.execution_result.columns or []
+                rows = state.execution_result.rows or []
+                if not columns and not rows:
+                    execution_context = "Query returned 0 rows and 0 columns."
+                elif not rows:
+                    execution_context = f"| {' | '.join(str(c) for c in columns)} |\n| {' | '.join(['---']*len(columns))} |\n(0 rows returned)"
+                else:
+                    table_lines = [f"| {' | '.join(str(c) for c in columns)} |", f"| {' | '.join(['---']*len(columns))} |"]
+                    for row in rows:
+                        safe_row = [str(x).replace('|', '\\|').replace('\n', ' ') for x in row]
+                        table_lines.append(f"| {' | '.join(safe_row)} |")
+                    execution_context = "\n".join(table_lines)
+
         # Get previous feedback for enforcement checking
         previous_feedback = getattr(state, 'critic_feedback', '') or 'None (first attempt)'
+
+        # Dialect Detection
+        db_type = os.getenv("DB_TYPE", "sqlite").lower()
+        if db_type in ["postgres", "postgresql"]:
+            dialect = "PostgreSQL"
+            dialect_instructions = (
+                " - STRICTLY VALIDATE AGAINST POSTGRESQL SYNTAX. FAIL IF ANY SQLITE COMMANDS ARE USED.\n"
+                " - Ensure CURRENT_DATE is used instead of date('now').\n"
+                " - Ensure DATE_TRUNC('month', col) is used for month groupings.\n"
+                " - FAIL IF ROUND(v, d) IS USED. PostgreSQL does not support it for double precision.\n"
+                " - Ensure native PostgreSQL functions (COALESCE, NULLIF, etc.) are used where appropriate.\n"
+                " - Verify all tables are qualified with '\"acme-chatbot\".'."
+            )
+        else:
+            dialect = "SQLite"
+            dialect_instructions = (
+                " - Validate against SQLite syntax.\n"
+                " - Check for date('now') and numeric types.\n"
+                " - No ILIKE allowed."
+            )
 
         messages = self.prompt_loader.load_prompt(
             "sql_critic",
@@ -69,7 +102,10 @@ class CriticAgent(BaseAgent):
             action_plan=action_plan,
             sql=sql_to_criticize,
             schema_path=schema_context,
-            previous_feedback=previous_feedback
+            previous_feedback=previous_feedback,
+            dialect=dialect,
+            dialect_instructions=dialect_instructions,
+            execution_results=execution_context
         )
         
         # Get Critique

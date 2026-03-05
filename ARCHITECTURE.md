@@ -4,20 +4,17 @@
 
 ```mermaid
 flowchart TD
-    A["📥 Input: User Query + Database"] --> B["Stage 1: SQLiteFileLoader"]
-    B --> C["Stage 2: SchemaAnalyzer"]
-    C --> D["Stage 3: TableSelector 🤖"]
-    D --> E["Stage 4: RelationshipGraphBuilder"]
-    E --> F["Stage 5: QueryPlanner 🤖"]
-    F --> G["Stage 6: RefinementLoop"]
+    A["📥 Input: User Query"] --> B["Stage 1: QueryPlanner 🤖"]
+    B --> C["Stage 2: ContextEnrichment (RAG)"]
+    C --> D["Stage 3: RefinementLoop"]
 
-    subgraph G["Stage 6: RefinementLoop (max 5 retries)"]
-        G1["SQLBuilder 🤖"] --> G2["SQLCritic 🤖"]
-        G2 -->|"❌ FAIL + feedback"| G1
-        G2 -->|"✅ PASS"| G3["SQLiteExecutor"]
+    subgraph D["Stage 3: RefinementLoop (max 5 retries)"]
+        D1["SQLBuilder 🤖"] --> D2["SQLCritic 🤖"]
+        D2 -->|"❌ FAIL + feedback"| D1
+        D2 -->|"✅ PASS"| D3["DatabaseExecutor"]
     end
 
-    G3 --> H["📤 Output: SQL + CSV Results"]
+    D3 --> H["📤 Output: SQL + CSV Results"]
 ```
 
 > 🤖 = LLM call
@@ -28,15 +25,12 @@ flowchart TD
 
 | # | Agent | File | Prompt | LLM? | Purpose |
 |---|-------|------|--------|------|---------|
-| 1 | `SQLiteFileLoader` | `input_layer.py` | — | No | Locates `.sqlite` database file |
-| 2 | `SchemaAnalyzer` | `input_layer.py` | — | No | Extracts full schema (tables, columns, types, FKs) |
-| 3 | `TableSelector` | `input_layer.py` | `table_selector.yaml` | **Yes** | Picks relevant tables + classifies intent & complexity |
-| 4 | `RelationshipGraphBuilder` | `planning_layer.py` | — | No | Builds FK relationship graph between selected tables |
-| 5 | `QueryPlanner` | `planning_layer.py` | `query_planner.yaml` | **Yes** | Breaks query into step-by-step action plan |
-| 6 | `SQLBuilder` | `generation_layer.py` | `sql_builder.yaml` | **Yes** | Generates SQL from plan + schema + critic feedback |
-| 7 | `SQLCritic` | `critic_layer.py` | `sql_critic.yaml` | **Yes** | Validates SQL logic (no execution, pure analysis) |
-| 8 | `SQLiteExecutor` | `execution_layer.py` | — | No | Executes final SQL, saves `.sql` + `.csv` |
-| 9 | `RefinementLoop` | `loop_layer.py` | — | No | Orchestrates Builder→Critic loop (max 5 retries) |
+| 1 | `QueryPlanner` | `planning_layer.py` | `query_planner.yaml` | **Yes** | Breaks the natural language query into a logical, schema-agnostic step-by-step action plan |
+| 2 | `ContextEnrichmentAgent` | `input_layer.py` | — | No | Combines the user query and the planner's approach to perform a semantic vector search (RAG) in Qdrant, retrieving top K relevant schema columns |
+| 3 | `SQLBuilder` | `generation_layer.py` | `sql_builder.yaml` | **Yes** | Generates SQL from the generated plan + retrieved RAG schema + critic feedback |
+| 4 | `SQLCritic` | `critic_layer.py` | `sql_critic.yaml` | **Yes** | Validates SQL logic against the RAG schema (no execution, pure analysis) |
+| 5 | `SQLiteExecutor` / `PostgresExecutor` | `execution_layer.py` | — | No | Executes final SQL against the target database, saves `.sql` + `.csv` |
+| 6 | `RefinementLoop` | `loop_layer.py` | — | No | Orchestrates Builder→Critic loop (max 5 retries), running execution inside the loop to catch runtime SQL errors |
 
 ---
 
@@ -47,29 +41,26 @@ User Query
     │
     ▼
 ┌─────────────────────────────────────────────────┐
-│  INPUT LAYER                                     │
-│  SQLiteFileLoader → SchemaAnalyzer → TableSelector│
-│                                                   │
-│  Outputs:                                         │
-│  ├── schema_info (full DB schema)                │
-│  ├── relevant_tables (filtered subset)           │
-│  ├── query_intent (AGGREGATION, RANKING, etc.)   │
-│  └── complexity (LOW / MEDIUM / HIGH)            │
-└─────────────────────┬───────────────────────────┘
-                      │
-                      ▼
-┌─────────────────────────────────────────────────┐
 │  PLANNING LAYER                                  │
-│  RelationshipGraphBuilder → QueryPlanner         │
+│  QueryPlanner                                    │
 │                                                   │
 │  Outputs:                                         │
-│  ├── relationship_graph (FK connections)          │
-│  └── step_by_step_plan (numbered action steps)   │
+│  └── step_by_step_plan (schema-agnostic steps)   │
 └─────────────────────┬───────────────────────────┘
                       │
                       ▼
 ┌─────────────────────────────────────────────────┐
-│  GENERATION LAYER (RefinementLoop)               │
+│  CONTEXT ENRICHMENT LAYER (RAG)                  │
+│  ContextEnrichmentAgent                          │
+│                                                   │
+│  Outputs:                                         │
+│  ├── schema_info (semantic column metadata)      │
+│  └── relevant_tables (filtered subset)           │
+└─────────────────────┬───────────────────────────┘
+                      │
+                      ▼
+┌─────────────────────────────────────────────────┐
+│  GENERATION & EXECUTION LAYER (RefinementLoop)   │
 │                                                   │
 │  ┌──────────┐    feedback    ┌──────────┐        │
 │  │SQLBuilder│◄──────────────│SQLCritic  │        │
@@ -79,9 +70,9 @@ User Query
 │       │                        ✅ PASS            │
 │       └── retry (max 5)           │              │
 │                                   ▼              │
-│                          ┌──────────────┐        │
-│                          │SQLiteExecutor│        │
-│                          └──────────────┘        │
+│                          ┌────────────────┐      │
+│                          │DatabaseExecutor│      │
+│                          └────────────────┘      │
 └─────────────────────────────────────────────────┘
 ```
 
@@ -93,15 +84,17 @@ User Query
 Only **relevant tables** (selected by `TableSelector`) are sent to `SQLBuilder` and `SQLCritic` — not the entire database schema. This saves tokens on large databases.
 
 ### Intent Classification (No Extra LLM Call)
-`TableSelector` classifies **intent** and **complexity** in the same LLM call that picks tables:
-- **Intent**: `DATA_RETRIEVAL` | `AGGREGATION` | `COMPARISON` | `RANKING` | `TREND_ANALYSIS`
-- **Complexity**: `LOW` | `MEDIUM` | `HIGH`
+### Intent Classification
+When the RAG path is taken (`ContextEnrichmentAgent`), intent and complexity are efficiently defaulted to `DATA_RETRIEVAL` and `MEDIUM`, bypassing the need for an extra LLM call to classify the query. 
+
+### RAG Table Retrieval Bypass (Fast Path)
+Users can execute with `--use-rag` to completely **bypass** the `TableSelector` LLM call. When active, `ContextEnrichmentAgent` will query the specified Vector Store (`rag_source="qdrant"` or `"bedrock"`) to perform a semantic search utilizing a combination of the user's natural language query AND the step-by-step logical plan generated by `QueryPlanner`. This enriched search payload retrieves the most relevant columns with high precision.
 
 ### Critic-First, Execute-Last
-SQL is **never executed** during the refinement loop. The `SQLCritic` validates pure SQL logic against the schema. Execution happens **only once**, after the critic approves.
+SQL is **never executed** during the generation step. The `SQLCritic` validates pure SQL logic against the schema. Execution happens within the `RefinementLoop`, where runtime SQL errors are caught and fed back into the `SQLBuilder` for correction.
 
 ### Critic Failure Categories
-The `SQLCritic` checks 9 categories per critique:
+The `SQLCritic` checks 12 categories per critique:
 
 | Category | What It Catches |
 |----------|----------------|
@@ -114,6 +107,9 @@ The `SQLCritic` checks 9 categories per critique:
 | CASE | Missing `LOWER()` on string comparisons |
 | SYNTAX | SQL syntax errors |
 | FORMATTING | Date/type format issues |
+| DATA TYPE SAFETY | Missing conversions (e.g. `TO_DATE`) |
+| TYPE COMPATIBILITY | Comparing text to dates |
+| DB COMPATIBILITY | SQLite vs PostgreSQL syntax errors |
 
 ---
 
@@ -122,15 +118,14 @@ The `SQLCritic` checks 9 categories per critique:
 ```
 src/tt_sql/
 ├── agents/
-│   ├── input_layer.py         # SQLiteFileLoader, SchemaAnalyzer, TableSelector
-│   ├── planning_layer.py      # RelationshipGraphBuilder, QueryPlanner
+│   ├── input_layer.py         # ContextEnrichmentAgent
+│   ├── planning_layer.py      # QueryPlanner
 │   ├── generation_layer.py    # SQLBuilder (MultiCandidateGenerator)
 │   ├── critic_layer.py        # SQLCritic
-│   ├── execution_layer.py     # SQLiteExecutor
+│   ├── execution_layer.py     # DatabaseExecutor (SQLiteExecutor/PostgresExecutor)
 │   ├── loop_layer.py          # RefinementLoop orchestrator
 │   └── failure_analysis_agent.py  # Post-mortem analysis (offline)
 ├── prompts/
-│   ├── table_selector.yaml    # TableSelector prompt
 │   ├── query_planner.yaml     # QueryPlanner prompt
 │   ├── sql_builder.yaml       # SQLBuilder prompt
 │   ├── sql_critic.yaml        # SQLCritic prompt
@@ -153,9 +148,9 @@ src/tt_sql/
 
 | Pipeline Stage | LLM Calls |
 |---|---|
-| TableSelector (tables + intent + complexity) | 1 |
-| QueryPlanner (action plan) | 1 |
+| QueryPlanner (schema-agnostic action plan) | 1 |
+| ContextEnrichmentAgent (Vector DB Search) | 0 |
 | SQLBuilder (per attempt) | 1 |
 | SQLCritic (per attempt) | 1 |
-| **Minimum (1 attempt)** | **4** |
-| **Maximum (5 retries)** | **12** |
+| **Minimum (1 attempt)** | **3** |
+| **Maximum (5 retries)** | **11** |

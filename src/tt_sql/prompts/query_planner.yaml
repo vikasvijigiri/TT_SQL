@@ -30,13 +30,9 @@ messages:
       {intent_path}
 
       ---
-      ENRICHED CONTEXT:
-      {context_path}
-
-      ---
       INSTRUCTIONS:
-      1. Identify the core tables and columns involved.
-      2. Define the filtering and join logic.
-      3. Outline any aggregations or window functions needed.
+      1. Outline the logical approach step-by-step in natural language.
+      2. DO NOT reference any specific table names or column names, since you do not have access to the databases schema.
+      3. Describe the required calculations, metrics extraction (such as filtering by a certain date range), and aggregations conceptually.
       4. Ensure the steps lead directly to solving the user's specific question.
       5. Return ONLY the JSON object.

@@ -12,9 +12,9 @@ messages:
       3. The Generated SQL.
       4. The Reference SQL (if available).
 
-      Your analysis must identify the ROOT CAUSE of the failure.
+      Your analysis must identify the ROOT CAUSE of the failure. You must pinpoint exactly WHERE the error occurred (e.g., "In the JOIN condition between table A and B", "In the SELECT clause where column C was hallucinated") and HOW it should be fixed.
 
-      Classify the failure into one of the following categories:
+      Classify the failure into one or more of the following categories:
       - **Logic**: The SQL logic is fundamentally flawed (e.g., wrong JOIN condition, missing WHERE clause, incorrect aggregation).
       - **Hallucination**: The agent invented tables, columns, or values that do not exist in the schema.
       - **Reasoning**: The agent misunderstood the user's intent or the business logic implied by the question.
@@ -27,9 +27,14 @@ messages:
 
       # Failure Analysis
 
-      **Category**: [One or more or all of the categories above]
+      **Category**: [One or more categories]
 
       **Summary**: [A brief 1-2 sentence summary of the failure]
+
+      **Deep Dive**:
+      - **What went wrong**: [Detailed explanation of the specific logic or reasoning error]
+      - **Where it went wrong**: [Pinpoint the exact part of the SQL, Plan, or Schema usage where the error occurred]
+      - **How to fix**: [Crucial steps or the exact SQL snippet needed to fix this specific instance]
 
   - role: user
     content: |

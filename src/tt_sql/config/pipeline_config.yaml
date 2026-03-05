@@ -4,30 +4,22 @@
 pipeline:
   # Agent execution order - agents will run in this sequence
   execution_order:
-    # 1. Input Layer - Understanding the query
-    - agent: SchemaAnalyzer
-      enabled: true
-      description: "Connect to database and extract schema"
-    
-    - agent: QueryIntentClassifier
-      enabled: true
-      description: "Classify query intent and complexity"
-    
-    # 2. Planning Layer - Context and strategy
-    - agent: ContextEnrichment
-      enabled: true
-      description: "Select relevant tables and enrich context"
-    
-    - agent: StepByStepPlanner
+    # 1. Planning Layer - Schema-Agnostic natural language plan
+    - agent: QueryPlanner
       enabled: true
       description: "Create step-by-step execution plan"
+      
+    # 2. Input Layer - RAG Vector semantic search for Context Enrichment
+    - agent: TableSelector
+      enabled: true
+      description: "Select relevant tables and enrich context"
     
     # 3. Generation Layer - SQL creation and refinement
     - agent: RefinementLoop
       enabled: true
       description: "Generate and refine SQL through iterative loop"
       settings:
-        max_iterations: 3
+        max_iterations: 5
         enable_critic: true
     
     # 4. Execution Layer - Run and validate

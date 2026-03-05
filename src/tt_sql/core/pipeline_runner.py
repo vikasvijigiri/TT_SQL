@@ -1,3 +1,4 @@
+import os
 import time
 import json
 import re
@@ -10,23 +11,23 @@ from tt_sql.core.agent_base import AgentState
 from tt_sql.core.paths import initialize_directories, InstancePaths
 
 # Import Agents
-from tt_sql.agents.input_layer import SQLiteFileLoaderAgent, SchemaAnalyzerAgent, ContextEnrichmentAgent
-from tt_sql.agents.planning_layer import RelationshipGraphBuilderAgent, StepByStepPlannerAgent
+from tt_sql.agents.input_layer import ContextEnrichmentAgent
+from tt_sql.agents.planning_layer import StepByStepPlannerAgent
 from tt_sql.agents.loop_layer import RefinementLoopAgent
-from tt_sql.agents.execution_layer import SQLiteExecutorAgent
+from tt_sql.agents.execution_layer import SQLiteExecutorAgent, PostgresExecutorAgent
 
 
 def get_agents(llm_service):
     """Factory to create agents with the given LLM service."""
-    return [
-        SQLiteFileLoaderAgent(),
-        SchemaAnalyzerAgent(), 
+    # Determine executor based on DB_TYPE
+    db_type = os.getenv("DB_TYPE", "sqlite").lower()
+    executor = PostgresExecutorAgent() if db_type in ["postgres", "postgresql"] else SQLiteExecutorAgent()
 
-        ContextEnrichmentAgent(llm_service),
-        RelationshipGraphBuilderAgent(),
+    return [
+        ContextEnrichmentAgent(),
         StepByStepPlannerAgent(llm_service),
         RefinementLoopAgent(llm_service),
-        SQLiteExecutorAgent()
+        executor
     ]
 
 class OutputHandler:
@@ -46,20 +47,60 @@ class OutputHandler:
     def debug(self, text):
         if self.verbose: print(f"[DEBUG] {text}")
 
-def run_analysis_pipeline(question, db_name, instance_id, model_name, rag_source="qdrant", output_handler=None, stop_checker=None):
+def run_analysis_pipeline(question, db_name, instance_id, model_name, rag_source="qdrant", use_rag=False, rag_limit=3, verbose=False, output_handler=None, stop_checker=None):
     """
     Core pipeline execution logic. Pure Python, no UI dependencies.
     Returns: (final_state, iter_count, is_fatal, captured_transcript)
     """
+    # Initialize Logger Global Verbose
+    Logger._verbose = verbose
+    
     if output_handler is None:
         output_handler = OutputHandler()
 
     # Paths
     db_path_absolute = str(InstancePaths.database(db_name))
 
-    if not InstancePaths.database(db_name).exists():
+    if not use_rag and not InstancePaths.database(db_name).exists():
         output_handler.error(f"Database not found at {db_path_absolute}")
         return None, 0, True, output_handler.captured_text
+
+    # --- RAG: Upfront collection existence check ---
+    if use_rag:
+        import requests, urllib3
+        urllib3.disable_warnings()
+        qdrant_url   = os.getenv("QDRANT_URL", "http://localhost:6333").rstrip("/")
+        qdrant_key   = os.getenv("QDRANT_API_KEY") or os.getenv("QDRANT_API", "")
+        collection   = os.getenv("QDRANT_COLLECTION", "")
+        headers      = {"api-key": qdrant_key}
+        if not collection:
+            msg = "[RAG] QDRANT_COLLECTION is not set in .env. Cannot run RAG mode."
+            output_handler.error(msg)
+            Logger.log(msg, level="ERROR")
+            return None, 0, True, output_handler.captured_text
+        check_url = f"{qdrant_url}/collections/{collection}"
+        try:
+            resp = requests.get(check_url, headers=headers, verify=False, timeout=10)
+            if resp.status_code == 404:
+                msg = (
+                    f"[RAG] Collection '{collection}' does not exist in Qdrant.\n"
+                    f"Please push your table embeddings to Qdrant collection '{collection}' first."
+                )
+                output_handler.error(msg)
+                Logger.log(msg, level="ERROR")
+                return None, 0, True, output_handler.captured_text
+            elif resp.status_code != 200:
+                msg = f"[RAG] Qdrant returned HTTP {resp.status_code} for collection '{collection}'. Check your QDRANT_URL and QDRANT_API."
+                output_handler.error(msg)
+                Logger.log(msg, level="ERROR")
+                return None, 0, True, output_handler.captured_text
+            Logger.log(f"[RAG] Collection '{collection}' verified OK.")
+        except requests.exceptions.RequestException as e:
+            msg = f"[RAG] Cannot reach Qdrant at {qdrant_url}: {e}"
+            output_handler.error(msg)
+            Logger.log(msg, level="ERROR")
+            return None, 0, True, output_handler.captured_text
+
 
     # Initialize directories
     initialize_directories(model_name)
@@ -76,8 +117,11 @@ def run_analysis_pipeline(question, db_name, instance_id, model_name, rag_source
     state = AgentState(
         user_query=question,
         db_path=db_path_absolute,
+        db_name=db_name,          # pass raw db name for RAG collection routing
         instance_id=instance_id,
         rag_source=rag_source,
+        use_rag=use_rag,
+        rag_limit=rag_limit,
         model_name=model_name
     )
 
@@ -96,16 +140,6 @@ def run_analysis_pipeline(question, db_name, instance_id, model_name, rag_source
     try:
         Logger.log_stage_header("📥 INPUT LAYER")
 
-        # --- Stage 1: File Loader ---
-        if stop_checker and stop_checker(): return None, 0, True, output_handler.captured_text
-        if "SQLiteFileLoader" in agent_map:
-            state = agent_map["SQLiteFileLoader"].run(state)
-
-        # --- Stage 2: Schema Analyzer ---
-        if stop_checker and stop_checker(): return None, 0, True, output_handler.captured_text
-        if "SchemaAnalyzer" in agent_map:
-            state = agent_map["SchemaAnalyzer"].run(state)
-
         # --- SUB-QUESTION EXECUTION LOOP ---
         questions_to_process = state.sub_questions if state.sub_questions else [question]
         final_states = []
@@ -121,29 +155,29 @@ def run_analysis_pipeline(question, db_name, instance_id, model_name, rag_source
             current_state = AgentState(
                 user_query=sub_q,
                 db_path=state.db_path,
+                db_name=state.db_name,
                 instance_id=sub_id,
                 rag_source=state.rag_source,
+                use_rag=state.use_rag,
+                rag_limit=state.rag_limit,
                 model_name=state.model_name,
                 schema_info=state.schema_info,
                 query_intent=state.query_intent
             )
             
-            # --- Stage 4: Context Enrichment ---
-            if stop_checker and stop_checker(): return None, 0, True, output_handler.captured_text
-            if "TableSelector" in agent_map:
-                current_state = agent_map["TableSelector"].run(current_state)
-
-            # --- Stage 5: Relationship Graph ---
-            if stop_checker and stop_checker(): return None, 0, True, output_handler.captured_text
-            if "RelationshipGraphBuilder" in agent_map:
-                current_state = agent_map["RelationshipGraphBuilder"].run(current_state)
-
             Logger.log_stage_header("📋 PLANNING LAYER")
 
-            # --- Stage 6: Step-by-Step Planner ---
+            # --- Stage 4: Step-by-Step Planner ---
             if stop_checker and stop_checker(): return None, 0, True, output_handler.captured_text
             if "QueryPlanner" in agent_map:
                 current_state = agent_map["QueryPlanner"].run(current_state)
+
+            Logger.log_stage_header("📥 CONTEXT ENRICHMENT")
+
+            # --- Stage 6: Context Enrichment (RAG) ---
+            if stop_checker and stop_checker(): return None, 0, True, output_handler.captured_text
+            if "TableSelector" in agent_map:
+                current_state = agent_map["TableSelector"].run(current_state)
 
             Logger.log_stage_header("⚡ GENERATION LAYER")
 
@@ -157,8 +191,11 @@ def run_analysis_pipeline(question, db_name, instance_id, model_name, rag_source
 
             # --- Stage 8: Final Executor ---
             if stop_checker and stop_checker(): return None, 0, True, output_handler.captured_text
-            if "SQLiteExecutor" in agent_map:
-                current_state = agent_map["SQLiteExecutor"].run(current_state)
+            
+            # Run whichever executor is in the map
+            executor_name = "PostgresExecutor" if "PostgresExecutor" in agent_map else "SQLiteExecutor"
+            if executor_name in agent_map:
+                current_state = agent_map[executor_name].run(current_state)
 
             # Check fatal errors
             if (current_state.chosen_query and "ERROR:" in current_state.chosen_query) or \
@@ -171,6 +208,15 @@ def run_analysis_pipeline(question, db_name, instance_id, model_name, rag_source
         Logger.log(f"Analysis completed in {elapsed:.2f} seconds.")
         last_state = final_states[-1] if final_states else state
         
+        # Comprehensive Fatal Error Check
+        if not is_any_fatal:
+            for s in final_states:
+                if (s.execution_result and s.execution_result.error_message) or \
+                   (s.error_message and "ERROR:" in s.error_message.upper()) or \
+                   (s.chosen_query and "ERROR:" in s.chosen_query.upper()):
+                    is_any_fatal = True
+                    break
+
         # Check Fatal Errors
         if is_any_fatal:
             output_handler.error(f"Errors occurred in one or more sub-questions.")
@@ -178,6 +224,8 @@ def run_analysis_pipeline(question, db_name, instance_id, model_name, rag_source
         return last_state, 0, is_any_fatal, output_handler.captured_text
 
     except Exception as e:
-        output_handler.error(f"Critical Pipeline Error: {str(e)}")
-        Logger.log(f"Critical Pipeline Error: {str(e)}", level="ERROR")
+        import traceback
+        tb = traceback.format_exc()
+        output_handler.error(f"Critical Pipeline Error: {str(e)}\n{tb}")
+        Logger.log(f"Critical Pipeline Error: {str(e)}\n{tb}", level="ERROR")
         return None, 0, True, output_handler.captured_text
