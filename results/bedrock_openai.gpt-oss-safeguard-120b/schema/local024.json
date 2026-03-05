@@ -1,300 +1,837 @@
 {
-  "player": {
+  "process-area-details": {
     "columns": [
       {
-        "name": "player_id",
-        "type": "INTEGER",
-        "pk": true
-      },
-      {
-        "name": "player_name",
-        "type": "TEXT",
+        "column_name": "overall_efficiency",
+        "type": "character varying",
+        "description": "",
+        "sample_values": [
+          "81.53%",
+          "110.73%"
+        ],
         "pk": false
       },
       {
-        "name": "dob",
-        "type": "DATE",
+        "column_name": "area_group",
+        "type": "character varying",
+        "description": "",
+        "sample_values": [
+          "Granulation",
+          "Granulation"
+        ],
         "pk": false
       },
       {
-        "name": "batting_hand",
-        "type": "TEXT",
+        "column_name": "_time_in_opn",
+        "type": "character varying",
+        "description": "",
+        "sample_values": [
+          "67.68%",
+          "99.37%"
+        ],
         "pk": false
       },
       {
-        "name": "bowling_skill",
-        "type": "TEXT",
+        "column_name": "equipment_efficiency",
+        "type": "character varying",
+        "description": "",
+        "sample_values": [
+          "94.22%",
+          "85.39%"
+        ],
         "pk": false
       },
       {
-        "name": "country_name",
-        "type": "TEXT",
+        "column_name": "area_name",
+        "type": "character varying",
+        "description": "",
+        "sample_values": [
+          "Granulation 1",
+          "Granulation 2"
+        ],
+        "pk": false
+      },
+      {
+        "column_name": "idle_time_",
+        "type": "character varying",
+        "description": "",
+        "sample_values": [
+          "13.47%",
+          "-29.69%"
+        ],
+        "pk": false
+      },
+      {
+        "column_name": "_time_in_cleaning",
+        "type": "double precision",
+        "description": "",
+        "sample_values": [],
         "pk": false
       }
     ],
     "foreign_keys": []
   },
-  "team": {
+  "otif": {
     "columns": [
       {
-        "name": "team_id",
-        "type": "INTEGER",
-        "pk": true
+        "column_name": "total_ship_qty",
+        "type": "double precision",
+        "description": "",
+        "sample_values": [
+          "24.0",
+          "24.0"
+        ],
+        "pk": false
       },
       {
-        "name": "name",
-        "type": "TEXT",
+        "column_name": "land1",
+        "type": "character varying",
+        "description": "",
+        "sample_values": [
+          "US",
+          "US"
+        ],
+        "pk": false
+      },
+      {
+        "column_name": "abgru",
+        "type": "double precision",
+        "description": "",
+        "sample_values": [],
+        "pk": false
+      },
+      {
+        "column_name": "bolnr",
+        "type": "character varying",
+        "description": "",
+        "sample_values": [
+          "SID7187823-FDE",
+          "SID7187801-FDE"
+        ],
+        "pk": false
+      },
+      {
+        "column_name": "otif_loss_final_status",
+        "type": "character varying",
+        "description": "",
+        "sample_values": [
+          "Delivered Within Lead Time",
+          "Delivered Within Lead Time"
+        ],
+        "pk": false
+      },
+      {
+        "column_name": "remarks",
+        "type": "double precision",
+        "description": "",
+        "sample_values": [],
+        "pk": false
+      },
+      {
+        "column_name": "mandt",
+        "type": "double precision",
+        "description": "",
+        "sample_values": [
+          "100.0",
+          "100.0"
+        ],
+        "pk": false
+      },
+      {
+        "column_name": "transit_status",
+        "type": "character varying",
+        "description": "",
+        "sample_values": [],
+        "pk": false
+      },
+      {
+        "column_name": "plant",
+        "type": "double precision",
+        "description": "",
+        "sample_values": [
+          "2006.0",
+          "2006.0"
+        ],
+        "pk": false
+      },
+      {
+        "column_name": "so_recp_to_act_shp_days",
+        "type": "double precision",
+        "description": "",
+        "sample_values": [
+          "2.0",
+          "2.0"
+        ],
+        "pk": false
+      },
+      {
+        "column_name": "ship_to_region",
+        "type": "character varying",
+        "description": "",
+        "sample_values": [
+          "Utah",
+          "California"
+        ],
+        "pk": false
+      },
+      {
+        "column_name": "pen_rel_qty",
+        "type": "double precision",
+        "description": "",
+        "sample_values": [
+          "0.0",
+          "0.0"
+        ],
+        "pk": false
+      },
+      {
+        "column_name": "material_desc",
+        "type": "character varying",
+        "description": "",
+        "sample_values": [
+          "Klypaden",
+          "Ynalex"
+        ],
+        "pk": false
+      },
+      {
+        "column_name": "bol",
+        "type": "character varying",
+        "description": "",
+        "sample_values": [
+          "SID7187823",
+          "SID7187801"
+        ],
+        "pk": false
+      },
+      {
+        "column_name": "total_release_qty",
+        "type": "double precision",
+        "description": "",
+        "sample_values": [
+          "24.0",
+          "24.0"
+        ],
+        "pk": false
+      },
+      {
+        "column_name": "act_dt_of_shp",
+        "type": "character varying",
+        "description": "",
+        "sample_values": [
+          "2024-03-01",
+          "2024-03-01"
+        ],
+        "pk": false
+      },
+      {
+        "column_name": "act_shp_to_act_del_days",
+        "type": "double precision",
+        "description": "",
+        "sample_values": [],
+        "pk": false
+      },
+      {
+        "column_name": "regio",
+        "type": "character varying",
+        "description": "",
+        "sample_values": [
+          "UT",
+          "CA"
+        ],
+        "pk": false
+      },
+      {
+        "column_name": "ndc",
+        "type": "bigint",
+        "description": "",
+        "sample_values": [
+          "72888008301",
+          "72888005201"
+        ],
+        "pk": false
+      },
+      {
+        "column_name": "cust_names",
+        "type": "character varying",
+        "description": "",
+        "sample_values": [
+          "Sapphire Lake Pharmacy",
+          "Sapphire Lake Pharmacy"
+        ],
+        "pk": false
+      },
+      {
+        "column_name": "material",
+        "type": "character varying",
+        "description": "",
+        "sample_values": [
+          "40444",
+          "40649"
+        ],
+        "pk": false
+      },
+      {
+        "column_name": "fill_rate",
+        "type": "double precision",
+        "description": "",
+        "sample_values": [
+          "24.0",
+          "24.0"
+        ],
+        "pk": false
+      },
+      {
+        "column_name": "cust_name",
+        "type": "character varying",
+        "description": "",
+        "sample_values": [
+          "Sapphire Lake Pharmacy",
+          "Sapphire Lake Pharmacy"
+        ],
+        "pk": false
+      },
+      {
+        "column_name": "rel_qty",
+        "type": "double precision",
+        "description": "",
+        "sample_values": [
+          "24.0",
+          "24.0"
+        ],
+        "pk": false
+      },
+      {
+        "column_name": "sold_to",
+        "type": "bigint",
+        "description": "",
+        "sample_values": [
+          "2500019",
+          "2500019"
+        ],
+        "pk": false
+      },
+      {
+        "column_name": "in_full_loss",
+        "type": "double precision",
+        "description": "",
+        "sample_values": [
+          "0.0",
+          "0.0"
+        ],
+        "pk": false
+      },
+      {
+        "column_name": "carrier",
+        "type": "character varying",
+        "description": "",
+        "sample_values": [
+          "FDE",
+          "FDE"
+        ],
+        "pk": false
+      },
+      {
+        "column_name": "shipped_qty",
+        "type": "double precision",
+        "description": "",
+        "sample_values": [
+          "24.0",
+          "24.0"
+        ],
+        "pk": false
+      },
+      {
+        "column_name": "plan_b",
+        "type": "character varying",
+        "description": "",
+        "sample_values": [
+          "No",
+          "Yes"
+        ],
+        "pk": false
+      },
+      {
+        "column_name": "ev_key",
+        "type": "bigint",
+        "description": "",
+        "sample_values": [
+          "8004756972888008301",
+          "8004757072888005201"
+        ],
+        "pk": false
+      },
+      {
+        "column_name": "on_time_in_full_loss",
+        "type": "double precision",
+        "description": "",
+        "sample_values": [
+          "0.0",
+          "0.0"
+        ],
+        "pk": false
+      },
+      {
+        "column_name": "total_processing_del_time",
+        "type": "double precision",
+        "description": "",
+        "sample_values": [
+          "7.0",
+          "7.0"
+        ],
+        "pk": false
+      },
+      {
+        "column_name": "otif_loss_f1",
+        "type": "character varying",
+        "description": "",
+        "sample_values": [
+          "Delivered Within Lead Time",
+          "Delivered Within Lead Time"
+        ],
+        "pk": false
+      },
+      {
+        "column_name": "shipping_point",
+        "type": "double precision",
+        "description": "",
+        "sample_values": [
+          "2007.0",
+          "2007.0"
+        ],
+        "pk": false
+      },
+      {
+        "column_name": "order_qty",
+        "type": "double precision",
+        "description": "",
+        "sample_values": [
+          "24.0",
+          "24.0"
+        ],
+        "pk": false
+      },
+      {
+        "column_name": "po_number",
+        "type": "character varying",
+        "description": "",
+        "sample_values": [
+          "8180772205",
+          "8182861046"
+        ],
+        "pk": false
+      },
+      {
+        "column_name": "reporting_date",
+        "type": "character varying",
+        "description": "",
+        "sample_values": [
+          "2025-05-13",
+          "2025-05-13"
+        ],
+        "pk": false
+      },
+      {
+        "column_name": "req_del_to_act_del_days",
+        "type": "double precision",
+        "description": "",
+        "sample_values": [],
+        "pk": false
+      },
+      {
+        "column_name": "final_no_days",
+        "type": "bigint",
+        "description": "",
+        "sample_values": [
+          "14",
+          "14"
+        ],
+        "pk": false
+      },
+      {
+        "column_name": "cust_key",
+        "type": "bigint",
+        "description": "",
+        "sample_values": [
+          "250001940444",
+          "250001940649"
+        ],
         "pk": false
       }
     ],
     "foreign_keys": []
   },
-  "match": {
+  "doh": {
     "columns": [
       {
-        "name": "match_id",
-        "type": "INTEGER",
-        "pk": true
-      },
-      {
-        "name": "team_1",
-        "type": "INTEGER",
+        "column_name": "rrpl_fg",
+        "type": "double precision",
+        "description": "",
+        "sample_values": [
+          "0.0",
+          "4248.0"
+        ],
         "pk": false
       },
       {
-        "name": "team_2",
-        "type": "INTEGER",
+        "column_name": "penality",
+        "type": "double precision",
+        "description": "",
+        "sample_values": [
+          "10290.952875127594",
+          "1637.0"
+        ],
         "pk": false
       },
       {
-        "name": "match_date",
-        "type": "DATE",
+        "column_name": "forward_coverage",
+        "type": "character varying",
+        "description": "",
+        "sample_values": [
+          "Less than a month",
+          "Less than a month"
+        ],
         "pk": false
       },
       {
-        "name": "season_id",
-        "type": "INTEGER",
+        "column_name": "availablity",
+        "type": "double precision",
+        "description": "",
+        "sample_values": [
+          "-67368.0",
+          "-19817.0"
+        ],
         "pk": false
       },
       {
-        "name": "venue",
-        "type": "TEXT",
+        "column_name": "coverage_shortage",
+        "type": "double precision",
+        "description": "",
+        "sample_values": [
+          "-77850.95287512758",
+          "-23074.0"
+        ],
         "pk": false
       },
       {
-        "name": "toss_winner",
-        "type": "INTEGER",
+        "column_name": "sales_mtd",
+        "type": "double precision",
+        "description": "",
+        "sample_values": [
+          "1440.0",
+          "0.0"
+        ],
         "pk": false
       },
       {
-        "name": "toss_decision",
-        "type": "TEXT",
+        "column_name": "prod_family_catg",
+        "type": "character varying",
+        "description": "",
+        "sample_values": [
+          "Stranger",
+          "Stranger"
+        ],
         "pk": false
       },
       {
-        "name": "win_type",
-        "type": "TEXT",
+        "column_name": "month2_demand",
+        "type": "double precision",
+        "description": "",
+        "sample_values": [
+          "10290.952875127594",
+          "1637.0"
+        ],
         "pk": false
       },
       {
-        "name": "win_margin",
-        "type": "INTEGER",
+        "column_name": "month4_demand",
+        "type": "double precision",
+        "description": "",
+        "sample_values": [
+          "10198.61954179426",
+          "1889.0"
+        ],
         "pk": false
       },
       {
-        "name": "outcome_type",
-        "type": "TEXT",
+        "column_name": "strnth",
+        "type": "character varying",
+        "description": "",
+        "sample_values": [
+          "30",
+          "10"
+        ],
         "pk": false
       },
       {
-        "name": "match_winner",
-        "type": "INTEGER",
+        "column_name": "open_deliveries",
+        "type": "double precision",
+        "description": "",
+        "sample_values": [
+          "75240.0",
+          "19889.0"
+        ],
         "pk": false
       },
       {
-        "name": "man_of_the_match",
-        "type": "INTEGER",
-        "pk": false
-      }
-    ],
-    "foreign_keys": []
-  },
-  "player_match": {
-    "columns": [
-      {
-        "name": "match_id",
-        "type": "INTEGER",
-        "pk": true
-      },
-      {
-        "name": "player_id",
-        "type": "INTEGER",
-        "pk": true
-      },
-      {
-        "name": "role",
-        "type": "TEXT",
+        "column_name": "pack_size",
+        "type": "double precision",
+        "description": "",
+        "sample_values": [
+          "100.0",
+          "30.0"
+        ],
         "pk": false
       },
       {
-        "name": "team_id",
-        "type": "INTEGER",
-        "pk": false
-      }
-    ],
-    "foreign_keys": []
-  },
-  "ball_by_ball": {
-    "columns": [
-      {
-        "name": "match_id",
-        "type": "INTEGER",
-        "pk": true
-      },
-      {
-        "name": "over_id",
-        "type": "INTEGER",
-        "pk": true
-      },
-      {
-        "name": "ball_id",
-        "type": "INTEGER",
-        "pk": true
-      },
-      {
-        "name": "innings_no",
-        "type": "INTEGER",
-        "pk": true
-      },
-      {
-        "name": "team_batting",
-        "type": "INTEGER",
+        "column_name": "month3_demand",
+        "type": "double precision",
+        "description": "",
+        "sample_values": [
+          "10198.61954179426",
+          "1889.0"
+        ],
         "pk": false
       },
       {
-        "name": "team_bowling",
-        "type": "INTEGER",
+        "column_name": "april_need",
+        "type": "double precision",
+        "description": "",
+        "sample_values": [
+          "10482.952875127594",
+          "3257.0"
+        ],
         "pk": false
       },
       {
-        "name": "striker_batting_position",
-        "type": "INTEGER",
+        "column_name": "critical_sku",
+        "type": "character varying",
+        "description": "",
+        "sample_values": [
+          "No",
+          "Yes"
+        ],
         "pk": false
       },
       {
-        "name": "striker",
-        "type": "INTEGER",
+        "column_name": "prod_desc",
+        "type": "character varying",
+        "description": "",
+        "sample_values": [
+          "Eltravin",
+          "Ulinaril"
+        ],
         "pk": false
       },
       {
-        "name": "non_striker",
-        "type": "INTEGER",
+        "column_name": "month1_demand",
+        "type": "double precision",
+        "description": "",
+        "sample_values": [
+          "10290.952875127594",
+          "1637.0"
+        ],
         "pk": false
       },
       {
-        "name": "bowler",
-        "type": "INTEGER",
-        "pk": false
-      }
-    ],
-    "foreign_keys": []
-  },
-  "batsman_scored": {
-    "columns": [
-      {
-        "name": "match_id",
-        "type": "INTEGER",
-        "pk": true
-      },
-      {
-        "name": "over_id",
-        "type": "INTEGER",
-        "pk": true
-      },
-      {
-        "name": "ball_id",
-        "type": "INTEGER",
-        "pk": true
-      },
-      {
-        "name": "runs_scored",
-        "type": "INTEGER",
+        "column_name": "material",
+        "type": "character varying",
+        "description": "",
+        "sample_values": [
+          "40215",
+          "40224"
+        ],
         "pk": false
       },
       {
-        "name": "innings_no",
-        "type": "INTEGER",
-        "pk": true
-      }
-    ],
-    "foreign_keys": []
-  },
-  "wicket_taken": {
-    "columns": [
-      {
-        "name": "match_id",
-        "type": "INTEGER",
-        "pk": true
-      },
-      {
-        "name": "over_id",
-        "type": "INTEGER",
-        "pk": true
-      },
-      {
-        "name": "ball_id",
-        "type": "INTEGER",
-        "pk": true
-      },
-      {
-        "name": "player_out",
-        "type": "INTEGER",
+        "column_name": "prod_family",
+        "type": "character varying",
+        "description": "",
+        "sample_values": [
+          "Isosorbide DN",
+          "Loratadine ODT (OTC)"
+        ],
         "pk": false
       },
       {
-        "name": "kind_out",
-        "type": "TEXT",
+        "column_name": "bloc_stock_qty",
+        "type": "double precision",
+        "description": "",
+        "sample_values": [
+          "42.0",
+          "242.0"
+        ],
         "pk": false
       },
       {
-        "name": "innings_no",
-        "type": "INTEGER",
-        "pk": true
-      }
-    ],
-    "foreign_keys": []
-  },
-  "extra_runs": {
-    "columns": [
-      {
-        "name": "match_id",
-        "type": "INTEGER",
-        "pk": true
-      },
-      {
-        "name": "over_id",
-        "type": "INTEGER",
-        "pk": true
-      },
-      {
-        "name": "ball_id",
-        "type": "INTEGER",
-        "pk": true
-      },
-      {
-        "name": "extra_type",
-        "type": "TEXT",
+        "column_name": "unrestrict_qty",
+        "type": "double precision",
+        "description": "",
+        "sample_values": [
+          "8544.0",
+          "4248.0"
+        ],
         "pk": false
       },
       {
-        "name": "extra_runs",
-        "type": "INTEGER",
+        "column_name": "net_stock",
+        "type": "double precision",
+        "description": "",
+        "sample_values": [
+          "7680.0",
+          "-1548.0"
+        ],
         "pk": false
       },
       {
-        "name": "innings_no",
-        "type": "INTEGER",
-        "pk": true
+        "column_name": "shelf_life_bet_11_and_16",
+        "type": "double precision",
+        "description": "",
+        "sample_values": [
+          "0.0",
+          "0.0"
+        ],
+        "pk": false
+      },
+      {
+        "column_name": "ndc",
+        "type": "double precision",
+        "description": "",
+        "sample_values": [
+          "72888008401.0",
+          "72888002911.0"
+        ],
+        "pk": false
+      },
+      {
+        "column_name": "shelf_life___11",
+        "type": "double precision",
+        "description": "",
+        "sample_values": [
+          "0.0",
+          "0.0"
+        ],
+        "pk": false
+      },
+      {
+        "column_name": "doh",
+        "type": "double precision",
+        "description": "",
+        "sample_values": [
+          "22.38859732385504",
+          "-28.36896762370189"
+        ],
+        "pk": false
+      },
+      {
+        "column_name": "rrpl_wip",
+        "type": "double precision",
+        "description": "",
+        "sample_values": [
+          "0.0",
+          "4666.666666"
+        ],
+        "pk": false
+      },
+      {
+        "column_name": "qual_stock_qty",
+        "type": "double precision",
+        "description": "",
+        "sample_values": [
+          "0.0",
+          "0.0"
+        ],
+        "pk": false
+      },
+      {
+        "column_name": "advagen_stock",
+        "type": "double precision",
+        "description": "",
+        "sample_values": [
+          "7872.0",
+          "72.0"
+        ],
+        "pk": false
+      },
+      {
+        "column_name": "doh_incl_git_fg",
+        "type": "double precision",
+        "description": "",
+        "sample_values": [
+          "22.38859732385504",
+          "49.480757483200975"
+        ],
+        "pk": false
+      },
+      {
+        "column_name": "shelf_life__16",
+        "type": "double precision",
+        "description": "",
+        "sample_values": [
+          "8544.0",
+          "72.0"
+        ],
+        "pk": false
+      },
+      {
+        "column_name": "open_qty",
+        "type": "double precision",
+        "description": "",
+        "sample_values": [
+          "75240.0",
+          "19889.0"
+        ],
+        "pk": false
+      },
+      {
+        "column_name": "open_lines",
+        "type": "double precision",
+        "description": "",
+        "sample_values": [
+          "192.0",
+          "1620.0"
+        ],
+        "pk": false
+      },
+      {
+        "column_name": "doh_incl_git_fg_wip",
+        "type": "double precision",
+        "description": "",
+        "sample_values": [
+          "22.38859732385504",
+          "135.0030543555284"
+        ],
+        "pk": false
+      },
+      {
+        "column_name": "doh_incl_git",
+        "type": "double precision",
+        "description": "",
+        "sample_values": [
+          "22.38859732385504",
+          "-28.36896762370189"
+        ],
+        "pk": false
+      },
+      {
+        "column_name": "netstock_plus_git",
+        "type": "double precision",
+        "description": "",
+        "sample_values": [
+          "7680.0",
+          "-1548.0"
+        ],
+        "pk": false
+      },
+      {
+        "column_name": "git",
+        "type": "double precision",
+        "description": "",
+        "sample_values": [
+          "0.0",
+          "0.0"
+        ],
+        "pk": false
       }
     ],
     "foreign_keys": []

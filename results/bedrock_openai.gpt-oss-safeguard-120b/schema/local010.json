@@ -1,214 +1,968 @@
 {
-  "aircrafts_data": {
+  "kpi_invoice_to_order_calc": {
     "columns": [
       {
-        "name": "aircraft_code",
-        "type": "character(3)",
+        "column_name": "ev_shipped_quantity_oms",
+        "type": "bigint",
+        "description": "",
+        "sample_values": [
+          "0",
+          "0"
+        ],
         "pk": false
       },
       {
-        "name": "model",
-        "type": "jsonb",
+        "column_name": "ev_order_quantity",
+        "type": "bigint",
+        "description": "",
+        "sample_values": [
+          "0",
+          "0"
+        ],
         "pk": false
       },
       {
-        "name": "range",
-        "type": "INTEGER",
+        "column_name": "ship_to_region",
+        "type": "character varying",
+        "description": "",
+        "sample_values": [
+          "Michigan",
+          "Michigan"
+        ],
+        "pk": false
+      },
+      {
+        "column_name": "packing_list_no",
+        "type": "double precision",
+        "description": "",
+        "sample_values": [
+          "80040703.0",
+          "80040703.0"
+        ],
+        "pk": false
+      },
+      {
+        "column_name": "total_ship_qty",
+        "type": "double precision",
+        "description": "",
+        "sample_values": [
+          "48.0",
+          "768.0"
+        ],
+        "pk": false
+      },
+      {
+        "column_name": "ev_warehouse_processing_quantity",
+        "type": "bigint",
+        "description": "",
+        "sample_values": [
+          "0",
+          "0"
+        ],
+        "pk": false
+      },
+      {
+        "column_name": "ev_open_order_quantity",
+        "type": "bigint",
+        "description": "",
+        "sample_values": [
+          "0",
+          "0"
+        ],
+        "pk": false
+      },
+      {
+        "column_name": "land1",
+        "type": "character varying",
+        "description": "",
+        "sample_values": [
+          "US",
+          "US"
+        ],
+        "pk": false
+      },
+      {
+        "column_name": "item",
+        "type": "bigint",
+        "description": "",
+        "sample_values": [
+          "10",
+          "20"
+        ],
+        "pk": false
+      },
+      {
+        "column_name": "plan_b",
+        "type": "character varying",
+        "description": "",
+        "sample_values": [
+          "no",
+          "no"
+        ],
+        "pk": false
+      },
+      {
+        "column_name": "ev_cancelled_quantity",
+        "type": "bigint",
+        "description": "",
+        "sample_values": [
+          "0",
+          "0"
+        ],
+        "pk": false
+      },
+      {
+        "column_name": "final_cust_deliv_dt",
+        "type": "double precision",
+        "description": "",
+        "sample_values": [],
+        "pk": false
+      },
+      {
+        "column_name": "total_release_qty",
+        "type": "double precision",
+        "description": "",
+        "sample_values": [
+          "48.0",
+          "768.0"
+        ],
+        "pk": false
+      },
+      {
+        "column_name": "abgru",
+        "type": "double precision",
+        "description": "",
+        "sample_values": [],
+        "pk": false
+      },
+      {
+        "column_name": "initial_order_qty",
+        "type": "double precision",
+        "description": "",
+        "sample_values": [
+          "48.0",
+          "768.0"
+        ],
+        "pk": false
+      },
+      {
+        "column_name": "initial_shipped_qty",
+        "type": "double precision",
+        "description": "",
+        "sample_values": [
+          "48.0",
+          "768.0"
+        ],
+        "pk": false
+      },
+      {
+        "column_name": "bolnr",
+        "type": "character varying",
+        "description": "",
+        "sample_values": [
+          "SID7079248-FDE",
+          "SID7079248-FDE"
+        ],
+        "pk": false
+      },
+      {
+        "column_name": "shipped_qty",
+        "type": "double precision",
+        "description": "",
+        "sample_values": [
+          "48.0",
+          "768.0"
+        ],
+        "pk": false
+      },
+      {
+        "column_name": "ev_pending_release_quantity",
+        "type": "bigint",
+        "description": "",
+        "sample_values": [
+          "0",
+          "0"
+        ],
+        "pk": false
+      },
+      {
+        "column_name": "carrier",
+        "type": "character varying",
+        "description": "",
+        "sample_values": [
+          "FDE",
+          "FDE"
+        ],
+        "pk": false
+      },
+      {
+        "column_name": "shipping_point",
+        "type": "double precision",
+        "description": "",
+        "sample_values": [
+          "2008.0",
+          "2008.0"
+        ],
+        "pk": false
+      },
+      {
+        "column_name": "regio",
+        "type": "character varying",
+        "description": "",
+        "sample_values": [
+          "MI",
+          "MI"
+        ],
+        "pk": false
+      },
+      {
+        "column_name": "ndc",
+        "type": "bigint",
+        "description": "",
+        "sample_values": [
+          "72888015401",
+          "72888015201"
+        ],
+        "pk": false
+      },
+      {
+        "column_name": "shippment_no",
+        "type": "character varying",
+        "description": "",
+        "sample_values": [
+          "718647086582"
+        ],
+        "pk": false
+      },
+      {
+        "column_name": "so_recp_to_act_shp_days",
+        "type": "double precision",
+        "description": "",
+        "sample_values": [
+          "3.0",
+          "3.0"
+        ],
+        "pk": false
+      },
+      {
+        "column_name": "final_no_days",
+        "type": "bigint",
+        "description": "",
+        "sample_values": [
+          "11",
+          "11"
+        ],
+        "pk": false
+      },
+      {
+        "column_name": "po_number",
+        "type": "character varying",
+        "description": "",
+        "sample_values": [
+          "215524981",
+          "215524981"
+        ],
+        "pk": false
+      },
+      {
+        "column_name": "rel_qty",
+        "type": "double precision",
+        "description": "",
+        "sample_values": [
+          "48.0",
+          "768.0"
+        ],
+        "pk": false
+      },
+      {
+        "column_name": "order_qty",
+        "type": "double precision",
+        "description": "",
+        "sample_values": [
+          "48.0",
+          "768.0"
+        ],
+        "pk": false
+      },
+      {
+        "column_name": "act_shp_to_act_del_days",
+        "type": "double precision",
+        "description": "",
+        "sample_values": [],
+        "pk": false
+      },
+      {
+        "column_name": "mandt",
+        "type": "double precision",
+        "description": "",
+        "sample_values": [
+          "100.0",
+          "100.0"
+        ],
+        "pk": false
+      },
+      {
+        "column_name": "material_desc",
+        "type": "character varying",
+        "description": "",
+        "sample_values": [
+          "Clonazepam Tab USP 2mg 100",
+          "Clonazepam Tab USP 0.5mg 100"
+        ],
+        "pk": false
+      },
+      {
+        "column_name": "bol",
+        "type": "character varying",
+        "description": "",
+        "sample_values": [
+          "SID7079248",
+          "SID7079248"
+        ],
+        "pk": false
+      },
+      {
+        "column_name": "process_day_by_3pl",
+        "type": "character varying",
+        "description": "",
+        "sample_values": [
+          "352",
+          "352"
+        ],
+        "pk": false
+      },
+      {
+        "column_name": "act_dt_of_shp",
+        "type": "character varying",
+        "description": "",
+        "sample_values": [
+          "2024-01-04",
+          "2024-01-04"
+        ],
+        "pk": false
+      },
+      {
+        "column_name": "req_del_to_act_del_days",
+        "type": "double precision",
+        "description": "",
+        "sample_values": [],
+        "pk": false
+      },
+      {
+        "column_name": "item_del_block_desc",
+        "type": "character varying",
+        "description": "",
+        "sample_values": [],
+        "pk": false
+      },
+      {
+        "column_name": "open_deliv_qty",
+        "type": "double precision",
+        "description": "",
+        "sample_values": [
+          "0.0",
+          "0.0"
+        ],
+        "pk": false
+      },
+      {
+        "column_name": "no_of_days",
+        "type": "bigint",
+        "description": "",
+        "sample_values": [
+          "8",
+          "8"
+        ],
+        "pk": false
+      },
+      {
+        "column_name": "pen_rel_qty",
+        "type": "double precision",
+        "description": "",
+        "sample_values": [
+          "0.0",
+          "0.0"
+        ],
         "pk": false
       }
     ],
     "foreign_keys": []
   },
-  "airports_data": {
+  "doh": {
     "columns": [
       {
-        "name": "airport_code",
-        "type": "character(3)",
+        "column_name": "pack_size",
+        "type": "double precision",
+        "description": "",
+        "sample_values": [
+          "100.0",
+          "30.0"
+        ],
         "pk": false
       },
       {
-        "name": "airport_name",
-        "type": "jsonb",
+        "column_name": "open_deliveries",
+        "type": "double precision",
+        "description": "",
+        "sample_values": [
+          "75240.0",
+          "19889.0"
+        ],
         "pk": false
       },
       {
-        "name": "city",
-        "type": "jsonb",
+        "column_name": "sales_mtd",
+        "type": "double precision",
+        "description": "",
+        "sample_values": [
+          "1440.0",
+          "0.0"
+        ],
         "pk": false
       },
       {
-        "name": "coordinates",
-        "type": "point",
+        "column_name": "shelf_life_bet_11_and_16",
+        "type": "double precision",
+        "description": "",
+        "sample_values": [
+          "0.0",
+          "0.0"
+        ],
         "pk": false
       },
       {
-        "name": "timezone",
-        "type": "TEXT",
+        "column_name": "strnth",
+        "type": "character varying",
+        "description": "",
+        "sample_values": [
+          "30",
+          "10"
+        ],
+        "pk": false
+      },
+      {
+        "column_name": "availablity",
+        "type": "double precision",
+        "description": "",
+        "sample_values": [
+          "-67368.0",
+          "-19817.0"
+        ],
+        "pk": false
+      },
+      {
+        "column_name": "coverage_shortage",
+        "type": "double precision",
+        "description": "",
+        "sample_values": [
+          "-77850.95287512758",
+          "-23074.0"
+        ],
+        "pk": false
+      },
+      {
+        "column_name": "unrestrict_qty",
+        "type": "double precision",
+        "description": "",
+        "sample_values": [
+          "8544.0",
+          "4248.0"
+        ],
+        "pk": false
+      },
+      {
+        "column_name": "shelf_life___11",
+        "type": "double precision",
+        "description": "",
+        "sample_values": [
+          "0.0",
+          "0.0"
+        ],
+        "pk": false
+      },
+      {
+        "column_name": "rrpl_wip",
+        "type": "double precision",
+        "description": "",
+        "sample_values": [
+          "0.0",
+          "4666.666666"
+        ],
+        "pk": false
+      },
+      {
+        "column_name": "prod_family",
+        "type": "character varying",
+        "description": "",
+        "sample_values": [
+          "Isosorbide DN",
+          "Loratadine ODT (OTC)"
+        ],
+        "pk": false
+      },
+      {
+        "column_name": "prod_family_catg",
+        "type": "character varying",
+        "description": "",
+        "sample_values": [
+          "Stranger",
+          "Stranger"
+        ],
+        "pk": false
+      },
+      {
+        "column_name": "month4_demand",
+        "type": "double precision",
+        "description": "",
+        "sample_values": [
+          "10198.61954179426",
+          "1889.0"
+        ],
+        "pk": false
+      },
+      {
+        "column_name": "forward_coverage",
+        "type": "character varying",
+        "description": "",
+        "sample_values": [
+          "Less than a month",
+          "Less than a month"
+        ],
+        "pk": false
+      },
+      {
+        "column_name": "prod_desc",
+        "type": "character varying",
+        "description": "",
+        "sample_values": [
+          "Eltravin",
+          "Ulinaril"
+        ],
+        "pk": false
+      },
+      {
+        "column_name": "rrpl_fg",
+        "type": "double precision",
+        "description": "",
+        "sample_values": [
+          "0.0",
+          "4248.0"
+        ],
+        "pk": false
+      },
+      {
+        "column_name": "month2_demand",
+        "type": "double precision",
+        "description": "",
+        "sample_values": [
+          "10290.952875127594",
+          "1637.0"
+        ],
+        "pk": false
+      },
+      {
+        "column_name": "bloc_stock_qty",
+        "type": "double precision",
+        "description": "",
+        "sample_values": [
+          "42.0",
+          "242.0"
+        ],
+        "pk": false
+      },
+      {
+        "column_name": "ndc",
+        "type": "double precision",
+        "description": "",
+        "sample_values": [
+          "72888008401.0",
+          "72888002911.0"
+        ],
+        "pk": false
+      },
+      {
+        "column_name": "critical_sku",
+        "type": "character varying",
+        "description": "",
+        "sample_values": [
+          "No",
+          "Yes"
+        ],
+        "pk": false
+      },
+      {
+        "column_name": "doh",
+        "type": "double precision",
+        "description": "",
+        "sample_values": [
+          "22.38859732385504",
+          "-28.36896762370189"
+        ],
+        "pk": false
+      },
+      {
+        "column_name": "shelf_life__16",
+        "type": "double precision",
+        "description": "",
+        "sample_values": [
+          "8544.0",
+          "72.0"
+        ],
+        "pk": false
+      },
+      {
+        "column_name": "month1_demand",
+        "type": "double precision",
+        "description": "",
+        "sample_values": [
+          "10290.952875127594",
+          "1637.0"
+        ],
+        "pk": false
+      },
+      {
+        "column_name": "month3_demand",
+        "type": "double precision",
+        "description": "",
+        "sample_values": [
+          "10198.61954179426",
+          "1889.0"
+        ],
+        "pk": false
+      },
+      {
+        "column_name": "net_stock",
+        "type": "double precision",
+        "description": "",
+        "sample_values": [
+          "7680.0",
+          "-1548.0"
+        ],
+        "pk": false
+      },
+      {
+        "column_name": "april_need",
+        "type": "double precision",
+        "description": "",
+        "sample_values": [
+          "10482.952875127594",
+          "3257.0"
+        ],
+        "pk": false
+      },
+      {
+        "column_name": "netstock_plus_git",
+        "type": "double precision",
+        "description": "",
+        "sample_values": [
+          "7680.0",
+          "-1548.0"
+        ],
+        "pk": false
+      },
+      {
+        "column_name": "doh_incl_git_fg_wip",
+        "type": "double precision",
+        "description": "",
+        "sample_values": [
+          "22.38859732385504",
+          "135.0030543555284"
+        ],
+        "pk": false
+      },
+      {
+        "column_name": "doh_incl_git",
+        "type": "double precision",
+        "description": "",
+        "sample_values": [
+          "22.38859732385504",
+          "-28.36896762370189"
+        ],
+        "pk": false
+      },
+      {
+        "column_name": "git",
+        "type": "double precision",
+        "description": "",
+        "sample_values": [
+          "0.0",
+          "0.0"
+        ],
+        "pk": false
+      },
+      {
+        "column_name": "penality",
+        "type": "double precision",
+        "description": "",
+        "sample_values": [
+          "10290.952875127594",
+          "1637.0"
+        ],
+        "pk": false
+      },
+      {
+        "column_name": "advagen_stock",
+        "type": "double precision",
+        "description": "",
+        "sample_values": [
+          "7872.0",
+          "72.0"
+        ],
+        "pk": false
+      },
+      {
+        "column_name": "doh_incl_git_fg",
+        "type": "double precision",
+        "description": "",
+        "sample_values": [
+          "22.38859732385504",
+          "49.480757483200975"
+        ],
+        "pk": false
+      },
+      {
+        "column_name": "qual_stock_qty",
+        "type": "double precision",
+        "description": "",
+        "sample_values": [
+          "0.0",
+          "0.0"
+        ],
+        "pk": false
+      },
+      {
+        "column_name": "material",
+        "type": "character varying",
+        "description": "",
+        "sample_values": [
+          "40215",
+          "40224"
+        ],
+        "pk": false
+      },
+      {
+        "column_name": "open_qty",
+        "type": "double precision",
+        "description": "",
+        "sample_values": [
+          "75240.0",
+          "19889.0"
+        ],
+        "pk": false
+      },
+      {
+        "column_name": "open_lines",
+        "type": "double precision",
+        "description": "",
+        "sample_values": [
+          "192.0",
+          "1620.0"
+        ],
         "pk": false
       }
     ],
     "foreign_keys": []
   },
-  "boarding_passes": {
+  "material-packing-tracker": {
     "columns": [
       {
-        "name": "ticket_no",
-        "type": "character(13)",
+        "column_name": "total_required_qty",
+        "type": "double precision",
+        "description": "",
+        "sample_values": [
+          "343.055",
+          "343.055"
+        ],
         "pk": false
       },
       {
-        "name": "flight_id",
-        "type": "INTEGER",
+        "column_name": "demand_qty",
+        "type": "double precision",
+        "description": "",
+        "sample_values": [
+          "560.925",
+          "1121.85"
+        ],
         "pk": false
       },
       {
-        "name": "boarding_no",
-        "type": "INTEGER",
+        "column_name": "row_num",
+        "type": "bigint",
+        "description": "",
+        "sample_values": [
+          "1",
+          "2"
+        ],
         "pk": false
       },
       {
-        "name": "seat_no",
-        "type": "character varying(4)",
-        "pk": false
-      }
-    ],
-    "foreign_keys": []
-  },
-  "bookings": {
-    "columns": [
-      {
-        "name": "book_ref",
-        "type": "character(6)",
+        "column_name": "dispense_qty",
+        "type": "double precision",
+        "description": "",
+        "sample_values": [
+          "783.821",
+          "783.821"
+        ],
         "pk": false
       },
       {
-        "name": "book_date",
-        "type": "timestamp with time zone",
+        "column_name": "required_qty",
+        "type": "double precision",
+        "description": "",
+        "sample_values": [
+          "40.0660714285714",
+          "80.1321428571428"
+        ],
         "pk": false
       },
       {
-        "name": "total_amount",
-        "type": "numeric(10,2)",
-        "pk": false
-      }
-    ],
-    "foreign_keys": []
-  },
-  "flights": {
-    "columns": [
-      {
-        "name": "flight_id",
-        "type": "INTEGER",
+        "column_name": "rank_col",
+        "type": "bigint",
+        "description": "",
+        "sample_values": [
+          "1",
+          "2"
+        ],
         "pk": false
       },
       {
-        "name": "flight_no",
-        "type": "character(6)",
+        "column_name": "com_qty",
+        "type": "double precision",
+        "description": "",
+        "sample_values": [
+          "40.5",
+          "40.5"
+        ],
         "pk": false
       },
       {
-        "name": "scheduled_departure",
-        "type": "timestamp with time zone",
+        "column_name": "bom_number",
+        "type": "bigint",
+        "description": "",
+        "sample_values": [
+          "1348",
+          "1348"
+        ],
         "pk": false
       },
       {
-        "name": "scheduled_arrival",
-        "type": "timestamp with time zone",
+        "column_name": "bom_number1",
+        "type": "bigint",
+        "description": "",
+        "sample_values": [
+          "1348",
+          "1348"
+        ],
         "pk": false
       },
       {
-        "name": "departure_airport",
-        "type": "character(3)",
+        "column_name": "total_stock",
+        "type": "double precision",
+        "description": "",
+        "sample_values": [
+          "271.38",
+          "271.38"
+        ],
         "pk": false
       },
       {
-        "name": "arrival_airport",
-        "type": "character(3)",
+        "column_name": "shortage_flag",
+        "type": "character varying",
+        "description": "",
+        "sample_values": [
+          "Dispensed",
+          "Dispensed"
+        ],
         "pk": false
       },
       {
-        "name": "status",
-        "type": "character varying(20)",
+        "column_name": "item_node",
+        "type": "bigint",
+        "description": "",
+        "sample_values": [
+          "1",
+          "1"
+        ],
         "pk": false
       },
       {
-        "name": "aircraft_code",
-        "type": "character(3)",
+        "column_name": "fg_code",
+        "type": "bigint",
+        "description": "",
+        "sample_values": [
+          "40016",
+          "40018"
+        ],
         "pk": false
       },
       {
-        "name": "actual_departure",
-        "type": "timestamp with time zone",
+        "column_name": "stock",
+        "type": "double precision",
+        "description": "",
+        "sample_values": [
+          "231.313928571428",
+          "151.181785714285"
+        ],
         "pk": false
       },
       {
-        "name": "actual_arrival",
-        "type": "timestamp with time zone",
-        "pk": false
-      }
-    ],
-    "foreign_keys": []
-  },
-  "seats": {
-    "columns": [
-      {
-        "name": "aircraft_code",
-        "type": "character(3)",
+        "column_name": "priority",
+        "type": "bigint",
+        "description": "",
+        "sample_values": [
+          "7",
+          "8"
+        ],
         "pk": false
       },
       {
-        "name": "seat_no",
-        "type": "character varying(4)",
+        "column_name": "status",
+        "type": "character varying",
+        "description": "",
+        "sample_values": [
+          "Dispensed",
+          "Dispensed"
+        ],
         "pk": false
       },
       {
-        "name": "fare_conditions",
-        "type": "character varying(10)",
-        "pk": false
-      }
-    ],
-    "foreign_keys": []
-  },
-  "ticket_flights": {
-    "columns": [
-      {
-        "name": "ticket_no",
-        "type": "character(13)",
+        "column_name": "component",
+        "type": "bigint",
+        "description": "",
+        "sample_values": [
+          "10035",
+          "10035"
+        ],
         "pk": false
       },
       {
-        "name": "flight_id",
-        "type": "INTEGER",
+        "column_name": "blending_code",
+        "type": "bigint",
+        "description": "",
+        "sample_values": [
+          "30003",
+          "30003"
+        ],
         "pk": false
       },
       {
-        "name": "fare_conditions",
-        "type": "character varying(10)",
+        "column_name": "mat_category",
+        "type": "character varying",
+        "description": "",
+        "sample_values": [
+          "API",
+          "API"
+        ],
         "pk": false
       },
       {
-        "name": "amount",
-        "type": "numeric(10,2)",
-        "pk": false
-      }
-    ],
-    "foreign_keys": []
-  },
-  "tickets": {
-    "columns": [
-      {
-        "name": "ticket_no",
-        "type": "character(13)",
-        "pk": false
-      },
-      {
-        "name": "book_ref",
-        "type": "character(6)",
-        "pk": false
-      },
-      {
-        "name": "passenger_id",
-        "type": "character varying(20)",
+        "column_name": "component_name",
+        "type": "character varying",
+        "description": "",
+        "sample_values": [
+          "Baclofen USP",
+          "Baclofen USP"
+        ],
         "pk": false
       }
     ],
