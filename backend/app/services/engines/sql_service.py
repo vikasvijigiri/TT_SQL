@@ -1,9 +1,14 @@
 import os
 import sys
+import queue
+import threading
+import json
+import time
 from typing import Optional
 from app.services.schemas.schemas import QueryRequest, QueryResponse
 from app.services.engines.pipeline_service import run_analysis_pipeline
 from app.services.schemas.agent_state import AgentState
+from app.services.utils.logger import Logger
 
 class SQLService:
     """
@@ -15,11 +20,6 @@ class SQLService:
         """
         Stream the Text-to-SQL pipeline progress using SSE.
         """
-        import queue
-        import threading
-        import json
-        from app.services.utils.logger import Logger
-
         log_queue = queue.Queue()
 
         def log_listener(message, msg_type, level):
@@ -29,42 +29,26 @@ class SQLService:
                 "level": level
             })
 
+        print(f"DEBUG: Starting stream for query: {request.query[:30]}")
         Logger.register_listener(log_listener)
 
-        # Get model name from env
         model_name = os.getenv("LLM_MODEL", "gpt-default")
-
-        # Assign standardized qXXX ID if missing
         from app.repositories.registry.paths import get_next_instance_id
         if not request.instance_id or request.instance_id == "unknown":
             request.instance_id = get_next_instance_id(model_name)
-            pass
 
-        # Emit the ID immediately so the frontend can track it
-        log_queue.put({
-            "type": "id",
-            "instance_id": request.instance_id
-        })
+        # Immediate feedback events
+        log_queue.put({"type": "id", "instance_id": request.instance_id})
+        log_queue.put({"type": "section", "message": "Establishing Connection", "level": "INFO"})
 
-        def token_callback(token: str):
-            # print(f"DEBUG: Putting token in queue: {token[:10]}...") # Optional: too spammy
-            log_queue.put({
-                "type": "token",
-                "token": token
-            })
-
-        # Capture listeners from request thread to pass to worker thread
-        # This fixes the thread-local storage issue
+        # Pass listeners to worker thread
         listeners = list(Logger._get_listeners())
 
         def run_pipeline():
-            # Re-register listeners in the NEW worker thread
             for l in listeners:
                 Logger.register_listener(l)
-                
             try:
-                pass
-                final_state = run_analysis_pipeline(
+                run_analysis_pipeline(
                     question=request.query,
                     db_name=request.db_name,
                     dataset_name=request.dataset_name,
@@ -72,74 +56,42 @@ class SQLService:
                     model_name=model_name,
                     use_rag=request.use_rag,
                     verbose=True,
-                    on_token=token_callback
+                    on_token=lambda t: log_queue.put({"type": "token", "token": t})
                 )
-                
-                # Send the final result as a special event
-                sql = final_state.chosen_query
-                results = []
-                columns = []
-                total_count = 0
-                
-                if final_state.execution_result:
-                    columns = final_state.execution_result.columns
-                    total_count = final_state.execution_result.row_count
-                    from decimal import Decimal
-                    
-                    # ðŸ”´ OPTIMIZATION: Cap frontend payload at 100 rows to prevent network/UI lag
-                    # The full CSV write (already backgrounded) still contains all records.
-                    frontend_rows = final_state.execution_result.rows[:100]
-                    
-                    for row in frontend_rows:
-                        json_row = {}
-                        for col, val in zip(columns, row):
-                            if hasattr(val, 'isoformat'):
-                                json_row[col] = val.isoformat()
-                            elif isinstance(val, Decimal):
-                                json_row[col] = float(val)
-                            else:
-                                json_row[col] = val
-                        results.append(json_row)
-                
-                log_queue.put({
-                    "type": "result",
-                    "sql": sql,
-                    "results": results,
-                    "columns": columns,
-                    "total_count": total_count,
-                    "critic_feedback": final_state.critic_feedback,
-                    "business_summary": final_state.business_summary,
-                    "chart_config": final_state.chart_config,
-                    "total_time": final_state.total_duration
-                })
-
-                print("DEBUG: Final result put in queue.")
+                print("DEBUG: Pipeline thread finished.")
             except Exception as e:
                 import traceback
-                pass
-                print(traceback.format_exc())
-                log_queue.put({"type": "error", "message": str(e)})
+                error_detail = traceback.format_exc()
+                print(f"ERROR in pipeline: {e}\n{error_detail}")
+                log_queue.put({"type": "error", "message": f"Backend Error: {str(e)}"})
             finally:
-                log_queue.put(None) # Sentinel to end the stream
+                log_queue.put(None)
                 Logger.clear_listeners()
 
-        thread = threading.Thread(target=run_pipeline)
+        thread = threading.Thread(target=run_pipeline, daemon=True)
         thread.start()
 
-        while True:
-            item = log_queue.get()
-            if item is None:
-                break
-            yield f"data: {json.dumps(item)}\n\n"
+        def event_generator():
+            try:
+                while True:
+                    try:
+                        item = log_queue.get(timeout=10)
+                        if item is None:
+                            break
+                        yield f"data: {json.dumps(item)}\n\n"
+                    except queue.Empty:
+                        yield f"data: {json.dumps({'type': 'keep-alive'})}\n\n"
+            except Exception as e:
+                print(f"ERROR in generator: {e}")
+                yield f"data: {json.dumps({'type': 'error', 'message': 'Stream interrupted'})}\n\n"
+
+        return event_generator()
 
     def process_query(self, request: QueryRequest) -> QueryResponse:
         """
         Standard non-streaming Text-to-SQL logic.
         """
-        # Get model name from env
         model_name = os.getenv("LLM_MODEL", "gpt-default")
-            
-        # Assign standardized qXXX ID if missing
         from app.repositories.registry.paths import get_next_instance_id
         if not request.instance_id or request.instance_id == "unknown":
             request.instance_id = get_next_instance_id(model_name)
@@ -164,9 +116,7 @@ class SQLService:
             total_count = final_state.execution_result.row_count
             from decimal import Decimal
             
-            # Cap frontend payload for performance
             frontend_rows = final_state.execution_result.rows[:100]
-            
             for row in frontend_rows:
                 json_row = {}
                 for col, val in zip(columns, row):
@@ -183,9 +133,8 @@ class SQLService:
             sql=sql,
             results=results,
             columns=columns,
-            total_count=total_count,  # Added to QueryResponse if it supports it
+            total_count=total_count,
             logs=final_state.logs,
             critic_feedback=final_state.critic_feedback,
             business_summary=final_state.business_summary
         )
-

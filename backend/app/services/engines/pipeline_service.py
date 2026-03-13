@@ -57,8 +57,13 @@ def run_analysis_pipeline(question: str,
     """
     Direct, linear execution of the Text-to-SQL agents.
     """
+    print("DEBUG: >>> PIPELINE START")
+    if on_token:
+        on_token("✦ ")
+
     Logger._verbose = verbose
     initialize_directories(model_name)
+    print(f"DEBUG: Initializing LLMService for model: {model_name}")
     llm_service = LLMService(model=model_name)
     
     # Define Agent Stack
@@ -117,9 +122,7 @@ def run_analysis_pipeline(question: str,
     Logger.log(f"--- Starting: {instance_id} | Question: {question} ---")
     start_time = time.time()
 
-    # TTFT optimization: fire an immediate first token so the UI responds in <100ms
-    if on_token:
-        on_token("âœ¦ ")
+    start_time = time.time()
 
     # Planner bypass for simple queries â€” saves ~3-5s on count/list/total questions
     simple_query = _is_simple_query(question)

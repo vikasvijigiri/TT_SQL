@@ -1,4 +1,4 @@
-﻿import os
+import os
 import sys
 import argparse
 import pandas as pd
@@ -15,6 +15,9 @@ try:
 except ImportError:
     print("Error: Could not import evaluate from gold/evaluate.py. Make sure 'gold' directory exists.")
     sys.exit(1)
+
+from app.services.evaluation_service import EvaluationService
+from app.services.evaluation.failure_service import FailureService
 
 def main():
     parser = argparse.ArgumentParser(description="Collect failed examples from Spider2 evaluation")
@@ -44,45 +47,29 @@ def main():
     print(f"Evaluating results in: {result_dir_val}")
     print(f"Using gold directory: {args.gold_dir}")
     
-    # Mock args object for evaluate_spider2sql
+    # Mock args object for evaluate_single_sql_instance
+    eval_service = EvaluationService()
+    failure_service = FailureService(eval_service)
+    
+    # Run evaluation and collect failures
+    # This is a bit of a simplification, in a real scenario we'd call the generalized eval
+    # but for the CLI script we can mock the args and run it.
+    
     class EvalArgs:
         mode = "exec_result"
         result_dir = result_dir_val
         gold_dir = args.gold_dir
-        is_sql_debug = False
+        gold_exec_dir = None
+        eval_jsonl = None
+        meta_jsonl = None
+        db_dir = None
         max_workers = 20
-        timeout = 60
         temp_dir = None
         
-    # Create temp dir for evaluation
     temp_path = Path(tempfile.mkdtemp(prefix="collect_fail_"))
-    
     try:
-        # Run evaluation
-        # evaluate_spider2sql returns a list of dicts: {'instance_id': str, 'score': int, ...}
-        results = evaluate_spider2sql(EvalArgs(), temp_path)
-        
-        # Filter failures (score != 1 means failure)
-        failed_ids = []
-        for r in results:
-            if r["score"] != 1:
-                failed_ids.append(r["instance_id"])
-        
-        # Save to CSV
-        output_path = args.output
-        if failed_ids:
-            pd.DataFrame({"instance_id": failed_ids}).to_csv(output_path, index=False)
-            print(f"\nFound {len(failed_ids)} failed examples.")
-            print(f"Failed IDs saved to: {os.path.abspath(output_path)}")
-        else:
-            print("\nNo failures found! All examples passed.")
-            # Create empty CSV just in case
-            pd.DataFrame({"instance_id": []}).to_csv(output_path, index=False)
-            
-    except Exception as e:
-        print(f"An error occurred during evaluation: {e}")
-        import traceback
-        traceback.print_exc()
+        results = eval_service.run_generalized_evaluation(EvalArgs(), temp_path)
+        failure_service.collect_failures(results, args.output)
     finally:
         if os.path.exists(temp_path):
             shutil.rmtree(temp_path, ignore_errors=True)

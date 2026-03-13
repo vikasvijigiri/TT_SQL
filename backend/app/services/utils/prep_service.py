@@ -1,23 +1,28 @@
 import os
-import sys
-import subprocess
 import json
 import queue
 import threading
 from pathlib import Path
 from typing import Generator
-from app.repositories.config import settings
-from app.repositories.registry.paths import METADATA_DIR, PROJECT_ROOT
 import requests
+
+from app.repositories.config import settings
+from app.repositories.registry.paths import METADATA_DIR
+from app.services.metadata.extraction_service import ExtractionService
+from app.services.metadata.enrichment_service import EnrichmentService
+from app.services.metadata.ingestion_service import IngestService
 
 class PrepService:
     """
     Service to orchestrate knowledge preparation: Extract -> Enrich -> Ingest.
-    Includes efficiency logic to skip completed steps.
+    Uses direct service calls instead of internal subprocesses.
     """
 
     def __init__(self):
         self.log_queue = queue.Queue()
+        self.extraction_service = ExtractionService()
+        self.enrichment_service = EnrichmentService()
+        self.ingestion_service = IngestService()
 
     def run_pipeline(self, force: bool = False) -> Generator[str, None, None]:
         """
@@ -44,67 +49,44 @@ class PrepService:
             self._log("Starting", "START")
 
             # --- Step 1: Extraction & Enrichment ---
-            skip_extract = not force and metadata_path.exists() and metadata_path.stat().st_size > 0
-            if skip_extract:
+            metadata = None
+            if not force and metadata_path.exists() and metadata_path.stat().st_size > 0:
                 self._log("Ready")
+                with open(metadata_path, "r", encoding="utf-8") as f:
+                    metadata = json.load(f)
             else:
                 self._log("Extracting")
-                # Using --enrich means it does both extraction and enrichment
-                cmd = [sys.executable, "scripts/run_extract_enrich.py", "--enrich"]
-                if not self._run_subprocess(cmd):
-                    self._log("Error", "ERROR")
-                    return
-                self._log("Enriching") # Secondary status for visual progress
+                metadata = self.extraction_service.extract_metadata(schema_name)
+                
+                self._log("Enriching")
+                metadata = self.enrichment_service.enrich_metadata(metadata)
+                
+                # Save metadata
+                METADATA_DIR.mkdir(parents=True, exist_ok=True)
+                with open(metadata_path, "w", encoding="utf-8") as f:
+                    json.dump(metadata, f, indent=4)
+                self._log(f"Metadata saved to {metadata_path}")
 
             # --- Step 2: Ingestion ---
-            # Check if collection has points already
-            has_points = False
+            collection_exists = False
             if not force:
                 try:
                     q_url = settings.QDRANT_URL.rstrip("/")
                     q_key = settings.QDRANT_API_KEY
                     resp = requests.get(f"{q_url}/collections/{collection_name}", headers={"api-key": q_key}, timeout=5)
                     if resp.status_code == 200:
-                        count = resp.json().get("result", {}).get("points_count", 0)
-                        if count > 0:
-                            has_points = True
+                        collection_exists = True
                 except Exception as e:
                     self._log(f"Warning checking Qdrant: {e}")
 
-            if has_points and not force:
+            if collection_exists and not force:
                 self._log("Ready")
             else:
                 self._log("Ingesting")
-                cmd = [sys.executable, "scripts/populate_vector_store.py", "--metadata-file", str(metadata_path)]
-                if not self._run_subprocess(cmd):
-                    self._log("Error", "ERROR")
-                    return
+                self.ingestion_service.ingest_to_vector_store(metadata, collection_name)
 
             self._log("Complete", "SUCCESS")
         except Exception as e:
-            self._log("Error", "ERROR")
+            self._log(f"Error: {str(e)}", "ERROR")
         finally:
             self.log_queue.put(None)
-
-    def _run_subprocess(self, cmd: list) -> bool:
-        env = os.environ.copy()
-        env["PYTHONPATH"] = str(PROJECT_ROOT)
-        try:
-            process = subprocess.Popen(
-                cmd,
-                stdout=subprocess.PIPE,
-                stderr=subprocess.STDOUT,
-                text=True,
-                cwd=str(PROJECT_ROOT),
-                env=env,
-                bufsize=1
-            )
-            for line in process.stdout:
-                clean_line = line.strip()
-                if clean_line:
-                    self._log(clean_line)
-            process.wait()
-            return process.returncode == 0
-        except Exception as e:
-            self._log(f"Subprocess Error: {e}", "ERROR")
-            return False

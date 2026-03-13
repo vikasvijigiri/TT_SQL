@@ -11,7 +11,7 @@ class HealthService:
     def check_db_connection(db_name: str = None) -> bool:
         from app.repositories.config import settings
         
-        target_db = db_name or settings.DB_NAME or settings.SCHEMA
+        target_db = db_name or settings.SCHEMA
         db_type = settings.DB_TYPE
         
         # Resolve path only if it's SQLite

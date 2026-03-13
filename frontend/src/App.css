@@ -181,6 +181,24 @@ body {
   background: rgba(16, 185, 129, 0.1);
 }
 
+.status-separator {
+  width: 1px;
+  height: 20px;
+  background: var(--border-color);
+  margin: 0 4px;
+}
+
+@keyframes pulse-glow {
+  0% { filter: drop-shadow(0 0 2px var(--accent-blue)); }
+  50% { filter: drop-shadow(0 0 8px var(--accent-blue)); }
+  100% { filter: drop-shadow(0 0 2px var(--accent-blue)); }
+}
+
+.pulse-glow {
+  animation: pulse-glow 2s infinite;
+  color: var(--accent-blue) !important;
+}
+
 .icon-btn.loading .spin {
   animation: spin 1s linear infinite;
 }
@@ -589,7 +607,386 @@ body {
   opacity: 0.5;
 }
 
+/* --- Dataset Upload & View Styles --- */
+.dataset-upload-container {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+.dataset-controls {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+.upload-trigger-btn {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 16px;
+  background: rgba(var(--accent-blue-rgb), 0.1);
+  border: 1px solid rgba(var(--accent-blue-rgb), 0.2);
+  border-radius: 8px;
+  color: var(--accent-blue);
+  font-size: 13px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+.upload-trigger-btn:hover:not(:disabled) {
+  background: rgba(var(--accent-blue-rgb), 0.15);
+  transform: translateY(-1px);
+}
+.upload-trigger-btn:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+.current-dataset-status {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 12px;
+  border-radius: 8px;
+  font-size: 12px;
+  color: var(--text-secondary);
+  background: rgba(255, 255, 255, 0.03);
+}
+.dataset-name-btn {
+  background: none;
+  border: none;
+  padding: 0;
+  margin: 0;
+  color: inherit;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  transition: all 0.2s;
+}
+.dataset-name-btn:hover .dataset-name {
+  color: var(--accent-blue);
+  text-decoration: underline;
+}
+.dataset-name {
+  max-width: 150px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.spinner-tiny {
+  width: 14px;
+  height: 14px;
+  border: 2px solid rgba(var(--accent-blue-rgb), 0.3);
+  border-top-color: var(--accent-blue);
+  border-radius: 50%;
+  animation: spin 0.8s linear infinite;
+}
+
+/* --- Dataset View Page --- */
+.dataset-view-page {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background: var(--bg-dark);
+  z-index: 1000;
+  display: flex;
+  flex-direction: column;
+  animation: fadeIn 0.3s ease-out;
+}
+@keyframes fadeIn {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+.view-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 1rem 2rem;
+  border-bottom: 1px solid var(--border-color);
+  background: rgba(255, 255, 255, 0.02);
+  backdrop-filter: blur(10px);
+}
+.back-btn {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  background: rgba(255, 255, 255, 0.05);
+  border: 1px solid var(--border-color);
+  padding: 8px 16px;
+  border-radius: 8px;
+  color: var(--text-secondary);
+  cursor: pointer;
+  transition: all 0.2s;
+}
+.back-btn:hover {
+  background: rgba(255, 255, 255, 0.1);
+  color: var(--text-primary);
+}
+.view-title {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+.view-title h1 {
+  font-size: 1.25rem;
+  font-weight: 600;
+  margin: 0;
+}
+.view-content {
+  flex: 1;
+  padding: 3rem;
+  display: flex;
+  justify-content: center;
+  overflow-y: auto;
+}
+.content-card {
+  width: 100%;
+  max-width: 800px;
+  height: fit-content;
+  padding: 2rem;
+  border-radius: 20px;
+  display: flex;
+  flex-direction: column;
+  gap: 24px;
+  background: rgba(255, 255, 255, 0.03);
+  border: 1px solid var(--border-color);
+}
+.card-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+.format-badge {
+  background: rgba(var(--accent-blue-rgb), 0.1);
+  color: var(--accent-blue);
+  padding: 4px 12px;
+  border-radius: 6px;
+  font-size: 12px;
+  font-weight: 600;
+  letter-spacing: 0.5px;
+}
+.copy-btn {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  background: none;
+  border: 1px solid var(--border-color);
+  padding: 6px 14px;
+  border-radius: 6px;
+  color: var(--text-secondary);
+  font-size: 12px;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+.copy-btn:hover {
+  background: rgba(255, 255, 255, 0.05);
+  color: var(--text-primary);
+}
+.json-container {
+  background: #0d1117;
+  border-radius: 12px;
+  padding: 24px;
+  border: 1px solid #30363d;
+}
+.code-block {
+  margin: 0;
+  font-family: 'Fira Code', monospace;
+  font-size: 14px;
+  color: #d1d5db;
+}
+.format-explanation h3 {
+  color: var(--text-primary);
+  font-size: 1.1rem;
+  margin-bottom: 16px;
+}
+.format-explanation ul {
+  list-style: none;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+.format-explanation li {
+  font-size: 0.95rem;
+  line-height: 1.6;
+  color: var(--text-secondary);
+}
+.format-explanation strong {
+  color: var(--accent-blue);
+  min-width: 140px;
+  display: inline-block;
+}
+.important-note {
+  margin-top: 32px;
+  padding: 16px;
+  background: rgba(var(--accent-blue-rgb), 0.05);
+  border-left: 4px solid var(--accent-blue);
+  border-radius: 4px;
+}
+.important-note p {
+  margin: 0;
+  font-size: 0.9rem;
+  color: var(--text-primary);
+}
+
+/* Status Pill - Professional Vanishing Status */
+.status-pill {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 4px 12px;
+  background: rgba(255, 255, 255, 0.05);
+  border: 1px solid rgba(0, 0, 0, 0.05);
+  border-radius: 20px;
+  font-size: 11px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  color: var(--text-secondary);
+  transition: all 0.6s cubic-bezier(0.4, 0, 0.2, 1);
+  backdrop-filter: blur(8px);
+  margin-right: 8px;
+  opacity: 1;
+  max-width: 200px;
+  overflow: hidden;
+  white-space: nowrap;
+}
+
+.status-pill.hidden {
+  opacity: 0 !important;
+  pointer-events: none;
+  transform: translateX(10px);
+  max-width: 0;
+  margin-right: 0;
+  padding-left: 0;
+  padding-right: 0;
+  border-width: 0;
+}
+
+.status-pill.active {
+  background: rgba(37, 99, 235, 0.08); 
+  border-color: rgba(37, 99, 235, 0.2);
+  color: var(--accent-blue);
+  box-shadow: 0 0 15px rgba(37, 99, 235, 0.1);
+}
+
+.pulse-dot {
+  width: 6px;
+  height: 6px;
+  background: currentColor;
+  border-radius: 50%;
+  position: relative;
+}
+
+.active .pulse-dot::after {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background: currentColor;
+  border-radius: 50%;
+  animation: pulsePill 2s infinite;
+}
+
+@keyframes pulsePill {
+  0% { transform: scale(1); opacity: 0.8; }
+  70% { transform: scale(2.5); opacity: 0; }
+  100% { transform: scale(1); opacity: 0; }
+}
+
+.prep-progress-footer {
+  display: none !important;
+}
+
 .business-summary strong {
   color: var(--accent-blue);
   font-weight: 600;
+}
+
+/* Premium Per-Result Toggle Switch */
+.message-actions-overlay {
+  position: absolute;
+  top: 1rem;
+  right: 1.5rem;
+  z-index: 10;
+}
+
+.assistant .message-bubble {
+  position: relative; /* Essential for overlay positioning */
+}
+
+.toggle-switch-container {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  background: rgba(255, 255, 255, 0.4);
+  padding: 4px 10px;
+  border-radius: 20px;
+  backdrop-filter: blur(8px);
+  border: 1px solid rgba(0, 0, 0, 0.03);
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.02);
+}
+
+.switch-label {
+  font-size: 10px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: var(--text-secondary);
+  opacity: 0.5;
+  transition: all 0.2s;
+}
+
+.switch-label.active {
+  color: var(--accent-blue);
+  opacity: 1;
+}
+
+/* The actual switch */
+.premium-switch {
+  position: relative;
+  display: inline-block;
+  width: 32px;
+  height: 18px;
+}
+
+.premium-switch input {
+  opacity: 0;
+  width: 0;
+  height: 0;
+}
+
+.premium-slider {
+  position: absolute;
+  cursor: pointer;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background-color: #e2e8f0;
+  transition: .3s;
+  border-radius: 20px;
+}
+
+.premium-slider:before {
+  position: absolute;
+  content: "";
+  height: 14px;
+  width: 14px;
+  left: 2px;
+  bottom: 2px;
+  background-color: white;
+  transition: .3s;
+  border-radius: 50%;
+  box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+}
+
+input:checked + .premium-slider {
+  background-color: var(--accent-blue);
+}
+
+input:checked + .premium-slider:before {
+  transform: translateX(14px);
 }
