@@ -15,6 +15,9 @@ class QueryService:
     Service layer for Text-to-SQL operations.
     Applies business logic and orchestrates the agent pipeline.
     """
+    def __init__(self):
+        self.logger = Logger
+        self.model_name = os.getenv("LLM_MODEL", "gpt-default")
     
     def stream_query(self, request: QueryRequest):
         """
@@ -30,30 +33,29 @@ class QueryService:
             })
 
         print(f"DEBUG: Starting stream for query: {request.query[:30]}")
-        Logger.register_listener(log_listener)
+        self.logger.register_listener(log_listener)
 
-        model_name = os.getenv("LLM_MODEL", "gpt-default")
         from app.repositories.registry.paths import get_next_instance_id
         if not request.instance_id or request.instance_id == "unknown":
-            request.instance_id = get_next_instance_id(model_name)
+            request.instance_id = get_next_instance_id(self.model_name)
 
         # Immediate feedback events
         log_queue.put({"type": "id", "instance_id": request.instance_id})
         log_queue.put({"type": "section", "message": "Establishing Connection", "level": "INFO"})
 
         # Pass listeners to worker thread
-        listeners = list(Logger._get_listeners())
+        listeners = list(self.logger._get_listeners())
 
         def run_pipeline():
             for l in listeners:
-                Logger.register_listener(l)
+                self.logger.register_listener(l)
             try:
                 run_analysis_pipeline(
                     question=request.query,
                     db_name=request.db_name,
                     dataset_name=request.dataset_name,
                     instance_id=request.instance_id,
-                    model_name=model_name,
+                    model_name=self.model_name,
                     use_rag=request.use_rag,
                     verbose=True,
                     on_token=lambda t: log_queue.put({"type": "token", "token": t})
@@ -66,7 +68,7 @@ class QueryService:
                 log_queue.put({"type": "error", "message": f"Backend Error: {str(e)}"})
             finally:
                 log_queue.put(None)
-                Logger.clear_listeners()
+                self.logger.clear_listeners()
 
         thread = threading.Thread(target=run_pipeline, daemon=True)
         thread.start()
@@ -91,17 +93,16 @@ class QueryService:
         """
         Standard non-streaming Text-to-SQL logic.
         """
-        model_name = os.getenv("LLM_MODEL", "gpt-default")
         from app.repositories.registry.paths import get_next_instance_id
         if not request.instance_id or request.instance_id == "unknown":
-            request.instance_id = get_next_instance_id(model_name)
+            request.instance_id = get_next_instance_id(self.model_name)
             
         final_state = run_analysis_pipeline(
             question=request.query,
             db_name=request.db_name,
             dataset_name=request.dataset_name,
             instance_id=request.instance_id,
-            model_name=model_name,
+            model_name=self.model_name,
             use_rag=request.use_rag,
             verbose=True
         )
@@ -167,3 +168,46 @@ class QueryService:
                             }
                     except: continue
         return {}
+
+if __name__ == "__main__":
+    import argparse
+    import json
+    
+    parser = argparse.ArgumentParser(description="Standalone Text-to-SQL Query Tool")
+    parser.add_argument("--query", type=str, help="Natural language question")
+    parser.add_argument("--db", type=str, default="chinook", help="Database name")
+    parser.add_argument("--id", type=str, help="Instance ID to resolve context for")
+    parser.add_argument("--no-rag", action="store_true", help="Disable RAG")
+    args = parser.parse_args()
+    
+    service = QueryService()
+    
+    q_text = args.query
+    db_name = args.db
+    instance_id = "standalone-test"
+    
+    if args.id:
+        ctx = service.resolve_instance_context(args.id)
+        if ctx:
+            q_text = ctx["question"]
+            db_name = ctx["db"]
+            instance_id = ctx["instance_id"]
+        else:
+            print(f"Error: Could not resolve instance ID {args.id}")
+            exit(1)
+            
+    if not q_text:
+        print("Error: --query or --id required.")
+        exit(1)
+        
+    request = QueryRequest(query=q_text, db_name=db_name, instance_id=instance_id, use_rag=not args.no_rag)
+    response = service.process_query(request)
+    
+    print("\n--- QUERY RESULTS ---")
+    print(f"SQL: {response.sql}")
+    print(f"Rows: {response.total_count}")
+    print("\nPROMPT LOGS SUMMARY:")
+    for log in response.logs:
+        print(f"[{log.agent_name}] {log.message[:100]}...")
+    print("\nBUSINESS SUMMARY:")
+    print(response.business_summary)
