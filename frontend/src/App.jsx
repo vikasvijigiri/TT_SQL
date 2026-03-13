@@ -305,11 +305,12 @@ function App() {
         </div>
 
         <div className="header-right">
-          <EnvUpload onUploadSuccess={checkDbStatus} />
+          <EnvUpload onUploadSuccess={checkDbStatus} apiUrl={`${API_BASE_URL}/api/data/upload-env`} />
           <DatasetUpload 
             currentDataset={selectedDataset} 
             onUploadSuccess={(name) => setSelectedDataset(name)} 
             onViewDataset={() => setCurrentView('dataset')}
+            apiUrl={`${API_BASE_URL}/api/data/upload-dataset`}
           />
           <div className={`status-badge ${dbConnected === true ? 'online' : dbConnected === false ? 'offline' : ''}`}>
             <span className="status-dot"></span>

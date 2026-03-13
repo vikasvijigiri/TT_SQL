@@ -22,6 +22,7 @@ if str(PROJECT_ROOT) not in sys.path:
 from app.controllers.query_controller import router as query_router
 from app.controllers.health_controller import router as health_router
 from app.controllers.prep_controller import router as prep_router
+from app.controllers.data_controller import router as data_router
 from app.services.utils.health_service import HealthService
 
 app = FastAPI(
@@ -88,6 +89,7 @@ async def health():
 app.include_router(query_router)
 app.include_router(health_router)
 app.include_router(prep_router)
+app.include_router(data_router)
 
 if __name__ == "__main__":
     import uvicorn
