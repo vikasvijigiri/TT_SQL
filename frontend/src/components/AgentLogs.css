@@ -1,0 +1,58 @@
+.agent-logs {
+    flex: 1;
+    padding: 1.25rem;
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+    background: rgba(37, 99, 235, 0.01);
+    border: 1px solid var(--border-color);
+    border-radius: 12px;
+}
+
+.logs-header h3 {
+    margin-top: 0;
+    margin-bottom: 0.75rem;
+    font-size: 0.7rem;
+    text-transform: uppercase;
+    letter-spacing: 0.08rem;
+    color: var(--accent-blue);
+    font-weight: 800;
+}
+
+.logs-container {
+    flex: 1;
+    overflow-y: auto;
+    font-family: 'Fira Code', 'Courier New', Courier, monospace;
+    font-size: 0.85rem;
+    line-height: 1.6;
+}
+
+.log-entry {
+    margin-bottom: 0.5rem;
+    animation: fadeIn 0.3s ease-out;
+}
+
+.log-text {
+    color: var(--text-primary);
+}
+
+@keyframes fadeIn {
+    from {
+        opacity: 0;
+        transform: translateY(5px);
+    }
+
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+.empty-logs {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    height: 100%;
+    color: var(--text-secondary);
+    font-style: italic;
+}
