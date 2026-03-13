@@ -1,9 +1,9 @@
 import json
 from app.services.agents.base import BaseAgent
-from app.models.agent_state import AgentState
-from app.services.llm_service import LLMService
-from app.services.prompt_loader import PromptLoader
-from app.services.logger import Logger
+from app.services.schemas.agent_state import AgentState
+from app.services.engines.llm_service import LLMService
+from app.services.utils.prompt_loader import PromptLoader
+from app.services.utils.logger import Logger
 
 class OrchestratorAgent(BaseAgent):
     """

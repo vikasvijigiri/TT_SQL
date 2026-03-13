@@ -1,18 +1,18 @@
 import os
 from app.services.agents.base import BaseAgent
-from app.models.agent_state import AgentState
-from app.services.llm_service import LLMService
-from app.services.prompt_loader import PromptLoader
+from app.services.schemas.agent_state import AgentState
+from app.services.engines.llm_service import LLMService
+from app.services.utils.prompt_loader import PromptLoader
 from app.services.agents.critic_layer import CriticAgent
-from app.services.logger import Logger
+from app.services.utils.logger import Logger
 from app.services.agents.generation_layer import MultiCandidateGeneratorAgent
-from app.repos.file_coordinator import FileCoordinator
+from app.repositories.persistence.file_coordinator import FileCoordinator
 from app.services.agents.input_layer import format_rag_columns
-from app.models.config import settings
+from app.repositories.config import settings
 
 def _is_clean_success(state: AgentState, attempt: int) -> bool:
     """
-    Returns True if execution produced rows with no error — Critic can be skipped.
+    Returns True if execution produced rows with no error â€” Critic can be skipped.
     Only applies on attempt 1 (no previous failures to validate against).
     """
     if attempt != 1:

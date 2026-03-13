@@ -1,10 +1,10 @@
 from fastapi import APIRouter
-from app.services.health_service import HealthService
+from app.services.utils.health_service import HealthService
 
 router = APIRouter(prefix="/api/health", tags=["Health"])
 
 @router.get("/db")
-async def get_db_status():
+def get_db_status():
     """
     Check if the database/datalake is connected.
     """
