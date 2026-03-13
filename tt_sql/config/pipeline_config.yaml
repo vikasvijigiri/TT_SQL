@@ -1,0 +1,22 @@
+pipeline:
+  execution_order:
+    - agent: TableSelector
+      enabled: true
+    - agent: QueryPlanner
+      enabled: true
+    - agent: RefinementLoop
+      enabled: true
+    - agent: SQLiteExecutor
+      enabled: true
+
+agent_settings:
+  TableSelector:
+    use_rag: true
+  QueryPlanner: {}
+  RefinementLoop:
+    max_iterations: 3
+  SQLiteExecutor: {}
+
+logging:
+  level: INFO
+  verbose: false
