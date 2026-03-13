@@ -3,11 +3,11 @@ import os
 import threading
 from typing import List
 from app.services.agents.base import BaseAgent
-from app.models.agent_state import AgentState, CandidateQuery
-from app.services.llm_service import LLMService
-from app.services.prompt_loader import PromptLoader
-from app.repos.file_coordinator import FileCoordinator
-from app.services.logger import Logger
+from app.services.schemas.agent_state import AgentState, CandidateQuery
+from app.services.engines.llm_service import LLMService
+from app.services.utils.prompt_loader import PromptLoader
+from app.repositories.persistence.file_coordinator import FileCoordinator
+from app.services.utils.logger import Logger
 from app.services.agents.input_layer import format_rag_columns
 
 class MultiCandidateGeneratorAgent(BaseAgent):
@@ -65,13 +65,13 @@ class MultiCandidateGeneratorAgent(BaseAgent):
                 action_plan = "\n".join(f"  {i+1}. {s}" for i, s in enumerate(state.step_by_step_plan))
 
             # Dialect resolution logic
-            from app.models.config import settings
+            from app.repositories.config import settings
             db_type_env = settings.DB_TYPE
             dialect_key = "postgresql" if db_type_env in ["postgres", "postgresql"] else "sqlite"
             
             try:
-                from app.services.prompt_loader import _load_yaml_cached
-                from app.models.paths import PROMPTS_DIR
+                from app.services.utils.prompt_loader import _load_yaml_cached
+                from app.repositories.registry.paths import PROMPTS_DIR
                 dialects = _load_yaml_cached(str(PROMPTS_DIR / "dialects.yaml"))
                 dialect_config = dialects.get(dialect_key, dialects.get("sqlite", {}))
                 dialect = "PostgreSQL" if dialect_key == "postgresql" else "SQLite"

@@ -1,7 +1,7 @@
 from abc import ABC, abstractmethod
 from typing import Any
-from app.models.agent_state import AgentState
-from app.services.logger import Logger
+from app.services.schemas.agent_state import AgentState
+from app.services.utils.logger import Logger
 
 class BaseAgent(ABC):
     """

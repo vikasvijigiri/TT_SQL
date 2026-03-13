@@ -1,18 +1,23 @@
 # 🤖 nQuire: Turbo-Accelerated Text-to-SQL Engine
 
-nQuire is a premium, high-performance Text-to-SQL engine designed for the modern enterprise. It strictly follows a layered architecture (Controller-Service-Repository) encapsulated within the `app/` directory.
+nQuire is a premium, high-performance Text-to-SQL engine designed for the modern enterprise. It strictly follows a domain-driven **Controller-Service-Repository** pattern with **Strict Directory Segregation** (no mixed files and folders).
 
 ---
 
 ## 🏛️ Layered Architecture Mapping
 
-- **🎮 Controller Layer (`app/controllers/`)**: API handling logic. Manages HTTP requests/responses.
-- **🧠 Service Layer (`app/services/`)**: Business logic. Orchestrates agents and pipelines.
-- **🗄️ Repository Layer (`app/repos/`)**: Data management.
-    - **Fundamental Logic**: Core data access (`sql_repo.py`, `rag_repo.py`).
-    - **Data Hub (`app/repos/data/`)**: All metadata, results, and gold datasets.
-    - **Execution Hub (`app/repos/scripts/`)**: All pipeline runs and batch scripts.
-    - **Test Hub (`app/repos/tests/`)**: All validation and unit tests.
+- **🎮 Controller Layer (`app/controllers/`)**: API and CLI entry points.
+    - Specialized controllers for queries and health checks.
+- **🧠 Service Layer (`app/services/`)**: Core Business Logic and Intelligence.
+    - **Engines (`app/services/engines/`)**: RAG, SQL, and Pipeline execution logic.
+    - **Schemas (`app/services/schemas/`)**: Runtime state and data schemas.
+    - **Agents (`app/services/agents/`)**: Specialized AI agent layers.
+    - **Utils (`app/services/utils/`)**: Logging, Prompts, and health service.
+- **🗄️ Repository Layer (`app/repositories/`)**: Data Management and Infrastructure.
+    - **Persistence (`app/repositories/persistence/`)**: File coordination and orchestration state.
+    - **Connectors (`app/repositories/connectors/`)**: Database and Vector Store drivers.
+    - **Registry (`app/repositories/registry/`)**: Path resolution logic.
+    - **Config (`app/repositories/config/`)**: Static YAML and JSON configurations.
 
 ---
 
@@ -21,97 +26,74 @@ nQuire is a premium, high-performance Text-to-SQL engine designed for the modern
 ```text
 backend/
 ├── app/
-│   ├── main.py             # FastAPI Entry Point
-│   ├── controllers/        # Layer 1: API Handling
-│   ├── services/           # Layer 2: Business Logic
-│   ├── repos/              # Layer 3: Repository & Orchestration
-│   │   ├── data/           # Metadata, Results, Gold
-│   │   ├── scripts/        # Primary Execution Pipelines (Runs)
-│   │   ├── tests/          # Validation & Unit Tests
-│   │   └── tools/          # Maintenance Utilities
-│   └── models/             # Layer 4: Config & Paths
-└── .env                    # Environment Setup
+│   ├── controllers/            # Layer 1: Entry Points
+│   ├── services/               # Layer 2: Business Logic
+│   │   ├── engines/            # Processing Engines (RAG, SQL)
+│   │   ├── schemas/            # State & Data Schemas
+│   │   ├── agents/             # AI Agent Layers
+│   │   └── utils/              # Shared Helpers (Prompts, Logging)
+│   └── repositories/           # Layer 3: Data & Config
+│       ├── persistence/        # File Management
+│       ├── connectors/         # DB & Vector Drivers
+│       ├── registry/           # Path Management
+│       └── config/             # YAML/JSON Configs
+├── scripts/                    # CLI Orchestration & Flow Scripts
+├── tests/                      # Logic & Retrieval Verification
+└── .env                        # Environment Setup
 ```
 
 ---
 
 ## 🚀 Execution Pipelines
 
-### 0. Master Automated Flow (Recommended)
 ### 🚀 Automated Workflows
 
-The system is designed with a two-phase architecture for production readiness:
-
 #### Phase 1: Knowledge Preparation
-Extracts schema from RDS, enriches it with LLM descriptions, and ingests it into the vector store.
+Extracts schema, enriches with AI descriptions, and ingests into Qdrant.
 ```bash
-python app/repos/scripts/prep_knowledge.py --schema acme-chatbot --collection acme_chatbot
+python scripts/prep_knowledge.py
 ```
-*   **Flags**:
-    *   `--no-enrich`: Skip LLM description step.
-    *   `--overwrite`: Force extraction even if cache exists.
 
 #### Phase 2: RAG Analysis Execution
-Runs the actual natural language to SQL pipeline using the prepared knowledge.
+Runs the natural language to SQL pipeline for a specific instance.
 ```bash
-python app/repos/scripts/run_rag_analysis.py --instance-id q001 --db acme-chatbot
+python scripts/run_rag_analysis.py --instance-id q011
 ```
-*   **Result Tracking**: Results are automatically saved with sequential IDs (e.g., `q035`) in `app/repos/data/results/`.
 
 ### 3. Single Question Testing
-Execute the Text-to-SQL pipeline for a one-off question.
-
-**Command:**
 ```bash
-# Must provide --db (schema) and --question
-python app/repos/scripts/run_single.py --question "Show me total revenue for 2024" --db acme-chatbot --use-rag
+python scripts/run_single.py --question "Show me total revenue" --use-rag
 ```
 
 ### 4. Batch Evaluation
-Processes multiple questions in parallel using the default input defined in `.env`.
-
-**Command:**
 ```bash
-python app/repos/scripts/run_batch_rag.py --workers 5
+python scripts/run_batch_rag.py --workers 5
 ```
 
 ---
 
 ## 🧪 Testing
 
-All specialized tests are located in `app/repos/tests`.
-
-**Run RAG Retrieval Test:**
-Verifies that the semantic retrieval correctly identifies relevant tables and columns.
-
 ```bash
-python app/repos/tests/test_rag.py --input-jsonl app/repos/data/input_queries/sample.jsonl --id q001
+# Run RAG Retrieval Test
+python tests/test_rag.py --id q011 --turbo
 ```
 
 ---
 
 ## 🚀 Launching the API
 
-Start the FastAPI server for production-ready integration.
-
 ```bash
-python -m app.main
+python -m app.controllers.main
 ```
 
 ---
 
 ## 🔍 Troubleshooting & Logs
 
-If a process feels "stuck," it is likely the LLM enrichment or RAG retrieval processing a large schema.
-
-- **Master Flow Metadata**: `app/repos/data/metadata_extracts/`
-- **Execution Logs**: `app/repos/data/results/<model_name>/log/`
-- **SQL Outputs**: `app/repos/data/results/<model_name>/sql/`
-- **Data Results (CSV)**: `app/repos/data/results/<model_name>/csv/`
-
-> [!TIP]
-> **Performance**: The flow automatically skips extraction if the metadata file exists in `metadata_extracts/`. Use `--overwrite` to force a refresh.
-> Use the `--no-enrich` flag for much faster extraction if AI-generated column descriptions aren't required.
+- **Results Hub**: `app/repositories/data/results/<model_name>/`
+- **Metadata Cache**: `app/repositories/data/metadata_extracts/`
+- **SQL Snippets**: `app/repositories/data/results/<model_name>/sql/`
 
 ---
 

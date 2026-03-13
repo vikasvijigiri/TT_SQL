@@ -1,11 +1,11 @@
 from typing import List
 import json
 from app.services.agents.base import BaseAgent
-from app.models.agent_state import AgentState
-from app.services.llm_service import LLMService
-from app.services.prompt_loader import PromptLoader
-from app.services.logger import Logger
-from app.repos.file_coordinator import FileCoordinator
+from app.services.schemas.agent_state import AgentState
+from app.services.engines.llm_service import LLMService
+from app.services.utils.prompt_loader import PromptLoader
+from app.services.utils.logger import Logger
+from app.repositories.persistence.file_coordinator import FileCoordinator
 from app.services.agents.input_layer import format_rag_columns
 
 class StepByStepPlannerAgent(BaseAgent):

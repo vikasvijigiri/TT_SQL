@@ -4,6 +4,8 @@ import { Zap, RefreshCw, Send, Search, Terminal } from 'lucide-react';
 import QueryInput from './components/QueryInput';
 import AgentLogs from './components/AgentLogs';
 import ResultDisplay from './components/ResultDisplay';
+import DatasetUpload from './components/DatasetUpload';
+import EnvUpload from './components/EnvUpload';
 import './App.css';
 
 const API_BASE_URL = 'http://localhost:8000';
@@ -13,6 +15,9 @@ function App() {
   const [dbConnected, setDbConnected] = useState(null);
   const [currentStage, setCurrentStage] = useState('');
   const [messages, setMessages] = useState([]);
+  const [selectedDataset, setSelectedDataset] = useState('sample.jsonl');
+  const [isPrepping, setIsPrepping] = useState(false);
+  const [prepStatus, setPrepStatus] = useState('Ready');
 
   const chatEndRef = useRef(null);
 
@@ -37,6 +42,58 @@ function App() {
   useEffect(() => {
     checkDbStatus();
   }, []);
+
+  const handleConnectDB = async (force = false) => {
+    if (isPrepping) return;
+    
+    setIsPrepping(true);
+    setPrepStatus('Starting');
+
+    try {
+      const response = await fetch(`${API_BASE_URL}/api/prep/run?force=${force}`, {
+        method: 'POST'
+      });
+
+      if (!response.ok) throw new Error("Failed to start preparation");
+
+      const reader = response.body.getReader();
+      const decoder = new TextDecoder();
+      let buffer = '';
+
+      while (true) {
+        const { value, done } = await reader.read();
+        if (done) break;
+
+        buffer += decoder.decode(value, { stream: true });
+        const lines = buffer.split('\n');
+        buffer = lines.pop();
+
+        for (const line of lines) {
+          if (line.startsWith('data: ')) {
+            try {
+              const data = JSON.parse(line.replace('data: ', '').trim());
+              setPrepStatus(data.message);
+              
+              if (data.level === 'SUCCESS') {
+                checkDbStatus();
+                setTimeout(() => setPrepStatus('Ready'), 5000);
+              } else if (data.level === 'ERROR') {
+                setTimeout(() => setPrepStatus('Ready'), 5000);
+              }
+            } catch (e) {
+              console.error("Error parsing SSE data", e);
+            }
+          }
+        }
+      }
+    } catch (err) {
+      console.error(err);
+      setPrepStatus('Error');
+      setTimeout(() => setPrepStatus('Ready'), 5000);
+    } finally {
+      setIsPrepping(false);
+    }
+  };
 
   const handleSendQuery = async (query) => {
     if (loading) return;
@@ -67,7 +124,8 @@ function App() {
         },
         body: JSON.stringify({
           query: query,
-          db_name: 'acme-chatbot'
+          db_name: 'acme-chatbot',
+          dataset_name: selectedDataset
         }),
       });
 
@@ -216,12 +274,26 @@ function App() {
         </div>
 
         <div className="header-right">
+          <EnvUpload onUploadSuccess={checkDbStatus} />
+          <DatasetUpload 
+            currentDataset={selectedDataset} 
+            onUploadSuccess={(name) => setSelectedDataset(name)} 
+          />
           <div className={`status-badge ${dbConnected === true ? 'online' : dbConnected === false ? 'offline' : ''}`}>
             <span className="status-dot"></span>
             <span className="status-text">{dbConnected === true ? 'DB Connected' : dbConnected === false ? 'DB Offline' : 'Checking DB...'}</span>
           </div>
-          <button className="icon-btn" title="Refresh Connection" onClick={checkDbStatus}>
-            <RefreshCw size={18} />
+          <div className={`status-pill ${isPrepping ? 'active' : ''} ${prepStatus.toLowerCase()} ${prepStatus === 'Ready' ? 'hidden' : ''}`}>
+            <span className="pulse-dot"></span>
+            <span className="status-label">{prepStatus}</span>
+          </div>
+          <button 
+            className={`icon-btn ${isPrepping ? 'loading' : ''}`} 
+            title="Sync & Refresh DB" 
+            onClick={() => handleConnectDB(false)}
+            disabled={isPrepping}
+          >
+            <RefreshCw size={18} className={isPrepping ? 'spin' : ''} />
           </button>
         </div>
       </header>

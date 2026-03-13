@@ -2,13 +2,13 @@ import os
 import json
 from typing import Dict, Any, List
 from app.services.agents.base import BaseAgent
-from app.models.agent_state import AgentState
-from app.repos.file_coordinator import FileCoordinator
+from app.services.schemas.agent_state import AgentState
+from app.repositories.persistence.file_coordinator import FileCoordinator
 import sys
 from pathlib import Path
 
 import re
-from app.services.rag_service import query_qdrant
+from app.services.engines.rag_service import query_qdrant
 
 def sanitize_string(text: str) -> str:
     """Removes newlines, extra whitespace, and problematic characters."""
@@ -68,7 +68,7 @@ def format_rag_columns(rag_columns: list) -> str:
         tables[tname].append(col)
 
     lines = []
-    from app.models.config import settings
+    from app.repositories.config import settings
     db_type = settings.DB_TYPE
     is_postgres = db_type in ["postgres", "postgresql"]
 
