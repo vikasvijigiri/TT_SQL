@@ -18,11 +18,11 @@ class PrepService:
     Uses direct service calls instead of internal subprocesses.
     """
 
-    def __init__(self):
+    def __init__(self, extraction_service=None, enrichment_service=None, ingestion_service=None):
         self.log_queue = queue.Queue()
-        self.extraction_service = ExtractionService()
-        self.enrichment_service = EnrichmentService()
-        self.ingestion_service = IngestService()
+        self.extraction_service = extraction_service or ExtractionService()
+        self.enrichment_service = enrichment_service or EnrichmentService()
+        self.ingestion_service = ingestion_service or IngestService()
 
     def run_pipeline(self, force: bool = False) -> Generator[str, None, None]:
         """
@@ -72,8 +72,8 @@ class PrepService:
             if not force:
                 try:
                     q_url = settings.QDRANT_URL.rstrip("/")
-                    q_key = settings.QDRANT_API_KEY
-                    resp = requests.get(f"{q_url}/collections/{collection_name}", headers={"api-key": q_key}, timeout=5)
+                    q_api = settings.QDRANT_API_KEY
+                    resp = requests.get(f"{q_url}/collections/{collection_name}", headers={"api-key": q_api}, timeout=5)
                     if resp.status_code == 200:
                         collection_exists = True
                 except Exception as e:
@@ -90,3 +90,23 @@ class PrepService:
             self._log(f"Error: {str(e)}", "ERROR")
         finally:
             self.log_queue.put(None)
+
+if __name__ == "__main__":
+    import argparse
+    import time
+    
+    parser = argparse.ArgumentParser(description="Full Knowledge Pipeline Preparation Tool")
+    parser.add_argument("--force", action="store_true", help="Force re-extraction and re-ingestion")
+    args = parser.parse_args()
+    
+    service = PrepService()
+    print(f"Starting Knowledge Prep Pipeline (Force: {args.force})...")
+    
+    # We consume the generator directly since we are in CLI
+    for msg in service.run_pipeline(force=args.force):
+        data = json.loads(msg.replace("data: ", "").strip())
+        lvl = data.get("level", "INFO")
+        txt = data.get("message", "")
+        print(f"[{lvl}] {txt}")
+        if txt == "Complete":
+            break
