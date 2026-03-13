@@ -10,7 +10,7 @@ from app.services.engines.pipeline_service import run_analysis_pipeline
 from app.services.schemas.agent_state import AgentState
 from app.services.utils.logger import Logger
 
-class SQLService:
+class QueryService:
     """
     Service layer for Text-to-SQL operations.
     Applies business logic and orchestrates the agent pipeline.

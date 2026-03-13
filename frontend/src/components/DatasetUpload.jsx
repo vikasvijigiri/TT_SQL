@@ -4,7 +4,7 @@ import axios from 'axios';
 
 const API_BASE_URL = 'http://localhost:8000';
 
-const DatasetUpload = ({ onUploadSuccess, currentDataset, onViewDataset }) => {
+const DatasetUpload = ({ onUploadSuccess, currentDataset, onViewDataset, apiUrl }) => {
     const [uploading, setUploading] = useState(false);
     const [error, setError] = useState(null);
     const fileInputRef = useRef(null);
@@ -25,7 +25,8 @@ const DatasetUpload = ({ onUploadSuccess, currentDataset, onViewDataset }) => {
         formData.append('file', file);
 
         try {
-            const response = await axios.post(`${API_BASE_URL}/api/upload-dataset`, formData, {
+            const url = apiUrl || `${API_BASE_URL}/api/data/upload-dataset`;
+            const response = await axios.post(url, formData, {
                 headers: {
                     'Content-Type': 'multipart/form-data',
                 },

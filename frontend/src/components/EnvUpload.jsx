@@ -4,7 +4,7 @@ import axios from 'axios';
 
 const API_BASE_URL = 'http://localhost:8000';
 
-const EnvUpload = ({ onUploadSuccess }) => {
+const EnvUpload = ({ onUploadSuccess, apiUrl }) => {
     const [uploading, setUploading] = useState(false);
     const [error, setError] = useState(null);
     const [success, setSuccess] = useState(false);
@@ -28,7 +28,8 @@ const EnvUpload = ({ onUploadSuccess }) => {
         formData.append('file', file);
 
         try {
-            await axios.post(`${API_BASE_URL}/api/upload-env`, formData, {
+            const url = apiUrl || `${API_BASE_URL}/api/data/upload-env`;
+            await axios.post(url, formData, {
                 headers: {
                     'Content-Type': 'multipart/form-data',
                 },
