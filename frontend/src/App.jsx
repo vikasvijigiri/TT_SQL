@@ -1,14 +1,15 @@
 import React, { useState, useEffect, useRef } from 'react';
 import axios from 'axios';
-import { Zap, RefreshCw, Send, Search, Terminal } from 'lucide-react';
+import { Zap, RefreshCw, Send, Search, Terminal, Brain, Trash2 } from 'lucide-react';
 import QueryInput from './components/QueryInput';
 import AgentLogs from './components/AgentLogs';
 import ResultDisplay from './components/ResultDisplay';
 import DatasetUpload from './components/DatasetUpload';
 import EnvUpload from './components/EnvUpload';
+import DatasetView from './components/DatasetView';
 import './App.css';
 
-const API_BASE_URL = 'http://localhost:8000';
+const API_BASE_URL = 'http://127.0.0.1:8000';
 
 function App() {
   const [loading, setLoading] = useState(false);
@@ -18,6 +19,8 @@ function App() {
   const [selectedDataset, setSelectedDataset] = useState('sample.jsonl');
   const [isPrepping, setIsPrepping] = useState(false);
   const [prepStatus, setPrepStatus] = useState('Ready');
+  const [currentView, setCurrentView] = useState('chat'); // 'chat' or 'dataset'
+  const [showRawLogs, setShowRawLogs] = useState({}); // Tracking per messageId
 
   const chatEndRef = useRef(null);
 
@@ -94,6 +97,29 @@ function App() {
       setIsPrepping(false);
     }
   };
+  
+  const handleDeleteCollection = async () => {
+    if (isPrepping) return;
+    if (!window.confirm("Are you sure you want to delete the current vector collection? This action cannot be undone.")) return;
+    
+    setIsPrepping(true);
+    setPrepStatus('Deleting');
+
+    try {
+      const response = await axios.delete(`${API_BASE_URL}/api/prep/collection`);
+      if (response.data.status === 'success') {
+        setPrepStatus('Deleted');
+        checkDbStatus();
+        setTimeout(() => setPrepStatus('Ready'), 3000);
+      }
+    } catch (err) {
+      console.error('Failed to delete collection:', err);
+      setPrepStatus('Error');
+      setTimeout(() => setPrepStatus('Ready'), 3000);
+    } finally {
+      setIsPrepping(false);
+    }
+  };
 
   const handleSendQuery = async (query) => {
     if (loading) return;
@@ -117,6 +143,7 @@ function App() {
     setCurrentStage('Initializing');
 
     try {
+      console.log("nQuire: Starting stream fetch for", `${API_BASE_URL}/api/stream`);
       const response = await fetch(`${API_BASE_URL}/api/stream`, {
         method: 'POST',
         headers: {
@@ -125,13 +152,16 @@ function App() {
         body: JSON.stringify({
           query: query,
           db_name: 'acme-chatbot',
-          dataset_name: selectedDataset
+          dataset_name: selectedDataset,
+          use_rag: true
         }),
       });
 
+      console.log("nQuire: Fetch response status:", response.status);
       if (!response.ok) throw new Error(`HTTP error! status: ${response.status}`);
 
       const reader = response.body.getReader();
+      console.log("nQuire: Reader obtained, protocol check complete.");
       const decoder = new TextDecoder();
       let buffer = '';
 
@@ -177,6 +207,7 @@ function App() {
                     newMessages[idx] = {
                       ...newMessages[idx],
                       instance_id: data.instance_id,
+                      status: 'Initializing',
                       payload: {
                         ...newMessages[idx].payload,
                         instance_id: data.instance_id
@@ -278,22 +309,45 @@ function App() {
           <DatasetUpload 
             currentDataset={selectedDataset} 
             onUploadSuccess={(name) => setSelectedDataset(name)} 
+            onViewDataset={() => setCurrentView('dataset')}
           />
           <div className={`status-badge ${dbConnected === true ? 'online' : dbConnected === false ? 'offline' : ''}`}>
             <span className="status-dot"></span>
             <span className="status-text">{dbConnected === true ? 'DB Connected' : dbConnected === false ? 'DB Offline' : 'Checking DB...'}</span>
           </div>
+          <button 
+            className={`icon-btn ${loading && currentStage === 'Checking Health' ? 'loading' : ''}`} 
+            title="Check DB Health" 
+            onClick={checkDbStatus}
+          >
+            <RefreshCw size={18} className={loading && currentStage === 'Checking Health' ? 'spin' : ''} />
+          </button>
+          
+          <div className="status-separator"></div>
+
           <div className={`status-pill ${isPrepping ? 'active' : ''} ${prepStatus.toLowerCase()} ${prepStatus === 'Ready' ? 'hidden' : ''}`}>
             <span className="pulse-dot"></span>
             <span className="status-label">{prepStatus}</span>
           </div>
+          
           <button 
             className={`icon-btn ${isPrepping ? 'loading' : ''}`} 
-            title="Sync & Refresh DB" 
+            title="Inject Knowledge (RAG)" 
             onClick={() => handleConnectDB(false)}
             disabled={isPrepping}
           >
-            <RefreshCw size={18} className={isPrepping ? 'spin' : ''} />
+            <Brain size={18} className={isPrepping ? 'pulse-glow' : ''} />
+            <span style={{ marginLeft: '6px', fontSize: '12px', fontWeight: '600' }}>Inject</span>
+          </button>
+
+          <button 
+            className={`icon-btn delete-btn ${isPrepping ? 'loading' : ''}`} 
+            title="Delete Vector Collection" 
+            onClick={handleDeleteCollection}
+            disabled={isPrepping}
+            style={{ color: 'var(--accent-red, #ff4d4f)' }}
+          >
+            <Trash2 size={18} />
           </button>
         </div>
       </header>
@@ -333,15 +387,29 @@ function App() {
                         </div>
                       )}
 
-                      {/* Instance ID badge removed per user request */}
+                      {/* Per-message Toggle Switch */}
+                      <div className="message-actions-overlay">
+                        <div className="toggle-switch-container">
+                          <span className={`switch-label ${!showRawLogs[msg.id] ? 'active' : ''}`}>Insights</span>
+                          <label className="premium-switch">
+                            <input 
+                              type="checkbox" 
+                              checked={!!showRawLogs[msg.id]} 
+                              onChange={() => setShowRawLogs(prev => ({ ...prev, [msg.id]: !prev[msg.id] }))} 
+                            />
+                            <span className="premium-slider"></span>
+                          </label>
+                          <span className={`switch-label ${showRawLogs[msg.id] ? 'active' : ''}`}>Logs</span>
+                        </div>
+                      </div>
 
-                      {msg.payload?.logs && msg.payload.logs.length > 0 && (
+                      {showRawLogs[msg.id] && msg.payload?.logs && msg.payload.logs.length > 0 && (
                         <div className="stages-history" style={{ marginBottom: '1.5rem' }}>
                           <AgentLogs logs={msg.payload.logs} />
                         </div>
                       )}
 
-                      {msg.type === 'result' && (
+                      {msg.type === 'result' && !showRawLogs[msg.id] && (
                         <ResultDisplay
                           sql={msg.payload.sql}
                           results={msg.payload.results}
@@ -379,6 +447,9 @@ function App() {
             </p>
           </div>
         </footer>
+      )}
+      {currentView === 'dataset' && (
+        <DatasetView onBack={() => setCurrentView('chat')} />
       )}
     </div>
   );

@@ -15,3 +15,19 @@ def run_prep(force: bool = False):
         prep_service.run_pipeline(force=force),
         media_type="text/event-stream"
     )
+
+@router.delete("/collection")
+def delete_collection(collection_name: str = None):
+    """
+    Deletes the vector collection.
+    """
+    from app.services.metadata.ingestion_service import IngestService
+    from app.repositories.config import settings
+    is_service = IngestService()
+    target_coll = collection_name or settings.COLLECTION_NAME
+    success = is_service.delete_collection(target_coll)
+    if success:
+        return {"status": "success", "message": f"Collection '{target_coll}' deleted."}
+    else:
+        from fastapi import HTTPException
+        raise HTTPException(status_code=500, detail=f"Failed to delete collection '{target_coll}'.")

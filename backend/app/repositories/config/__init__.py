@@ -23,11 +23,12 @@ class Settings:
         # Qdrant Vector DB
         self.QDRANT_URL = os.getenv("QDRANT_URL", "http://localhost:6333")
         self.QDRANT_API_KEY = os.getenv("QDRANT_API") or os.getenv("QDRANT_API_KEY")
-        self.COLLECTION_NAME = os.getenv("QDRANT_COLLECTION") or os.getenv("SCHEMA") or os.getenv("DB_NAME") or "acme-chatbot"
-        self.SCHEMA = os.getenv("SCHEMA") or os.getenv("DB_NAME") or "public"
-        self.DB_NAME = os.getenv("DB_NAME") or "postgres"
         
-        print(f"DEBUG: Loaded Settings - SCHEMA: {self.SCHEMA}, DB_NAME: {self.DB_NAME}")
+        # Unified Schema/DB Name (Consolidated)
+        self.SCHEMA = os.getenv("SCHEMA") or os.getenv("DB_NAME") or "acme-chatbot"
+        self.COLLECTION_NAME = os.getenv("QDRANT_COLLECTION") or self.SCHEMA
+        
+        print(f"DEBUG: Loaded Settings - SCHEMA: {self.SCHEMA}")
         
         # LLM Settings
         self.LLM_PROVIDER = os.getenv("LLM_PROVIDER", "bedrock")

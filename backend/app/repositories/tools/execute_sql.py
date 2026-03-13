@@ -1,4 +1,4 @@
-﻿import os
+import os
 import argparse
 import psycopg2
 from pathlib import Path

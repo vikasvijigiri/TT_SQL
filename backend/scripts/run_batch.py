@@ -95,6 +95,7 @@ def main():
     parser.add_argument("--top-2", action="store_true", help="Limit to top 2 tables only (RAG)")
     parser.add_argument("--overwrite", action="store_true", default=False, help="Re-run even if CSV results already exist")
     parser.add_argument("--ids", type=str, default=None, help="Comma-separated list of instance IDs to process")
+    parser.add_argument("--agents", type=str, default=None, help="Comma-separated list of agents to run")
     parser.add_argument("--verbose", action="store_true", help="Enable verbose terminal logging")
     
     args = parser.parse_args()
@@ -108,10 +109,10 @@ def main():
     # Initialize AWS/OpenAI envs if needed (handled by load_dotenv)
     
     logger.info(f"ðŸš€ Starting Batch Run with {args.workers} workers")
-    logger.info(f"ðŸ“‚ Dataset: {args.input_jsonl}")
+    logger.info(f"ðŸ“‚ Dataset: {args.dataset}")
     logger.info(f"ðŸ¤– Model: {args.model}")
     
-    tasks = load_tasks(args.input_jsonl)
+    tasks = load_tasks(args.dataset)
     
     # Filter by IDs if provided
     if args.ids:

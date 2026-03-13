@@ -37,14 +37,19 @@ def get_repo_dir() -> Path:
     return DATA_DIR
 
 def get_results_base_dir() -> Path:
-    """Returns the directory for query results"""
+    """Returns the directory for query results, appended with model name if available."""
     base = settings.RESULTS_DIR or str(DATA_DIR / "results")
-    return Path(base)
+    path = Path(base)
+    # Check if we should append model name automatically
+    model_name = getattr(settings, "LLM_MODEL", None)
+    if model_name:
+        safe_name = model_name.replace("/", "_").replace(":", "_")
+        return path / safe_name
+    return path
 
 def get_metadata_dir() -> Path:
-    """Returns the directory for database schemas"""
-    base = settings.METADATA_DIR or str(DATA_DIR / "metadata_extracts")
-    return Path(base)
+    """Returns the directory for database schemas, now inside model-specific results."""
+    return get_results_base_dir() / "metadata_extracts"
 
 def get_resources_dir() -> Path:
     """Returns the directory for shared resources"""
@@ -86,8 +91,18 @@ DATABASES_DIR = get_databases_dir()
 
 def get_model_results_dir(model_name: str) -> Path:
     """Get the results directory for a specific model."""
+    # If the model_name matches the global setting, get_results_base_dir already handles it
+    global_model = getattr(settings, "LLM_MODEL", None)
+    if global_model and model_name == global_model:
+        # Base dir already has the model name appended
+        # We need the parent if we want the absolute base results dir
+        # But get_results_base_dir() IS the target for global_model
+        return get_results_base_dir()
+    
+    # Otherwise, we start from the raw base and append the specific model_name
+    base = settings.RESULTS_DIR or str(DATA_DIR / "results")
     safe_name = model_name.replace("/", "_").replace(":", "_")
-    return get_results_base_dir() / safe_name
+    return Path(base) / safe_name
 
 
 def get_next_instance_id(model_name: str = None) -> str:

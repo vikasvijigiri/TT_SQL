@@ -50,7 +50,7 @@ messages:
           - Ensure functions and syntax are compatible with the specified {dialect}
           {dialect_instructions}
 
-      12. SEMANTIC COMPLETENESS & SENSIBILITY
+      11. SEMANTIC COMPLETENESS & SENSIBILITY
           - The query result must be informative and sensible for a human to interpret.
           - If the user asks for a percentage or ratio, the SQL should also include the base metrics (e.g., total_count, matched_count) so the scale is visible.
           - If the user asks for "which" or "who", ensure identifiers (like Names or IDs) are included, even if only codes are requested.
