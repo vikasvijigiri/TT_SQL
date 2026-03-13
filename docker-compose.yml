@@ -1,0 +1,21 @@
+services:
+  backend:
+    build: ./backend
+    container_name: nquire-backend
+    ports:
+      - "8000:8000"
+    env_file:
+      - ./backend/.env
+    volumes:
+      - ./backend/app/data:/app/app/data
+      - ./backend/app/repositories/logs:/app/app/repositories/logs
+    restart: always
+
+  # Optional: Local Qdrant instance for development
+  # qdrant:
+  #   image: qdrant/qdrant
+  #   container_name: nquire-qdrant
+  #   ports:
+  #     - "6333:6333"
+  #   volumes:
+  #     - ./qdrant_storage:/qdrant/storage

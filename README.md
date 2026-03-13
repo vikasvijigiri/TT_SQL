@@ -1,133 +1,122 @@
-# TT_SQL: nQuiry Text2SQL Agent
+# 🌐 nQuire: Agentic AI Business Intelligence
 
-nQuiry is an industry-grade Text-to-SQL engine that converts natural language questions into executable SQL queries with high precision. It uses a **layered multi-agent architecture** to analyze, plan, generate, critique, and refine SQL queries iteratively.
-
-## ✨ Key Features
-
-- **Layered Flow**: 4-stage pipeline (Planning → Context Enrichment/RAG → Generation → Execution).
-- **Anchor-Driven RAG**: Advanced sliding-window retrieval that identifies core "anchor" columns first, then builds complete schema context via sibling expansion.
-- **Self-Correction Loop**: SQLCritic validates logic and syntax; SQLBuilder auto-refines on failure (up to 5 retries).
-- **HTTP/REST Qdrant Interface**: Direct, lightweight integration with Qdrant Cloud without SDK overhead.
-- **Batch Processing**: High-performance parallel batch runner for large-scale evaluation.
-- **Safe Execution**: Only executes `SELECT` statements against target databases.
+nQuire is a premium, ChatGPT-style web application that transforms natural language questions into professional data insights. Built with a high-performance multi-agent Text-to-SQL engine, it provides instant SQL generation, execution results, and token-wise streaming business insights.
 
 ---
 
 ## 🏗️ Architecture Overview
 
-```mermaid
-flowchart TD
-    A["📥 Input: User Query"] --> B["Stage 1: QueryPlanner 🤖"]
-    B --> C["Stage 2: Context Enrichment (Anchor-Driven RAG) 🤖"]
-    C --> D["Stage 3: RefinementLoop (SQL Generation)"]
-
-    subgraph C["Stage 2: RAG Pipeline"]
-        C1["Intent Extraction"] --> C2["Table Scoring (Score Drop-off Filter)"]
-        C2 --> C3["Column Sliding Windows"]
-        C3 --> C4["Anchor Column Selection 🤖"]
-        C4 --> C5["Sufficiency Check 🤖"]
-        C5 --> C6["Multi-Set Synthesis (Set A/B/C) 🤖"]
-    end
-
-    subgraph D["Stage 3: Generation & Refinement"]
-        D1["SQLBuilder 🤖"] --> D2["SQLCritic 🤖"]
-        D2 -->|"❌ FAIL"| D1
-        D2 -->|"✅ PASS"| D3["DatabaseExecutor"]
-    end
-
-    D3 --> H["📤 Output: SQL + CSV Results"]
-```
-
-> 🤖 = LLM call (Amazon Bedrock / Claude 3.5 Sonnet)
-
-### Agent Summary
-
-| # | Agent | File | LLM? | Purpose |
-|---|-------|------|------|---------|
-| 1 | `QueryPlanner` | `planning_layer.py` | **Yes** | Breaks natural language into a logical step-by-step action plan. |
-| 2 | `TableSelector` | `input_layer.py` | No* | Orchestrates RAG calls to build the schema context. |
-| 3 | `VectorStoreAgent` | `rag/vector_store.py` | **Yes** | Executes Anchor-Driven RAG with sliding windows and sufficiency checks. |
-| 4 | `SQLBuilder` | `generation_layer.py` | **Yes** | Generates SQL from the plan, RAG schema, and critic feedback. |
-| 5 | `SQLCritic` | `critic_layer.py` | **Yes** | Performs logic and syntax critique on generated SQL. |
-| 6 | `PostgresExecutor` | `execution_layer.py` | No | Executes final SQL and saves results/logs. |
-| 7 | `RefinementLoop` | `loop_layer.py` | No | Orchestrates the Builder-Critic iterative loop. |
+- **Frontend**: React (Vite) + Vanilla CSS (Glassmorphism & Professional Animations).
+- **Backend**: FastAPI + Modular Layered Architecture (Controllers, Models, Repositories, Services).
+- **Vector Store**: Qdrant (for Column-Level RAG).
+- **Database**: PostgreSQL (Amazon RDS) or SQLite.
 
 ---
 
-## 🚀 Getting Started
+## 🚀 End-to-End Setup Guide
 
-### 1. Prerequisites
-- **Python 3.10+**
-- **Qdrant Cloud** (or Local) for vector storage
-- **AWS Bedrock** credentials (Claude 3.5 Sonnet / Titan)
+Follow these steps to get the entire application running from scratch.
 
-### 2. Installation
+### 1. Repository & Environment
 ```bash
 git clone https://github.com/NG-VikasV/TT_SQL.git
 cd TT_SQL
+```
+
+### 2. Backend Initialization
+```bash
+cd backend
+# Create and activate virtual environment
 python -m venv venv
-# Windows: .\venv\Scripts\activate | Mac/Linux: source venv/bin/activate
+.\venv\Scripts\activate  # Windows
+# source venv/bin/activate # Mac/Linux
+
+# Install dependencies
 pip install -r requirements.txt
 ```
 
-### 3. Configuration (.env)
+### 3. Frontend Initialization
+```bash
+cd ../frontend
+npm install
+cd ..
+```
+
+### 4. Configuration (`.env`)
+Create a `.env` file in the **backend** directory:
 ```ini
-# LLM
+# LLM Provider (Direct or Proxy)
 LLM_MODEL=bedrock/anthropic.claude-3-5-sonnet-20240620-v1:0
 AWS_ACCESS_KEY_ID=xxx
 AWS_SECRET_ACCESS_KEY=xxx
 AWS_REGION=us-east-1
 
-# Qdrant
-QDRANT_URL=https://your-qdrant-cluster.aws.cloud.qdrant.io
-QDRANT_API_KEY=your-api-key
-QDRANT_COLLECTION=your-collection-name
+# Qdrant Vector DB
+QDRANT_URL=https://your-cluster.qdrant.io
+QDRANT_API_KEY=xxx
+
+# Database (PostgreSQL)
+RDS_HOST=xxx
+RDS_PORT=5432
+RDS_DATABASE=xxx
+RDS_USER=xxx
+RDS_PASSWORD=xxx
+DB_TYPE=postgres
+```
+
+### 5. Data Retrieval Preparation (RAG)
+Run these commands to ingest your database schema into the vector store.
+```bash
+# 1. Extract and Enrich Metadata
+python backend/app/repositories/rag/extract_metadata.py --instance-id setup --enrich
+
+# 2. Populate Vector Store
+python backend/app/repositories/scripts/populate_vector_store.py
 ```
 
 ---
 
-## 🏃‍♂️ Usage
+## 🏃 Launching the Application
 
-### Pre-generating RAG Schemas
-Before running the full pipeline, generate the schema JSONs for your dataset:
-```bash
-python scripts/generate_rag_schemas.py --dataset data/sample.jsonl
-```
+You need to run two separate processes:
 
-### Running a Single Instance
+### Terminal 1: Backend (FastAPI)
 ```bash
-python scripts/run_single.py --id q001 --dataset data/sample.jsonl --use-rag
+# From backend directory
+python main.py
 ```
+*Backend runs at `http://localhost:8000`*
 
-### Batch Processing
+### Terminal 2: Frontend (Vite)
 ```bash
-python scripts/run_batch.py --dataset data/sample.jsonl --workers 10 --use-rag
+# From frontend directory
+npm run dev
 ```
+*Frontend runs at `http://localhost:5173`*
+
+---
+
+## 📊 Key Features & Usage
+
+1. **Natural Language Querying**: Ask questions like *"What is the OTIF loss breakdown by reason code?"*
+2. **Thinking States**: The UI shows real-time pulse updates for each agent (Planning, Building, Executing).
+3. **Turbo Streaming**: achievements sub-2s TTFT by parallelizing business narratives with technical discovery.
+4. **Professional Results**: View generated SQL and interactive data tables directly in the chat bubbles.
 
 ---
 
 ## 📂 Project Structure
-
 ```text
 TT_SQL/
-├── ARCHITECTURE.md           # Detailed pipeline logic & Mermaid diagrams
-├── scripts/                  # CLI Entry Points
-│   ├── generate_rag_schemas.py # RAG pre-generation tool
-│   ├── run_single.py         # Single question runner
-│   ├── run_batch.py          # Parallel dataset runner
-│   └── populate_vector_store.py # Ingestion utility
-├── data/                     # Metadata & Datasets
-│   ├── sample.jsonl          # Main test questions
-│   ├── metadata_injestion_files.json # Schema metadata
-│   └── domain_map.json       # Table allowlists
-├── src/tt_sql/               # Core Package
-│   ├── agents/               # Planner, Builder, Critic, RAG agents
-│   ├── core/                 # Orchestrator, State, LLM Service
-│   └── rag/                  # VectorStoreAgent (HTTP REST)
-└── results/                  # [Generated] sql, csv, logs, schemas
+├── backend/                  # Python Agentic Engine & API
+│   ├── app/
+│   │   ├── controllers/      # API Routes
+│   │   ├── models/           # Schemas & Paths
+│   │   ├── repositories/     # Data & Scripts
+│   │   └── services/         # Agents & Logic
+│   └── main.py               # FastAPI Entry point
+├── frontend/                 # React Application
+│   ├── src/App.jsx           # Main Chat Interface
+│   └── src/components/       # UI Components
+└── README.md                 # Project Overview
 ```
-
----
-
-## 📄 License
-Research and Educational purposes. Developed for industry-grade text-to-SQL logic.
