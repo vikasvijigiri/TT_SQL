@@ -19,6 +19,7 @@ class EvaluationService:
     def __init__(self):
         self.total_gb_processed = 0.0
         self.gb_lock = threading.Lock()
+        self.logger = Logger
 
     def compare_pandas_table(self, pred: pd.DataFrame, gold: pd.DataFrame, condition_cols=None, ignore_order: bool = False) -> int:
         tolerance = 1e-2
@@ -79,12 +80,11 @@ class EvaluationService:
             def execute_query():
                 query_job = client.query(sql_query)
                 df = query_job.result().to_dataframe()
-                self.total_gb_processed += (query_job.total_bytes_processed or 0) / (1024 ** 3)
+                with self.gb_lock:
+                    self.total_gb_processed += (query_job.total_bytes_processed or 0) / (1024 ** 3)
                 return df
 
-            # Simple timeout mechanism using thread wait or signal
-            # For simplicity in this environment, we'll keep it direct or use a wrapper if signal is safe on Windows
-            results = execute_query() # In production, use a more robust timeout wrapper
+            results = execute_query()
             
             if results.empty:
                 os.makedirs(save_dir, exist_ok=True)
@@ -110,6 +110,27 @@ class EvaluationService:
             
             os.makedirs(save_dir, exist_ok=True)
             df.to_csv(os.path.join(save_dir, file_name), index=False)
+            return True, None
+        except Exception as e:
+            return False, str(e)
+
+    def get_sqlite_result(self, db_path: str, query: str, save_dir: str, file_name: str, chunksize: int = 500):
+        try:
+            conn = sqlite3.connect(db_path)
+            memory_conn = sqlite3.connect(':memory:')
+            conn.backup(memory_conn)
+            
+            if not os.path.exists(save_dir):
+                os.makedirs(save_dir)
+            
+            # Read in chunks and write to CSV
+            for i, chunk in enumerate(pd.read_sql_query(query, memory_conn, chunksize=chunksize)):
+                mode = 'a' if i > 0 else 'w'
+                header = (i == 0)
+                chunk.to_csv(os.path.join(save_dir, file_name), mode=mode, header=header, index=False)
+            
+            memory_conn.close()
+            conn.close()
             return True, None
         except Exception as e:
             return False, str(e)
@@ -160,7 +181,7 @@ class EvaluationService:
                 exe_flag, dbms_err = self.get_bigquery_sql_result(pred_sql_query, str(thread_temp_dir), result_file, instance_id)
             else:
                 metadata = metadata_dict.get(instance_id, {})
-                db_name = metadata.get("db") or instance_id.split("_")[1] if "_" in instance_id else instance_id
+                db_name = metadata.get("db") or (instance_id.split("_")[1] if "_" in instance_id else instance_id)
                 sqlite_path = db_base_dir / f"{db_name}.sqlite"
                 if not sqlite_path.exists():
                     exe_flag, dbms_err = False, f"DB not found: {sqlite_path}"
@@ -194,7 +215,6 @@ class EvaluationService:
         return {"instance_id": instance_id, "score": score, "pred_sql": pred_sql_query, "error_info": error_info}
 
     def run_generalized_evaluation(self, args, temp_path: Path):
-        # Implementation logic moved from evaluate_generalized
         gold_dir = args.gold_dir
         gold_exec_dir = args.gold_exec_dir or os.path.join(gold_dir, "spider2_gold", "exec_result")
         pred_result_dir = args.result_dir
@@ -207,7 +227,7 @@ class EvaluationService:
                     item = json.loads(line)
                     eval_standard_dict[item["instance_id"]] = item
         
-        meta_jsonl = args.meta_jsonl # Mandatory for SQLite mapping usually
+        meta_jsonl = args.meta_jsonl
         metadata_dict = {}
         if meta_jsonl and os.path.exists(meta_jsonl):
             with open(meta_jsonl, 'r') as f:
@@ -248,7 +268,6 @@ class EvaluationService:
             "results": results
         }
         
-        # Save summary to pred_result_dir
         if os.path.exists(pred_result_dir):
             summary_path = Path(pred_result_dir).parent / "evaluation_summary.json"
             with open(summary_path, "w", encoding="utf-8") as f:
@@ -257,3 +276,22 @@ class EvaluationService:
 
         print(f"\n--- SUMMARY ---\nCorrect: {correct}\nTotal: {total}\nAccuracy: {accuracy:.4f}")
         return results
+
+if __name__ == "__main__":
+    import argparse
+    import tempfile
+    
+    parser = argparse.ArgumentParser(description="Standalone SQL Evaluation Tool")
+    parser.add_argument("--mode", choices=["sql", "csv"], default="sql")
+    parser.add_argument("--result-dir", type=str, required=True, help="Directory containing prediction files")
+    parser.add_argument("--gold-dir", type=str, required=True, help="Directory containing gold files")
+    parser.add_argument("--gold-exec-dir", type=str, help="Optional gold execution results dir")
+    parser.add_argument("--eval-jsonl", type=str, help="Path to evaluation standard JSONL")
+    parser.add_argument("--meta-jsonl", type=str, help="Path to metadata JSONL")
+    parser.add_argument("--db-dir", type=str, help="Path to local database resources")
+    parser.add_argument("--workers", type=int, default=10, dest="max_workers")
+    args = parser.parse_args()
+    
+    service = EvaluationService()
+    with tempfile.TemporaryDirectory() as tmp_path:
+        service.run_generalized_evaluation(args, Path(tmp_path))

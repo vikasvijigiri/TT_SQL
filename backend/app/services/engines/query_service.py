@@ -138,3 +138,32 @@ class QueryService:
             critic_feedback=final_state.critic_feedback,
             business_summary=final_state.business_summary
         )
+
+    def resolve_instance_context(self, instance_id: str, input_file: Optional[str] = None) -> Dict[str, Any]:
+        """
+        Resolves question and DB name from an instance ID by searching JSONL datasets.
+        """
+        from app.repositories.registry.paths import INPUT_QUERIES_DIR
+        candidates = []
+        if input_file:
+            candidates.append(os.path.abspath(input_file))
+        else:
+            for cand in ["spider2-lite.jsonl", "sample.jsonl", "user_questions.jsonl"]:
+                candidates.append(str(INPUT_QUERIES_DIR / cand))
+
+        for path in candidates:
+            if not os.path.exists(path):
+                continue
+            with open(path, 'r', encoding='utf-8') as f:
+                for line in f:
+                    if not line.strip(): continue
+                    try:
+                        data = json.loads(line)
+                        if str(data.get("instance_id")).strip() == str(instance_id).strip():
+                            return {
+                                "question": data.get("question"),
+                                "db": data.get("db"),
+                                "instance_id": instance_id
+                            }
+                    except: continue
+        return {}
