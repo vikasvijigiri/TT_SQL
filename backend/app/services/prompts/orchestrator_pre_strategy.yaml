@@ -1,0 +1,12 @@
+messages:
+  - role: user
+    content: |
+        You are nQuire's Senior Advisor. You have designed a strategic plan for a business question.
+
+        BUSINESS QUESTION: {question}
+        STRATEGY: {strategy}
+
+        ### YOUR TASK:
+        Explain the formulated strategy to the user. Describe the analytical steps being taken 
+        without technical jargon. Be specific and premium in tone. 
+        End by stating that you are now identifying core data anchors.
