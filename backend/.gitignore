@@ -128,12 +128,10 @@ backend/app/results/
 backend/app/data/
 backend/app/gold/
 backend/app/input_queries/
-backend/app/metadata/
 execution_log.md
 data/
 results/
 logs/
-metadata/
 gold/
 input_queries/
 *.sql
