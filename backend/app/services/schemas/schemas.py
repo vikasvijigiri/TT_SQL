@@ -1,10 +1,9 @@
 from pydantic import BaseModel
 from typing import Optional, List, Dict, Any
 
-from app.repositories.config import settings
 class QueryRequest(BaseModel):
     query: str = "web_query"
-    db_name: str = settings.COLLECTION_NAME
+    db_name: str = ""  # Resolved at request time from active project
     dataset_name: Optional[str] = "sample.jsonl"
     instance_id: str = ""
     use_rag: bool = True
