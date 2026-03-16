@@ -34,12 +34,14 @@ app = FastAPI(
 # Global Exception Handler
 @app.exception_handler(Exception)
 async def global_exception_handler(request: Request, exc: Exception):
-    logger.error(f"Global error caught: {exc}", exc_info=True)
+    import traceback
+    error_detail = traceback.format_exc()
+    logger.error(f"Global error caught: {exc}\n{error_detail}")
     return JSONResponse(
         status_code=500,
         content={
             "error": "Internal Server Error",
-            "detail": str(exc) if os.getenv("DEBUG") == "true" else "An unexpected error occurred."
+            "detail": error_detail if os.getenv("DEBUG") == "true" else "An unexpected error occurred."
         }
     )
 
@@ -47,12 +49,7 @@ async def global_exception_handler(request: Request, exc: Exception):
 # CORS Configuration
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=[
-        "http://localhost:5173",
-        "http://127.0.0.1:5173",
-        "http://localhost:3000",
-        "http://127.0.0.1:3000"
-    ],
+    allow_origins=["*"],
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],

@@ -14,6 +14,10 @@ class QueryResponse(BaseModel):
     sql: Optional[str]
     results: Optional[List[Dict[str, Any]]]
     columns: Optional[List[str]]
+    total_count: int = 0
     logs: List[str]
     critic_feedback: Optional[str]
     business_summary: Optional[str]
+    chart_config: Optional[Dict[str, Any]] = None
+    token_usage: Optional[Dict[str, int]] = None
+    total_time: Optional[float] = None

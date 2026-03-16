@@ -102,96 +102,130 @@ class ContextEnrichmentAgent(BaseAgent):
     def __init__(self, results_dir: str = None, logs_dir: str = None, metadata_dir: str = None):
         super().__init__(name="TableSelector", results_dir=results_dir, logs_dir=logs_dir, metadata_dir=metadata_dir)
         self.file_coordinator = FileCoordinator(results_dir=results_dir, logs_dir=logs_dir)
-        
+
+    def hydrate_columns(self, set_data: Dict[str, List[str]], metadata: Dict[str, Any]) -> List[Dict[str, Any]]:
+        """Helper to hydrate column names into full metadata objects."""
+        hydrated = []
+        for tname, col_names in set_data.items():
+            table_meta = metadata.get(tname, {})
+            cols_meta = table_meta.get("columns", [])
+            for cname in col_names:
+                found = False
+                for cm in cols_meta:
+                    if cm.get("column_name") == cname:
+                        hydrated.append({
+                            "table_name": tname,
+                            "column_name": cname,
+                            "type": cm.get("type", "unknown"),
+                            "description": cm.get("description", ""),
+                            "sample_values": cm.get("sample_values", []),
+                            "pk": cm.get("pk", False)
+                        })
+                        found = True
+                        break
+                if not found:
+                    hydrated.append({"table_name": tname, "column_name": cname, "type": "unknown"})
+        return hydrated
+
     def run(self, state: AgentState, on_token: callable = None) -> AgentState:
         """
-        Executes the RAG enrichment phase by querying the vector database.
-        
-        Args:
-            state (AgentState): The current state of the analysis pipeline.
-            on_token (callable, optional): Callback for real-time token streaming.
-            
-        Returns:
-            AgentState: The updated state with schema_info and rag_pool populated.
+        Executes the RAG enrichment phase by querying the vector database and re-hydrating metadata.
         """
-        self.log(state, "Step: Identifying Relevant Schema (RAG Enrichment)")
+        self.log(state, "Step: Identifying Relevant Schema (Advanced RAG Enrichment)")
         
         try:
-            # Construct a comprehensive search query combining user query and approach strategy
-            search_query = state.user_query
-            if state.step_by_step_plan:
-                search_query += "\nApproach Strategy:\n" + "\n".join(state.step_by_step_plan)
-
             # Invoke the structured RAG pipeline
-            try:
-                results = query_qdrant(
-                    search_query, 
-                    instance_id=state.instance_id,
-                    collection_name=state.db_name,
-                    results_dir=self.results_dir,
-                    logs_dir=self.logs_dir,
-                    metadata_dir=self.metadata_dir,
-                    model_name=state.model_name
-                )
-                
-                if results and "final_sets" in results:
-                    sets_data = results["final_sets"]
-                    state.rag_multi_sets = sets_data
-                    
-                    # Deduplicate all candidates across multi-sets to form the universal rag_pool
-                    seen_cols = set()
-                    rag_pool = []
-                    for set_name, cols in sets_data.items():
-                        for col in cols:
-                            key = f"{col.get('table_name')}.{col.get('column_name')}"
-                            if key not in seen_cols:
-                                seen_cols.add(key)
-                                rag_pool.append(col)
-                    state.rag_pool = rag_pool
-
-                    # Initialize schema from the primary set (Set A) for standard processing
-                    primary_set_name = "Set A" if "Set A" in sets_data else list(sets_data.keys())[0]
-                    retrieved_columns = sets_data[primary_set_name]
-                    
-                    # Group metadata by table for downstream agent consumption
-                    rag_schema = {}
-                    for col in retrieved_columns:
-                        tname = col.get("table_name", "unknown")
-                        if tname not in rag_schema:
-                            rag_schema[tname] = {"columns": [], "foreign_keys": []}
-                        
-                        rag_schema[tname]["columns"].append({
-                            "column_name": col.get("column_name", "unknown"),
-                            "type":        col.get("type", "unknown"),
-                            "description": col.get("description", ""),
-                            "sample_values": col.get("sample_values"),
-                            "pk":          col.get("pk", False)
-                        })
-
-                    state.schema_info = rag_schema
-                    state.rag_columns = retrieved_columns
-                    state.relevant_tables = list(rag_schema.keys())
-                    
-                    # Cache the formatted pool to optimize subsequent retry prompt building
-                    state.formatted_rag_pool = format_rag_columns(state.rag_pool)
-
-                    state.query_intent = "DATA_RETRIEVAL"
-                    state.complexity_score = "MEDIUM"
-                    state.context_reasoning = f"Column-Level RAG: schema built from {primary_set_name}."
-
-                    total_cols = len(retrieved_columns)
-                    self.log(state, f"RAG Success: retrieved {len(sets_data)} discrete sets. '{primary_set_name}' has {total_cols} columns.")
-                else:
-                    self.log(state, "RAG returned no candidates. Please verify the Qdrant collection and metadata.", level="WARN")
-                    state.rag_pool = []
-                    state.schema_info = {}
-
-            except Exception as rag_err:
-                self.log(state, f"Vector Search Failure: {str(rag_err)}", level="WARNING")
+            import inspect
+            actual_kwargs = {
+                "collection_name": state.db_name,
+                "instance_id": state.instance_id,
+                "results_dir": self.results_dir,
+                "logs_dir": self.logs_dir,
+                "metadata_dir": self.metadata_dir
+            }
+            
+            # Dynamic filtering of kwargs based on actual service signature
+            sig = inspect.signature(query_qdrant)
+            filtered_kwargs = {k: v for k, v in actual_kwargs.items() if k in sig.parameters}
+            
+            results = query_qdrant(state.user_query, **filtered_kwargs)
+            
+            if not results or ("final_sets" not in results and "top_3_sets" not in results):
+                self.log(state, "RAG returned no candidates. Please verify the Qdrant collection and metadata.", level="WARNING")
                 state.rag_pool = []
                 state.schema_info = {}
+                return state
+
+            # Access Top 3 sets (new compact format)
+            all_sets = results.get("top_3_sets") or results.get("final_sets")
+            state.rag_multi_sets = all_sets # Store the compact version for reference
+            
+            # Load metadata for re-hydration
+            metadata_path = results.get("metadata_path")
+            if not metadata_path or not os.path.exists(metadata_path):
+                from app.repositories.registry.paths import get_metadata_dir
+                metadata_path = get_metadata_dir() / f"{state.db_name or 'metadata_injestion_files'}.json"
+            
+            if not os.path.exists(metadata_path):
+                self.log(state, f"Metadata file not found for re-hydration: {metadata_path}", level="ERROR")
+                return state
+
+            with open(metadata_path, 'r', encoding='utf-8') as f:
+                metadata = json.load(f).get("tables", {})
+
+            # Re-hydrate the primary set (Set A) for state.schema_info and state.rag_columns
+            primary_set_name = "Set A" if "Set A" in all_sets else list(all_sets.keys())[0]
+            primary_hydrated = self.hydrate_columns(all_sets[primary_set_name], metadata)
+            
+            # Deduplicate all candidates across multi-sets for rag_pool
+            seen_cols = set()
+            rag_pool = []
+            for sname, sdata in all_sets.items():
+                hydrated_set = self.hydrate_columns(sdata, metadata)
+                for col in hydrated_set:
+                    key = f"{col['table_name']}.{col['column_name']}"
+                    if key not in seen_cols:
+                        seen_cols.add(key)
+                        rag_pool.append(col)
+            
+            state.rag_pool = rag_pool
+            state.rag_columns = primary_hydrated
+            
+            # Group metadata by table for downstream agent consumption (state.schema_info)
+            rag_schema = {}
+            for col in primary_hydrated:
+                tname = col["table_name"]
+                if tname not in rag_schema:
+                    rag_schema[tname] = {"columns": [], "foreign_keys": []}
+                rag_schema[tname]["columns"].append(col)
+
+            state.schema_info = rag_schema
+            state.relevant_tables = list(rag_schema.keys())
+            state.formatted_rag_pool = format_rag_columns(state.rag_pool)
+            state.query_intent = "DATA_RETRIEVAL"
+            state.complexity_score = "MEDIUM"
+            
+            # Transparency Metrics
+            anchors = results.get("anchors", [])
+            iterations = results.get("iterations", 1)
+            sufficient = results.get("sufficient", False)
+            
+            state.context_reasoning = (
+                f"Anchor-Driven RAG: Completed in {iterations} scans. "
+                f"Anchors: {', '.join(anchors[:5])}{'...' if len(anchors) > 5 else ''}. "
+                f"Sufficiency reached: {sufficient}."
+            )
+
+            # Verification Logging
+            col_count = sum(len(v.get("columns", [])) for v in rag_schema.values())
+            self.log(state, f"📍 Anchors Identified: {', '.join(anchors)}")
+            self.log(state, f"🔍 Iterative Scan: Completed {iterations} windows. Sufficiency: {'✅' if sufficient else '⚠️ Partial'}")
+            self.log(state, f"Schema Context Hydrated: {len(rag_schema)} tables, {col_count} columns.")
+            self.log(state, f"RAG Re-hydration Success: {len(all_sets)} sets synthesized for parallel analysis.")
 
         except Exception as e:
+            import traceback
+            self.log(state, f"Context Enrichment Failure:\n{traceback.format_exc()}", level="ERROR")
             return self.handle_error(state, e)
 
         return state

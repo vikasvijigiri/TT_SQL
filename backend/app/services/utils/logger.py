@@ -11,7 +11,6 @@ class Logger:
     _verbose = False
 
     @classmethod
-    @classmethod
     def register_listener(cls, callback):
         cls._get_listeners().append(callback)
 
@@ -47,8 +46,9 @@ class Logger:
                 f.write(f"- **[{timestamp}]** <font color=\"{color}\">**[{level}]**</font> {display_message}\n")
         except Exception: pass
         for listener in cls._get_listeners():
-            try: listener(message, "log", level)
-            except: pass
+            if callable(listener):
+                try: listener(message, "log", level)
+                except: pass
 
     @classmethod
     def log_section(cls, title: str):
@@ -57,8 +57,9 @@ class Logger:
             with open(log_file, "a", encoding="utf-8") as f: f.write(f"\n### {title}\n")
         except Exception: pass
         for listener in cls._get_listeners():
-            try: listener(title, "section", "INFO")
-            except: pass
+            if callable(listener):
+                try: listener(title, "section", "INFO")
+                except: pass
 
     @classmethod
     def log_divider(cls):
@@ -83,8 +84,9 @@ class Logger:
             with open(log_file, "a", encoding="utf-8") as f: f.write(f"\n{title}\n")
         except Exception: pass
         for listener in cls._get_listeners():
-            try: listener(title, "title", "INFO")
-            except: pass
+            if callable(listener):
+                try: listener(title, "title", "INFO")
+                except: pass
 
     @classmethod
     def log_code(cls, code: str, language: str = "sql"):
@@ -93,8 +95,9 @@ class Logger:
             with open(log_file, "a", encoding="utf-8") as f: f.write(f"```{language}\n{code}\n```\n\n")
         except Exception: pass
         for listener in cls._get_listeners():
-            try: listener(code, "code", "INFO")
-            except: pass
+            if callable(listener):
+                try: listener(code, "code", "INFO")
+                except: pass
 
     # --- Private Methods & Constants ---
 

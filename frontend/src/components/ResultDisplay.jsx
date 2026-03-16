@@ -4,7 +4,7 @@ import rehypeRaw from 'rehype-raw';
 import ChartDisplay from './ChartDisplay';
 import './ResultDisplay.css';
 
-const ResultDisplay = ({ sql, results, columns, total_count, business_summary, chart_config, error, total_time }) => {
+const ResultDisplay = ({ sql, results, columns, total_count, business_summary, chart_config, error, total_time, token_usage }) => {
     if (error) {
         return (
             <div className="result-display glass-panel error">
@@ -23,6 +23,8 @@ const ResultDisplay = ({ sql, results, columns, total_count, business_summary, c
     const displayResults = results || [];
     const totalRecords = total_count || results?.length || 0;
     const hasMore = totalRecords > displayResults.length;
+
+    const totalTokens = token_usage ? (token_usage.input + token_usage.output) : 0;
 
     return (
         <div className="result-display-nested">
@@ -71,9 +73,17 @@ const ResultDisplay = ({ sql, results, columns, total_count, business_summary, c
                 </div>
             )}
 
-            {total_time && (
+            {(total_time || token_usage) && (
                 <div className="execution-meta">
-                    <span className="time-metric">Analysis completed in <strong>{total_time.toFixed(2)}s</strong></span>
+                    {total_time > 0 && (
+                        <span className="time-metric">Analysis completed in <strong>{total_time.toFixed(2)}s</strong></span>
+                    )}
+                    {token_usage && (
+                        <span className="token-metric">
+                            Resources: <strong>{totalTokens.toLocaleString()}</strong> tokens 
+                            <span className="token-details">({token_usage.input.toLocaleString()} in / {token_usage.output.toLocaleString()} out)</span>
+                        </span>
+                    )}
                 </div>
             )}
         </div>
