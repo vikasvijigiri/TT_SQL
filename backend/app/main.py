@@ -92,5 +92,5 @@ app.include_router(project_router)
 
 if __name__ == "__main__":
     import uvicorn
-    # Use app.controllers.main:app since we are now in app/controllers
-    uvicorn.run("app.controllers.main:app", host="0.0.0.0", port=8000, reload=True)
+    # Now running from app.main
+    uvicorn.run("app.main:app", host="0.0.0.0", port=8000, reload=True)
