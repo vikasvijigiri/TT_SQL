@@ -74,6 +74,7 @@ class Settings:
             self.COLLECTION_NAME = conn.get("qdrant_collection") or self.SCHEMA
 
             if self.DB_TYPE == "postgres":
+                self.RDS_DATABASE = conn.get("database", self.RDS_DATABASE)
                 self.RDS_HOST = conn.get("host", self.RDS_HOST)
                 self.RDS_PORT = conn.get("port", self.RDS_PORT)
                 self.RDS_USER = conn.get("user", self.RDS_USER)
@@ -96,6 +97,7 @@ class Settings:
         self.COLLECTION_NAME = conn.get("qdrant_collection") or self.SCHEMA
 
         if self.DB_TYPE.lower() in ["postgres", "postgresql"]:
+            self.RDS_DATABASE = conn.get("database", self.RDS_DATABASE)
             self.RDS_HOST = conn.get("host", self.RDS_HOST)
             self.RDS_PORT = conn.get("port", self.RDS_PORT)
             self.RDS_USER = conn.get("user", self.RDS_USER)

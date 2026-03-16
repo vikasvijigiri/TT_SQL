@@ -24,6 +24,7 @@ const ProjectsScreen = ({ onProjectConnected, onStartChat }) => {
     const [testResult, setTestResult] = useState({ id: null, status: null, message: '', tables: [] });
     const [dbType, setDbType] = useState('postgres');
     const [dbName, setDbName] = useState('');
+    const [database, setDatabase] = useState('postgres');
     const [host, setHost] = useState('');
     const [port, setPort] = useState('5432');
     const [user, setUser] = useState('');
@@ -78,7 +79,7 @@ const ProjectsScreen = ({ onProjectConnected, onStartChat }) => {
     };
 
     const resetForm = () => {
-        setDbName(''); setHost(''); setPort('5432');
+        setDbName(''); setDatabase('postgres'); setHost(''); setPort('5432');
         setUser(''); setPassword('');
         setSqlitePath(''); setQdrantCollection('');
     };
@@ -88,6 +89,7 @@ const ProjectsScreen = ({ onProjectConnected, onStartChat }) => {
         const conn = project.connection || {};
         setDbType(conn.db_type || 'postgres');
         setDbName(conn.db_name || '');
+        setDatabase(conn.database || 'postgres');
         setHost(conn.host || '');
         setPort(conn.port || '5432');
         setUser(conn.user || '');
@@ -102,7 +104,7 @@ const ProjectsScreen = ({ onProjectConnected, onStartChat }) => {
         setSaving(true);
         try {
             const payload = {
-                db_type: dbType, db_name: dbName, host, port,
+                db_type: dbType, db_name: dbName, database, host, port,
                 user, password, sqlite_path: sqlitePath,
                 qdrant_collection: qdrantCollection
             };
@@ -700,19 +702,57 @@ const ProjectsScreen = ({ onProjectConnected, onStartChat }) => {
                                     Project: <strong>{projects.find(p => p.id === selectedProjectId)?.name || 'Unknown'}</strong>
                                 </div>
 
-                                {/* Schema Name */}
-                                <div style={{ display: 'flex', flexDirection: 'column', gap: '5px' }}>
-                                    <label style={{ fontSize: '13px', fontWeight: '600', color: '#334155' }}>
-                                        Schema / Database Name
-                                    </label>
-                                    <input
-                                        type="text" required value={dbName}
-                                        onChange={e => setDbName(e.target.value)}
-                                        placeholder="e.g., public or my_schema"
-                                        style={inputStyle}
-                                        onFocus={inputFocusHandler} onBlur={inputBlurHandler}
-                                    />
-                                </div>
+                                {/* Database + Schema row */}
+                                {selectedTab === 'postgres' && (
+                                    <div style={{ display: 'flex', gap: '12px' }}>
+                                        <div style={{ flex: 1, display: 'flex', flexDirection: 'column', gap: '5px' }}>
+                                            <label style={{ fontSize: '13px', fontWeight: '600', color: '#334155', display: 'flex', alignItems: 'center', gap: '5px' }}>
+                                                <Database size={13} color="#64748b" /> Database
+                                            </label>
+                                            <input
+                                                type="text" required value={database}
+                                                onChange={e => setDatabase(e.target.value)}
+                                                placeholder="e.g., postgres or alfred-backend"
+                                                style={inputStyle}
+                                                onFocus={inputFocusHandler} onBlur={inputBlurHandler}
+                                            />
+                                            <span style={{ fontSize: '10px', color: '#94a3b8' }}>
+                                                The PostgreSQL database name to connect to
+                                            </span>
+                                        </div>
+                                        <div style={{ flex: 1, display: 'flex', flexDirection: 'column', gap: '5px' }}>
+                                            <label style={{ fontSize: '13px', fontWeight: '600', color: '#334155' }}>
+                                                Schema
+                                            </label>
+                                            <input
+                                                type="text" required value={dbName}
+                                                onChange={e => setDbName(e.target.value)}
+                                                placeholder="e.g., public"
+                                                style={inputStyle}
+                                                onFocus={inputFocusHandler} onBlur={inputBlurHandler}
+                                            />
+                                            <span style={{ fontSize: '10px', color: '#94a3b8' }}>
+                                                Schema for search_path and Qdrant collection
+                                            </span>
+                                        </div>
+                                    </div>
+                                )}
+
+                                {/* SQLite schema name */}
+                                {selectedTab === 'sqlite' && (
+                                    <div style={{ display: 'flex', flexDirection: 'column', gap: '5px' }}>
+                                        <label style={{ fontSize: '13px', fontWeight: '600', color: '#334155' }}>
+                                            Schema / Database Name
+                                        </label>
+                                        <input
+                                            type="text" required value={dbName}
+                                            onChange={e => setDbName(e.target.value)}
+                                            placeholder="e.g., my_database"
+                                            style={inputStyle}
+                                            onFocus={inputFocusHandler} onBlur={inputBlurHandler}
+                                        />
+                                    </div>
+                                )}
 
                                 {/* DB-specific fields */}
                                 {selectedTab === 'postgres' ? (
