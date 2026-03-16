@@ -23,6 +23,10 @@ class QueryService:
         """
         Stream the Text-to-SQL pipeline progress using SSE.
         """
+        if not request.db_name:
+            from app.repositories.config import settings
+            request.db_name = settings.COLLECTION_NAME
+
         log_queue = queue.Queue()
 
         def log_listener(message, msg_type, level):
@@ -137,6 +141,10 @@ class QueryService:
         """
         Standard non-streaming Text-to-SQL logic.
         """
+        if not request.db_name:
+            from app.repositories.config import settings
+            request.db_name = settings.COLLECTION_NAME
+
         from app.repositories.registry.paths import get_next_instance_id
         if not request.instance_id or request.instance_id == "unknown":
             request.instance_id = get_next_instance_id(self.model_name)

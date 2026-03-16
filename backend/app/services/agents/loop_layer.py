@@ -42,16 +42,13 @@ class RefinementLoopAgent(BaseAgent):
         self.generator = MultiCandidateGeneratorAgent(
             llm_service, results_dir=results_dir, logs_dir=logs_dir, metadata_dir=metadata_dir
         )
-        
-        # Dynamically resolve the executor based on centralized settings
-        db_type = settings.DB_TYPE.lower()
-        if db_type in ["postgres", "postgresql"]:
-            from app.services.agents.execution_layer import PostgresExecutorAgent
-            self.executor = PostgresExecutorAgent(results_dir=results_dir, logs_dir=logs_dir, metadata_dir=metadata_dir)
-        else:
-            from app.services.agents.execution_layer import SQLiteExecutorAgent
-            self.executor = SQLiteExecutorAgent(results_dir=results_dir, logs_dir=logs_dir, metadata_dir=metadata_dir)
-            
+
+        # Executor is resolved dynamically in run() based on current settings.DB_TYPE
+        self.executor = None
+        self._results_dir = results_dir
+        self._logs_dir = logs_dir
+        self._metadata_dir = metadata_dir
+
         self.critic = CriticAgent(llm_service, results_dir=results_dir, logs_dir=logs_dir, metadata_dir=metadata_dir)
         self.file_coordinator = FileCoordinator(results_dir=results_dir, logs_dir=logs_dir)
         self.max_retries = 3
@@ -68,6 +65,19 @@ class RefinementLoopAgent(BaseAgent):
         Returns:
             AgentState: The updated state after successful refinement or max retries.
         """
+        # Resolve executor dynamically based on current active project's DB type
+        db_type = settings.DB_TYPE.lower()
+        if db_type in ["postgres", "postgresql"]:
+            from app.services.agents.execution_layer import PostgresExecutorAgent
+            self.executor = PostgresExecutorAgent(
+                results_dir=self._results_dir, logs_dir=self._logs_dir, metadata_dir=self._metadata_dir
+            )
+        else:
+            from app.services.agents.execution_layer import SQLiteExecutorAgent
+            self.executor = SQLiteExecutorAgent(
+                results_dir=self._results_dir, logs_dir=self._logs_dir, metadata_dir=self._metadata_dir
+            )
+
         try:
             # Initialize loop context
             if not state.history:

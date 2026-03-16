@@ -11,7 +11,7 @@ from app.services.engines.llm_service import LLMService
 from app.services.utils.prompt_loader import PromptLoader
 from app.services.utils.logger import Logger
 from app.repositories.connectors.sql_repo import DBRepository
-from app.repositories.registry.paths import initialize_directories, InstancePaths, get_model_results_dir
+from app.repositories.registry.paths import initialize_directories, InstancePaths, get_model_results_dir, get_metadata_dir
 
 # Import Agents
 from app.services.agents.input_layer import ContextEnrichmentAgent

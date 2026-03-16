@@ -131,8 +131,19 @@ class PostgresExecutorAgent(BaseAgent):
     It supports global connection pooling to minimize handshake overhead (R1).
     """
     # Global connection pool (shared across all instances in the process)
-    _SHARED_CONN = None 
+    _SHARED_CONN = None
     _CONN_LOCK = threading.Lock()
+
+    @classmethod
+    def reset_connection_pool(cls):
+        """Close and clear the shared connection when the active project changes."""
+        with cls._CONN_LOCK:
+            if cls._SHARED_CONN and not cls._SHARED_CONN.closed:
+                try:
+                    cls._SHARED_CONN.close()
+                except Exception:
+                    pass
+            cls._SHARED_CONN = None
 
     def __init__(self, results_dir: str = None, logs_dir: str = None, metadata_dir: str = None):
         super().__init__(name="PostgresExecutor", results_dir=results_dir, logs_dir=logs_dir, metadata_dir=metadata_dir)
