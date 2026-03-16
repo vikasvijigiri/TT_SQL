@@ -4,7 +4,11 @@ import queue
 import threading
 import json
 import time
+<<<<<<< HEAD
 from typing import Optional, Dict, Any
+=======
+from typing import Optional, Dict, Any, List
+>>>>>>> d3ea445499e94146eaa53ebbc81ca25c467e49cd
 from app.services.schemas.schemas import QueryRequest, QueryResponse
 from app.services.engines.pipeline_service import run_analysis_pipeline
 from app.services.schemas.agent_state import AgentState
