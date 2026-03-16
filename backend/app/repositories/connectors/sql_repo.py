@@ -31,7 +31,7 @@ class DBRepository:
                     "schema": conn.get("db_name", "public"),
                     "host": conn.get("host", ""),
                     "port": conn.get("port", "5432"),
-                    "database": "postgres",
+                    "database": conn.get("database", "postgres"),
                     "user": conn.get("user", ""),
                     "password": conn.get("password", ""),
                     "sqlite_path": conn.get("sqlite_path", ""),

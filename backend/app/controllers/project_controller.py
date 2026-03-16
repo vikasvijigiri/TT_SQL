@@ -12,7 +12,8 @@ class ProjectCreate(BaseModel):
 
 class ProjectConnection(BaseModel):
     db_type: str  # 'postgres', 'sqlite'
-    db_name: str  # Used as SCHEMA internally
+    db_name: str  # Schema name (e.g., 'public', 'acme-chatbot')
+    database: str = "postgres"  # Actual PostgreSQL database to connect to
     host: str = ""
     port: str = "5432"
     user: str = ""
@@ -82,12 +83,14 @@ async def test_project_connection(project_id: str):
     db_type = conn.get("db_type", "postgres")
     schema_name = conn.get("db_name", "public")
 
+    database_name = conn.get("database", "postgres")
+
     test_conn = {
         "db_type": db_type,
         "schema": schema_name,
         "host": conn.get("host", ""),
         "port": conn.get("port", "5432"),
-        "database": "postgres",
+        "database": database_name,
         "user": conn.get("user", ""),
         "password": conn.get("password", ""),
         "sqlite_path": conn.get("sqlite_path", ""),
@@ -95,7 +98,7 @@ async def test_project_connection(project_id: str):
 
     try:
         if db_type.lower() in ["postgres", "postgresql"]:
-            query = f"SELECT table_name FROM information_schema.tables WHERE table_schema = '{schema_name}';"
+            query = f"SELECT table_name FROM information_schema.tables WHERE table_schema NOT IN ('pg_catalog', 'information_schema') ORDER BY table_name;"
             result = DBRepository._execute_postgres(query, schema_name, test_conn)
         else:
             db_path = conn.get("sqlite_path", "")
