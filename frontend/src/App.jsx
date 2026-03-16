@@ -1,25 +1,27 @@
 import React, { useState, useEffect, useRef } from 'react';
 import axios from 'axios';
-import { Zap, RefreshCw, Send, Search, Terminal, Brain, Trash2 } from 'lucide-react';
+import { Zap, RefreshCw, Send, Search, Terminal, Brain, Trash2, Database } from 'lucide-react';
 import QueryInput from './components/QueryInput';
 import AgentLogs from './components/AgentLogs';
 import ResultDisplay from './components/ResultDisplay';
 import DatasetUpload from './components/DatasetUpload';
 import EnvUpload from './components/EnvUpload';
 import DatasetView from './components/DatasetView';
+import DatabaseView from './components/DatabaseView';
 import './App.css';
 
 const API_BASE_URL = 'http://localhost:8000';
 
 function App() {
   const [loading, setLoading] = useState(false);
+  const [isCheckingDb, setIsCheckingDb] = useState(false);
   const [dbConnected, setDbConnected] = useState(null);
   const [currentStage, setCurrentStage] = useState('');
   const [messages, setMessages] = useState([]);
   const [selectedDataset, setSelectedDataset] = useState('sample.jsonl');
   const [isPrepping, setIsPrepping] = useState(false);
   const [prepStatus, setPrepStatus] = useState('Ready');
-  const [currentView, setCurrentView] = useState('chat'); // 'chat' or 'dataset'
+  const [currentView, setCurrentView] = useState('chat'); // 'chat' or 'dataset' or 'database'
   const [showRawLogs, setShowRawLogs] = useState({}); // Tracking per messageId
 
   const chatEndRef = useRef(null);
@@ -33,12 +35,15 @@ function App() {
   }, [messages, currentStage]);
 
   const checkDbStatus = async () => {
+    setIsCheckingDb(true);
     try {
       const response = await axios.get(`${API_BASE_URL}/api/health/db`);
       setDbConnected(response.data.connected);
     } catch (err) {
       console.error('Failed to check DB status:', err);
       setDbConnected(false);
+    } finally {
+      setIsCheckingDb(false);
     }
   };
 
@@ -314,14 +319,23 @@ function App() {
           />
           <div className={`status-badge ${dbConnected === true ? 'online' : dbConnected === false ? 'offline' : ''}`}>
             <span className="status-dot"></span>
-            <span className="status-text">{dbConnected === true ? 'DB Connected' : dbConnected === false ? 'DB Offline' : 'Checking DB...'}</span>
+            <span className="status-text">{isCheckingDb ? 'Refreshing...' : dbConnected === true ? 'DB Connected' : dbConnected === false ? 'DB Offline' : 'Checking DB...'}</span>
           </div>
           <button 
-            className={`icon-btn ${loading && currentStage === 'Checking Health' ? 'loading' : ''}`} 
+            className="icon-btn" 
+            title="View Database Data" 
+            onClick={() => setCurrentView('database')}
+            style={{ marginLeft: '8px' }}
+          >
+            <Database size={18} />
+          </button>
+          <button 
+            className={`icon-btn ${isCheckingDb ? 'loading' : ''}`} 
             title="Check DB Health" 
             onClick={checkDbStatus}
+            disabled={isCheckingDb}
           >
-            <RefreshCw size={18} className={loading && currentStage === 'Checking Health' ? 'spin' : ''} />
+            <RefreshCw size={18} className={isCheckingDb ? 'spin' : ''} />
           </button>
           
           <div className="status-separator"></div>
@@ -451,6 +465,9 @@ function App() {
       )}
       {currentView === 'dataset' && (
         <DatasetView onBack={() => setCurrentView('chat')} />
+      )}
+      {currentView === 'database' && (
+        <DatabaseView onBack={() => setCurrentView('chat')} />
       )}
     </div>
   );
