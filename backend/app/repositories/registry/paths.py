@@ -171,6 +171,7 @@ def initialize_directories(model_name: str = None):
     if model_name:
         model_dir = get_model_results_dir(model_name)
         directories.extend([
+            model_dir,
             model_dir / "sql",
             model_dir / "csv",
             model_dir / "log",

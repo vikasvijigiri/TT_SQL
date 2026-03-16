@@ -108,18 +108,33 @@
     background: rgba(16, 185, 129, 0.05);
     border-radius: 12px;
     border: 1px solid rgba(16, 185, 129, 0.1);
-    text-align: right;
-    width: fit-content;
+    display: flex;
+    justify-content: flex-end;
+    gap: 1.5rem;
     align-self: flex-end;
+    flex-wrap: wrap;
 }
 
-.time-metric {
+.time-metric, .token-metric {
     font-size: 0.85rem;
     color: var(--text-secondary);
+    display: flex;
+    align-items: center;
+    gap: 0.4rem;
 }
 
 .time-metric strong {
     color: var(--success-green);
+}
+
+.token-metric strong {
+    color: var(--accent-purple);
+}
+
+.token-details {
+    font-size: 0.75rem;
+    opacity: 0.7;
+    margin-left: 0.25rem;
 }
 
 .no-data {

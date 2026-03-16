@@ -109,10 +109,12 @@ class RefinementLoopAgent(BaseAgent):
                 state = self.executor.run(state, on_token=on_token)
 
                 # Narrative Hook: Trigger intermediate business logic if results are found
-                if not has_narrated_intermediate and on_intermediate and state.execution_result and state.execution_result.rows:
-                    self.log(state, "Capturing preliminary results for business narrative.")
-                    on_intermediate(state)
-                    has_narrated_intermediate = True
+                # We narrates on iteration 1 or if insights haven't been shared yet
+                if on_intermediate and callable(on_intermediate) and state.execution_result and state.execution_result.rows:
+                    if not has_narrated_intermediate or attempt > 1:
+                        self.log(state, f"Summarizing insights from {state.execution_result.row_count} records (Iteration {attempt}).")
+                        on_intermediate(state)
+                        has_narrated_intermediate = True
 
                 # 3. Fast-Path Optimization: Skip Critic on clean initial success
                 if _is_clean_success(state, attempt):

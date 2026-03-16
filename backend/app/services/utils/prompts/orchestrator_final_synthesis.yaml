@@ -10,6 +10,11 @@ messages:
 
         ### YOUR TASK:
         Provide the final executive summary and a chart configuration. 
+        CRITICAL: The "markdown_summary" must be strictly focused on business logic and insights.
+        - DO NOT mention technical details such as table names, column names, or SQL snippets.
+        - DO NOT explain the technical process or logs.
+        - FOCUS ONLY on answering the business question and interpreting the findings.
+        
         You MUST respond with a single valid JSON object (no extra text, no markdown fences) with exactly these two keys:
         1. "markdown_summary": A world-class executive summary as a markdown string. Start with a direct answer, then breakdown key metrics, then strategic interpretation.
         2. "chart_config": A JSON object with keys: "type" (one of: 'bar', 'line', 'pie', or 'none'), "xAxis" (exact column name), "yAxis" (exact column name), and "title".

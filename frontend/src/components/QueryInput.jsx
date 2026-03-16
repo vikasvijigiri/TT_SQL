@@ -4,6 +4,14 @@ import './QueryInput.css';
 
 const QueryInput = ({ onSend, loading }) => {
   const [query, setQuery] = useState('');
+  const inputRef = React.useRef(null);
+
+  // Auto-focus the search bar when execution finishes
+  React.useEffect(() => {
+    if (!loading && inputRef.current) {
+      inputRef.current.focus();
+    }
+  }, [loading]);
 
   const handleSubmit = (e) => {
     e.preventDefault();
@@ -20,6 +28,7 @@ const QueryInput = ({ onSend, loading }) => {
           <Search size={20} color="var(--text-secondary)" />
         </div>
         <input
+          ref={inputRef}
           type="text"
           value={query}
           onChange={(e) => setQuery(e.target.value)}

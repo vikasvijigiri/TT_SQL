@@ -4,7 +4,7 @@ import queue
 import threading
 import json
 import time
-from typing import Optional
+from typing import Optional, Dict, Any
 from app.services.schemas.schemas import QueryRequest, QueryResponse
 from app.services.engines.pipeline_service import run_analysis_pipeline
 from app.services.schemas.agent_state import AgentState
@@ -50,7 +50,7 @@ class QueryService:
             for l in listeners:
                 self.logger.register_listener(l)
             try:
-                run_analysis_pipeline(
+                final_state = run_analysis_pipeline(
                     question=request.query,
                     db_name=request.db_name,
                     dataset_name=request.dataset_name,
@@ -60,7 +60,13 @@ class QueryService:
                     verbose=True,
                     on_token=lambda t: log_queue.put({"type": "token", "token": t})
                 )
-                print("DEBUG: Pipeline thread finished.")
+                
+                # Emit the final structured result for UI termination and rendering
+                final_payload = self._format_final_result(final_state)
+                final_payload["type"] = "result"
+                log_queue.put(final_payload)
+                
+                print(f"DEBUG: Pipeline thread finished for {request.instance_id}.")
             except Exception as e:
                 import traceback
                 error_detail = traceback.format_exc()
@@ -89,24 +95,8 @@ class QueryService:
 
         return event_generator()
 
-    def process_query(self, request: QueryRequest) -> QueryResponse:
-        """
-        Standard non-streaming Text-to-SQL logic.
-        """
-        from app.repositories.registry.paths import get_next_instance_id
-        if not request.instance_id or request.instance_id == "unknown":
-            request.instance_id = get_next_instance_id(self.model_name)
-            
-        final_state = run_analysis_pipeline(
-            question=request.query,
-            db_name=request.db_name,
-            dataset_name=request.dataset_name,
-            instance_id=request.instance_id,
-            model_name=self.model_name,
-            use_rag=request.use_rag,
-            verbose=True
-        )
-        
+    def _format_final_result(self, final_state: AgentState) -> Dict[str, Any]:
+        """Helper to extract and format results from the agent state for the frontend."""
         sql = final_state.chosen_query
         results = []
         columns = []
@@ -129,16 +119,40 @@ class QueryService:
                         json_row[col] = val
                 results.append(json_row)
                 
-        return QueryResponse(
-            instance_id=final_state.instance_id,
-            sql=sql,
-            results=results,
-            columns=columns,
-            total_count=total_count,
-            logs=final_state.logs,
-            critic_feedback=final_state.critic_feedback,
-            business_summary=final_state.business_summary
+        return {
+            "instance_id": final_state.instance_id,
+            "sql": sql,
+            "results": results,
+            "columns": columns,
+            "total_count": total_count,
+            "logs": final_state.logs,
+            "critic_feedback": final_state.critic_feedback,
+            "business_summary": final_state.business_summary,
+            "chart_config": final_state.chart_config,
+            "token_usage": final_state.token_usage,
+            "total_time": final_state.total_duration
+        }
+
+    def process_query(self, request: QueryRequest) -> QueryResponse:
+        """
+        Standard non-streaming Text-to-SQL logic.
+        """
+        from app.repositories.registry.paths import get_next_instance_id
+        if not request.instance_id or request.instance_id == "unknown":
+            request.instance_id = get_next_instance_id(self.model_name)
+            
+        final_state = run_analysis_pipeline(
+            question=request.query,
+            db_name=request.db_name,
+            dataset_name=request.dataset_name,
+            instance_id=request.instance_id,
+            model_name=self.model_name,
+            use_rag=request.use_rag,
+            verbose=True
         )
+        
+        result_content = self._format_final_result(final_state)
+        return QueryResponse(**result_content)
 
     def resolve_instance_context(self, instance_id: str, input_file: Optional[str] = None) -> Dict[str, Any]:
         """
@@ -208,6 +222,6 @@ if __name__ == "__main__":
     print(f"Rows: {response.total_count}")
     print("\nPROMPT LOGS SUMMARY:")
     for log in response.logs:
-        print(f"[{log.agent_name}] {log.message[:100]}...")
+        print(log[:100] + "...")
     print("\nBUSINESS SUMMARY:")
     print(response.business_summary)

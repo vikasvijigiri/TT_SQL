@@ -1,4 +1,4 @@
-﻿from typing import List, Optional, Dict, Any
+from typing import List, Optional, Dict, Any
 from pydantic import BaseModel, Field
 
 class CandidateQuery(BaseModel):
@@ -125,6 +125,9 @@ class AgentState(BaseModel):
     viz_recommendation: Optional[Dict[str, Any]] = None
     chart_config: Optional[Dict[str, Any]] = None  # Chart type/axes from Orchestrator (bar, line, pie, none)
     stop_requested: bool = False
+
+    # Parallel Path Results
+    candidate_results: List[Dict[str, Any]] = Field(default_factory=list) # Each entry: {"set_name": str, "sql": str, "result": ExecutionResult}
 
     # Usage Tracking
     token_usage: Dict[str, int] = Field(default_factory=lambda: {"input": 0, "output": 0})
