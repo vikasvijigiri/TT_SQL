@@ -35,7 +35,9 @@ class CriticAgent(BaseAgent):
                 elif not rows: execution_context = f"| {' | '.join(str(c) for c in columns)} |\n(0 rows returned)"
                 else:
                     table_lines = [f"| {' | '.join(str(c) for c in columns)} |", f"| {' | '.join(['---']*len(columns))} |"]
-                    for row in rows: table_lines.append(f"| {' | '.join(str(x).replace('|', '\\|') for x in row)} |")
+                    for row in rows:
+                        row_str = ' | '.join(str(x).replace('|', '\\|') for x in row)
+                        table_lines.append(f"| {row_str} |")
                     execution_context = "\n".join(table_lines)
 
         from app.repositories.config import settings
