@@ -14,7 +14,7 @@ import DatabaseView from './components/DatabaseView';
 import ProjectsScreen from './components/ProjectsScreen';
 import './App.css';
 
-const API_BASE_URL = 'http://localhost:8000';
+const API_BASE_URL = 'http://localhost:8001';
 
 function App() {
   const [loading, setLoading] = useState(false);
@@ -28,6 +28,8 @@ function App() {
   const [currentView, setCurrentView] = useState('projects');
   const [showRawLogs, setShowRawLogs] = useState({});
   const [activeProject, setActiveProject] = useState(null);
+  const [sampleQuestions, setSampleQuestions] = useState([]);
+  const [isLoadingSamples, setIsLoadingSamples] = useState(false);
 
   const chatEndRef = useRef(null);
 
@@ -44,14 +46,41 @@ function App() {
     fetchActiveProject();
   }, []);
 
+  useEffect(() => {
+    if (activeProject?.id) {
+      fetchSampleQuestions(activeProject.id);
+    } else {
+      setSampleQuestions([
+        "How many batches had OTIF issues last month?",
+        "Show me the top 5 products by delay"
+      ]);
+    }
+  }, [activeProject]);
+
   const fetchActiveProject = async () => {
     try {
       const res = await axios.get(`${API_BASE_URL}/api/projects/active`);
       if (res.data.project) {
         setActiveProject(res.data.project);
+      } else {
+        setActiveProject(null);
       }
     } catch (err) {
       console.error("Failed to fetch active project", err);
+    }
+  };
+
+  const fetchSampleQuestions = async (projectId) => {
+    setIsLoadingSamples(true);
+    try {
+      const res = await axios.get(`${API_BASE_URL}/api/projects/${projectId}/samples`);
+      if (res.data.questions) {
+        setSampleQuestions(res.data.questions);
+      }
+    } catch (err) {
+      console.error("Failed to fetch sample questions", err);
+    } finally {
+      setIsLoadingSamples(false);
     }
   };
 
@@ -383,9 +412,11 @@ function App() {
               onViewDataset={() => setCurrentView('dataset')}
               apiUrl={`${API_BASE_URL}/api/data/upload-dataset`}
             />
-            <div className={`status-indicator ${dbConnected === true ? 'connected' : dbConnected === false ? 'disconnected' : ''}`}>
+            <div className={`status-indicator ${dbConnected === true ? 'connected' : dbConnected === false ? 'disconnected' : ''}`} title={activeProject ? `Connected to ${activeProject.name}` : "No database connected"}>
               <span className="status-dot-sm" />
-              <span>{isCheckingDb ? 'Checking...' : dbConnected === true ? 'DB Connected' : dbConnected === false ? 'DB Offline' : 'Checking...'}</span>
+              <span>
+                {isCheckingDb ? 'Checking...' : (activeProject ? activeProject.name : 'No Source')}
+              </span>
             </div>
             {isPrepping && prepStatus !== 'Ready' && (
               <div className="prep-indicator">
@@ -421,8 +452,16 @@ function App() {
                           <QueryInput onSend={handleSendQuery} loading={loading} />
                         </div>
                         <div className="suggestion-chips">
-                          <span onClick={() => handleSendQuery("How many batches had OTIF issues last month?")}>"How many batches had OTIF issues last month?"</span>
-                          <span onClick={() => handleSendQuery("Show me the top 5 products by delay")}>"Show me the top 5 products by delay"</span>
+                          {isLoadingSamples ? (
+                            <div className="samples-loading">
+                              <RefreshCw size={14} className="spin" />
+                              <span>Suggesting relevant questions...</span>
+                            </div>
+                          ) : (
+                            sampleQuestions.map((q, idx) => (
+                              <span key={idx} onClick={() => handleSendQuery(q)}>"{q}"</span>
+                            ))
+                          )}
                         </div>
                       </div>
                     </div>
@@ -509,6 +548,12 @@ function App() {
               onProjectConnected={(project) => {
                 setActiveProject(project);
                 checkDbStatus();
+              }}
+              onProjectDeleted={(id) => {
+                if (id === 'all' || (activeProject && activeProject.id === id)) {
+                  setActiveProject(null);
+                  setDbConnected(false);
+                }
               }}
               onStartChat={() => setCurrentView('chat')}
             />

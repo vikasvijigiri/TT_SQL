@@ -30,3 +30,30 @@ sqlite:
     - Validate against SQLite syntax.
     - Check for date('now') and numeric types.
     - No ILIKE allowed.
+
+bigquery:
+  builder_instructions: |
+    - Use GoogleSQL (Standard SQL) syntax.
+    - Identifiers (project, dataset, table) MUST be enclosed in backticks, e.g., `project.dataset.table`.
+    - Use CURRENT_DATE() for the current date.
+    - Use DATE_ADD(date_col, INTERVAL 1 MONTH) for date arithmetic.
+    - Use SAFE_DIVIDE(x, y) to prevent division by zero.
+    - Use FORMAT_DATE('%Y-%m', date_col) for month-level grouping.
+    - String literals use single quotes. Case-insensitive matching requires LOWER().
+  critic_instructions: |
+    - Ensure identifiers are backticked.
+    - Validate date functions (CURRENT_DATE(), DATE_ADD).
+    - Ensure backticks are used for table names.
+
+snowflake:
+  builder_instructions: |
+    - Use Snowflake SQL syntax.
+    - Unquoted identifiers are case-insensitive; double-quoted identifiers are case-sensitive.
+    - Use CURRENT_DATE() for the current date.
+    - Use DATEADD(month, 1, date_col) for date arithmetic.
+    - Use IFF(y=0, NULL, x/y) or DIV0(x, y) to prevent division by zero.
+    - Use DATE_TRUNC('month', date_col) for month-level grouping.
+    - Use ILIKE for case-insensitive matching.
+  critic_instructions: |
+    - Validate against Snowflake syntax.
+    - Check for DATEADD and DATE_TRUNC functions.

@@ -4,12 +4,12 @@ import { motion, AnimatePresence } from 'framer-motion';
 import {
     Database, Plus, ChevronRight, Server, HardDrive, Play, Trash2,
     Home, LayoutGrid, CheckCircle2, Layers, Globe, FlaskConical,
-    Plug, ArrowRight, Pencil, Shield, X, Zap
+    Plug, ArrowRight, Pencil, Shield, X, Zap, Cloud, Triangle
 } from 'lucide-react';
 
-const API_BASE_URL = 'http://localhost:8000';
+const API_BASE_URL = 'http://localhost:8001';
 
-const ProjectsScreen = ({ onProjectConnected, onStartChat }) => {
+const ProjectsScreen = ({ onProjectConnected, onStartChat, onProjectDeleted }) => {
     const [projects, setProjects] = useState([]);
     const [loading, setLoading] = useState(true);
     const [selectedTab, setSelectedTab] = useState('Home');
@@ -31,6 +31,24 @@ const ProjectsScreen = ({ onProjectConnected, onStartChat }) => {
     const [password, setPassword] = useState('');
     const [sqlitePath, setSqlitePath] = useState('');
     const [qdrantCollection, setQdrantCollection] = useState('');
+
+    // BigQuery Fields
+    const [bqCredentialsPath, setBqCredentialsPath] = useState('');
+
+    // Snowflake Fields
+    const [sfWarehouse, setSfWarehouse] = useState('');
+    const [sfRole, setSfRole] = useState('');
+
+    // Discovery State
+    const [isDiscoveryMode, setIsDiscoveryMode] = useState(false);
+    const [discoveryStep, setDiscoveryStep] = useState(1); // 1: Creds/Path, 2: DBs/Files, 3: Schemas (Postgres only)
+    const [discoveredDbs, setDiscoveredDbs] = useState([]);
+    const [discoveredSchemas, setDiscoveredSchemas] = useState([]);
+    const [selectedSchemas, setSelectedSchemas] = useState([]);
+    const [discoveredSqliteFiles, setDiscoveredSqliteFiles] = useState([]);
+    const [selectedSqliteFiles, setSelectedSqliteFiles] = useState([]);
+    const [sqliteDir, setSqliteDir] = useState('');
+    const [discovering, setDiscovering] = useState(false);
 
     const [saving, setSaving] = useState(false);
     const [activationData, setActivationData] = useState({ id: null, status: null });
@@ -82,6 +100,17 @@ const ProjectsScreen = ({ onProjectConnected, onStartChat }) => {
         setDbName(''); setDatabase('postgres'); setHost(''); setPort('5432');
         setUser(''); setPassword('');
         setSqlitePath(''); setQdrantCollection('');
+        setIsDiscoveryMode(false);
+        setDiscoveryStep(1);
+        setDiscoveredDbs([]);
+        setDiscoveredSchemas([]);
+        setSelectedSchemas([]);
+        setDiscoveredSqliteFiles([]);
+        setSelectedSqliteFiles([]);
+        setSqliteDir('');
+        setBqCredentialsPath('');
+        setSfWarehouse('');
+        setSfRole('');
     };
 
     const handleEditConnection = (project) => {
@@ -96,7 +125,14 @@ const ProjectsScreen = ({ onProjectConnected, onStartChat }) => {
         setPassword(conn.password || '');
         setSqlitePath(conn.sqlite_path || '');
         setQdrantCollection(conn.qdrant_collection || '');
-        setSelectedTab(conn.db_type === 'sqlite' ? 'sqlite' : 'postgres');
+        setBqCredentialsPath(conn.bq_credentials_path || '');
+        setSfWarehouse(conn.sf_warehouse || '');
+        setSfRole(conn.sf_role || '');
+
+        if (conn.db_type === 'sqlite') setSelectedTab('sqlite');
+        else if (conn.db_type === 'bigquery') setSelectedTab('bigquery');
+        else if (conn.db_type === 'snowflake') setSelectedTab('snowflake');
+        else setSelectedTab('postgres');
     };
 
     const handleSaveConnection = async (e) => {
@@ -106,7 +142,10 @@ const ProjectsScreen = ({ onProjectConnected, onStartChat }) => {
             const payload = {
                 db_type: dbType, db_name: dbName, database, host, port,
                 user, password, sqlite_path: sqlitePath,
-                qdrant_collection: qdrantCollection
+                qdrant_collection: qdrantCollection,
+                bq_credentials_path: bqCredentialsPath,
+                sf_warehouse: sfWarehouse,
+                sf_role: sfRole
             };
             await axios.put(`${API_BASE_URL}/api/projects/${selectedProjectId}/connection`, payload);
             resetForm();
@@ -121,15 +160,35 @@ const ProjectsScreen = ({ onProjectConnected, onStartChat }) => {
         }
     };
 
-    const handleDelete = async (id, e) => {
-        e.stopPropagation();
-        if (!window.confirm("Delete this project and its connection?")) return;
+    const handleDeleteProject = async (projectId) => {
+        if (!window.confirm("Are you sure you want to delete this project?")) return;
         try {
-            await axios.delete(`${API_BASE_URL}/api/projects/${id}`);
-            if (activeProjectId === id) setActiveProjectId(null);
+            await axios.delete(`${API_BASE_URL}/api/projects/${projectId}`);
             fetchProjects();
+            if (projectId === activeProjectId) {
+                onProjectDeleted && onProjectDeleted(projectId);
+                setJustActivated(null);
+            }
+            if (testResult.id === projectId) {
+                setTestResult({ id: null, status: null, message: '', tables: [] });
+            }
         } catch (err) {
-            console.error("Failed to delete", err);
+            console.error("Failed to delete project", err);
+        }
+    };
+
+    const handleDeleteAllProjects = async () => {
+        if (!window.confirm("CRITICAL: Are you sure you want to delete ALL projects and connections? This cannot be undone.")) return;
+        try {
+            await axios.delete(`${API_BASE_URL}/api/projects`);
+            fetchProjects();
+            setJustActivated(null);
+            setTestResult({ id: null, status: null, message: '', tables: [] });
+            // Inform parent to reset all
+            onProjectDeleted && onProjectDeleted('all');
+        } catch (err) {
+            console.error("Failed to delete all projects", err);
+            alert("Failed to delete all projects.");
         }
     };
 
@@ -166,6 +225,136 @@ const ProjectsScreen = ({ onProjectConnected, onStartChat }) => {
                 message: err.response?.data?.detail || "Failed to reach server.",
                 tables: []
             });
+        }
+    };
+
+    const handleDiscoverDbs = async (e) => {
+        e.preventDefault();
+        setDiscovering(true);
+        try {
+            const res = await axios.post(`${API_BASE_URL}/api/discovery/databases`, {
+                host, port, user, password
+            });
+            setDiscoveredDbs(res.data.databases);
+            setDiscoveryStep(2);
+        } catch (err) {
+            console.error("Discovery failed", err);
+            alert("Failed to connect to server: " + (err.response?.data?.detail || err.message));
+        } finally {
+            setDiscovering(false);
+        }
+    };
+
+    const handleDiscoverSchemas = async (db) => {
+        setDatabase(db);
+        setDiscovering(true);
+        try {
+            const res = await axios.post(`${API_BASE_URL}/api/discovery/schemas`, {
+                host, port, user, password, database: db
+            });
+            setDiscoveredSchemas(res.data.schemas);
+            setSelectedSchemas(res.data.schemas); // Select all by default
+            setDiscoveryStep(3);
+        } catch (err) {
+            console.error("Schema discovery failed", err);
+            alert("Failed to fetch schemas: " + (err.response?.data?.detail || err.message));
+        } finally {
+            setDiscovering(false);
+        }
+    };
+
+    const handleBulkCreate = async () => {
+        if (selectedSchemas.length === 0) return;
+        setSaving(true);
+        try {
+            const promises = selectedSchemas.map(schema => {
+                const projectName = `${database}_${schema}`;
+                const payload = {
+                    name: projectName,
+                    connection: {
+                        db_type: 'postgres',
+                        db_name: schema,
+                        database: database,
+                        host, port, user, password,
+                        qdrant_collection: schema
+                    }
+                };
+                return axios.post(`${API_BASE_URL}/api/projects`, payload);
+            });
+            await Promise.all(promises);
+            alert(`Successfully created ${selectedSchemas.length} projects!`);
+            resetForm();
+            setSelectedTab('Home');
+            fetchProjects();
+        } catch (err) {
+            console.error("Bulk creation failed", err);
+            alert("Failed to create projects.");
+        } finally {
+            setSaving(false);
+        }
+    };
+
+    const handleDiscoverSqlite = async (e) => {
+        e.preventDefault();
+        setDiscovering(true);
+        try {
+            const res = await axios.post(`${API_BASE_URL}/api/discovery/sqlite`, {
+                path: sqliteDir
+            });
+            setDiscoveredSqliteFiles(res.data.files);
+            setSelectedSqliteFiles(res.data.files); // Select all by default
+            setDiscoveryStep(2);
+        } catch (err) {
+            console.error("Discovery failed", err);
+            alert("Failed to scan directory: " + (err.response?.data?.detail || err.message));
+        } finally {
+            setDiscovering(false);
+        }
+    };
+
+    const handleBulkCreateSqlite = async () => {
+        if (selectedSqliteFiles.length === 0) return;
+        setSaving(true);
+        try {
+            const promises = selectedSqliteFiles.map(filename => {
+                // Name project after filename (without extension)
+                const name = filename.replace(/\.(db|sqlite|sqlite3|duckdb)$/i, '');
+                const fullPath = `${sqliteDir}/${filename}`.replace(/\/+/g, '/');
+
+                const payload = {
+                    name: name,
+                    connection: {
+                        db_type: 'sqlite',
+                        db_name: name,
+                        sqlite_path: fullPath,
+                        qdrant_collection: name
+                    }
+                };
+                return axios.post(`${API_BASE_URL}/api/projects`, payload);
+            });
+            const results = await Promise.all(promises);
+
+            // Activate all created projects (last one will remain active in backend)
+            // but the UX will show they were all "connected"
+            for (const res of results) {
+                if (res.data?.id) {
+                    await axios.post(`${API_BASE_URL}/api/projects/${res.data.id}/activate`);
+                }
+            }
+
+            alert(`Successfully created and activated ${selectedSqliteFiles.length} projects!`);
+            resetForm();
+            setSelectedTab('Home');
+            fetchProjects();
+            if (onProjectConnected && results.length > 0) {
+                // Return the last one as active
+                onProjectConnected(results[results.length - 1].data);
+            }
+        } catch (err) {
+            console.error("Bulk creation failed", err);
+            alert("Failed to create projects.");
+        } finally {
+            setSaving(false);
         }
     };
 
@@ -219,6 +408,8 @@ const ProjectsScreen = ({ onProjectConnected, onStartChat }) => {
                     {[
                         { key: 'postgres', label: 'PostgreSQL', icon: <Server size={16} />, color: '#2563eb' },
                         { key: 'sqlite', label: 'SQLite', icon: <HardDrive size={16} />, color: '#7c3aed' },
+                        { key: 'bigquery', label: 'GCP BigQuery', icon: <Cloud size={16} />, color: '#ea4335' },
+                        { key: 'snowflake', label: 'Snowflake', icon: <Triangle size={16} style={{ transform: 'rotate(180deg)' }} />, color: '#29b5e8' },
                     ].map(item => (
                         <button
                             key={item.key}
@@ -282,20 +473,50 @@ const ProjectsScreen = ({ onProjectConnected, onStartChat }) => {
                                     {projects.length}
                                 </span>
                             </div>
-                            <button
-                                onClick={() => setIsCreatingProject(true)}
-                                style={{
-                                    display: 'flex', alignItems: 'center', gap: '6px',
-                                    backgroundColor: '#2563eb', color: 'white',
-                                    border: 'none', borderRadius: '8px', padding: '9px 18px',
-                                    fontSize: '13px', fontWeight: '600', cursor: 'pointer',
-                                    transition: 'all 0.2s', boxShadow: '0 2px 8px rgba(37, 99, 235, 0.2)'
-                                }}
-                                onMouseEnter={e => e.currentTarget.style.boxShadow = '0 4px 16px rgba(37, 99, 235, 0.3)'}
-                                onMouseLeave={e => e.currentTarget.style.boxShadow = '0 2px 8px rgba(37, 99, 235, 0.2)'}
-                            >
-                                <Plus size={16} /> New Project
-                            </button>
+                            <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                                <button
+                                    onClick={() => setSelectedTab('Home')}
+                                    style={{
+                                        display: 'flex', alignItems: 'center', gap: '6px',
+                                        backgroundColor: 'white', color: '#475569', border: '1px solid #e2e8f0',
+                                        borderRadius: '8px', padding: '10px 16px', fontSize: '13px',
+                                        fontWeight: '600', cursor: 'pointer', transition: 'all 0.2s'
+                                    }}
+                                    onMouseEnter={e => { e.currentTarget.style.borderColor = '#2563eb'; e.currentTarget.style.color = '#2563eb'; }}
+                                    onMouseLeave={e => { e.currentTarget.style.borderColor = '#e2e8f0'; e.currentTarget.style.color = '#475569'; }}
+                                >
+                                    <LayoutGrid size={16} /> View All
+                                </button>
+                                {projects.length > 0 && (
+                                    <button
+                                        onClick={handleDeleteAllProjects}
+                                        title="Delete All Connections"
+                                        style={{
+                                            display: 'flex', alignItems: 'center', justifyContent: 'center',
+                                            backgroundColor: '#fee2e2', color: '#dc2626', border: '1px solid #fecaca',
+                                            borderRadius: '8px', padding: '10px', cursor: 'pointer', transition: 'all 0.2s'
+                                        }}
+                                        onMouseEnter={e => { e.currentTarget.style.backgroundColor = '#fecaca'; }}
+                                        onMouseLeave={e => { e.currentTarget.style.backgroundColor = '#fee2e2'; }}
+                                    >
+                                        <Trash2 size={16} />
+                                    </button>
+                                )}
+                                <button
+                                    onClick={() => setIsCreatingProject(true)}
+                                    style={{
+                                        display: 'flex', alignItems: 'center', gap: '6px',
+                                        backgroundColor: '#2563eb', color: 'white', border: 'none',
+                                        borderRadius: '8px', padding: '10px 20px', fontSize: '13px',
+                                        fontWeight: '600', cursor: 'pointer', transition: 'all 0.2s',
+                                        boxShadow: '0 4px 12px rgba(37, 99, 235, 0.25)'
+                                    }}
+                                    onMouseEnter={e => e.currentTarget.style.transform = 'translateY(-1px)'}
+                                    onMouseLeave={e => e.currentTarget.style.transform = 'translateY(0)'}
+                                >
+                                    <Plus size={16} strokeWidth={3} /> New Project
+                                </button>
+                            </div>
                         </div>
 
                         {/* Just-Activated Success Banner */}
@@ -456,9 +677,10 @@ const ProjectsScreen = ({ onProjectConnected, onStartChat }) => {
                                                 backgroundColor: isActive ? '#f0fdf4' : '#fafbfc'
                                             }}>
                                                 <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-                                                    {p.connection?.db_type === 'sqlite'
-                                                        ? <HardDrive size={17} color="#7c3aed" />
-                                                        : <Server size={17} color="#2563eb" />}
+                                                    {p.connection?.db_type === 'sqlite' ? <HardDrive size={17} color="#7c3aed" /> :
+                                                        p.connection?.db_type === 'bigquery' ? <Cloud size={17} color="#ea4335" /> :
+                                                            p.connection?.db_type === 'snowflake' ? <Triangle size={17} color="#29b5e8" style={{ transform: 'rotate(180deg)' }} /> :
+                                                                <Server size={17} color="#2563eb" />}
                                                     <span style={{ fontSize: '15px', fontWeight: '600', color: '#0f172a' }}>
                                                         {p.name}
                                                     </span>
@@ -514,12 +736,12 @@ const ProjectsScreen = ({ onProjectConnected, onStartChat }) => {
                                                         <div>
                                                             <div style={labelStyle}>
                                                                 <Globe size={10} style={{ verticalAlign: 'middle', marginRight: '3px' }} />
-                                                                Host
+                                                                {p.connection?.db_type === 'bigquery' ? 'Location' : 'Host'}
                                                             </div>
                                                             <div style={{ ...valueStyle, fontSize: '12px', wordBreak: 'break-all' }}>
                                                                 {p.connection.db_type === 'sqlite'
                                                                     ? 'Local File'
-                                                                    : (p.connection.host ? `${p.connection.host}:${p.connection.port || '5432'}` : '--')}
+                                                                    : (p.connection.host ? `${p.connection.host}${p.connection.port ? ':' + p.connection.port : ''}` : '--')}
                                                             </div>
                                                         </div>
                                                         <div>
@@ -659,21 +881,53 @@ const ProjectsScreen = ({ onProjectConnected, onStartChat }) => {
                 )}
 
                 {/* ----- CONNECTION FORM TAB ----- */}
-                {(selectedTab === 'postgres' || selectedTab === 'sqlite') && (
+                {(selectedTab === 'postgres' || selectedTab === 'sqlite' || selectedTab === 'bigquery' || selectedTab === 'snowflake') && (
                     <div className="animation-fade-in" style={{ maxWidth: '560px' }}>
                         <div style={{ display: 'flex', alignItems: 'center', gap: '12px', marginBottom: '6px' }}>
-                            {selectedTab === 'postgres'
-                                ? <Server size={22} color="#2563eb" />
-                                : <HardDrive size={22} color="#7c3aed" />}
+                            {selectedTab === 'postgres' ? <Server size={22} color="#2563eb" /> :
+                                selectedTab === 'sqlite' ? <HardDrive size={22} color="#7c3aed" /> :
+                                    selectedTab === 'bigquery' ? <Cloud size={22} color="#ea4335" /> :
+                                        <Triangle size={22} color="#29b5e8" style={{ transform: 'rotate(180deg)' }} />}
                             <h2 style={{ fontSize: '22px', color: '#0f172a', margin: 0, fontWeight: '600', fontFamily: "'Outfit', sans-serif" }}>
-                                {selectedTab === 'postgres' ? 'PostgreSQL' : 'SQLite'} Connection
+                                {selectedTab === 'postgres' ? 'PostgreSQL' :
+                                    selectedTab === 'sqlite' ? 'SQLite' :
+                                        selectedTab === 'bigquery' ? 'GCP BigQuery' : 'Snowflake'} Connection
                             </h2>
                         </div>
                         <p style={{ color: '#94a3b8', fontSize: '13px', marginBottom: '24px' }}>
                             Configure database credentials and vector store settings.
                         </p>
 
-                        {!selectedProjectId ? (
+                        {(selectedTab === 'postgres' || selectedTab === 'sqlite' || selectedTab === 'bigquery' || selectedTab === 'snowflake') && (
+                            <div style={{ display: 'flex', gap: '8px', marginBottom: '20px' }}>
+                                <button
+                                    onClick={() => { setIsDiscoveryMode(false); setDiscoveryStep(1); }}
+                                    style={{
+                                        padding: '8px 16px', borderRadius: '8px', fontSize: '13px', fontWeight: '600',
+                                        backgroundColor: !isDiscoveryMode ? '#eff6ff' : 'transparent',
+                                        color: !isDiscoveryMode ? '#1e40af' : '#64748b',
+                                        border: '1px solid', borderColor: !isDiscoveryMode ? '#bfdbfe' : 'transparent',
+                                        cursor: 'pointer'
+                                    }}
+                                >
+                                    Manual Setup
+                                </button>
+                                <button
+                                    onClick={() => { setIsDiscoveryMode(true); setDiscoveryStep(1); }}
+                                    style={{
+                                        padding: '8px 16px', borderRadius: '8px', fontSize: '13px', fontWeight: '600',
+                                        backgroundColor: isDiscoveryMode ? (selectedTab === 'sqlite' ? '#f5f3ff' : '#f5f3ff') : 'transparent',
+                                        color: isDiscoveryMode ? (selectedTab === 'sqlite' ? '#5b21b6' : '#5b21b6') : '#64748b',
+                                        border: '1px solid', borderColor: isDiscoveryMode ? (selectedTab === 'sqlite' ? '#ddd6fe' : '#ddd6fe') : 'transparent',
+                                        cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '6px'
+                                    }}
+                                >
+                                    <Zap size={14} /> Auto-Discovery
+                                </button>
+                            </div>
+                        )}
+
+                        {!selectedProjectId && !isDiscoveryMode ? (
                             <div style={{
                                 backgroundColor: '#fffbeb', color: '#92400e', padding: '14px 18px',
                                 borderRadius: '10px', border: '1px solid #fde68a', fontSize: '13px',
@@ -684,6 +938,174 @@ const ProjectsScreen = ({ onProjectConnected, onStartChat }) => {
                                     <strong>Select a project first.</strong> Go to Saved Projects and click
                                     "Add Connection" or "Edit" on a project card.
                                 </div>
+                            </div>
+                        ) : isDiscoveryMode ? (
+                            <div style={{
+                                backgroundColor: 'white', padding: '24px', borderRadius: '12px',
+                                border: '1px solid #e2e8f0', boxShadow: '0 2px 8px rgba(0, 0, 0, 0.03)',
+                                display: 'flex', flexDirection: 'column', gap: '20px'
+                            }}>
+                                {/* STEP 1: CREDENTIALS / PATH */}
+                                {discoveryStep === 1 && (
+                                    selectedTab === 'postgres' ? (
+                                        <form onSubmit={handleDiscoverDbs} style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
+                                            <div style={{ fontSize: '14px', fontWeight: '600', color: '#1e293b' }}>Step 1: Connect to Server</div>
+                                            <div style={{ display: 'flex', gap: '12px' }}>
+                                                <div style={{ flex: 2, display: 'flex', flexDirection: 'column', gap: '5px' }}>
+                                                    <label style={{ fontSize: '13px', fontWeight: '600', color: '#334155' }}>Host</label>
+                                                    <input type="text" required value={host} onChange={e => setHost(e.target.value)} placeholder="localhost" style={inputStyle} />
+                                                </div>
+                                                <div style={{ flex: 1, display: 'flex', flexDirection: 'column', gap: '5px' }}>
+                                                    <label style={{ fontSize: '13px', fontWeight: '600', color: '#334155' }}>Port</label>
+                                                    <input type="text" required value={port} onChange={e => setPort(e.target.value)} placeholder="5432" style={inputStyle} />
+                                                </div>
+                                            </div>
+                                            <div style={{ display: 'flex', gap: '12px' }}>
+                                                <div style={{ flex: 1, display: 'flex', flexDirection: 'column', gap: '5px' }}>
+                                                    <label style={{ fontSize: '13px', fontWeight: '600', color: '#334155' }}>User</label>
+                                                    <input type="text" required value={user} onChange={e => setUser(e.target.value)} placeholder="postgres" style={inputStyle} />
+                                                </div>
+                                                <div style={{ flex: 1, display: 'flex', flexDirection: 'column', gap: '5px' }}>
+                                                    <label style={{ fontSize: '13px', fontWeight: '600', color: '#334155' }}>Password</label>
+                                                    <input type="password" value={password} onChange={e => setPassword(e.target.value)} placeholder="password" style={inputStyle} />
+                                                </div>
+                                            </div>
+                                            <button type="submit" disabled={discovering} style={{
+                                                backgroundColor: '#2563eb', color: 'white', border: 'none', borderRadius: '8px', padding: '12px',
+                                                fontWeight: '600', cursor: 'pointer', marginTop: '10px'
+                                            }}>
+                                                {discovering ? 'Connecting...' : 'Fetch Databases'}
+                                            </button>
+                                        </form>
+                                    ) : (
+                                        <form onSubmit={handleDiscoverSqlite} style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
+                                            <div style={{ fontSize: '14px', fontWeight: '600', color: '#1e293b' }}>Step 1: Scan Local Folder</div>
+                                            <div style={{ display: 'flex', flexDirection: 'column', gap: '5px' }}>
+                                                <label style={{ fontSize: '13px', fontWeight: '600', color: '#334155' }}>Directory Path</label>
+                                                <input
+                                                    type="text" required value={sqliteDir}
+                                                    onChange={e => setSqliteDir(e.target.value)}
+                                                    placeholder="C:/Users/Documents/Databases"
+                                                    style={inputStyle}
+                                                />
+                                                <span style={{ fontSize: '11px', color: '#94a3b8' }}>Provide the absolute path to the folder containing your .db or .sqlite files</span>
+                                            </div>
+                                            <button type="submit" disabled={discovering} style={{
+                                                backgroundColor: '#7c3aed', color: 'white', border: 'none', borderRadius: '8px', padding: '12px',
+                                                fontWeight: '600', cursor: 'pointer', marginTop: '10px'
+                                            }}>
+                                                {discovering ? 'Scanning...' : 'Scan Directory'}
+                                            </button>
+                                        </form>
+                                    )
+                                )}
+
+                                {/* STEP 2: DATABASES / FILES */}
+                                {discoveryStep === 2 && (
+                                    selectedTab === 'postgres' ? (
+                                        <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
+                                            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                                                <div style={{ fontSize: '14px', fontWeight: '600', color: '#1e293b' }}>Step 2: Select Database</div>
+                                                <button onClick={() => setDiscoveryStep(1)} style={{ fontSize: '12px', color: '#2563eb', background: 'none', border: 'none', cursor: 'pointer' }}>Change Credentials</button>
+                                            </div>
+                                            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(140px, 1fr))', gap: '10px' }}>
+                                                {discoveredDbs.map(db => (
+                                                    <button
+                                                        key={db} onClick={() => handleDiscoverSchemas(db)}
+                                                        style={{
+                                                            padding: '12px', borderRadius: '8px', border: '1px solid #e2e8f0',
+                                                            backgroundColor: 'white', cursor: 'pointer', textAlign: 'left',
+                                                            transition: 'all 0.2s', display: 'flex', alignItems: 'center', gap: '8px'
+                                                        }}
+                                                        onMouseOver={e => e.currentTarget.style.borderColor = '#2563eb'}
+                                                        onMouseOut={e => e.currentTarget.style.borderColor = '#e2e8f0'}
+                                                    >
+                                                        <Database size={14} color="#64748b" />
+                                                        <span style={{ fontSize: '13px', fontWeight: '500' }}>{db}</span>
+                                                    </button>
+                                                ))}
+                                            </div>
+                                            {discovering && <div style={{ fontSize: '13px', color: '#64748b', textAlign: 'center' }}>Fetching schemas...</div>}
+                                        </div>
+                                    ) : (
+                                        <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
+                                            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                                                <div style={{ fontSize: '14px', fontWeight: '600', color: '#1e293b' }}>Step 2: Select Files</div>
+                                                <button onClick={() => setDiscoveryStep(1)} style={{ fontSize: '12px', color: '#7c3aed', background: 'none', border: 'none', cursor: 'pointer' }}>Change Path</button>
+                                            </div>
+                                            <div style={{ maxHeight: '250px', overflowY: 'auto', border: '1px solid #e2e8f0', borderRadius: '8px', padding: '10px' }}>
+                                                {discoveredSqliteFiles.length > 0 ? discoveredSqliteFiles.map(file => (
+                                                    <label key={file} style={{ display: 'flex', alignItems: 'center', gap: '10px', padding: '8px', cursor: 'pointer', borderBottom: '1px solid #f8fafc' }}>
+                                                        <input
+                                                            type="checkbox"
+                                                            checked={selectedSqliteFiles.includes(file)}
+                                                            onChange={() => {
+                                                                setSelectedSqliteFiles(prev =>
+                                                                    prev.includes(file) ? prev.filter(f => f !== file) : [...prev, file]
+                                                                )
+                                                            }}
+                                                        />
+                                                        <HardDrive size={14} color="#64748b" />
+                                                        <span style={{ fontSize: '13px' }}>{file}</span>
+                                                    </label>
+                                                )) : (
+                                                    <div style={{ padding: '20px', textAlign: 'center', color: '#94a3b8', fontSize: '13px' }}>No SQLite files found in this directory.</div>
+                                                )}
+                                            </div>
+                                            <button
+                                                onClick={handleBulkCreateSqlite}
+                                                disabled={saving || selectedSqliteFiles.length === 0}
+                                                style={{
+                                                    backgroundColor: '#7c3aed', color: 'white', border: 'none', borderRadius: '8px', padding: '12px',
+                                                    fontWeight: '600', cursor: 'pointer', marginTop: '10px', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px'
+                                                }}
+                                            >
+                                                {saving ? 'Creating...' : `Create ${selectedSqliteFiles.length} Projects`}
+                                            </button>
+                                        </div>
+                                    )
+                                )}
+
+                                {/* STEP 3: SCHEMAS (Postgres Only) */}
+                                {discoveryStep === 3 && selectedTab === 'postgres' && (
+                                    <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
+                                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                                            <div style={{ fontSize: '14px', fontWeight: '600', color: '#1e293b' }}>
+                                                Step 3: Select Schemas for <span style={{ color: '#2563eb' }}>{database}</span>
+                                            </div>
+                                            <button onClick={() => setDiscoveryStep(2)} style={{ fontSize: '12px', color: '#2563eb', background: 'none', border: 'none', cursor: 'pointer' }}>Change Database</button>
+                                        </div>
+                                        <div style={{ maxHeight: '200px', overflowY: 'auto', border: '1px solid #e2e8f0', borderRadius: '8px', padding: '10px' }}>
+                                            {discoveredSchemas.map(schema => (
+                                                <label key={schema} style={{ display: 'flex', alignItems: 'center', gap: '10px', padding: '8px', cursor: 'pointer' }}>
+                                                    <input
+                                                        type="checkbox"
+                                                        checked={selectedSchemas.includes(schema)}
+                                                        onChange={() => {
+                                                            setSelectedSchemas(prev =>
+                                                                prev.includes(schema) ? prev.filter(s => s !== schema) : [...prev, schema]
+                                                            )
+                                                        }}
+                                                    />
+                                                    <span style={{ fontSize: '13px' }}>{schema}</span>
+                                                </label>
+                                            ))}
+                                        </div>
+                                        <div style={{ fontSize: '12px', color: '#94a3b8' }}>
+                                            Each selected schema will be created as a new project automatically.
+                                        </div>
+                                        <button
+                                            onClick={handleBulkCreate}
+                                            disabled={saving || selectedSchemas.length === 0}
+                                            style={{
+                                                backgroundColor: '#2563eb', color: 'white', border: 'none', borderRadius: '8px', padding: '12px',
+                                                fontWeight: '600', cursor: 'pointer', marginTop: '10px', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px'
+                                            }}
+                                        >
+                                            {saving ? 'Creating...' : `Create ${selectedSchemas.length} Projects`}
+                                        </button>
+                                    </div>
+                                )}
                             </div>
                         ) : (
                             <form onSubmit={handleSaveConnection} style={{
@@ -702,80 +1124,100 @@ const ProjectsScreen = ({ onProjectConnected, onStartChat }) => {
                                     Project: <strong>{projects.find(p => p.id === selectedProjectId)?.name || 'Unknown'}</strong>
                                 </div>
 
-                                {/* Database + Schema row */}
-                                {selectedTab === 'postgres' && (
-                                    <div style={{ display: 'flex', gap: '12px' }}>
-                                        <div style={{ flex: 1, display: 'flex', flexDirection: 'column', gap: '5px' }}>
-                                            <label style={{ fontSize: '13px', fontWeight: '600', color: '#334155', display: 'flex', alignItems: 'center', gap: '5px' }}>
-                                                <Database size={13} color="#64748b" /> Database
-                                            </label>
-                                            <input
-                                                type="text" required value={database}
-                                                onChange={e => setDatabase(e.target.value)}
-                                                placeholder="e.g., postgres or alfred-backend"
-                                                style={inputStyle}
-                                                onFocus={inputFocusHandler} onBlur={inputBlurHandler}
-                                            />
-                                            <span style={{ fontSize: '10px', color: '#94a3b8' }}>
-                                                The PostgreSQL database name to connect to
-                                            </span>
-                                        </div>
-                                        <div style={{ flex: 1, display: 'flex', flexDirection: 'column', gap: '5px' }}>
-                                            <label style={{ fontSize: '13px', fontWeight: '600', color: '#334155' }}>
-                                                Schema
-                                            </label>
-                                            <input
-                                                type="text" required value={dbName}
-                                                onChange={e => setDbName(e.target.value)}
-                                                placeholder="e.g., public"
-                                                style={inputStyle}
-                                                onFocus={inputFocusHandler} onBlur={inputBlurHandler}
-                                            />
-                                            <span style={{ fontSize: '10px', color: '#94a3b8' }}>
-                                                Schema for search_path and Qdrant collection
-                                            </span>
-                                        </div>
-                                    </div>
-                                )}
-
-                                {/* SQLite schema name */}
-                                {selectedTab === 'sqlite' && (
-                                    <div style={{ display: 'flex', flexDirection: 'column', gap: '5px' }}>
-                                        <label style={{ fontSize: '13px', fontWeight: '600', color: '#334155' }}>
-                                            Schema / Database Name
-                                        </label>
-                                        <input
-                                            type="text" required value={dbName}
-                                            onChange={e => setDbName(e.target.value)}
-                                            placeholder="e.g., my_database"
-                                            style={inputStyle}
-                                            onFocus={inputFocusHandler} onBlur={inputBlurHandler}
-                                        />
-                                    </div>
-                                )}
-
-                                {/* DB-specific fields */}
-                                {selectedTab === 'postgres' ? (
+                                {/* Form Fields Selection */}
+                                {selectedTab === 'bigquery' ? (
                                     <>
                                         <div style={{ display: 'flex', gap: '12px' }}>
-                                            <div style={{ flex: 2, display: 'flex', flexDirection: 'column', gap: '5px' }}>
-                                                <label style={{ fontSize: '13px', fontWeight: '600', color: '#334155', display: 'flex', alignItems: 'center', gap: '5px' }}>
-                                                    <Globe size={13} color="#64748b" /> Host
+                                            <div style={{ flex: 1, display: 'flex', flexDirection: 'column', gap: '5px' }}>
+                                                <label style={{ fontSize: '13px', fontWeight: '600', color: '#334155' }}>
+                                                    Project ID
                                                 </label>
                                                 <input
-                                                    type="text" required value={host}
-                                                    onChange={e => setHost(e.target.value)}
-                                                    placeholder="db.example.com"
+                                                    type="text" required value={database}
+                                                    onChange={e => setDatabase(e.target.value)}
+                                                    placeholder="e.g., my-gcp-project"
                                                     style={inputStyle}
                                                     onFocus={inputFocusHandler} onBlur={inputBlurHandler}
                                                 />
                                             </div>
                                             <div style={{ flex: 1, display: 'flex', flexDirection: 'column', gap: '5px' }}>
-                                                <label style={{ fontSize: '13px', fontWeight: '600', color: '#334155' }}>Port</label>
+                                                <label style={{ fontSize: '13px', fontWeight: '600', color: '#334155' }}>
+                                                    Dataset ID
+                                                </label>
                                                 <input
-                                                    type="text" required value={port}
-                                                    onChange={e => setPort(e.target.value)}
-                                                    placeholder="5432"
+                                                    type="text" required value={dbName}
+                                                    onChange={e => setDbName(e.target.value)}
+                                                    placeholder="e.g., analytics_dataset"
+                                                    style={inputStyle}
+                                                    onFocus={inputFocusHandler} onBlur={inputBlurHandler}
+                                                />
+                                            </div>
+                                        </div>
+                                        <div style={{ display: 'flex', flexDirection: 'column', gap: '5px' }}>
+                                            <label style={{ fontSize: '13px', fontWeight: '600', color: '#334155', display: 'flex', alignItems: 'center', gap: '5px' }}>
+                                                <Shield size={13} color="#64748b" /> Service Account Key Path
+                                            </label>
+                                            <input
+                                                type="text" required value={bqCredentialsPath}
+                                                onChange={e => setBqCredentialsPath(e.target.value)}
+                                                placeholder="/absolute/path/to/key.json"
+                                                style={inputStyle}
+                                                onFocus={inputFocusHandler} onBlur={inputBlurHandler}
+                                            />
+                                            <span style={{ fontSize: '10px', color: '#94a3b8' }}>
+                                                Absolute path to your GCP service account JSON credentials
+                                            </span>
+                                        </div>
+                                    </>
+                                ) : selectedTab === 'snowflake' ? (
+                                    <>
+                                        <div style={{ display: 'flex', gap: '12px' }}>
+                                            <div style={{ flex: 1, display: 'flex', flexDirection: 'column', gap: '5px' }}>
+                                                <label style={{ fontSize: '13px', fontWeight: '600', color: '#334155' }}>
+                                                    Account
+                                                </label>
+                                                <input
+                                                    type="text" required value={host}
+                                                    onChange={e => setHost(e.target.value)}
+                                                    placeholder="xy12345.us-east-1"
+                                                    style={inputStyle}
+                                                    onFocus={inputFocusHandler} onBlur={inputBlurHandler}
+                                                />
+                                            </div>
+                                            <div style={{ flex: 1, display: 'flex', flexDirection: 'column', gap: '5px' }}>
+                                                <label style={{ fontSize: '13px', fontWeight: '600', color: '#334155' }}>
+                                                    Warehouse
+                                                </label>
+                                                <input
+                                                    type="text" required value={sfWarehouse}
+                                                    onChange={e => setSfWarehouse(e.target.value)}
+                                                    placeholder="COMPUTE_WH"
+                                                    style={inputStyle}
+                                                    onFocus={inputFocusHandler} onBlur={inputBlurHandler}
+                                                />
+                                            </div>
+                                        </div>
+                                        <div style={{ display: 'flex', gap: '12px' }}>
+                                            <div style={{ flex: 1, display: 'flex', flexDirection: 'column', gap: '5px' }}>
+                                                <label style={{ fontSize: '13px', fontWeight: '600', color: '#334155' }}>
+                                                    Database
+                                                </label>
+                                                <input
+                                                    type="text" required value={database}
+                                                    onChange={e => setDatabase(e.target.value)}
+                                                    placeholder="SNOWFLAKE_SAMPLE_DATA"
+                                                    style={inputStyle}
+                                                    onFocus={inputFocusHandler} onBlur={inputBlurHandler}
+                                                />
+                                            </div>
+                                            <div style={{ flex: 1, display: 'flex', flexDirection: 'column', gap: '5px' }}>
+                                                <label style={{ fontSize: '13px', fontWeight: '600', color: '#334155' }}>
+                                                    Schema
+                                                </label>
+                                                <input
+                                                    type="text" required value={dbName}
+                                                    onChange={e => setDbName(e.target.value)}
+                                                    placeholder="TPCH_SF1"
                                                     style={inputStyle}
                                                     onFocus={inputFocusHandler} onBlur={inputBlurHandler}
                                                 />
@@ -785,40 +1227,158 @@ const ProjectsScreen = ({ onProjectConnected, onStartChat }) => {
                                             <div style={{ flex: 1, display: 'flex', flexDirection: 'column', gap: '5px' }}>
                                                 <label style={{ fontSize: '13px', fontWeight: '600', color: '#334155' }}>Username</label>
                                                 <input
-                                                    type="text" value={user}
+                                                    type="text" required value={user}
                                                     onChange={e => setUser(e.target.value)}
-                                                    placeholder="postgres"
+                                                    placeholder="my_user"
                                                     style={inputStyle}
                                                     onFocus={inputFocusHandler} onBlur={inputBlurHandler}
                                                 />
                                             </div>
                                             <div style={{ flex: 1, display: 'flex', flexDirection: 'column', gap: '5px' }}>
-                                                <label style={{ fontSize: '13px', fontWeight: '600', color: '#334155', display: 'flex', alignItems: 'center', gap: '5px' }}>
-                                                    <Shield size={13} color="#64748b" /> Password
-                                                </label>
+                                                <label style={{ fontSize: '13px', fontWeight: '600', color: '#334155' }}>Password</label>
                                                 <input
-                                                    type="password" value={password}
+                                                    type="password" required value={password}
                                                     onChange={e => setPassword(e.target.value)}
-                                                    placeholder="Enter password"
+                                                    placeholder="password"
                                                     style={inputStyle}
                                                     onFocus={inputFocusHandler} onBlur={inputBlurHandler}
                                                 />
                                             </div>
                                         </div>
+                                        <div style={{ display: 'flex', flexDirection: 'column', gap: '5px' }}>
+                                            <label style={{ fontSize: '13px', fontWeight: '600', color: '#334155' }}>
+                                                Role (Optional)
+                                            </label>
+                                            <input
+                                                type="text" value={sfRole}
+                                                onChange={e => setSfRole(e.target.value)}
+                                                placeholder="ACCOUNTADMIN"
+                                                style={inputStyle}
+                                                onFocus={inputFocusHandler} onBlur={inputBlurHandler}
+                                            />
+                                        </div>
                                     </>
                                 ) : (
-                                    <div style={{ display: 'flex', flexDirection: 'column', gap: '5px' }}>
-                                        <label style={{ fontSize: '13px', fontWeight: '600', color: '#334155', display: 'flex', alignItems: 'center', gap: '5px' }}>
-                                            <HardDrive size={13} color="#64748b" /> SQLite File Path
-                                        </label>
-                                        <input
-                                            type="text" required value={sqlitePath}
-                                            onChange={e => setSqlitePath(e.target.value)}
-                                            placeholder="resources/mydb.sqlite"
-                                            style={inputStyle}
-                                            onFocus={inputFocusHandler} onBlur={inputBlurHandler}
-                                        />
-                                    </div>
+                                    <>
+                                        {/* Database + Schema row */}
+                                        {selectedTab === 'postgres' && (
+                                            <div style={{ display: 'flex', gap: '12px' }}>
+                                                <div style={{ flex: 1, display: 'flex', flexDirection: 'column', gap: '5px' }}>
+                                                    <label style={{ fontSize: '13px', fontWeight: '600', color: '#334155', display: 'flex', alignItems: 'center', gap: '5px' }}>
+                                                        <Database size={13} color="#64748b" /> Database
+                                                    </label>
+                                                    <input
+                                                        type="text" required value={database}
+                                                        onChange={e => setDatabase(e.target.value)}
+                                                        placeholder="e.g., postgres or alfred-backend"
+                                                        style={inputStyle}
+                                                        onFocus={inputFocusHandler} onBlur={inputBlurHandler}
+                                                    />
+                                                    <span style={{ fontSize: '10px', color: '#94a3b8' }}>
+                                                        The PostgreSQL database name to connect to
+                                                    </span>
+                                                </div>
+                                                <div style={{ flex: 1, display: 'flex', flexDirection: 'column', gap: '5px' }}>
+                                                    <label style={{ fontSize: '13px', fontWeight: '600', color: '#334155' }}>
+                                                        Schema
+                                                    </label>
+                                                    <input
+                                                        type="text" required value={dbName}
+                                                        onChange={e => setDbName(e.target.value)}
+                                                        placeholder="e.g., public"
+                                                        style={inputStyle}
+                                                        onFocus={inputFocusHandler} onBlur={inputBlurHandler}
+                                                    />
+                                                    <span style={{ fontSize: '10px', color: '#94a3b8' }}>
+                                                        Schema for search_path and Qdrant collection
+                                                    </span>
+                                                </div>
+                                            </div>
+                                        )}
+
+                                        {/* SQLite schema name */}
+                                        {selectedTab === 'sqlite' && (
+                                            <div style={{ display: 'flex', flexDirection: 'column', gap: '5px' }}>
+                                                <label style={{ fontSize: '13px', fontWeight: '600', color: '#334155' }}>
+                                                    Schema / Database Name
+                                                </label>
+                                                <input
+                                                    type="text" required value={dbName}
+                                                    onChange={e => setDbName(e.target.value)}
+                                                    placeholder="e.g., my_database"
+                                                    style={inputStyle}
+                                                    onFocus={inputFocusHandler} onBlur={inputBlurHandler}
+                                                />
+                                            </div>
+                                        )}
+
+                                        {/* DB-specific fields */}
+                                        {selectedTab === 'postgres' ? (
+                                            <>
+                                                <div style={{ display: 'flex', gap: '12px' }}>
+                                                    <div style={{ flex: 2, display: 'flex', flexDirection: 'column', gap: '5px' }}>
+                                                        <label style={{ fontSize: '13px', fontWeight: '600', color: '#334155', display: 'flex', alignItems: 'center', gap: '5px' }}>
+                                                            <Globe size={13} color="#64748b" /> Host
+                                                        </label>
+                                                        <input
+                                                            type="text" required value={host}
+                                                            onChange={e => setHost(e.target.value)}
+                                                            placeholder="db.example.com"
+                                                            style={inputStyle}
+                                                            onFocus={inputFocusHandler} onBlur={inputBlurHandler}
+                                                        />
+                                                    </div>
+                                                    <div style={{ flex: 1, display: 'flex', flexDirection: 'column', gap: '5px' }}>
+                                                        <label style={{ fontSize: '13px', fontWeight: '600', color: '#334155' }}>Port</label>
+                                                        <input
+                                                            type="text" required value={port}
+                                                            onChange={e => setPort(e.target.value)}
+                                                            placeholder="5432"
+                                                            style={inputStyle}
+                                                            onFocus={inputFocusHandler} onBlur={inputBlurHandler}
+                                                        />
+                                                    </div>
+                                                </div>
+                                                <div style={{ display: 'flex', gap: '12px' }}>
+                                                    <div style={{ flex: 1, display: 'flex', flexDirection: 'column', gap: '5px' }}>
+                                                        <label style={{ fontSize: '13px', fontWeight: '600', color: '#334155' }}>Username</label>
+                                                        <input
+                                                            type="text" value={user}
+                                                            onChange={e => setUser(e.target.value)}
+                                                            placeholder="postgres"
+                                                            style={inputStyle}
+                                                            onFocus={inputFocusHandler} onBlur={inputBlurHandler}
+                                                        />
+                                                    </div>
+                                                    <div style={{ flex: 1, display: 'flex', flexDirection: 'column', gap: '5px' }}>
+                                                        <label style={{ fontSize: '13px', fontWeight: '600', color: '#334155', display: 'flex', alignItems: 'center', gap: '5px' }}>
+                                                            <Shield size={13} color="#64748b" /> Password
+                                                        </label>
+                                                        <input
+                                                            type="password" value={password}
+                                                            onChange={e => setPassword(e.target.value)}
+                                                            placeholder="Enter password"
+                                                            style={inputStyle}
+                                                            onFocus={inputFocusHandler} onBlur={inputBlurHandler}
+                                                        />
+                                                    </div>
+                                                </div>
+                                            </>
+                                        ) : (
+                                            <div style={{ display: 'flex', flexDirection: 'column', gap: '5px' }}>
+                                                <label style={{ fontSize: '13px', fontWeight: '600', color: '#334155', display: 'flex', alignItems: 'center', gap: '5px' }}>
+                                                    <HardDrive size={13} color="#64748b" /> SQLite File Path
+                                                </label>
+                                                <input
+                                                    type="text" required value={sqlitePath}
+                                                    onChange={e => setSqlitePath(e.target.value)}
+                                                    placeholder="resources/mydb.sqlite"
+                                                    style={inputStyle}
+                                                    onFocus={inputFocusHandler} onBlur={inputBlurHandler}
+                                                />
+                                            </div>
+                                        )}
+                                    </>
                                 )}
 
                                 {/* Divider */}

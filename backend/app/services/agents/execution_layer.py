@@ -329,3 +329,141 @@ class ErrorRefinerAgent(BaseAgent):
             result.execution_time_ms = (time.time() - start_t) * 1000
         state.execution_result = result
         return state
+
+class BigQueryExecutorAgent(BaseAgent):
+    """
+    Executes SQL queries against Google Cloud BigQuery.
+    """
+    def __init__(self, results_dir: str = None, logs_dir: str = None, metadata_dir: str = None):
+        super().__init__(name="BigQueryExecutor", results_dir=results_dir, logs_dir=logs_dir, metadata_dir=metadata_dir)
+        self.file_coordinator = FileCoordinator(results_dir=results_dir, logs_dir=logs_dir)
+
+    def get_table_schema(self, table_name: str, dataset_name: str = None) -> Dict[str, Any]:
+        from google.cloud import bigquery
+        from google.oauth2 import service_account
+        
+        creds_path = getattr(settings, "BQ_CREDENTIALS_PATH", "")
+        project_id = settings.RDS_DATABASE # reusing database for project_id
+        dataset_id = dataset_name or settings.SCHEMA
+        
+        try:
+            if not os.path.exists(creds_path): return {}
+            credentials = service_account.Credentials.from_service_account_file(creds_path)
+            client = bigquery.Client(credentials=credentials, project=project_id)
+            
+            table_ref = f"{project_id}.{dataset_id}.{table_name}"
+            table = client.get_table(table_ref)
+            
+            columns = []
+            for field in table.schema:
+                columns.append({
+                    "name": field.name,
+                    "type": field.field_type,
+                    "pk": False
+                })
+            return {"columns": columns}
+        except Exception as e:
+            Logger.log(f"BigQuery Schema Error for {table_name}: {str(e)}", level="DEBUG")
+            return {}
+
+    def run(self, state: AgentState, on_token: callable = None) -> AgentState:
+        if not state.chosen_query: return state
+        
+        start_t = time.time()
+        active_conn = {
+            "database": settings.RDS_DATABASE,
+            "schema": settings.SCHEMA,
+            "bq_credentials_path": getattr(settings, "BQ_CREDENTIALS_PATH", "")
+        }
+        res = DBRepository._execute_bigquery(state.chosen_query, active_conn)
+        res.execution_time_ms = (time.time() - start_t) * 1000
+        state.execution_result = res
+        
+        if res.error_message:
+            self.log(state, f"BigQuery Error: {res.error_message}", level="ERROR")
+        else:
+            self.log(state, f"BigQuery Success: {res.row_count} rows in {res.execution_time_ms:.2f}ms")
+            
+        threading.Thread(target=self._bg_persist_results, args=(state, res), daemon=True).start()
+        return state
+
+    def _bg_persist_results(self, state: AgentState, result: ExecutionResult):
+        try:
+            if result.error_message:
+                self.file_coordinator.write_csv(state.instance_id, [["failed", result.error_message]], ["status", "error"], state.model_name)
+            else:
+                self.file_coordinator.write_csv(state.instance_id, result.rows, result.columns, state.model_name)
+        except Exception as e:
+            Logger.log(f"BQ background persistence failed: {str(e)}", level="DEBUG")
+
+class SnowflakeExecutorAgent(BaseAgent):
+    """
+    Executes SQL queries against Snowflake.
+    """
+    def __init__(self, results_dir: str = None, logs_dir: str = None, metadata_dir: str = None):
+        super().__init__(name="SnowflakeExecutor", results_dir=results_dir, logs_dir=logs_dir, metadata_dir=metadata_dir)
+        self.file_coordinator = FileCoordinator(results_dir=results_dir, logs_dir=logs_dir)
+
+    def get_table_schema(self, table_name: str, schema_name: str = None) -> Dict[str, Any]:
+        active_conn = {
+            "user": settings.RDS_USER,
+            "password": settings.RDS_PASSWORD,
+            "host": settings.RDS_HOST,
+            "database": settings.RDS_DATABASE,
+            "schema": schema_name or settings.SCHEMA,
+            "sf_warehouse": getattr(settings, "SF_WAREHOUSE", ""),
+            "sf_role": getattr(settings, "SF_ROLE", "")
+        }
+        
+        try:
+            query = f"DESCRIBE TABLE {active_conn['database']}.{active_conn['schema']}.{table_name}"
+            res = DBRepository._execute_snowflake(query, active_conn)
+            
+            if res.error_message or not res.rows: return {}
+            
+            columns = []
+            for row in res.rows:
+                # row[0] is name, row[1] is type
+                columns.append({
+                    "name": row[0],
+                    "type": row[1],
+                    "pk": False
+                })
+            return {"columns": columns}
+        except Exception as e:
+            Logger.log(f"Snowflake Schema Error for {table_name}: {str(e)}", level="DEBUG")
+            return {}
+
+    def run(self, state: AgentState, on_token: callable = None) -> AgentState:
+        if not state.chosen_query: return state
+        
+        start_t = time.time()
+        active_conn = {
+            "user": settings.RDS_USER,
+            "password": settings.RDS_PASSWORD,
+            "host": settings.RDS_HOST,
+            "database": settings.RDS_DATABASE,
+            "schema": settings.SCHEMA,
+            "sf_warehouse": getattr(settings, "SF_WAREHOUSE", ""),
+            "sf_role": getattr(settings, "SF_ROLE", "")
+        }
+        res = DBRepository._execute_snowflake(state.chosen_query, active_conn)
+        res.execution_time_ms = (time.time() - start_t) * 1000
+        state.execution_result = res
+        
+        if res.error_message:
+            self.log(state, f"Snowflake Error: {res.error_message}", level="ERROR")
+        else:
+            self.log(state, f"Snowflake Success: {res.row_count} rows in {res.execution_time_ms:.2f}ms")
+            
+        threading.Thread(target=self._bg_persist_results, args=(state, res), daemon=True).start()
+        return state
+
+    def _bg_persist_results(self, state: AgentState, result: ExecutionResult):
+        try:
+            if result.error_message:
+                self.file_coordinator.write_csv(state.instance_id, [["failed", result.error_message]], ["status", "error"], state.model_name)
+            else:
+                self.file_coordinator.write_csv(state.instance_id, result.rows, result.columns, state.model_name)
+        except Exception as e:
+            Logger.log(f"Snowflake background persistence failed: {str(e)}", level="DEBUG")

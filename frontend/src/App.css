@@ -432,6 +432,16 @@ body {
   box-shadow: 0 4px 12px rgba(0, 0, 0, 0.05);
 }
 
+.samples-loading {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  color: var(--accent-blue);
+  font-size: 0.85rem;
+  font-weight: 500;
+  animation: pulse 1.5s infinite;
+}
+
 /* ===== Messages ===== */
 .message-wrapper { display: flex; }
 .message-wrapper.user { justify-content: flex-end; }

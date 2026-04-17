@@ -16,3 +16,7 @@ requests
 PyYAML
 boto3
 pandas
+python-multipart
+google-cloud-bigquery
+google-auth
+snowflake-connector-python

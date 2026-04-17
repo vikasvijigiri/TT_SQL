@@ -2,9 +2,7 @@ import os
 import json
 import uuid
 from typing import List, Dict, Any, Optional
-from app.repositories.registry.paths import METADATA_DIR
 
-PROJECTS_FILE = METADATA_DIR / "projects.json"
 
 class ProjectRepository:
     """
@@ -12,18 +10,26 @@ class ProjectRepository:
     Stores configurations in a JSON file.
     """
     @staticmethod
+    def _get_paths():
+        from app.repositories.registry.paths import METADATA_DIR
+        projects_file = METADATA_DIR / "projects.json"
+        return METADATA_DIR, projects_file
+
+    @staticmethod
     def _ensure_file():
-        if not os.path.exists(METADATA_DIR):
-            os.makedirs(METADATA_DIR, exist_ok=True)
-        if not os.path.exists(PROJECTS_FILE):
-            with open(PROJECTS_FILE, 'w') as f:
+        metadata_dir, projects_file = ProjectRepository._get_paths()
+        if not os.path.exists(metadata_dir):
+            os.makedirs(metadata_dir, exist_ok=True)
+        if not os.path.exists(projects_file):
+            with open(projects_file, 'w') as f:
                 json.dump([], f)
 
     @staticmethod
     def get_all_projects() -> List[Dict[str, Any]]:
+        _, projects_file = ProjectRepository._get_paths()
         ProjectRepository._ensure_file()
         try:
-            with open(PROJECTS_FILE, 'r') as f:
+            with open(projects_file, 'r') as f:
                 return json.load(f)
         except Exception:
             return []
@@ -49,7 +55,8 @@ class ProjectRepository:
         else:
             projects.append(project_data)
             
-        with open(PROJECTS_FILE, 'w') as f:
+        _, projects_file = ProjectRepository._get_paths()
+        with open(projects_file, 'w') as f:
             json.dump(projects, f, indent=2)
             
         return project_data
@@ -61,10 +68,19 @@ class ProjectRepository:
         projects = [p for p in projects if p.get("id") != project_id]
         
         if len(projects) < initial_len:
-            with open(PROJECTS_FILE, 'w') as f:
+            _, projects_file = ProjectRepository._get_paths()
+            with open(projects_file, 'w') as f:
                 json.dump(projects, f, indent=2)
             return True
         return False
+        
+    @staticmethod
+    def delete_all_projects() -> bool:
+        ProjectRepository._ensure_file()
+        _, projects_file = ProjectRepository._get_paths()
+        with open(projects_file, 'w') as f:
+            json.dump([], f, indent=2)
+        return True
         
     @staticmethod
     def get_project_by_id(project_id: str) -> Optional[Dict[str, Any]]:

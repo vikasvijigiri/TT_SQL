@@ -56,8 +56,13 @@ class Settings:
         self.RDS_PORT = os.getenv("RDS_PORT", "5432")
         self.RDS_USER = os.getenv("RDS_USER")
         self.RDS_PASSWORD = os.getenv("RDS_PASSWORD")
-        self.SCHEMA = os.getenv("SCHEMA") or os.getenv("DB_NAME") or "acme-chatbot"
+        self.SCHEMA = os.getenv("SCHEMA") or os.getenv("DB_NAME") 
         self.COLLECTION_NAME = os.getenv("QDRANT_COLLECTION") or self.SCHEMA
+        
+        # New provider fields:
+        self.BQ_CREDENTIALS_PATH = ""
+        self.SF_WAREHOUSE = ""
+        self.SF_ROLE = ""
         
     def _load_active_project_db_creds(self):
         if not self.ACTIVE_PROJECT_ID:
@@ -104,6 +109,33 @@ class Settings:
             self.RDS_PASSWORD = conn.get("password", self.RDS_PASSWORD)
         elif self.DB_TYPE.lower() == "sqlite":
             self.SQLITE_DB_PATH = conn.get("sqlite_path", self.SQLITE_DB_PATH)
+        elif self.DB_TYPE.lower() == "bigquery":
+            self.BQ_CREDENTIALS_PATH = conn.get("bq_credentials_path", "")
+        elif self.DB_TYPE.lower() == "snowflake":
+            self.SF_WAREHOUSE = conn.get("sf_warehouse", "")
+            self.SF_ROLE = conn.get("sf_role", "")
+
+        # Invalidate cached DB connections
+        try:
+            from app.services.agents.execution_layer import PostgresExecutorAgent
+            PostgresExecutorAgent.reset_connection_pool()
+        except ImportError:
+            pass
+
+    def reset(self):
+        """
+        Reset settings to default environment values and clear active project.
+        """
+        self.ACTIVE_PROJECT_ID = None
+        self.DB_TYPE = os.getenv("DB_TYPE", "postgres")
+        self.SQLITE_DB_PATH = os.getenv("SQLITE_DB_PATH", "app/repositories/data/sqlite")
+        self.RDS_DATABASE = os.getenv("RDS_DATABASE", "postgres")
+        self.RDS_HOST = os.getenv("RDS_HOST")
+        self.RDS_PORT = os.getenv("RDS_PORT", "5432")
+        self.RDS_USER = os.getenv("RDS_USER")
+        self.RDS_PASSWORD = os.getenv("RDS_PASSWORD")
+        self.SCHEMA = os.getenv("SCHEMA") or os.getenv("DB_NAME")
+        self.COLLECTION_NAME = os.getenv("QDRANT_COLLECTION") or self.SCHEMA
 
         # Invalidate cached DB connections
         try:

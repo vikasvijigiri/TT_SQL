@@ -24,6 +24,8 @@ from app.controllers.health_controller import router as health_router
 from app.controllers.prep_controller import router as prep_router
 from app.controllers.data_controller import router as data_router
 from app.controllers.project_controller import router as project_router
+from app.controllers.discovery_controller import router as discovery_router
+from app.controllers.insight_controller import router as insight_router
 from app.services.utils.health_service import HealthService
 
 app = FastAPI(
@@ -89,8 +91,10 @@ app.include_router(health_router)
 app.include_router(prep_router)
 app.include_router(data_router)
 app.include_router(project_router)
+app.include_router(discovery_router)
+app.include_router(insight_router)
 
 if __name__ == "__main__":
     import uvicorn
     # Now running from app.main
-    uvicorn.run("app.main:app", host="0.0.0.0", port=8000, reload=True)
+    uvicorn.run("app.main:app", host="0.0.0.0", port=8001, reload=True)
