@@ -415,7 +415,7 @@ function App() {
             <div className={`status-indicator ${dbConnected === true ? 'connected' : dbConnected === false ? 'disconnected' : ''}`} title={activeProject ? `Connected to ${activeProject.name}` : "No database connected"}>
               <span className="status-dot-sm" />
               <span>
-                {isCheckingDb ? 'Checking...' : (activeProject ? activeProject.name : 'No Source')}
+                {isCheckingDb ? 'Checking...' : (activeProject ? (activeProject.connection?.db_name || activeProject.connection?.qdrant_collection || activeProject.name) : 'No Source')}
               </span>
             </div>
             {isPrepping && prepStatus !== 'Ready' && (
