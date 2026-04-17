@@ -555,125 +555,124 @@ function App() {
 
         <div className="content-wrapper">
           {/* Chat View */}
-          {currentView === 'chat' && (
-            <div className="chat-view">
-              <div className="chat-area">
-                <div className="message-list">
-                  {!activeProject && (
-                    <div className="no-project-banner">
-                      <span>No project connected. Set up a data source to start querying.</span>
-                      <button onClick={() => setCurrentView('projects')}>Go to Projects</button>
-                    </div>
-                  )}
-
-                  {messages.length === 0 ? (
-                    <div className="hero-section">
-                      <div className="hero-content">
-                        <div className="pulse-icon-wrapper">
-                          <Zap size={56} color="var(--accent-blue)" className="pulse" />
-                        </div>
-                        <h2>What would you like to know?</h2>
-                        <p>Ask a question about your data to uncover insights instantly.</p>
-                        <div className="centered-search-wrapper">
-                          <QueryInput onSend={handleSendQuery} loading={loading} />
-                        </div>
-                        <div className="suggestion-chips">
-                          {isLoadingSamples ? (
-                            <div className="samples-loading">
-                              <RefreshCw size={14} className="spin" />
-                              <span>Suggesting relevant questions...</span>
-                            </div>
-                          ) : (
-                            sampleQuestions.map((q, idx) => (
-                              <span key={idx} onClick={() => handleSendQuery(q)}>"{q}"</span>
-                            ))
-                          )}
-                        </div>
-                      </div>
-                    </div>
-                  ) : (
-                    messages.map((msg) => (
-                      <div key={msg.id} className={`message-wrapper ${msg.role}`}>
-                        <div className="message-bubble glass-panel">
-                          {msg.role === 'user' ? (
-                            <div className="user-text">{msg.content}</div>
-                          ) : (
-                            <div className="assistant-content">
-                              {msg.status && (
-                                <div className="thinking-mini">
-                                  <div className="spinner-mini"></div>
-                                  <span> {msg.status}...</span>
-                                </div>
-                              )}
-
-                              <div className="message-actions-overlay">
-                                <div className="toggle-switch-container">
-                                  <span className={`switch-label ${!showRawLogs[msg.id] ? 'active' : ''}`}>Insights</span>
-                                  <label className="premium-switch">
-                                    <input
-                                      type="checkbox"
-                                      checked={!!showRawLogs[msg.id]}
-                                      onChange={() => {
-                                        const newState = !showRawLogs[msg.id];
-                                        setShowRawLogs(prev => ({ ...prev, [msg.id]: newState }));
-                                        if (newState) fetchExecutionHistory();
-                                      }}
-                                    />
-                                    <span className="premium-slider"></span>
-                                  </label>
-                                  <span className={`switch-label ${showRawLogs[msg.id] ? 'active' : ''}`}>Logs</span>
-                                </div>
-                              </div>
-
-                              {showRawLogs[msg.id] && (
-                                <div className="stages-history" style={{ marginBottom: '1.5rem' }}>
-                                  <AgentLogs
-                                    historyLog={executionHistory}
-                                    loadingHistory={loadingHistory}
-                                  />
-                                </div>
-                              )}
-
-                              {msg.type === 'result' && !showRawLogs[msg.id] && (
-                                <ResultDisplay
-                                  sql={msg.payload.sql}
-                                  results={msg.payload.results}
-                                  columns={msg.payload.columns}
-                                  total_count={msg.payload.total_count}
-                                  business_summary={msg.payload.business_summary}
-                                  chart_config={msg.payload.chart_config}
-                                  total_time={msg.payload.total_time}
-                                />
-                              )}
-
-                              {msg.type === 'error' && (
-                                <div className="error-display">
-                                  <div className="error-header">EXECUTION FAILED</div>
-                                  <div className="error-message">{msg.content}</div>
-                                </div>
-                              )}
-                            </div>
-                          )}
-                        </div>
-                      </div>
-                    ))
-                  )}
-                  <div ref={chatEndRef} />
-                </div>
-              </div>
-
-              {messages.length > 0 && (
-                <footer className="footer-bar animated-footer">
-                  <div className="input-wrapper">
-                    <QueryInput onSend={handleSendQuery} loading={loading} />
-                    <p className="footer-disclaimer">
-                      nQuire uses AI to generate queries. Always verify results for critical business decisions.
-                    </p>
+          {/* Chat View (Persistent) */}
+          <div className="chat-view" style={{ display: currentView === 'chat' ? 'flex' : 'none' }}>
+            <div className="chat-area">
+              <div className="message-list">
+                {!activeProject && (
+                  <div className="no-project-banner">
+                    <span>No project connected. Set up a data source to start querying.</span>
+                    <button onClick={() => setCurrentView('projects')}>Go to Projects</button>
                   </div>
-                </footer>
-              )}
+                )}
+
+                {messages.length === 0 ? (
+                  <div className="hero-section">
+                    <div className="hero-content">
+                      <div className="pulse-icon-wrapper">
+                        <Zap size={56} color="var(--accent-blue)" className="pulse" />
+                      </div>
+                      <h2>What would you like to know?</h2>
+                      <p>Ask a question about your data to uncover insights instantly.</p>
+                      <div className="centered-search-wrapper">
+                        <QueryInput onSend={handleSendQuery} loading={loading} />
+                      </div>
+                      <div className="suggestion-chips">
+                        {isLoadingSamples ? (
+                          <div className="samples-loading">
+                            <RefreshCw size={14} className="spin" />
+                            <span>Suggesting relevant questions...</span>
+                          </div>
+                        ) : (
+                          sampleQuestions.map((q, idx) => (
+                            <span key={idx} onClick={() => handleSendQuery(q)}>&quot;{q}&quot;</span>
+                          ))
+                        )}
+                      </div>
+                    </div>
+                  </div>
+                ) : (
+                  messages.map((msg) => (
+                    <div key={msg.id} className={`message-wrapper ${msg.role}`}>
+                      <div className="message-bubble glass-panel">
+                        {msg.role === 'user' ? (
+                          <div className="user-text">{msg.content}</div>
+                        ) : (
+                          <div className="assistant-content">
+                            {msg.status && (
+                              <div className="thinking-mini">
+                                <div className="spinner-mini"></div>
+                                <span> {msg.status}...</span>
+                              </div>
+                            )}
+
+                            <div className="message-actions-overlay">
+                              <div className="toggle-switch-container">
+                                <span className={`switch-label ${!showRawLogs[msg.id] ? 'active' : ''}`}>Insights</span>
+                                <label className="premium-switch">
+                                  <input
+                                    type="checkbox"
+                                    checked={!!showRawLogs[msg.id]}
+                                    onChange={() => {
+                                      const newState = !showRawLogs[msg.id];
+                                      setShowRawLogs(prev => ({ ...prev, [msg.id]: newState }));
+                                      if (newState) fetchExecutionHistory();
+                                    }}
+                                  />
+                                  <span className="premium-slider"></span>
+                                </label>
+                                <span className={`switch-label ${showRawLogs[msg.id] ? 'active' : ''}`}>Logs</span>
+                              </div>
+                            </div>
+
+                            {showRawLogs[msg.id] && (
+                              <div className="stages-history" style={{ marginBottom: '1.5rem' }}>
+                                <AgentLogs
+                                  historyLog={executionHistory}
+                                  loadingHistory={loadingHistory}
+                                />
+                              </div>
+                            )}
+
+                            {msg.type === 'result' && !showRawLogs[msg.id] && (
+                              <ResultDisplay
+                                sql={msg.payload.sql}
+                                results={msg.payload.results}
+                                columns={msg.payload.columns}
+                                total_count={msg.payload.total_count}
+                                business_summary={msg.payload.business_summary}
+                                chart_config={msg.payload.chart_config}
+                                total_time={msg.payload.total_time}
+                              />
+                            )}
+
+                            {msg.type === 'error' && (
+                              <div className="error-display">
+                                <div className="error-header">EXECUTION FAILED</div>
+                                <div className="error-message">{msg.content}</div>
+                              </div>
+                            )}
+                          </div>
+                        )}
+                      </div>
+                    </div>
+                  ))
+                )}
+                <div ref={chatEndRef} />
+              </div>
             </div>
-          )}
+
+            {messages.length > 0 && (
+              <footer className="footer-bar animated-footer">
+                <div className="input-wrapper">
+                  <QueryInput onSend={handleSendQuery} loading={loading} />
+                  <p className="footer-disclaimer">
+                    nQuire uses AI to generate queries. Always verify results for critical business decisions.
+                  </p>
+                </div>
+              </footer>
+            )}
+          </div>
 
           {/* Projects View */}
           {currentView === 'projects' && (
