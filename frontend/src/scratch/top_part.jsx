@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef } from 'react';
+﻿import React, { useState, useEffect, useRef } from 'react';
 import axios from 'axios';
 import {
   Zap, RefreshCw, Brain, Trash2, Database,
@@ -23,7 +23,7 @@ function App() {
   const [loadingHistory, setLoadingHistory] = useState(false);
   const [currentStage, setCurrentStage] = useState('');
   const [messages, setMessages] = useState([]);
-  const [selectedDataset] = useState('sample.jsonl');
+  const [selectedDataset, setSelectedDataset] = useState('sample.jsonl');
   const [isPrepping, setIsPrepping] = useState(false);
   const [prepStatus, setPrepStatus] = useState('Ready');
   const [currentView, setCurrentView] = useState('projects');
@@ -33,7 +33,6 @@ function App() {
   const [sampleQuestions, setSampleQuestions] = useState([]);
   const [isLoadingSamples, setIsLoadingSamples] = useState(false);
   const [storageStats, setStorageStats] = useState(null);
-  const [isRefreshingStats, setIsRefreshingStats] = useState(false);
 
   const get_active_project_slug_js = (project) => {
     if (!project) return 'default_project';
@@ -73,14 +72,11 @@ function App() {
   }, [currentView, activeProject]);
 
   const fetchStorageStats = async () => {
-    setIsRefreshingStats(true);
     try {
       const res = await axios.get(`${API_BASE_URL}/api/data/storage/workspaces`);
       setStorageStats(res.data);
     } catch (err) {
       console.error("Failed to fetch storage stats", err);
-    } finally {
-      setTimeout(() => setIsRefreshingStats(false), 600); // Smooth transition back
     }
   };
 
@@ -268,7 +264,7 @@ function App() {
   };
 
   const handlePurgeSession = async (period) => {
-    const periodLabels = { hour: 'Last Hour', hour2: 'Last 2 Hours', hour4: 'Last 4 Hours', today: 'Today', yesterday: 'Yesterday' };
+    const periodLabels = { hour: 'Last Hour', today: 'Today', yesterday: 'Yesterday' };
     if (!window.confirm(`Clear session results for: ${periodLabels[period]}?`)) return;
 
     try {
@@ -538,6 +534,7 @@ function App() {
           </div>
 
           <div className="top-bar-right">
+
             <div className={`status-indicator ${dbConnected === true ? 'connected' : dbConnected === false ? 'disconnected' : ''}`} title={activeProject ? `Connected to ${activeProject.name}` : "No database connected"}>
               <span className="status-dot-sm" />
               <span>
@@ -554,300 +551,3 @@ function App() {
         </header>
 
         <div className="content-wrapper">
-          {/* Chat View */}
-          {currentView === 'chat' && (
-            <div className="chat-view">
-              <div className="chat-area">
-                <div className="message-list">
-                  {!activeProject && (
-                    <div className="no-project-banner">
-                      <span>No project connected. Set up a data source to start querying.</span>
-                      <button onClick={() => setCurrentView('projects')}>Go to Projects</button>
-                    </div>
-                  )}
-
-                  {messages.length === 0 ? (
-                    <div className="hero-section">
-                      <div className="hero-content">
-                        <div className="pulse-icon-wrapper">
-                          <Zap size={56} color="var(--accent-blue)" className="pulse" />
-                        </div>
-                        <h2>What would you like to know?</h2>
-                        <p>Ask a question about your data to uncover insights instantly.</p>
-                        <div className="centered-search-wrapper">
-                          <QueryInput onSend={handleSendQuery} loading={loading} />
-                        </div>
-                        <div className="suggestion-chips">
-                          {isLoadingSamples ? (
-                            <div className="samples-loading">
-                              <RefreshCw size={14} className="spin" />
-                              <span>Suggesting relevant questions...</span>
-                            </div>
-                          ) : (
-                            sampleQuestions.map((q, idx) => (
-                              <span key={idx} onClick={() => handleSendQuery(q)}>"{q}"</span>
-                            ))
-                          )}
-                        </div>
-                      </div>
-                    </div>
-                  ) : (
-                    messages.map((msg) => (
-                      <div key={msg.id} className={`message-wrapper ${msg.role}`}>
-                        <div className="message-bubble glass-panel">
-                          {msg.role === 'user' ? (
-                            <div className="user-text">{msg.content}</div>
-                          ) : (
-                            <div className="assistant-content">
-                              {msg.status && (
-                                <div className="thinking-mini">
-                                  <div className="spinner-mini"></div>
-                                  <span> {msg.status}...</span>
-                                </div>
-                              )}
-
-                              <div className="message-actions-overlay">
-                                <div className="toggle-switch-container">
-                                  <span className={`switch-label ${!showRawLogs[msg.id] ? 'active' : ''}`}>Insights</span>
-                                  <label className="premium-switch">
-                                    <input
-                                      type="checkbox"
-                                      checked={!!showRawLogs[msg.id]}
-                                      onChange={() => {
-                                        const newState = !showRawLogs[msg.id];
-                                        setShowRawLogs(prev => ({ ...prev, [msg.id]: newState }));
-                                        if (newState) fetchExecutionHistory();
-                                      }}
-                                    />
-                                    <span className="premium-slider"></span>
-                                  </label>
-                                  <span className={`switch-label ${showRawLogs[msg.id] ? 'active' : ''}`}>Logs</span>
-                                </div>
-                              </div>
-
-                              {showRawLogs[msg.id] && (
-                                <div className="stages-history" style={{ marginBottom: '1.5rem' }}>
-                                  <AgentLogs
-                                    historyLog={executionHistory}
-                                    loadingHistory={loadingHistory}
-                                  />
-                                </div>
-                              )}
-
-                              {msg.type === 'result' && !showRawLogs[msg.id] && (
-                                <ResultDisplay
-                                  sql={msg.payload.sql}
-                                  results={msg.payload.results}
-                                  columns={msg.payload.columns}
-                                  total_count={msg.payload.total_count}
-                                  business_summary={msg.payload.business_summary}
-                                  chart_config={msg.payload.chart_config}
-                                  total_time={msg.payload.total_time}
-                                />
-                              )}
-
-                              {msg.type === 'error' && (
-                                <div className="error-display">
-                                  <div className="error-header">EXECUTION FAILED</div>
-                                  <div className="error-message">{msg.content}</div>
-                                </div>
-                              )}
-                            </div>
-                          )}
-                        </div>
-                      </div>
-                    ))
-                  )}
-                  <div ref={chatEndRef} />
-                </div>
-              </div>
-
-              {messages.length > 0 && (
-                <footer className="footer-bar animated-footer">
-                  <div className="input-wrapper">
-                    <QueryInput onSend={handleSendQuery} loading={loading} />
-                    <p className="footer-disclaimer">
-                      nQuire uses AI to generate queries. Always verify results for critical business decisions.
-                    </p>
-                  </div>
-                </footer>
-              )}
-            </div>
-          )}
-
-          {/* Projects View */}
-          {currentView === 'projects' && (
-            <ProjectsScreen
-              onProjectConnected={(project) => {
-                setActiveProject(project);
-                checkDbStatus();
-              }}
-              onProjectDeleted={(id) => {
-                if (id === 'all' || (activeProject && activeProject.id === id)) {
-                  setActiveProject(null);
-                  setDbConnected(false);
-                }
-              }}
-              onStartChat={() => setCurrentView('chat')}
-            />
-          )}
-
-          {/* Database View */}
-          {currentView === 'database' && (
-            <DatabaseView onBack={() => setCurrentView('chat')} />
-          )}
-
-          {/* Dataset View */}
-          {currentView === 'dataset' && (
-            <DatasetView onBack={() => setCurrentView('chat')} />
-          )}
-
-          {/* Maintenance View */}
-          {currentView === 'maintenance' && (
-            <div className="maintenance-view glass-panel anim-fade-in">
-              <div className="maintenance-header">
-                <div className="header-icon-box">
-                  <HardDrive size={32} color="var(--accent-blue)" />
-                </div>
-                <div className="header-text">
-                  <h2>Storage Maintenance</h2>
-                  <p>Manage analytical artifacts and workspace retention for <strong>{activeProject?.name || 'No Project'}</strong></p>
-                </div>
-              </div>
-
-              <div className="maintenance-grid">
-                {/* Master Overview: Registry Table at the TOP */}
-                <div className="maintenance-card full-width primary-glow">
-                  <div className="card-icon">
-                    <FolderKanban size={24} color="var(--accent-blue)" />
-                  </div>
-                  <div className="card-body">
-                    <div className="card-title-row">
-                      <h3>Analytical Workspace Registry</h3>
-                      <span className="count-badge">{Array.isArray(storageStats) ? storageStats.length : 0} Workspaces</span>
-                    </div>
-                    <p>Master overview of all project results. Wipe workspaces or purge orphans to reclaim disk space.</p>
-                    
-                    <div className="workspace-table-container">
-                      <table className="workspace-table">
-                        <thead>
-                          <tr>
-                            <th>Project Workspace</th>
-                            <th>Disk Usage</th>
-                            <th>Artifacts</th>
-                            <th>Status</th>
-                            <th>Action</th>
-                          </tr>
-                        </thead>
-                        <tbody>
-                          {Array.isArray(storageStats) && storageStats.map((ws) => (
-                            <tr key={ws.slug} className={ws.is_orphaned ? 'orphaned-row' : ''}>
-                              <td>
-                                <div className="ws-name-cell">
-                                  <strong>{ws.name}</strong>
-                                  <code className="ws-slug">{ws.slug}</code>
-                                </div>
-                              </td>
-                              <td className="ws-size">{ws.size_mb} MB</td>
-                              <td className="ws-files">{ws.file_count} files</td>
-                              <td>
-                                {ws.is_orphaned ? (
-                                  <span className="status-pill warning">Orphaned</span>
-                                ) : (
-                                  <span className={`status-pill ${activeProject && get_active_project_slug_js(activeProject) === ws.slug ? 'active' : 'idle'}`}>
-                                    {activeProject && get_active_project_slug_js(activeProject) === ws.slug ? 'Current' : 'Cached'}
-                                  </span>
-                                )}
-                              </td>
-                              <td>
-                                <button 
-                                  className="action-btn wipe"
-                                  onClick={() => handleWipeWorkspace(ws.slug, ws.name)}
-                                  title="Wipe analytical results for this workspace"
-                                >
-                                  <Eraser size={14} /> Wipe
-                                </button>
-                              </td>
-                            </tr>
-                          ))}
-                        </tbody>
-                      </table>
-                    </div>
-                  </div>
-                </div>
-
-                {/* Selective Retention Grid (Middle Tier) */}
-                <div className="maintenance-card">
-                  <div className="card-icon">
-                    <Clock size={24} color="var(--accent-blue)" />
-                  </div>
-                  <div className="card-body">
-                    <h3>Context Refresh</h3>
-                    <p>Clear recent artifacts for {activeProject?.name || 'Active Workspace'}.</p>
-                    <div className="purge-grid">
-                      {['hour', 'hour2', 'hour4', 'today', 'yesterday'].map((period) => (
-                        <div key={period} className="purge-option-card" onClick={() => handlePurgeSession(period)}>
-                          <div className={`purge-card-icon ${period === 'yesterday' ? 'amber' : period === 'today' ? 'emerald' : 'blue'}`}>
-                            {period === 'yesterday' ? <Trash2 size={16} /> : period === 'today' ? <Calendar size={16} /> : <Clock size={16} />}
-                          </div>
-                          <div className="purge-card-info">
-                            <span className="duration">{period.replace('hour', ' Hr ').replace('2', '2').replace('4', '4').replace(' Hr  Hr ', '1 Hr ').trim()}</span>
-                            <span className="action-type">TTL</span>
-                          </div>
-                        </div>
-                      ))}
-                    </div>
-                  </div>
-                </div>
-
-                <div className="maintenance-card danger">
-                  <div className="card-icon">
-                    <ShieldAlert size={24} />
-                  </div>
-                  <div className="card-body">
-                    <h3>Deep Wipe</h3>
-                    <p>Destroy all trace data for global {activeProject?.name}.</p>
-                    <button className="btn-danger" onClick={handlePurgeProject} disabled={loading || !activeProject}>
-                      <Trash2 size={16} /> Purge Active Trace
-                    </button>
-                  </div>
-                </div>
-              </div>
-
-              {/* STICKY BOTTOM SUMMARY */}
-              <div className="maintenance-summary-footer glass-panel">
-                <div className="summary-section">
-                  <span className="summary-label">Global Storage Footprint:</span>
-                  <strong className="summary-value">
-                    {Array.isArray(storageStats) ? storageStats.reduce((acc, ws) => acc + (Number(ws.size_mb) || 0), 0).toFixed(2) : '0.00'} MB
-                  </strong>
-                </div>
-                <div className="summary-divider" />
-                <div className="summary-section">
-                  <span className="summary-label">Total Analytical Artifacts:</span>
-                  <strong className="summary-value">
-                    {Array.isArray(storageStats) ? storageStats.reduce((acc, ws) => acc + (Number(ws.file_count) || 0), 0) : 0}
-                  </strong>
-                </div>
-                <div className="summary-actions">
-                  <button 
-                    className={`btn-premium-refresh ${isRefreshingStats ? 'refreshing' : ''}`} 
-                    onClick={fetchStorageStats}
-                    disabled={isRefreshingStats}
-                  >
-                    <span className="btn-icon">
-                      <RefreshCw size={14} />
-                    </span>
-                    <span>{isRefreshingStats ? 'Syncing...' : 'Refresh Analytics'}</span>
-                  </button>
-                </div>
-              </div>
-            </div>
-          )}
-        </div>
-      </div>
-    </div>
-  );
-}
-
-export default App;
