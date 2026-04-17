@@ -111,7 +111,7 @@ def run_analysis_pipeline(question: str,
 
     # Execution Log should be inside model-specific log folder as well
     sys_log_path = str(get_model_results_dir(model_name) / "log" / "execution_log.md")
-    Logger.set_log_file(sys_log_path)
+    Logger.set_master_log_file(sys_log_path)
     
     # Instance-specific log
     log_path = str(InstancePaths.log(instance_id, model_name, base_dir=logs_dir))

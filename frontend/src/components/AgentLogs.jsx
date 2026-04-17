@@ -1,29 +1,36 @@
 import React, { useEffect, useRef } from 'react';
+import ReactMarkdown from 'react-markdown';
+import rehypeRaw from 'rehype-raw';
 import './AgentLogs.css';
 
-const AgentLogs = ({ logs }) => {
+const AgentLogs = ({ historyLog, loadingHistory }) => {
     const scrollRef = useRef(null);
 
+    // Auto-scroll to bottom of logs when content updates
     useEffect(() => {
         if (scrollRef.current) {
             scrollRef.current.scrollTop = scrollRef.current.scrollHeight;
         }
-    }, [logs]);
+    }, [historyLog]);
 
     return (
         <div className="agent-logs glass-panel">
             <div className="logs-header">
-                <h3>Pipeline Trace</h3>
+                <h3>Full Execution History</h3>
             </div>
+            
             <div className="logs-container" ref={scrollRef}>
-                {logs.map((log, index) => (
-                    <div key={index} className="log-entry">
-                        {/* Using dangerouslySetInnerHTML to support rich formatting and colors in the trace */}
-                        <span className="log-text" dangerouslySetInnerHTML={{ __html: log }} />
+                {loadingHistory && !historyLog ? (
+                    <div className="logs-loading">
+                        <div className="spinner-mini"></div>
+                        <span>Acquiring system logs...</span>
                     </div>
-                ))}
-                {logs.length === 0 && (
-                    <div className="empty-logs">Waiting for query...</div>
+                ) : (
+                    <div className="history-log-viewer">
+                        <ReactMarkdown rehypePlugins={[rehypeRaw]}>
+                            {historyLog || "No logs available. Start an analysis to see the engine reasoning."}
+                        </ReactMarkdown>
+                    </div>
                 )}
             </div>
         </div>
