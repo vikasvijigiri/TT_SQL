@@ -11,22 +11,37 @@ class ProjectCreate(BaseModel):
     name: str
 
 class ProjectConnection(BaseModel):
-    db_type: str  # 'postgres', 'sqlite'
-    db_name: str  # Schema name (e.g., 'public', 'acme-chatbot')
-    database: str = "postgres"  # Actual PostgreSQL database to connect to
-    host: str = ""
+    db_type: str  # 'postgres', 'sqlite', 'bigquery', 'snowflake'
+    db_name: str  # Schema/Dataset/Database name
+    database: str = "postgres" # Postgres DB name OR BQ Project ID OR Snowflake DB name
+    host: str = "" # Host/Account
     port: str = "5432"
     user: str = ""
     password: str = ""
     sqlite_path: str = ""
-    qdrant_collection: str = ""  # Defaults to db_name if empty
+    qdrant_collection: str = ""
+    
+    # BigQuery specific
+    bq_credentials_path: str = ""
+    
+    # Snowflake specific
+    sf_warehouse: str = ""
+    sf_role: str = ""
 
 @router.get("/active")
 async def get_active_project():
     active_id = settings.ACTIVE_PROJECT_ID
     if not active_id:
         return {"active_project_id": None, "project": None}
+    
     project = ProjectRepository.get_project_by_id(active_id)
+    
+    # Clean up stale active project ID if project not found
+    if not project:
+        settings.reset()
+        os.environ.pop("ACTIVE_PROJECT_ID", None)
+        return {"active_project_id": None, "project": None}
+        
     return {"active_project_id": active_id, "project": project}
 
 @router.get("")
@@ -49,9 +64,23 @@ async def update_project_connection(project_id: str, connection_in: ProjectConne
 
 @router.delete("/{project_id}")
 async def delete_project(project_id: str):
+    # If the active project is being deleted, reset settings
+    if settings.ACTIVE_PROJECT_ID == project_id:
+        settings.reset()
+        os.environ.pop("ACTIVE_PROJECT_ID", None)
+
     success = ProjectRepository.delete_project(project_id)
     if not success:
         raise HTTPException(status_code=404, detail="Project not found")
+    return {"status": "success"}
+
+@router.delete("")
+async def delete_all_projects():
+    # Reset active project in memory
+    settings.reset()
+    os.environ.pop("ACTIVE_PROJECT_ID", None)
+    
+    ProjectRepository.delete_all_projects()
     return {"status": "success"}
 
 @router.post("/{project_id}/activate")
@@ -97,13 +126,27 @@ async def test_project_connection(project_id: str):
     }
 
     try:
-        if db_type.lower() in ["postgres", "postgresql"]:
+        _type = db_type.lower()
+        if _type in ["postgres", "postgresql"]:
             query = f"SELECT table_name FROM information_schema.tables WHERE table_schema NOT IN ('pg_catalog', 'information_schema') ORDER BY table_name;"
             result = DBRepository._execute_postgres(query, schema_name, test_conn)
-        else:
+        elif _type == "sqlite":
             db_path = conn.get("sqlite_path", "")
             query = "SELECT name FROM sqlite_master WHERE type='table';"
             result = DBRepository._execute_sqlite(query, db_path)
+        elif _type == "bigquery":
+            # Add fields for BQ test
+            test_conn["bq_credentials_path"] = conn.get("bq_credentials_path", "")
+            query = f"SELECT table_name FROM `{test_conn['database']}.{test_conn['schema']}.INFORMATION_SCHEMA.TABLES`"
+            result = DBRepository._execute_bigquery(query, test_conn)
+        elif _type == "snowflake":
+            # Add fields for Snowflake test
+            test_conn["sf_warehouse"] = conn.get("sf_warehouse", "")
+            test_conn["sf_role"] = conn.get("sf_role", "")
+            query = f"SELECT TABLE_NAME FROM {test_conn['database']}.INFORMATION_SCHEMA.TABLES WHERE TABLE_SCHEMA = '{test_conn['schema']}'"
+            result = DBRepository._execute_snowflake(query, test_conn)
+        else:
+            raise Exception(f"Unsupported database type: {db_type}")
 
         if result.error_message:
             raise Exception(result.error_message)

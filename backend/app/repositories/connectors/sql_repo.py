@@ -35,6 +35,9 @@ class DBRepository:
                     "user": conn.get("user", ""),
                     "password": conn.get("password", ""),
                     "sqlite_path": conn.get("sqlite_path", ""),
+                    "bq_credentials_path": conn.get("bq_credentials_path", ""),
+                    "sf_warehouse": conn.get("sf_warehouse", ""),
+                    "sf_role": conn.get("sf_role", ""),
                 }
 
         # Fallback to static settings
@@ -47,6 +50,9 @@ class DBRepository:
             "user": settings.RDS_USER,
             "password": settings.RDS_PASSWORD,
             "sqlite_path": settings.SQLITE_DB_PATH,
+            "bq_credentials_path": getattr(settings, "BQ_CREDENTIALS_PATH", ""),
+            "sf_warehouse": getattr(settings, "SF_WAREHOUSE", ""),
+            "sf_role": getattr(settings, "SF_ROLE", ""),
         }
 
     @staticmethod
@@ -61,6 +67,10 @@ class DBRepository:
         if _type.lower() in ["postgres", "postgresql"]:
             _schema = db_name or active["schema"]
             return DBRepository._execute_postgres(query, _schema, active)
+        elif _type.lower() == "bigquery":
+            return DBRepository._execute_bigquery(query, active)
+        elif _type.lower() == "snowflake":
+            return DBRepository._execute_snowflake(query, active)
         else:
             _path = db_path or active["sqlite_path"]
             return DBRepository._execute_sqlite(query, _path)
@@ -83,6 +93,30 @@ class DBRepository:
                     port=active["port"],
                     connect_timeout=3
                 )
+                conn.close()
+            elif _type.lower() == "bigquery":
+                from google.cloud import bigquery
+                from google.oauth2 import service_account
+                creds_path = active["bq_credentials_path"]
+                if not creds_path or not os.path.exists(creds_path):
+                    return False
+                credentials = service_account.Credentials.from_service_account_file(creds_path)
+                client = bigquery.Client(credentials=credentials, project=active["database"])
+                # Just try to list tables in the dataset as a connectivity test
+                client.list_tables(f"{active['database']}.{active['schema']}", max_results=1)
+            elif _type.lower() == "snowflake":
+                import snowflake.connector
+                conn = snowflake.connector.connect(
+                    user=active["user"],
+                    password=active["password"],
+                    account=active["host"],
+                    warehouse=active["sf_warehouse"],
+                    database=active["database"],
+                    schema=active["schema"],
+                    role=active["sf_role"] if active["sf_role"] else None,
+                    login_timeout=5
+                )
+                conn.execute_string("SELECT 1")
                 conn.close()
             else:
                 _path = db_path or active["sqlite_path"]
@@ -136,6 +170,66 @@ class DBRepository:
             if schema and schema.lower() != "public":
                 cursor.execute(f'SET search_path TO "{schema}", public;')
 
+            cursor.execute(query)
+            
+            if cursor.description:
+                result.columns = [description[0] for description in cursor.description]
+            
+            rows = cursor.fetchall()
+            result.rows = [list(row) for row in rows]
+            result.row_count = len(rows)
+        except Exception as e:
+            result.error_message = str(e)
+        finally:
+            if conn:
+                conn.close()
+        return result
+
+    @staticmethod
+    def _execute_bigquery(query: str, active: Dict[str, Any]) -> ExecutionResult:
+        result = ExecutionResult()
+        try:
+            from google.cloud import bigquery
+            from google.oauth2 import service_account
+            
+            creds_path = active["bq_credentials_path"]
+            if not creds_path or not os.path.exists(creds_path):
+                raise Exception(f"BigQuery credentials file not found at: {creds_path}")
+                
+            credentials = service_account.Credentials.from_service_account_file(creds_path)
+            client = bigquery.Client(credentials=credentials, project=active["database"])
+            
+            query_job = client.query(query)
+            rows = query_job.result()
+            
+            # Extract columns
+            if rows.schema:
+                result.columns = [field.name for field in rows.schema]
+            
+            # Extract data
+            result.rows = [list(row) for row in rows]
+            result.row_count = len(result.rows)
+            
+        except Exception as e:
+            result.error_message = str(e)
+        return result
+
+    @staticmethod
+    def _execute_snowflake(query: str, active: Dict[str, Any]) -> ExecutionResult:
+        result = ExecutionResult()
+        conn = None
+        try:
+            import snowflake.connector
+            conn = snowflake.connector.connect(
+                user=active["user"],
+                password=active["password"],
+                account=active["host"],
+                warehouse=active["sf_warehouse"],
+                database=active["database"],
+                schema=active["schema"],
+                role=active["sf_role"] if active["sf_role"] else None
+            )
+            cursor = conn.cursor()
             cursor.execute(query)
             
             if cursor.description:

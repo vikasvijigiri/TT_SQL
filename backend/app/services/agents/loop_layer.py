@@ -72,6 +72,16 @@ class RefinementLoopAgent(BaseAgent):
             self.executor = PostgresExecutorAgent(
                 results_dir=self._results_dir, logs_dir=self._logs_dir, metadata_dir=self._metadata_dir
             )
+        elif db_type == "bigquery":
+            from app.services.agents.execution_layer import BigQueryExecutorAgent
+            self.executor = BigQueryExecutorAgent(
+                results_dir=self._results_dir, logs_dir=self._logs_dir, metadata_dir=self._metadata_dir
+            )
+        elif db_type == "snowflake":
+            from app.services.agents.execution_layer import SnowflakeExecutorAgent
+            self.executor = SnowflakeExecutorAgent(
+                results_dir=self._results_dir, logs_dir=self._logs_dir, metadata_dir=self._metadata_dir
+            )
         else:
             from app.services.agents.execution_layer import SQLiteExecutorAgent
             self.executor = SQLiteExecutorAgent(

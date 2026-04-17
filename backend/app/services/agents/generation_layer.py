@@ -66,20 +66,36 @@ class MultiCandidateGeneratorAgent(BaseAgent):
 
             # Dialect resolution logic
             from app.repositories.config import settings
-            db_type_env = settings.DB_TYPE
-            dialect_key = "postgresql" if db_type_env in ["postgres", "postgresql"] else "sqlite"
+            db_type_env = settings.DB_TYPE.lower()
+            
+            if db_type_env in ["postgres", "postgresql"]:
+                dialect_key = "postgresql"
+                dialect = "PostgreSQL"
+            elif db_type_env == "bigquery":
+                dialect_key = "bigquery"
+                dialect = "BigQuery"
+            elif db_type_env == "snowflake":
+                dialect_key = "snowflake"
+                dialect = "Snowflake"
+            else:
+                dialect_key = "sqlite"
+                dialect = "SQLite"
             
             try:
                 from app.services.utils.prompt_loader import _load_yaml_cached
                 from app.repositories.registry.paths import PROMPTS_DIR
                 dialects = _load_yaml_cached(str(PROMPTS_DIR / "dialects.yaml"))
                 dialect_config = dialects.get(dialect_key, dialects.get("sqlite", {}))
-                dialect = "PostgreSQL" if dialect_key == "postgresql" else "SQLite"
                 dialect_instructions = dialect_config.get("builder_instructions", "")
             except Exception as e:
                 Logger.log(f"Error loading dialects config: {str(e)}", level="ERROR")
-                dialect = "SQLite"
-                dialect_instructions = "Use standard SQL syntax with double quotes for identifiers."
+                # Fallback dialect instructions if loading fails
+                if dialect == "BigQuery":
+                    dialect_instructions = "Use GoogleSQL (Standard SQL). Backtick identifiers like `project.dataset.table`."
+                elif dialect == "Snowflake":
+                    dialect_instructions = "Use Snowflake SQL. Use native functions like DATEADD and DATE_TRUNC."
+                else:
+                    dialect_instructions = "Use standard SQL syntax."
 
             # Dynamic context labeling for LLM guidance
             has_critic_feedback = bool(state.history and any(item.get("content") for item in state.history[-1:]))

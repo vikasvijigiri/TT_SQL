@@ -2,7 +2,7 @@ import React, { useState, useRef } from 'react';
 import { Settings, Upload, Check, AlertCircle } from 'lucide-react';
 import axios from 'axios';
 
-const API_BASE_URL = 'http://localhost:8000';
+const API_BASE_URL = 'http://localhost:8001';
 
 const EnvUpload = ({ onUploadSuccess, apiUrl }) => {
     const [uploading, setUploading] = useState(false);

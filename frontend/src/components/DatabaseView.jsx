@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { ArrowLeft, Database, Table as TableIcon, Key, Link as LinkIcon, AlertCircle } from 'lucide-react';
 import axios from 'axios';
 
-const API_BASE_URL = 'http://localhost:8000';
+const API_BASE_URL = 'http://localhost:8001';
 
 const DatabaseView = ({ onBack }) => {
     const [schema, setSchema] = useState({ tables: [], columns: {}, foreign_keys: [] });
