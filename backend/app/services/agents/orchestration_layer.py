@@ -88,50 +88,66 @@ class OrchestratorAgent(BaseAgent):
             messages = loader.load_prompt(prompt_name, **params)
             full_summary_accumulator = state.business_summary or ""
             
-            if mode == "FINAL":
-                # Final synthesis requires structured JSON
-                raw_json = ""
-                for token in self.llm.get_completion_stream(messages, agent_name=self.name):
-                    raw_json += token
+            # --- Elite Streaming Implementation ---
+            import time
+            raw_response = ""
+            markdown_part = ""
+            metadata_part = ""
+            seen_delimiter = False
+            delimiter = "###METADATA###"
+            
+            self.log(state, f"Beginning live stream for mode: {mode}")
+            
+            for token in self.llm.get_completion_stream(messages, agent_name=self.name):
+                raw_response += token
                 
-                cleaned_json = raw_json.strip()
-                if "```json" in cleaned_json.lower():
-                    cleaned_json = cleaned_json.split("```json")[1].split("```")[0].strip()
-                elif "```" in cleaned_json:
-                    cleaned_json = cleaned_json.split("```")[1].strip()
-
-                try:
-                    parsed = json.loads(cleaned_json)
-                    markdown_part = parsed.get("markdown_summary", "Analysis completed.")
-                    state.chart_config = parsed.get("chart_config")
-                    
-                    # Logic to potentially switch to a better candidate if the LLM suggests one
-                    # (For now, we just let the LLM narrate the best one)
-                except json.JSONDecodeError:
-                    self.log(state, "JSON Parsing Failure in Orchestrator. Falling back to raw text.", level="WARNING")
-                    markdown_part = raw_json
+                # Check for delimiter context
+                if delimiter in raw_response and not seen_delimiter:
+                    seen_delimiter = True
+                    # Everything before first delimiter is markdown
+                    parts = raw_response.split(delimiter, 1)
+                    markdown_part = parts[0]
+                    # Don't stream the delimiter or JSON to on_token
                 
-                if full_summary_accumulator:
-                    state.business_summary = full_summary_accumulator + "\n\n---\n\n" + markdown_part
-                else:
-                    state.business_summary = markdown_part
-
-                if on_token and markdown_part:
-                    if full_summary_accumulator: on_token("\n\n---\n\n")
-                    for char in markdown_part: on_token(char)
+                if not seen_delimiter:
+                    # Stream the token to UI if we haven't hit the metadata yet
+                    if on_token:
+                        # Pacing: 'slow and beautiful' token-wise reveal
+                        # 0.02s delay creates a high-end typing feel
+                        for char in token:
+                            on_token(char)
+                            time.sleep(0.01) # Ultra-smooth character-wise pacing
+                
+                # If we've seen delimiter, we just accumulate the rest for JSON parsing
+            
+            # Post-processing after stream finishes
+            if delimiter in raw_response:
+                parts = raw_response.split(delimiter, 1)
+                markdown_part = parts[0].strip()
+                metadata_part = parts[1].strip()
             else:
-                if on_token and full_summary_accumulator:
-                    on_token("\n\n---\n\n")
-                
-                new_tokens = ""
-                for token in self.llm.get_completion_stream(messages, agent_name=self.name):
-                    if on_token: on_token(token)
-                    new_tokens += token
-                
-                if full_summary_accumulator:
-                    state.business_summary = full_summary_accumulator + "\n\n---\n\n" + new_tokens
-                else:
-                    state.business_summary = new_tokens
+                markdown_part = raw_response.strip()
+            
+            # Handle JSON Metadata (chart_config) in FINAL mode
+            if mode == "FINAL" and metadata_part:
+                try:
+                    # Clean potential markdown fences from metadata if LLM ignored instructions
+                    cleaned_json = metadata_part
+                    if "```json" in cleaned_json.lower():
+                        cleaned_json = cleaned_json.split("```json")[1].split("```")[0].strip()
+                    elif "```" in cleaned_json:
+                        cleaned_json = cleaned_json.split("```")[1].strip()
+                        
+                    parsed = json.loads(cleaned_json)
+                    state.chart_config = parsed.get("chart_config")
+                except json.JSONDecodeError:
+                    self.log(state, "Failed to parse metadata JSON at end of stream.", level="WARNING")
+
+            # Final state update
+            if full_summary_accumulator:
+                state.business_summary = full_summary_accumulator + "\n\n---\n\n" + markdown_part
+            else:
+                state.business_summary = markdown_part
 
             self.log(state, f"Narrative stage '{mode}' completed successfully.")
 

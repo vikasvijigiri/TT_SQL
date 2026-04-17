@@ -1,4 +1,4 @@
-﻿import os
+import os
 import yaml
 import functools
 from typing import List, Dict, Union, Any
@@ -55,11 +55,19 @@ class PromptLoader:
         if "messages" in template_data:
             for msg in template_data["messages"]:
                 content = msg.get("content", "")
-                # Format the content with provided kwargs
+                # Format the content with provided kwargs safely
                 try:
-                    formatted_content = content.format(**processed_kwargs)
-                except KeyError as e:
-                    raise KeyError(f"Missing argument for prompt '{prompt_name}'[{sub_key}]: {e}")
+                    # Use a safer formatting approach that doesn't crash on literal braces
+                    # This only replaces {key} if key is in processed_kwargs
+                    import re
+                    pattern = re.compile(r'\{([a-zA-Z0-9_]+)\}')
+                    def replace_match(match):
+                        key = match.group(1)
+                        return str(processed_kwargs.get(key, match.group(0)))
+                    
+                    formatted_content = pattern.sub(replace_match, content)
+                except Exception as e:
+                    raise RuntimeError(f"Formatting failed for prompt '{prompt_name}': {e}")
                 
                 messages.append({
                     "role": msg.get("role", "user"),

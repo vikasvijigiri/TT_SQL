@@ -10,14 +10,21 @@ messages:
 
         ### YOUR TASK:
         Provide the final executive summary and a chart configuration. 
-        CRITICAL: The "markdown_summary" must be strictly focused on business logic and insights.
-        - DO NOT mention technical details such as table names, column names, or SQL snippets.
-        - DO NOT explain the technical process or logs.
-        - FOCUS ONLY on answering the business question and interpreting the findings.
-        
-        You MUST respond with a single valid JSON object (no extra text, no markdown fences) with exactly these two keys:
-        1. "markdown_summary": A world-class executive summary as a markdown string. Start with a direct answer, then breakdown key metrics, then strategic interpretation.
-        2. "chart_config": A JSON object with keys: "type" (one of: 'bar', 'line', 'pie', or 'none'), "xAxis" (exact column name), "yAxis" (exact column name), and "title".
 
-        Example format:
-        {{"markdown_summary": "...", "chart_config": {{"type": "bar", "xAxis": "date", "yAxis": "total", "title": "Revenue Over Time"}}}}
+        1. FIRST, provide the "markdown_summary": A world-class executive summary as a markdown string. 
+           Start with a direct answer, then breakdown key metrics, then strategic interpretation.
+           - USE one-liner bullets for findings.
+           - WRAP all hard numbers, metrics, or key entities in `<span class="metric-pill">...</span>`.
+           - DO NOT mention technical details such as table names, column names, or SQL snippets.
+           - FOCUS ONLY on answering the business question and interpreting the findings.
+           - Use strong, contrasting headers (H3).
+
+        2. SECOND, provide exactly the delimiter: ###METADATA###
+
+        3. THIRD, provide the "chart_config": A JSON object with keys: "type" (one of: 'bar', 'line', 'pie', or 'none'), "xAxis" (exact column name), "yAxis" (exact column name), and "title".
+
+        Example format (DO NOT USE MARKDOWN CODE FENCES):
+        Your business summary here...
+        ...
+        ###METADATA###
+        {"type": "bar", "xAxis": "date", "yAxis": "total", "title": "Revenue Over Time"}

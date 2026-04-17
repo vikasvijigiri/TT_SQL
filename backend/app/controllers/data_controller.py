@@ -182,3 +182,119 @@ async def preview_table(table_name: str):
         "columns": res.columns,
         "rows": formatted_rows
     }
+@router.get("/logs/history")
+async def get_execution_history():
+    """
+    Fetch the cumulative execution log from the project-scoped log folder.
+    """
+    from app.repositories.registry.paths import get_results_base_dir
+    
+    # Path is now results/[project_slug]/log/execution_log.md
+    log_path = get_results_base_dir() / "log" / "execution_log.md"
+    
+    if not os.path.exists(log_path):
+        return {"content": "No execution history found yet."}
+    
+    try:
+        # Read the last 500,000 characters
+        file_size = os.path.getsize(log_path)
+        with open(log_path, "r", encoding="utf-8") as f:
+            if file_size > 500000:
+                f.seek(file_size - 500000)
+                f.readline()
+                content = "--- (Earlier logs truncated for performance) ---\n\n" + f.read()
+            else:
+                content = f.read()
+                
+        return {"content": content}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Failed to read log: {e}")
+
+@router.get("/storage/workspaces")
+async def get_all_workspace_stats():
+    """Fetch storage usage stats for ALL projects in the results directory."""
+    from app.services.utils.storage_service import StorageService
+    return StorageService.get_all_storage_stats()
+
+@router.delete("/cleanup/workspace/{slug}")
+async def wipe_workspace_data(slug: str):
+    """Wipes all analytical results for a specific project workspace by slug."""
+    from app.services.utils.cleanup_service import CleanupService
+    return CleanupService.purge_project(slug)
+
+@router.delete("/cache/{instance_id}")
+async def clear_query_cache(instance_id: str):
+    """
+    Deletes all files (SQL, CSV, logs) associated with a specific query ID.
+    """
+    from app.repositories.registry.paths import get_scoped_results_dir # Rename used here for future-proofing
+    from app.repositories.config import settings
+    import glob
+    
+    # We now use the project-scoped directory
+    from app.repositories.registry.paths import get_results_base_dir
+    base_dir = get_results_base_dir()
+    
+    subdirs = ["sql", "csv", "log"]
+    deleted_count = 0
+    errors = []
+    
+    for subdir in subdirs:
+        dir_path = base_dir / subdir
+        if not dir_path.exists():
+            continue
+            
+        # Match any file starting with instance_id (to catch timestamped versions)
+        pattern = str(dir_path / f"{instance_id}*")
+        for fpath in glob.glob(pattern):
+            try:
+                os.remove(fpath)
+                deleted_count += 1
+            except Exception as e:
+                errors.append(f"Error deleting {fpath}: {e}")
+                
+    if errors:
+        raise HTTPException(status_code=500, detail=f"Partial success. Deleted {deleted_count} files. Errors: {'; '.join(errors)}")
+        
+    return {"status": "success", "deleted_files": deleted_count, "instance_id": instance_id}
+
+@router.delete("/cleanup/project")
+async def wipe_project_data():
+    """Wipes all analytical results for the active project."""
+    from app.repositories.registry.paths import get_active_project_slug
+    from app.services.utils.cleanup_service import CleanupService
+    
+    slug = get_active_project_slug()
+    return CleanupService.purge_project(slug)
+
+@router.delete("/cleanup/session")
+async def purge_session_data(period: str = "hour"):
+    """
+    Purge results based on duration.
+    Options: hour, hour2, hour4, today, yesterday
+    """
+    from app.repositories.registry.paths import get_active_project_slug
+    from app.services.utils.cleanup_service import CleanupService
+    from datetime import datetime, time as dtime, timedelta
+    
+    slug = get_active_project_slug()
+    now = datetime.now()
+    
+    if period == "hour":
+        return CleanupService.purge_by_time(slug, 3600)
+    elif period == "hour2":
+        return CleanupService.purge_by_time(slug, 7200)
+    elif period == "hour4":
+        return CleanupService.purge_by_time(slug, 14400)
+    elif period == "today":
+        # Seconds since midnight
+        midnight = datetime.combine(now.date(), dtime.min)
+        seconds_since_midnight = (now - midnight).total_seconds()
+        return CleanupService.purge_by_time(slug, int(seconds_since_midnight))
+    elif period == "yesterday":
+        # Entire previous day
+        yesterday_start = datetime.combine(now.date() - timedelta(days=1), dtime.min)
+        yesterday_end = datetime.combine(now.date() - timedelta(days=1), dtime.max)
+        return CleanupService.purge_date_range(slug, yesterday_start.timestamp(), yesterday_end.timestamp())
+    else:
+        raise HTTPException(status_code=400, detail="Invalid period. Use 'hour', 'hour2', 'hour4', 'today', or 'yesterday'.")

@@ -7,6 +7,10 @@ messages:
         STRATEGY: {strategy}
 
         ### YOUR TASK:
-        Explain the formulated strategy to the user. Describe the analytical steps being taken 
-        without technical jargon. Be specific and premium in tone. 
-        End by stating that you are now identifying core data anchors.
+        Provide a sharp, high-impact overview of the analytical roadmap.
+        1. **Direct Action**: State exactly what data relationship is being targeted.
+        2. **Logical Flow**: Describe the multi-stage validation steps in one-liner bullets.
+        3. **Tone**: Elite, precise, and professional. 
+        
+        CRITICAL: Do not use words like "journey", "signals", or "baseline". Be immediate.
+        End by stating that core data anchors are being identified.

@@ -698,7 +698,7 @@ const ProjectsScreen = ({ onProjectConnected, onStartChat, onProjectDeleted }) =
                                                         </span>
                                                     )}
                                                     <button
-                                                        onClick={(e) => handleDelete(p.id, e)}
+                                                        onClick={(e) => { e.stopPropagation(); handleDeleteProject(p.id); }}
                                                         style={{
                                                             background: 'none', border: 'none', color: '#d1d5db',
                                                             cursor: 'pointer', padding: '4px', borderRadius: '6px',

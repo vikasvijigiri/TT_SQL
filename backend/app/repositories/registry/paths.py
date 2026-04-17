@@ -36,20 +36,42 @@ def get_repo_dir() -> Path:
     """Returns the base data storage directory (app/repositories/data)"""
     return DATA_DIR
 
+def get_active_project_slug() -> str:
+    """Derive a safe filesystem slug from the active project name or ID."""
+    from app.repositories.registry.project_repo import ProjectRepository
+    
+    project_id = getattr(settings, "ACTIVE_PROJECT_ID", None)
+    if not project_id:
+        # Fallback to model name if no project is active
+        model_name = getattr(settings, "LLM_MODEL", "default")
+        return model_name.replace("/", "_").replace(":", "_")
+        
+    project = ProjectRepository.get_project_by_id(project_id)
+    if project:
+        name = project.get("name", project_id)
+        # Create safe slug: lowercase, replace spaces/special chars with underscores
+        import re
+        slug = re.sub(r'[^a-zA-Z0-9]', '_', name).lower()
+        return slug
+    
+    return str(project_id).replace("-", "_")
+
 def get_results_base_dir() -> Path:
-    """Returns the directory for query results, appended with model name if available."""
+    """Returns the directory for results, scoped by the active project."""
     base = settings.RESULTS_DIR or str(DATA_DIR / "results")
     path = Path(base)
-    # Check if we should append model name automatically
-    model_name = getattr(settings, "LLM_MODEL", None)
-    if model_name:
-        safe_name = model_name.replace("/", "_").replace(":", "_")
-        return path / safe_name
+    
+    project_slug = get_active_project_slug()
+    return path / project_slug
+
+def get_registry_dir() -> Path:
+    """Returns the global registry directory for system-wide configs like projects.json."""
+    path = DATA_DIR / "registry"
     return path
 
 def get_metadata_dir() -> Path:
-    """Returns the directory for database schemas, now inside model-specific results."""
-    return get_results_base_dir() / "metadata_extracts"
+    """Returns the global metadata registry for database schemas, shared across projects."""
+    return DATA_DIR / "metadata_registry"
 
 def get_resources_dir() -> Path:
     """Returns the directory for shared resources"""
@@ -84,24 +106,25 @@ def get_spider_dataset(filename: str = None) -> Path:
 # Constants for backwards compatibility
 REPO_DIR = DATA_DIR
 RESOURCES_DIR = get_resources_dir()
-METADATA_DIR = get_metadata_dir()
+REGISTRY_DIR = get_registry_dir() # ADDED GLOBAL REGISTRY
+METADATA_DIR = get_metadata_dir() 
 INPUT_QUERIES_DIR = get_input_queries_dir()
 SPIDER_DATASET = get_spider_dataset()
 DATABASES_DIR = get_databases_dir()
 
 def get_model_results_dir(model_name: str) -> Path:
-    """Get the results directory for a specific model."""
-    # If the model_name matches the global setting, get_results_base_dir already handles it
+    """Get the results directory, prioritized by active project or scoped by model."""
+    project_id = getattr(settings, "ACTIVE_PROJECT_ID", None)
     global_model = getattr(settings, "LLM_MODEL", None)
-    if global_model and model_name == global_model:
-        # Base dir already has the model name appended
-        # We need the parent if we want the absolute base results dir
-        # But get_results_base_dir() IS the target for global_model
+    
+    # If a project is active, we use the project results dir regardless of model
+    # (unless specifically requesting a different model's legacy results)
+    if project_id and (not model_name or model_name == global_model):
         return get_results_base_dir()
     
-    # Otherwise, we start from the raw base and append the specific model_name
+    # Fallback to model-specific results (legacy or multi-model comparisons)
     base = settings.RESULTS_DIR or str(DATA_DIR / "results")
-    safe_name = model_name.replace("/", "_").replace(":", "_")
+    safe_name = (model_name or "default").replace("/", "_").replace(":", "_")
     return Path(base) / safe_name
 
 
@@ -157,18 +180,23 @@ def get_unique_run_id(collection_name: str, db_name: str, instance_id: str = Non
     
     return "_".join(parts)
 
-# Initialize directories for a specific model
+# Initialize directories for a specific project/model context
 def initialize_directories(model_name: str = None):
     """Create all required directories if they don't exist"""
     
-    # Always create base results and config
+    # Base directory for the active context (project or model)
+    base_dir = get_results_base_dir()
+    
     directories = [
-        get_results_base_dir(),
+        base_dir,
+        base_dir / "sql",
+        base_dir / "csv",
+        base_dir / "log",
         get_metadata_dir(),
     ]
     
-    # If model provided, create model-specific structure
-    if model_name:
+    # If specifically initializing for a model that isn't the active one
+    if model_name and model_name != getattr(settings, "LLM_MODEL", None):
         model_dir = get_model_results_dir(model_name)
         directories.extend([
             model_dir,
