@@ -166,10 +166,14 @@ class DBRepository:
                 from google.cloud import bigquery
                 from google.oauth2 import service_account
                 creds_path = active["bq_credentials_path"]
+                print(f"--- DEBUG: BQ CREDS PATH: {creds_path} ---")
+                print(f"--- DEBUG: DB name is {active['database']} ---")
+                print(f"--- DEBUG: DB schema is {active['schema']} ---")
                 if not creds_path or not os.path.exists(creds_path):
                     return False
                 credentials = service_account.Credentials.from_service_account_file(creds_path)
                 client = bigquery.Client(credentials=credentials, project=active["database"])
+
                 # Just try to list tables in the dataset as a connectivity test
                 client.list_tables(f"{active['database']}.{active['schema']}", max_results=1)
             elif _type.lower() == "snowflake":
@@ -264,6 +268,9 @@ class DBRepository:
             from google.oauth2 import service_account
             
             creds_path = active["bq_credentials_path"]
+            print(f"--- DEBUG: BQ CREDS PATH: {creds_path} ---")
+            print(f"--- DEBUG: DB name is {active['database']} ---")
+            print(f"--- DEBUG: DB schema is {active['schema']} ---")
             if not creds_path or not os.path.exists(creds_path):
                 raise Exception(f"BigQuery credentials file not found at: {creds_path}")
                 
