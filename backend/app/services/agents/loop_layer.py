@@ -33,14 +33,14 @@ class RefinementLoopAgent(BaseAgent):
     criticism cycle. It implements a self-healing loop that attempts to resolve
     execution errors through automated feedback and candidate regeneration.
     """
-    def __init__(self, llm_service: LLMService, results_dir: str = None, logs_dir: str = None, metadata_dir: str = None):
-        super().__init__(name="RefinementLoop", results_dir=results_dir, logs_dir=logs_dir, metadata_dir=metadata_dir)
+    def __init__(self, llm_service: LLMService, results_dir: str = None, logs_dir: str = None, metadata_dir: str = None, user_slug: str = None):
+        super().__init__(name="RefinementLoop", results_dir=results_dir, logs_dir=logs_dir, metadata_dir=metadata_dir, user_slug=user_slug)
         self.llm = llm_service
         self.prompt_loader = PromptLoader()
         
         # Initialize internal agent components
         self.generator = MultiCandidateGeneratorAgent(
-            llm_service, results_dir=results_dir, logs_dir=logs_dir, metadata_dir=metadata_dir
+            llm_service, results_dir=results_dir, logs_dir=logs_dir, metadata_dir=metadata_dir, user_slug=user_slug
         )
 
         # Executor is resolved dynamically in run() based on current settings.DB_TYPE
@@ -49,8 +49,8 @@ class RefinementLoopAgent(BaseAgent):
         self._logs_dir = logs_dir
         self._metadata_dir = metadata_dir
 
-        self.critic = CriticAgent(llm_service, results_dir=results_dir, logs_dir=logs_dir, metadata_dir=metadata_dir)
-        self.file_coordinator = FileCoordinator(results_dir=results_dir, logs_dir=logs_dir)
+        self.critic = CriticAgent(llm_service, results_dir=results_dir, logs_dir=logs_dir, metadata_dir=metadata_dir, user_slug=user_slug)
+        self.file_coordinator = FileCoordinator(results_dir=results_dir, logs_dir=logs_dir, user_slug=user_slug)
         self.max_retries = 3
 
     def run(self, state: AgentState, on_token: callable = None, on_intermediate: callable = None) -> AgentState:
@@ -70,22 +70,22 @@ class RefinementLoopAgent(BaseAgent):
         if db_type in ["postgres", "postgresql"]:
             from app.services.agents.execution_layer import PostgresExecutorAgent
             self.executor = PostgresExecutorAgent(
-                results_dir=self._results_dir, logs_dir=self._logs_dir, metadata_dir=self._metadata_dir
+                results_dir=self._results_dir, logs_dir=self._logs_dir, metadata_dir=self._metadata_dir, user_slug=self.user_slug
             )
         elif db_type == "bigquery":
             from app.services.agents.execution_layer import BigQueryExecutorAgent
             self.executor = BigQueryExecutorAgent(
-                results_dir=self._results_dir, logs_dir=self._logs_dir, metadata_dir=self._metadata_dir
+                results_dir=self._results_dir, logs_dir=self._logs_dir, metadata_dir=self._metadata_dir, user_slug=self.user_slug
             )
         elif db_type == "snowflake":
             from app.services.agents.execution_layer import SnowflakeExecutorAgent
             self.executor = SnowflakeExecutorAgent(
-                results_dir=self._results_dir, logs_dir=self._logs_dir, metadata_dir=self._metadata_dir
+                results_dir=self._results_dir, logs_dir=self._logs_dir, metadata_dir=self._metadata_dir, user_slug=self.user_slug
             )
         else:
             from app.services.agents.execution_layer import SQLiteExecutorAgent
             self.executor = SQLiteExecutorAgent(
-                results_dir=self._results_dir, logs_dir=self._logs_dir, metadata_dir=self._metadata_dir
+                results_dir=self._results_dir, logs_dir=self._logs_dir, metadata_dir=self._metadata_dir, user_slug=self.user_slug
             )
 
         try:
@@ -109,12 +109,8 @@ class RefinementLoopAgent(BaseAgent):
                 Logger.log_title(f"Iteration {attempt} / {self.max_retries}")
 
                 # 1. SQL Generation Phase
-                if attempt == 1 and state.chosen_query:
-                    self.log(state, "Using pre-selected query from Multi-Set selection.")
-                    Logger.log_title("SQL Selection Winner")
-                else:
-                    Logger.log_title("SQLBuilder")
-                    state = self.generator.run(state, on_token=on_token)
+                Logger.log_title("SQLBuilder")
+                state = self.generator.run(state, on_token=on_token)
 
                 # Validation: Prevent excessive resource consumption
                 sql_len = len(state.chosen_query or "")

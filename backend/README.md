@@ -1,23 +1,111 @@
 # 🤖 nQuire: Turbo-Accelerated Text-to-SQL Engine
 
-nQuire is a premium, high-performance Text-to-SQL engine designed for the modern enterprise. It strictly follows a domain-driven **Controller-Service-Repository** pattern with **Strict Directory Segregation** (no mixed files and folders).
+nQuire is a premium, high-performance Text-to-SQL engine designed for the modern enterprise. It strictly follows a domain-driven **Controller-Service-Repository** pattern with **Strict Directory Segregation** and a **Concurrent Multi-Agent Pipeline**.
 
 ---
 
-## 🏛️ Layered Architecture Mapping
+## 🚀 The Multi-Flow Architecture
 
-- **🎮 Controller Layer (`app/controllers/`)**: API and CLI entry points.
-    - Specialized controllers for queries and health checks.
-- **🧠 Service Layer (`app/services/`)**: Core Business Logic and Intelligence.
-    - **Engines (`app/services/engines/`)**: RAG, SQL, and Pipeline execution logic.
-    - **Schemas (`app/services/schemas/`)**: Runtime state and data schemas.
-    - **Agents (`app/services/agents/`)**: Specialized AI agent layers.
-    - **Utils (`app/services/utils/`)**: Logging, Prompts, and health service.
-- **🗄️ Repository Layer (`app/repositories/`)**: Data Management and Infrastructure.
-    - **Persistence (`app/repositories/persistence/`)**: File coordination and orchestration state.
-    - **Connectors (`app/repositories/connectors/`)**: Database and Vector Store drivers.
-    - **Registry (`app/repositories/registry/`)**: Path resolution logic.
-    - **Config (`app/repositories/config/`)**: Static YAML and JSON configurations.
+Unlike traditional sequential chains, nQuire executes three independent "flows" to maximize efficiency:
+
+```mermaid
+graph TD
+    A["📥 Question Admission"] --> B["💠 Concurrent Execution Stage"]
+    
+    subgraph B["Concurrent Initialization Stage"]
+        B1["Professional Greeting & Strategy (Narrative Flow) 💼"]
+        B2["Strategic Planning & Roadmap (Planner Flow) 🤖"]
+        B3["Information Discovery & RAG Retrieval (Technical Flow) 🔍"]
+    end
+    
+    B1 --> C["🎭 Immediate UX Feedback"]
+    B2 & B3 --> D["Stage 2: Technical Refinement Loop 🔁"]
+    
+    subgraph D["Refinement Loop (Iterative)"]
+        D1["SQL Generation 🤖"] --> D2["Execution Trial 🛠️"]
+        D2 --> D3["Intermediate Analysis ('Micro-Insights') 💼"]
+        D2 --> D4["Logical Critic Feedback 🛡️"]
+        D4 -->|"❌ Fail"| D1
+    end
+    
+    D2 & D3 --> E["Stage 3: Final Executive Synthesis 🏆"]
+```
+
+### 🧠 Optimization Highlights
+1. **Turbo Streaming**: Achieved < 2.0s TTFT by launching the Orchestrator Greeting simultaneously with technical discovery.
+2. **RAG Expert**: Consolidated column retrieval into 1 LLM call, reducing baseline latency by 75% for complex schemas.
+3. **Background Narratives**: Intermediate business insights are generated in non-blocking threads.
+
+---
+
+## 🔍 Advanced RAG Pipeline
+
+The system implements a sophisticated RAG architecture:
+1. **Hybrid Retrieval**: Combines Dense (Vector search via Qdrant) and Sparse (BM25) results.
+2. **RRF Fusion**: Merges results from both methods using Reciprocal Rank Fusion for optimal relevance.
+3. **Self-Healing**: Automatic expansion of queries via LLM if initial retrieval confidence is low.
+4. **Multi-Set Synthesis**: Provides three distinct sets (Set A, B, C) to downstream SQL generation agents.
+
+---
+
+## 🏛️ Layered System Design
+
+### 🎮 Controller Layer (`app/controllers/`)
+Entry point for API requests. Supports both standard JSON responses and **SSE (Server-Sent Events)** for real-time streaming.
+
+### 🧠 Service Layer (`app/services/`)
+- **Agents (`app/services/agents/`)**: Specialized AI layers (Planner, RAG Expert, Builder, Critic).
+- **Engines (`app/services/engines/`)**: Core processing logic for RAG and SQL execution.
+- **Utils (`app/services/utils/`)**: Logging, Prompts, and Shared State.
+
+### 🗄️ Repository Layer (`app/repositories/`)
+- **Registry (`app/repositories/registry/`)**: Centralized Path Management (Universal Path Structure).
+- **Connectors (`app/repositories/connectors/`)**: Database and Vector Store drivers.
+- **Config (`app/repositories/config/`)**: Static YAML and JSON configurations.
+
+---
+
+## 🌐 Universal Path Management
+
+nQuire uses a production-ready, industry-standard path management system that makes the application **folder-structure-agnostic**.
+
+### 💡 Single Source of Truth
+All paths are defined in the `PathStructure` class (`app/repositories/registry/path_config.py`). Change your layout once in environment variables, and the entire app adapts:
+
+- `RESULTS_DIR`: Custom location for project results.
+- `DATA_DIR`: Custom location for core application data.
+- `SQLITE_DB_PATH`: Custom location for SQLite databases.
+
+---
+
+## 🚀 Execution Guide (CLI)
+
+> [!IMPORTANT]
+> Always run scripts from the `backend/` root using `python -m scripts.script_name`.
+
+### 1. Knowledge Preparation
+Must be run once before using a new database project.
+```bash
+python -m scripts.prep_knowledge # Extraction + LLM Enrichment + Ingestion
+```
+*Options: `--no-enrich` (Faster), `--overwrite` (Force re-run).*
+
+### 2. Processing Queries
+```bash
+# Single Question
+python -m scripts.run_single --question "What is the total revenue?" --use-rag
+
+# Run by Dataset ID
+python -m scripts.run_single --id q001 --dataset path/to/data.jsonl --use-rag
+
+# Batch Processing
+python -m scripts.run_batch --dataset path/to/data.jsonl --workers 4 --use-rag
+```
+
+### 3. Isolated RAG Testing
+```bash
+python app/services/engines/rag_service.py --question "Show accounts" --instance-id test1
+```
 
 ---
 
@@ -26,76 +114,21 @@ nQuire is a premium, high-performance Text-to-SQL engine designed for the modern
 ```text
 backend/
 ├── app/
-│   ├── controllers/            # Layer 1: Entry Points
-│   ├── services/               # Layer 2: Business Logic
-│   │   ├── engines/            # Processing Engines (RAG, SQL)
-│   │   ├── schemas/            # State & Data Schemas
-│   │   ├── agents/             # AI Agent Layers
-│   │   └── utils/              # Shared Helpers (Prompts, Logging)
-│   └── repositories/           # Layer 3: Data & Config
-│       ├── persistence/        # File Management
-│       ├── connectors/         # DB & Vector Drivers
-│       ├── registry/           # Path Management
-│       └── config/             # YAML/JSON Configs
-├── scripts/                    # CLI Orchestration & Flow Scripts
-├── tests/                      # Logic & Retrieval Verification
-└── .env                        # Environment Setup
+│   ├── controllers/            # Layer 1: API & Entry Points
+│   ├── services/               # Layer 2: Business Logic & Agents
+│   └── repositories/           # Layer 3: Data, Path Registry & Config
+├── scripts/                    # CLI Orchestration & Infrastructure
+├── tests/                      # Logic & Performance Verification
+└── requirements.txt            # System Dependencies
 ```
 
 ---
 
-## 🚀 Execution Pipelines
+## 🔍 Troubleshooting & Support
 
-### 🚀 Automated Workflows
-
-#### Phase 1: Knowledge Preparation
-Extracts schema, enriches with AI descriptions, and ingests into Qdrant.
-```bash
-python scripts/prep_knowledge.py
-```
-
-#### Phase 2: RAG Analysis Execution
-Runs the natural language to SQL pipeline for a specific instance.
-```bash
-python scripts/run_rag_analysis.py --instance-id q011
-```
-
-### 3. Single Question Testing
-```bash
-python scripts/run_single.py --question "Show me total revenue" --use-rag
-```
-
-### 4. Batch Evaluation
-```bash
-python scripts/run_batch_rag.py --workers 5
-```
+- **Low Recall?** Ensure metadata is enriched (don't use `--no-enrich` in `prep_knowledge.py`).
+- **Path Errors?** Run `python -m app.repositories.registry.path_migration_guide` or call `/api/health/startup`.
+- **Latency?** Check Qdrant connection and LLM API base speeds.
 
 ---
-
-## 🧪 Testing
-
-```bash
-# Run RAG Retrieval Test
-python tests/test_rag.py --id q011 --turbo
-```
-
----
-
-## 🚀 Launching the API
-
-```bash
-python -m app.controllers.main
-```
-
----
-
-## 🔍 Troubleshooting & Logs
-
-- **Results Hub**: `app/repositories/data/results/<model_name>/`
-- **Metadata Cache**: `app/repositories/data/metadata_extracts/`
-- **SQL Snippets**: `app/repositories/data/results/<model_name>/sql/`
-
----
-
-## 📄 License
-Internal proprietary engine. All rights reserved.
+© 2026 Internal Proprietary Engine. All rights reserved.

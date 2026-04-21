@@ -59,6 +59,9 @@ class AgentState(BaseModel):
     db_name: Optional[str] = None   # raw DB name; used as Qdrant collection override in RAG mode
     instance_id: str = "default"  # Required for file-based tracking Header
     model_name: str = "default_model" # Track which model is running this task
+    user_email: Optional[str] = None
+    session_id: Optional[str] = None
+    connection_details: Dict[str, Any] = Field(default_factory=dict)
     sub_questions: List[str] = Field(default_factory=list) # Decomposed questions for multi-part queries
     
     # Analysis

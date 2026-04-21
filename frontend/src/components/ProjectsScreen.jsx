@@ -4,12 +4,12 @@ import { motion, AnimatePresence } from 'framer-motion';
 import {
     Database, Plus, ChevronRight, Server, HardDrive, Play, Trash2,
     Home, LayoutGrid, CheckCircle2, Layers, Globe, FlaskConical,
-    Plug, ArrowRight, Pencil, Shield, X, Zap, Cloud, Triangle
+    Plug, ArrowRight, Pencil, Shield, X, Zap, Cloud, Triangle, Clock
 } from 'lucide-react';
 
 const API_BASE_URL = 'http://localhost:8001';
 
-const ProjectsScreen = ({ onProjectConnected, onStartChat, onProjectDeleted }) => {
+const ProjectsScreen = ({ onProjectConnected, onStartChat, onProjectDeleted, userEmail, userName }) => {
     const [projects, setProjects] = useState([]);
     const [loading, setLoading] = useState(true);
     const [selectedTab, setSelectedTab] = useState('Home');
@@ -31,6 +31,8 @@ const ProjectsScreen = ({ onProjectConnected, onStartChat, onProjectDeleted }) =
     const [password, setPassword] = useState('');
     const [sqlitePath, setSqlitePath] = useState('');
     const [qdrantCollection, setQdrantCollection] = useState('');
+    const [qdrantUrl, setQdrantUrl] = useState('');
+    const [qdrantApiKey, setQdrantApiKey] = useState('');
 
     // BigQuery Fields
     const [bqCredentialsPath, setBqCredentialsPath] = useState('');
@@ -62,7 +64,9 @@ const ProjectsScreen = ({ onProjectConnected, onStartChat, onProjectDeleted }) =
     const fetchProjects = async () => {
         setLoading(true);
         try {
-            const res = await axios.get(`${API_BASE_URL}/api/projects`);
+            const res = await axios.get(`${API_BASE_URL}/api/projects`, {
+                params: { user_email: userEmail, user_name: userName }
+            });
             setProjects(res.data);
         } catch (err) {
             console.error("Failed to fetch projects", err);
@@ -73,7 +77,9 @@ const ProjectsScreen = ({ onProjectConnected, onStartChat, onProjectDeleted }) =
 
     const fetchActiveProject = async () => {
         try {
-            const res = await axios.get(`${API_BASE_URL}/api/projects/active`);
+            const res = await axios.get(`${API_BASE_URL}/api/projects/active`, {
+                params: { user_email: userEmail, user_name: userName }
+            });
             setActiveProjectId(res.data.active_project_id);
         } catch (err) {
             console.error("Failed to fetch active project", err);
@@ -84,7 +90,9 @@ const ProjectsScreen = ({ onProjectConnected, onStartChat, onProjectDeleted }) =
         e.preventDefault();
         setSaving(true);
         try {
-            await axios.post(`${API_BASE_URL}/api/projects`, { name: projectName });
+            await axios.post(`${API_BASE_URL}/api/projects`, { name: projectName }, {
+                params: { user_email: userEmail, user_name: userName }
+            });
             setProjectName('');
             setIsCreatingProject(false);
             fetchProjects();
@@ -100,6 +108,7 @@ const ProjectsScreen = ({ onProjectConnected, onStartChat, onProjectDeleted }) =
         setDbName(''); setDatabase('postgres'); setHost(''); setPort('5432');
         setUser(''); setPassword('');
         setSqlitePath(''); setQdrantCollection('');
+        setQdrantUrl(''); setQdrantApiKey('');
         setIsDiscoveryMode(false);
         setDiscoveryStep(1);
         setDiscoveredDbs([]);
@@ -125,6 +134,8 @@ const ProjectsScreen = ({ onProjectConnected, onStartChat, onProjectDeleted }) =
         setPassword(conn.password || '');
         setSqlitePath(conn.sqlite_path || '');
         setQdrantCollection(conn.qdrant_collection || '');
+        setQdrantUrl(conn.qdrant_url || '');
+        setQdrantApiKey(conn.qdrant_api_key || '');
         setBqCredentialsPath(conn.bq_credentials_path || '');
         setSfWarehouse(conn.sf_warehouse || '');
         setSfRole(conn.sf_role || '');
@@ -143,11 +154,15 @@ const ProjectsScreen = ({ onProjectConnected, onStartChat, onProjectDeleted }) =
                 db_type: dbType, db_name: dbName, database, host, port,
                 user, password, sqlite_path: sqlitePath,
                 qdrant_collection: qdrantCollection,
+                qdrant_url: qdrantUrl,
+                qdrant_api_key: qdrantApiKey,
                 bq_credentials_path: bqCredentialsPath,
                 sf_warehouse: sfWarehouse,
                 sf_role: sfRole
             };
-            await axios.put(`${API_BASE_URL}/api/projects/${selectedProjectId}/connection`, payload);
+            await axios.put(`${API_BASE_URL}/api/projects/${selectedProjectId}/connection`, payload, {
+                params: { user_email: userEmail, user_name: userName }
+            });
             resetForm();
             setSelectedTab('Home');
             setSelectedProjectId(null);
@@ -163,7 +178,9 @@ const ProjectsScreen = ({ onProjectConnected, onStartChat, onProjectDeleted }) =
     const handleDeleteProject = async (projectId) => {
         if (!window.confirm("Are you sure you want to delete this project?")) return;
         try {
-            await axios.delete(`${API_BASE_URL}/api/projects/${projectId}`);
+            await axios.delete(`${API_BASE_URL}/api/projects/${projectId}`, {
+                params: { user_email: userEmail, user_name: userName }
+            });
             fetchProjects();
             if (projectId === activeProjectId) {
                 onProjectDeleted && onProjectDeleted(projectId);
@@ -180,7 +197,9 @@ const ProjectsScreen = ({ onProjectConnected, onStartChat, onProjectDeleted }) =
     const handleDeleteAllProjects = async () => {
         if (!window.confirm("CRITICAL: Are you sure you want to delete ALL projects and connections? This cannot be undone.")) return;
         try {
-            await axios.delete(`${API_BASE_URL}/api/projects`);
+            await axios.delete(`${API_BASE_URL}/api/projects`, {
+                params: { user_email: userEmail, user_name: userName }
+            });
             fetchProjects();
             setJustActivated(null);
             setTestResult({ id: null, status: null, message: '', tables: [] });
@@ -195,7 +214,9 @@ const ProjectsScreen = ({ onProjectConnected, onStartChat, onProjectDeleted }) =
     const handleActivate = async (id) => {
         setActivationData({ id, status: 'loading' });
         try {
-            const res = await axios.post(`${API_BASE_URL}/api/projects/${id}/activate`);
+            const res = await axios.post(`${API_BASE_URL}/api/projects/${id}/activate`, {}, {
+                params: { user_email: userEmail, user_name: userName }
+            });
             setActivationData({ id, status: 'success' });
             setActiveProjectId(id);
             setJustActivated(id);
@@ -209,10 +230,43 @@ const ProjectsScreen = ({ onProjectConnected, onStartChat, onProjectDeleted }) =
         }
     };
 
+
+    const handleDeactivate = async () => {
+        setActivationData({ id: activeProjectId, status: 'loading' });
+
+        try {
+            const res = await axios.post(
+                `${API_BASE_URL}/api/projects/deactivate`,
+                {},
+                {
+                    params: { user_email: userEmail, user_name: userName }
+                }
+            );
+
+            setActivationData({ id: activeProjectId, status: 'success' });
+
+            // ✅ clear active project
+            setActiveProjectId(null);
+            setJustActivated(null);
+
+            // optional: inform parent
+            if (onProjectDeleted) {
+                onProjectDeleted(activeProjectId);
+            }
+
+        } catch (err) {
+            console.error("Deactivation failed", err);
+            setActivationData({ id: activeProjectId, status: 'error' });
+            alert("Failed to deactivate project.");
+        }
+    };
+
     const handleTestConnection = async (id) => {
         setTestResult({ id, status: 'loading', message: '', tables: [] });
         try {
-            const res = await axios.post(`${API_BASE_URL}/api/projects/${id}/test`);
+            const res = await axios.post(`${API_BASE_URL}/api/projects/${id}/test`, {}, {
+                params: { user_email: userEmail, user_name: userName }
+            });
             if (res.data.status === 'success') {
                 setTestResult({ id, status: 'success', message: res.data.message, tables: res.data.tables });
             } else {
@@ -358,9 +412,28 @@ const ProjectsScreen = ({ onProjectConnected, onStartChat, onProjectDeleted }) =
         }
     };
 
+
+
+
     // Styles
     const labelStyle = { fontSize: '11px', fontWeight: '600', color: '#94a3b8', textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: '2px' };
     const valueStyle = { fontSize: '13px', fontWeight: '500', color: '#334155' };
+
+    const formatLastActivity = (isoString) => {
+        if (!isoString) return 'Never';
+        try {
+            const date = new Date(isoString);
+            return new Intl.DateTimeFormat('en-US', {
+                month: 'short',
+                day: 'numeric',
+                year: 'numeric',
+                hour: '2-digit',
+                minute: '2-digit'
+            }).format(date);
+        } catch (e) {
+            return 'Recently';
+        }
+    };
     const inputStyle = {
         padding: '10px 14px', borderRadius: '8px', border: '1px solid #e2e8f0',
         outline: 'none', fontSize: '14px', transition: 'border-color 0.2s, box-shadow 0.2s',
@@ -681,9 +754,14 @@ const ProjectsScreen = ({ onProjectConnected, onStartChat, onProjectDeleted }) =
                                                         p.connection?.db_type === 'bigquery' ? <Cloud size={17} color="#ea4335" /> :
                                                             p.connection?.db_type === 'snowflake' ? <Triangle size={17} color="#29b5e8" style={{ transform: 'rotate(180deg)' }} /> :
                                                                 <Server size={17} color="#2563eb" />}
-                                                    <span style={{ fontSize: '15px', fontWeight: '600', color: '#0f172a' }}>
-                                                        {p.name}
-                                                    </span>
+                                                    <div style={{ display: 'flex', flexDirection: 'column' }}>
+                                                        <span style={{ fontSize: '14px', fontWeight: '600', color: '#0f172a' }}>
+                                                            {p.name}
+                                                        </span>
+                                                        <span style={{ fontSize: '10px', color: '#94a3b8' }}>
+                                                            Activity: {formatLastActivity(p.last_activity)}
+                                                        </span>
+                                                    </div>
                                                 </div>
                                                 <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
                                                     {isActive && (
@@ -753,6 +831,15 @@ const ProjectsScreen = ({ onProjectConnected, onStartChat, onProjectDeleted }) =
                                                                 {p.connection.qdrant_collection || p.connection.db_name || '--'}
                                                             </div>
                                                         </div>
+                                                        <div>
+                                                            <div style={labelStyle}>
+                                                                <Clock size={10} style={{ verticalAlign: 'middle', marginRight: '3px' }} />
+                                                                Last Activity
+                                                            </div>
+                                                            <div style={valueStyle}>
+                                                                {formatLastActivity(p.last_activity)}
+                                                            </div>
+                                                        </div>
                                                     </div>
 
                                                     {/* Action Bar */}
@@ -813,8 +900,32 @@ const ProjectsScreen = ({ onProjectConnected, onStartChat, onProjectDeleted }) =
                                                                         : <Play size={12} fill="white" />}
                                                                 {isActive ? 'Connected' : 'Activate'}
                                                             </button>
+
+                                                            {/* 🔥 ADD THIS EXACTLY HERE */}
+                                                            {isActive && (
+                                                                <button
+                                                                    onClick={handleDeactivate}
+                                                                    style={{
+                                                                        backgroundColor: '#ef4444',
+                                                                        color: 'white',
+                                                                        border: 'none',
+                                                                        borderRadius: '7px',
+                                                                        padding: '6px 16px',
+                                                                        fontSize: '12px',
+                                                                        fontWeight: '600',
+                                                                        cursor: 'pointer'
+                                                                    }}
+                                                                >
+                                                                    Deactivate
+                                                                </button>
+                                                            )}
+
+
                                                         </div>
                                                     </div>
+
+
+
 
                                                     {/* Test Result */}
                                                     <AnimatePresence>
@@ -1384,21 +1495,50 @@ const ProjectsScreen = ({ onProjectConnected, onStartChat, onProjectDeleted }) =
                                 {/* Divider */}
                                 <div style={{ height: '1px', backgroundColor: '#f1f5f9', margin: '2px 0' }} />
 
-                                {/* Qdrant Collection */}
-                                <div style={{ display: 'flex', flexDirection: 'column', gap: '5px' }}>
-                                    <label style={{ fontSize: '13px', fontWeight: '600', color: '#334155', display: 'flex', alignItems: 'center', gap: '6px' }}>
-                                        <Layers size={14} color="#7c3aed" /> Qdrant Collection Name
-                                    </label>
-                                    <input
-                                        type="text" value={qdrantCollection}
-                                        onChange={e => setQdrantCollection(e.target.value)}
-                                        placeholder={dbName ? `Defaults to "${dbName}"` : 'Defaults to schema name'}
-                                        style={inputStyle}
-                                        onFocus={inputFocusHandler} onBlur={inputBlurHandler}
-                                    />
-                                    <span style={{ fontSize: '11px', color: '#94a3b8' }}>
-                                        Leave blank to use the schema name as the vector collection.
-                                    </span>
+                                {/* Qdrant Configuration */}
+                                <div style={{ display: 'flex', flexDirection: 'column', gap: '12px', padding: '16px', backgroundColor: '#f8fafc', borderRadius: '10px', border: '1px solid #e2e8f0' }}>
+                                    <h4 style={{ fontSize: '13px', fontWeight: '700', color: '#1e293b', margin: '0 0 4px 0', display: 'flex', alignItems: 'center', gap: '6px' }}>
+                                        <Globe size={14} color="#2563eb" /> RAG & Vector Store Configuration
+                                    </h4>
+                                    
+                                    <div style={{ display: 'flex', gap: '12px' }}>
+                                        <div style={{ flex: 1, display: 'flex', flexDirection: 'column', gap: '5px' }}>
+                                            <label style={{ fontSize: '12px', fontWeight: '600', color: '#64748b' }}>Qdrant URL</label>
+                                            <input
+                                                type="text" value={qdrantUrl}
+                                                onChange={e => setQdrantUrl(e.target.value)}
+                                                placeholder="http://localhost:6333"
+                                                style={{ ...inputStyle, padding: '8px 12px' }}
+                                                onFocus={inputFocusHandler} onBlur={inputBlurHandler}
+                                            />
+                                        </div>
+                                        <div style={{ flex: 1, display: 'flex', flexDirection: 'column', gap: '5px' }}>
+                                            <label style={{ fontSize: '12px', fontWeight: '600', color: '#64748b' }}>API Key</label>
+                                            <input
+                                                type="password" value={qdrantApiKey}
+                                                onChange={e => setPassword(e.target.value)}
+                                                placeholder="optional-key"
+                                                style={{ ...inputStyle, padding: '8px 12px' }}
+                                                onFocus={inputFocusHandler} onBlur={inputBlurHandler}
+                                            />
+                                        </div>
+                                    </div>
+
+                                    <div style={{ display: 'flex', flexDirection: 'column', gap: '5px' }}>
+                                        <label style={{ fontSize: '12px', fontWeight: '600', color: '#64748b', display: 'flex', alignItems: 'center', gap: '6px' }}>
+                                            <Layers size={14} color="#7c3aed" /> Collection Name
+                                        </label>
+                                        <input
+                                            type="text" value={qdrantCollection}
+                                            onChange={e => setQdrantCollection(e.target.value)}
+                                            placeholder={dbName ? `Defaults to "${dbName}"` : 'Defaults to schema name'}
+                                            style={{ ...inputStyle, padding: '8px 12px' }}
+                                            onFocus={inputFocusHandler} onBlur={inputBlurHandler}
+                                        />
+                                        <span style={{ fontSize: '10px', color: '#94a3b8' }}>
+                                            Leave blank to use the schema/database name as the vector collection.
+                                        </span>
+                                    </div>
                                 </div>
 
                                 {/* Actions */}

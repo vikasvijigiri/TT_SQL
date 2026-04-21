@@ -8,7 +8,7 @@ postgresql:
     - ROUND OFF: ALWAYS round numeric results, percentages, and averages to 2 decimal places using ROUND(v::numeric, 2).
     - DATE CASTING: For columns containing dates as strings (character varying), you MUST use TO_DATE(col, 'YYYY-MM-DD') before comparison or truncation.
     - Use NULLIF(denominator, 0) to prevent division by zero.
-    - SCHEMA QUALIFICATION: You MUST always qualify table names with the schema name in double quotes: "acme-chatbot".table_name (e.g. FROM "acme-chatbot".otif).
+    - SCHEMA QUALIFICATION: You MUST always qualify table names with the provided schema name in double quotes (e.g., "schema_name"."table_name").
     - PRIORITIZE INBUILT FUNCTIONS: Use native PostgreSQL functions (e.g., DATE_TRUNC, COALESCE, GREATEST, LEAST) whenever possible instead of complex manual logic.
   critic_instructions: |
     - STRICTLY VALIDATE AGAINST POSTGRESQL SYNTAX. FAIL IF ANY SQLITE COMMANDS ARE USED.
@@ -57,3 +57,12 @@ snowflake:
   critic_instructions: |
     - Validate against Snowflake syntax.
     - Check for DATEADD and DATE_TRUNC functions.
+
+default:
+  builder_instructions: |
+    - Use standard SQL syntax compatible with the target database.
+    - Focus on precision and clarity in join conditions.
+    - Use appropriate aliases for calculated columns.
+  critic_instructions: |
+    - Validate against standard SQL syntax.
+    - Ensure logical alignment with the user's question.

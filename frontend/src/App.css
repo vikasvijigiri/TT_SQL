@@ -333,6 +333,91 @@ body {
 }
 
 /* ============================================================
+   SHARED TWO-PANEL LAYOUT (WhatsApp-style)
+   Used by: DatabaseView, DatasetView, MaintenanceView
+   ============================================================ */
+.page-layout {
+  display: flex;
+  height: 100%;
+  width: 100%;
+  background-color: #f8fafc;
+}
+
+/* Left sidebar panel */
+.page-sidebar {
+  width: 240px;
+  flex-shrink: 0;
+  background: #ffffff;
+  border-right: 1px solid #e2e8f0;
+  display: flex;
+  flex-direction: column;
+  overflow-y: auto;
+}
+
+.page-sidebar-header {
+  padding: 20px 18px;
+  border-bottom: 1px solid #e2e8f0;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-shrink: 0;
+}
+
+.page-sidebar-header h2 {
+  font-size: 15px;
+  font-weight: 700;
+  margin: 0;
+  color: #0f172a;
+  font-family: 'Outfit', sans-serif;
+}
+
+.page-sidebar-section-label {
+  padding: 12px 18px 6px;
+  font-size: 10px;
+  font-weight: 700;
+  color: #94a3b8;
+  text-transform: uppercase;
+  letter-spacing: 0.1em;
+}
+
+.page-sidebar-item {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  width: 100%;
+  padding: 10px 18px;
+  background: transparent;
+  border: none;
+  border-left: 3px solid transparent;
+  cursor: pointer;
+  text-align: left;
+  transition: all 0.15s ease;
+  color: #475569;
+  font-size: 13px;
+  font-weight: 500;
+  gap: 10px;
+}
+
+.page-sidebar-item:hover {
+  background-color: #f8fafc;
+  color: #0f172a;
+}
+
+.page-sidebar-item.active {
+  background-color: #eff6ff;
+  color: #2563eb;
+  border-left-color: #2563eb;
+}
+
+/* Right content panel */
+.page-content {
+  flex: 1;
+  padding: 28px 40px;
+  overflow-y: auto;
+  min-width: 0;
+}
+
+/* ============================================================
    CHAT VIEW
    ============================================================ */
 .chat-view {
@@ -703,6 +788,59 @@ input:checked + .premium-slider:before { transform: translateX(14px); }
 .icon-btn.success { background: rgba(16, 185, 129, 0.1); }
 .icon-btn.loading .spin { animation: spin 1s linear infinite; }
 .icon-btn:disabled { opacity: 0.5; cursor: not-allowed; }
+
+/* USER PROFILE SECTION */
+.nav-footer {
+  margin-top: auto;
+  padding: 16px 0;
+  display: flex;
+  justify-content: center;
+  border-top: 1px solid rgba(255, 255, 255, 0.05);
+}
+
+.user-profile-btn {
+  position: relative;
+  background: transparent;
+  border: none;
+  cursor: pointer;
+  padding: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.user-avatar {
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  border: 2px solid rgba(255, 255, 255, 0.1);
+  transition: all 0.2s ease;
+  object-fit: cover;
+}
+
+.user-avatar:hover {
+  border-color: #60a5fa;
+  transform: scale(1.1);
+}
+
+.user-avatar-initials {
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  background: #334155;
+  color: #60a5fa;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 13px;
+  font-weight: 700;
+  border: 1px solid rgba(255, 255, 255, 0.2);
+}
+
+.user-profile-btn:hover .nav-tooltip {
+  opacity: 1;
+  visibility: visible;
+}
 
 /* ============================================================
    SPINNERS

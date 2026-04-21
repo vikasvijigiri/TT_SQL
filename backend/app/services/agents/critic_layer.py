@@ -14,11 +14,11 @@ class CriticAgent(BaseAgent):
     Evaluates the SQL logic using a strict checklist approach.
     Decides if the result is satisfactory or requires refinement.
     """
-    def __init__(self, llm_service: LLMService, results_dir: str = None, logs_dir: str = None, metadata_dir: str = None):
-        super().__init__(name="SQLCritic", results_dir=results_dir, logs_dir=logs_dir, metadata_dir=metadata_dir)
+    def __init__(self, llm_service: LLMService, results_dir: str = None, logs_dir: str = None, metadata_dir: str = None, user_slug: str = None):
+        super().__init__(name="SQLCritic", results_dir=results_dir, logs_dir=logs_dir, metadata_dir=metadata_dir, user_slug=user_slug)
         self.llm = llm_service
         self.prompt_loader = PromptLoader()
-        self.file_coordinator = FileCoordinator(results_dir=results_dir, logs_dir=logs_dir)
+        self.file_coordinator = FileCoordinator(results_dir=results_dir, logs_dir=logs_dir, user_slug=user_slug)
 
     def run(self, state: AgentState, on_token: callable = None) -> AgentState:
         sql_to_criticize = state.chosen_query or ""

@@ -17,24 +17,28 @@ class IngestService:
             self._model = SentenceTransformer(self._model_name)
         return self._model
 
-    def delete_collection(self, collection_name: str):
+    def delete_collection(self, collection_name: str, qdrant_url: str = None, qdrant_api_key: str = None):
         """Deletes a collection from Qdrant."""
-        qdrant_url = settings.QDRANT_URL
-        qdrant_api = settings.QDRANT_API_KEY
-        headers = {"api-key": qdrant_api, "Content-Type": "application/json"}
+        q_url = qdrant_url or settings.QDRANT_URL
+        q_api = qdrant_api_key or settings.QDRANT_API_KEY
+        headers = {"api-key": q_api, "Content-Type": "application/json"}
         
-        self.logger.log(f"Deleting collection: {collection_name}")
-        resp = requests.delete(f"{qdrant_url.rstrip('/')}/collections/{collection_name}", headers=headers, timeout=10)
+        try:
+            resp = requests.delete(f"{q_url.rstrip('/')}/collections/{collection_name}", headers=headers, timeout=10)
+            if resp.status_code not in [200, 404]:
+                resp.raise_for_status()
+        except Exception as e:
+            self.logger.log(f"Warning: Failed to delete collection {collection_name}: {e}", level="WARNING")
         return resp.status_code in [200, 404]
 
-    def ingest_to_vector_store(self, metadata: Dict[str, Any], collection_name: str):
+    def ingest_to_vector_store(self, metadata: Dict[str, Any], collection_name: str, qdrant_url: str = None, qdrant_api_key: str = None):
         """Populates Qdrant with table and column embeddings."""
-        qdrant_url = settings.QDRANT_URL
-        qdrant_api = settings.QDRANT_API_KEY
-        headers = {"api-key": qdrant_api, "Content-Type": "application/json"}
+        q_url = qdrant_url or settings.QDRANT_URL
+        q_api = qdrant_api_key or settings.QDRANT_API_KEY
+        headers = {"api-key": q_api, "Content-Type": "application/json"}
 
         # Reset collection
-        self.delete_collection(collection_name)
+        self.delete_collection(collection_name, q_url, q_api)
         
         create_payload = {
             "vectors": {
@@ -44,15 +48,21 @@ class IngestService:
                 }
             }
         }
-        requests.put(f"{qdrant_url.rstrip('/')}/collections/{collection_name}", headers=headers, json=create_payload)
+        try:
+            resp = requests.put(f"{q_url.rstrip('/')}/collections/{collection_name}", headers=headers, json=create_payload)
+            resp.raise_for_status()
+        except Exception as e:
+            self.logger.log(f"Critical: Failed to create collection {collection_name}: {e}", level="ERROR")
+            raise ConnectionError(f"Vector Store creation failed: {e}")
         
         # Indexes for filtering
         for field in ["chunk_type", "table_name"]:
-            requests.put(
-                f"{qdrant_url.rstrip('/')}/collections/{collection_name}/index",
+            resp = requests.put(
+                f"{q_url.rstrip('/')}/collections/{collection_name}/index",
                 headers=headers,
                 json={"field_name": field, "field_schema": "keyword"}
             )
+            resp.raise_for_status()
 
         self.logger.log("Encoding and upserting chunks...")
         points = []
@@ -99,11 +109,12 @@ class IngestService:
         batch_size = 50
         for i in range(0, len(points), batch_size):
             batch = points[i : i + batch_size]
-            requests.put(
-                f"{qdrant_url.rstrip('/')}/collections/{collection_name}/points?wait=true",
+            resp = requests.put(
+                f"{q_url.rstrip('/')}/collections/{collection_name}/points?wait=true",
                 headers=headers,
                 json={"points": batch}
             )
+            resp.raise_for_status()
         self.logger.log(f"Ingestion complete for {collection_name}")
 
     def build_query_patterns(self, patterns_path: str, collection_name: str = None):
@@ -141,14 +152,15 @@ class IngestService:
         resp = requests.put(f"{q_url}/collections/{coll}/points?wait=true", headers=headers, json={"points": points})
         self.logger.log(f"Upserted {len(points)} query patterns to {coll}. Status: {resp.status_code}")
 
-    def export_retrieval_info(self, collection_name: str = None) -> str:
+    def export_retrieval_info(self, collection_name: str = None, user_slug: str = None) -> str:
         """
         Exports a summary of indexed metadata to a text file.
         """
-        from app.repositories.registry.paths import METADATA_DIR
+        from app.repositories.registry.paths import get_metadata_dir
         coll = collection_name or settings.COLLECTION_NAME
-        metadata_path = METADATA_DIR / f"{coll}.json"
-        output_path = METADATA_DIR / f"{coll}_retrieval_info.txt"
+        metadata_registry = get_metadata_dir(user_slug)
+        metadata_path = metadata_registry / f"{coll}.json"
+        output_path = metadata_registry / f"{coll}_retrieval_info.txt"
 
         if not metadata_path.exists():
             return f"Error: {metadata_path} not found."

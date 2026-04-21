@@ -4,9 +4,11 @@ from typing import Optional, List, Dict, Any
 class QueryRequest(BaseModel):
     query: str = "web_query"
     db_name: str = ""  # Resolved at request time from active project
-    dataset_name: Optional[str] = "sample.jsonl"
+    dataset_name: Optional[str] = None
     instance_id: str = ""
     use_rag: bool = True
+    user_email: Optional[str] = None
+    session_id: Optional[str] = None
 
 class QueryResponse(BaseModel):
     instance_id: str

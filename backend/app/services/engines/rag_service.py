@@ -45,7 +45,7 @@ def setup_logging(instance_id: str = None, logs_dir: Path = None):
     logger = logging.getLogger("rag_retrieval")
     logger.handlers = []
     
-    model_name = settings.LLM_MODEL or "default"
+    model_name = "default"
     target_dir = logs_dir or (get_model_results_dir(model_name) / "retrievals")
     target_dir.mkdir(parents=True, exist_ok=True)
     
@@ -109,12 +109,14 @@ def _check_sufficiency(query_text: str, anchors: List[str], retrieved_cols: List
     return {"sufficient": False, "reasoning": "Failed to parse sufficiency check."}
 
 # 1. Main Retrieval Flow
-def query_qdrant(query_text, collection_name=None, instance_id=None, results_dir=None, logs_dir=None, metadata_dir=None):
+def query_qdrant(query_text, collection_name=None, instance_id=None, results_dir=None, logs_dir=None, metadata_dir=None, user_slug=None, qdrant_url=None, qdrant_api_key=None):
     """
     Executes an Anchor-Driven Iterative RAG retrieval.
     Returns: Dict with top_3_sets (table -> [columns])
     """
-    if not collection_name: collection_name = settings.COLLECTION_NAME
+    if not collection_name: raise ValueError("collection_name is required for RAG retrieval")
+    if not qdrant_url: qdrant_url = settings.QDRANT_URL
+    if not qdrant_api_key: qdrant_api_key = settings.QDRANT_API_KEY
     setup_logging(instance_id, logs_dir)
     logger.info(f"--- ⚓ Anchor-Driven Iterative Retrieval Started ---")
     logger.info(f"Question: {query_text}")
@@ -144,8 +146,8 @@ def query_qdrant(query_text, collection_name=None, instance_id=None, results_dir
                 "with_payload": True,
                 "filter": {"must": [{"key": "chunk_type", "match": {"value": "column"}}]}
             }
-            res = requests.post(f"{settings.QDRANT_URL.rstrip('/')}/collections/{collection_name}/points/search", 
-                                headers={"api-key": settings.QDRANT_API_KEY, "Content-Type": "application/json"},
+            res = requests.post(f"{qdrant_url.rstrip('/')}/collections/{collection_name}/points/search", 
+                                headers={"api-key": qdrant_api_key, "Content-Type": "application/json"},
                                 json=dense_payload, timeout=15).json()
             
             new_batch = []
@@ -212,7 +214,7 @@ def query_qdrant(query_text, collection_name=None, instance_id=None, results_dir
         "anchors": anchors,
         "top_3_sets": top_sets,
         "final_sets": top_sets,
-        "metadata_path": str(get_metadata_dir() / f"{collection_name}.json"),
+        "metadata_path": str(get_metadata_dir(user_slug) / f"{collection_name}.json"),
         "count": len(all_candidates),
         "iterations": i + 1,
         "sufficient": is_sufficient
@@ -220,7 +222,11 @@ def query_qdrant(query_text, collection_name=None, instance_id=None, results_dir
 
     if instance_id:
         model_name = settings.LLM_MODEL or "default"
-        out_root = Path(results_dir or get_model_results_dir(model_name)) / "retrievals"
+        # Always use the new structure: results/{username}/{project_name}/{model_name}/retrievals
+        if user_slug is None:
+            # Try to infer user_slug from environment or fallback
+            user_slug = os.environ.get("USER", "default_user")
+        out_root = get_model_results_dir(model_name, user_slug=user_slug) / "retrievals"
         out_root.mkdir(parents=True, exist_ok=True)
         out_path = out_root / f"{instance_id}.json"
         with open(out_path, 'w', encoding='utf-8') as f:

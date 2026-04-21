@@ -13,6 +13,8 @@ load_dotenv(env_path, override=True)
 class Settings:
     def __init__(self):
         self.PROJECT_NAME = "TT_SQL"
+        self.PRODUCT_NAME = os.getenv("PRODUCT_NAME", "nQuire")
+        self.PRODUCT_ROLE = os.getenv("PRODUCT_ROLE", "Senior Advisor")
         
         # Path Overrides (managed by paths.py typically, but accessible here)
         self.REPO_DIR = os.getenv("REPO_DIR")
@@ -21,8 +23,12 @@ class Settings:
         self.METADATA_DIR = os.getenv("METADATA_DIR")
         
         # Qdrant Vector DB
-        self.QDRANT_URL = os.getenv("QDRANT_URL", "http://localhost:6333")
-        self.QDRANT_API_KEY = os.getenv("QDRANT_API") or os.getenv("QDRANT_API_KEY")
+        q_url = os.getenv("QDRANT_URL", "http://localhost:6333").rstrip("/")
+        # Only strip :6333 from localhost URLs, not from cloud URLs
+        if not ".qdrant.io" in q_url and q_url.endswith(":6333"):
+            q_url = q_url.replace(":6333", "")
+        self.QDRANT_URL = q_url
+        self.QDRANT_API_KEY = os.getenv("QDRANT_API_KEY") or os.getenv("QDRANT_API")
         
         # Note: SCHEMA and COLLECTION_NAME are initialized later based on project
         
@@ -30,6 +36,7 @@ class Settings:
         self.LLM_PROVIDER = os.getenv("LLM_PROVIDER", "bedrock")
         self.LLM_MODEL = os.getenv("LLM_MODEL", "bedrock/openai.gpt-oss-safeguard-120b")
         self.LLM_API_BASE = os.getenv("LLM_API_BASE")
+        self.OPENAI_API_KEY = os.getenv("OPENAI_API_KEY")
         self.EMBEDDING_MODEL = os.getenv("EMBEDDING_MODEL", "BAAI/bge-base-en-v1.5")
         self.EMBEDDING_SIZE = 768 # 768 for bge-base, 1024 for bge-large
         
@@ -48,28 +55,29 @@ class Settings:
         # Load Active Project Context
         self.ACTIVE_PROJECT_ID = os.getenv("ACTIVE_PROJECT_ID")
         
-        # Pre-fill custom DB connection details with static env fallbacks (for legacy or tests)
-        self.DB_TYPE = os.getenv("DB_TYPE", "postgres")
-        self.SQLITE_DB_PATH = os.getenv("SQLITE_DB_PATH", "app/repositories/data/sqlite")
-        self.RDS_DATABASE = os.getenv("RDS_DATABASE", "postgres")
-        self.RDS_HOST = os.getenv("RDS_HOST")
+        # Pre-fill custom DB connection details - Only if explicitly set in environment, otherwise empty
+        self.DB_TYPE = os.getenv("DB_TYPE", "")
+        self.SQLITE_DB_PATH = os.getenv("SQLITE_DB_PATH", "")
+        self.RDS_DATABASE = os.getenv("RDS_DATABASE", "")
+        self.RDS_HOST = os.getenv("RDS_HOST", "")
         self.RDS_PORT = os.getenv("RDS_PORT", "5432")
-        self.RDS_USER = os.getenv("RDS_USER")
-        self.RDS_PASSWORD = os.getenv("RDS_PASSWORD")
-        self.SCHEMA = os.getenv("SCHEMA") or os.getenv("DB_NAME") 
-        self.COLLECTION_NAME = os.getenv("QDRANT_COLLECTION") or self.SCHEMA
+        self.RDS_USER = os.getenv("RDS_USER", "")
+        self.RDS_PASSWORD = os.getenv("RDS_PASSWORD", "")
+        self.SCHEMA = os.getenv("SCHEMA") or os.getenv("DB_NAME") or ""
+        self.COLLECTION_NAME = os.getenv("QDRANT_COLLECTION") or self.SCHEMA or ""
         
-        # New provider fields:
-        self.BQ_CREDENTIALS_PATH = ""
-        self.SF_WAREHOUSE = ""
-        self.SF_ROLE = ""
+        self.BQ_CREDENTIALS_PATH = os.getenv("BQ_CREDENTIALS_PATH", "")
+        self.SF_WAREHOUSE = os.getenv("SF_WAREHOUSE", "")
+        self.SF_ROLE = os.getenv("SF_ROLE", "")
+        
+        # OAuth Settings
+        self.GOOGLE_CLIENT_ID = os.getenv("GOOGLE_CLIENT_ID")
         
     def _load_active_project_db_creds(self):
         if not self.ACTIVE_PROJECT_ID:
             return
 
-        # Lazy import to avoid circular dependency:
-        # config -> project_repo -> paths -> config
+        # Lazy import to avoid circular dependency
         from app.repositories.registry.project_repo import ProjectRepository
         project = ProjectRepository.get_project_by_id(self.ACTIVE_PROJECT_ID)
         if project and project.get("connection"):
@@ -78,13 +86,13 @@ class Settings:
             self.SCHEMA = conn.get("db_name", self.SCHEMA)
             self.COLLECTION_NAME = conn.get("qdrant_collection") or self.SCHEMA
 
-            if self.DB_TYPE == "postgres":
+            if self.DB_TYPE.lower() in ["postgres", "postgresql"]:
                 self.RDS_DATABASE = conn.get("database", self.RDS_DATABASE)
                 self.RDS_HOST = conn.get("host", self.RDS_HOST)
                 self.RDS_PORT = conn.get("port", self.RDS_PORT)
                 self.RDS_USER = conn.get("user", self.RDS_USER)
                 self.RDS_PASSWORD = conn.get("password", self.RDS_PASSWORD)
-            elif self.DB_TYPE == "sqlite":
+            elif self.DB_TYPE.lower() == "sqlite":
                 self.SQLITE_DB_PATH = conn.get("sqlite_path", self.SQLITE_DB_PATH)
 
     def reload_from_project(self, project: dict):
@@ -127,15 +135,18 @@ class Settings:
         Reset settings to default environment values and clear active project.
         """
         self.ACTIVE_PROJECT_ID = None
-        self.DB_TYPE = os.getenv("DB_TYPE", "postgres")
-        self.SQLITE_DB_PATH = os.getenv("SQLITE_DB_PATH", "app/repositories/data/sqlite")
-        self.RDS_DATABASE = os.getenv("RDS_DATABASE", "postgres")
-        self.RDS_HOST = os.getenv("RDS_HOST")
-        self.RDS_PORT = os.getenv("RDS_PORT", "5432")
-        self.RDS_USER = os.getenv("RDS_USER")
-        self.RDS_PASSWORD = os.getenv("RDS_PASSWORD")
-        self.SCHEMA = os.getenv("SCHEMA") or os.getenv("DB_NAME")
-        self.COLLECTION_NAME = os.getenv("QDRANT_COLLECTION") or self.SCHEMA
+        self.DB_TYPE = ""
+        self.SQLITE_DB_PATH = ""
+        self.RDS_DATABASE = ""
+        self.RDS_HOST = ""
+        self.RDS_PORT = "5432"
+        self.RDS_USER = ""
+        self.RDS_PASSWORD = ""
+        self.SCHEMA = ""
+        self.COLLECTION_NAME = ""
+        self.BQ_CREDENTIALS_PATH = ""
+        self.SF_WAREHOUSE = ""
+        self.SF_ROLE = ""
 
         # Invalidate cached DB connections
         try:
@@ -144,8 +155,7 @@ class Settings:
         except ImportError:
             pass
 
+# settings = Settings()
+# Module-level startup load removed to prevent circular deadlocks in multi-user mode.
+# Data connections are now resolved per-request based on user slug.
 settings = Settings()
-
-# Deferred: load active project AFTER settings is assigned to the module,
-# so that paths.py can safely import it without hitting a circular import.
-settings._load_active_project_db_creds()

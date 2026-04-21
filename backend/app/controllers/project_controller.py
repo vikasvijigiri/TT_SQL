@@ -20,6 +20,8 @@ class ProjectConnection(BaseModel):
     password: str = ""
     sqlite_path: str = ""
     qdrant_collection: str = ""
+    qdrant_url: str = ""
+    qdrant_api_key: str = ""
     
     # BigQuery specific
     bq_credentials_path: str = ""
@@ -29,50 +31,137 @@ class ProjectConnection(BaseModel):
     sf_role: str = ""
 
 @router.get("/active")
-async def get_active_project():
-    active_id = settings.ACTIVE_PROJECT_ID
+async def get_active_project(user_email: str = None, user_name: str = None):
+    """
+    Returns the currently active project for the specific user.
+    """
+    from app.repositories.registry.paths import get_user_slug
+    user_slug = get_user_slug(user_email=user_email, user_name=user_name)
+    
+    # 1. Resolve active project from user's persistent registry state
+    from app.repositories.registry.user_repo import UserRepository
+    user_state = UserRepository.get_state(user_slug)
+    active_id = user_state.get("activeProjectId")
+    
+    # 2. Fallback to global singleton (backward compatibility)
+    if not active_id:
+        active_id = settings.ACTIVE_PROJECT_ID
+        
     if not active_id:
         return {"active_project_id": None, "project": None}
     
-    project = ProjectRepository.get_project_by_id(active_id)
+    project = ProjectRepository.get_project_by_id(active_id, user_slug=user_slug)
     
-    # Clean up stale active project ID if project not found
+    # Clean up stale active IDs if the project folder was moved/deleted
     if not project:
-        settings.reset()
-        os.environ.pop("ACTIVE_PROJECT_ID", None)
+        # If it was the global setting, reset it
+        if active_id == settings.ACTIVE_PROJECT_ID:
+            settings.reset()
+            os.environ.pop("ACTIVE_PROJECT_ID", None)
         return {"active_project_id": None, "project": None}
         
     return {"active_project_id": active_id, "project": project}
 
 @router.get("")
-async def list_projects():
-    return ProjectRepository.get_all_projects()
+async def list_projects(user_email: str = None, user_name: str = None):
+    from app.repositories.registry.paths import get_user_slug
+    user_slug = get_user_slug(user_email=user_email, user_name=user_name)
+    return ProjectRepository.get_all_projects(user_slug=user_slug)
 
 @router.post("")
-async def create_project(project_in: ProjectCreate):
-    project_data = project_in.dict()
-    project_data["connection"] = None
-    return ProjectRepository.save_project(project_data)
+async def create_project(project_in: ProjectCreate, user_email: str = None, user_name: str = None):
+    """
+    Create a new project.
+    Production standard: Validates input, handles errors gracefully, returns meaningful feedback.
+    """
+    try:
+        from app.repositories.registry.paths import get_user_slug
+        
+        # Validate input
+        if not project_in.name or not project_in.name.strip():
+            raise HTTPException(
+                status_code=400, 
+                detail="Project name is required and cannot be empty"
+            )
+        
+        user_slug = get_user_slug(user_email=user_email, user_name=user_name)
+        project_data = project_in.dict()
+        project_data["connection"] = None
+        
+        # Attempt to save project
+        saved_project = ProjectRepository.save_project(project_data, user_slug=user_slug)
+        
+        return {
+            "status": "success",
+            "project": saved_project,
+            "message": f"Project '{saved_project['name']}' created successfully"
+        }
+        
+    except ValueError as e:
+        raise HTTPException(
+            status_code=400,
+            detail=f"Invalid project data: {str(e)}"
+        )
+    except IOError as e:
+        raise HTTPException(
+            status_code=500,
+            detail=f"Failed to save project: {str(e)}"
+        )
+    except Exception as e:
+        import traceback
+        print(f"Unexpected error in create_project: {traceback.format_exc()}")
+        raise HTTPException(
+            status_code=500,
+            detail=f"Unexpected error creating project: {str(e)}"
+        )
 
 @router.put("/{project_id}/connection")
-async def update_project_connection(project_id: str, connection_in: ProjectConnection):
-    project = ProjectRepository.get_project_by_id(project_id)
+async def update_project_connection(project_id: str, connection_in: ProjectConnection, user_email: str = None, user_name: str = None):
+    from app.repositories.registry.paths import get_user_slug
+    user_slug = get_user_slug(user_email=user_email, user_name=user_name)
+    project = ProjectRepository.get_project_by_id(project_id, user_slug=user_slug)
     if not project:
         raise HTTPException(status_code=404, detail="Project not found")
     project["connection"] = connection_in.dict()
-    return ProjectRepository.save_project(project)
+    return ProjectRepository.save_project(project, user_slug=user_slug)
 
 @router.delete("/{project_id}")
-async def delete_project(project_id: str):
-    # If the active project is being deleted, reset settings
-    if settings.ACTIVE_PROJECT_ID == project_id:
-        settings.reset()
-        os.environ.pop("ACTIVE_PROJECT_ID", None)
+async def delete_project(project_id: str, user_email: str = None, user_name: str = None):
+    """
+    Delete a project and all associated data.
+    Production standard: Validates project exists, handles errors gracefully.
+    """
+    try:
+        from app.repositories.registry.paths import get_user_slug
+        
+        if not project_id or not project_id.strip():
+            raise HTTPException(status_code=400, detail="Project ID is required")
+        
+        user_slug = get_user_slug(user_email=user_email, user_name=user_name)
+        
+        # If the active project is being deleted, reset settings
+        if settings.ACTIVE_PROJECT_ID == project_id:
+            settings.reset()
+            os.environ.pop("ACTIVE_PROJECT_ID", None)
 
-    success = ProjectRepository.delete_project(project_id)
-    if not success:
-        raise HTTPException(status_code=404, detail="Project not found")
-    return {"status": "success"}
+        success = ProjectRepository.delete_project(project_id, user_slug=user_slug)
+        if not success:
+            raise HTTPException(status_code=404, detail=f"Project '{project_id}' not found")
+        
+        return {
+            "status": "success",
+            "message": f"Project deleted successfully"
+        }
+        
+    except HTTPException:
+        raise
+    except Exception as e:
+        import traceback
+        print(f"Unexpected error in delete_project: {traceback.format_exc()}")
+        raise HTTPException(
+            status_code=500,
+            detail=f"Failed to delete project: {str(e)}"
+        )
 
 @router.delete("")
 async def delete_all_projects():
@@ -84,8 +173,10 @@ async def delete_all_projects():
     return {"status": "success"}
 
 @router.post("/{project_id}/activate")
-async def activate_project(project_id: str):
-    project = ProjectRepository.get_project_by_id(project_id)
+async def activate_project(project_id: str, user_email: str = None, user_name: str = None):
+    from app.repositories.registry.paths import get_user_slug
+    user_slug = get_user_slug(user_email=user_email, user_name=user_name)
+    project = ProjectRepository.get_project_by_id(project_id, user_slug=user_slug)
     if not project:
         raise HTTPException(status_code=404, detail="Project not found")
 
@@ -96,6 +187,9 @@ async def activate_project(project_id: str):
     settings.reload_from_project(project)
     os.environ["ACTIVE_PROJECT_ID"] = project_id
 
+    # Record activity
+    ProjectRepository.save_project(project, user_slug=user_slug)
+
     return {
         "status": "success",
         "message": f"Activated project '{project['name']}'",
@@ -103,16 +197,18 @@ async def activate_project(project_id: str):
     }
 
 @router.post("/{project_id}/test")
-async def test_project_connection(project_id: str):
-    project = ProjectRepository.get_project_by_id(project_id)
+async def test_project_connection(project_id: str, user_email: str = None, user_name: str = None):
+    from app.repositories.registry.paths import get_user_slug
+    user_slug = get_user_slug(user_email=user_email, user_name=user_name)
+    
+    project = ProjectRepository.get_project_by_id(project_id, user_slug=user_slug)
     if not project or not project.get("connection"):
         raise HTTPException(status_code=404, detail="Project or connection not found")
 
     conn = project["connection"]
     db_type = conn.get("db_type", "postgres")
-    schema_name = conn.get("db_name", "public")
-
     database_name = conn.get("database", "postgres")
+    schema_name = conn.get("db_name", database_name)
 
     test_conn = {
         "db_type": db_type,
@@ -123,6 +219,9 @@ async def test_project_connection(project_id: str):
         "user": conn.get("user", ""),
         "password": conn.get("password", ""),
         "sqlite_path": conn.get("sqlite_path", ""),
+        "bq_credentials_path": conn.get("bq_credentials_path", ""),
+        "sf_warehouse": conn.get("sf_warehouse", ""),
+        "sf_role": conn.get("sf_role", ""),
     }
 
     try:
@@ -133,6 +232,7 @@ async def test_project_connection(project_id: str):
         elif _type == "sqlite":
             db_path = conn.get("sqlite_path", "")
             query = "SELECT name FROM sqlite_master WHERE type='table';"
+            # Use direct SQLite execution without needing active project
             result = DBRepository._execute_sqlite(query, db_path)
         elif _type == "bigquery":
             # Add fields for BQ test
@@ -162,3 +262,20 @@ async def test_project_connection(project_id: str):
 
     except Exception as e:
         return {"status": "error", "connected": False, "message": str(e), "tables": []}
+
+
+
+@router.post("/deactivate")
+async def deactivate_project():
+    # Clear active project from settings
+    settings.reset()
+
+    # Remove from environment if set
+    import os
+    os.environ.pop("ACTIVE_PROJECT_ID", None)
+
+    return {
+        "status": "success",
+        "message": "Project deactivated successfully",
+        "active_project_id": None
+    }

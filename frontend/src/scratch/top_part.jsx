@@ -11,9 +11,8 @@ import ResultDisplay from './components/ResultDisplay';
 import DatasetView from './components/DatasetView';
 import DatabaseView from './components/DatabaseView';
 import ProjectsScreen from './components/ProjectsScreen';
+import { API_BASE_URL } from './config';
 import './App.css';
-
-const API_BASE_URL = 'http://localhost:8001';
 
 function App() {
   const [loading, setLoading] = useState(false);

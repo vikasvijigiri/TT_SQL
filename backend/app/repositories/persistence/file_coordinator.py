@@ -11,15 +11,16 @@ class FileCoordinator:
     Coordinates file-based communication between agents.
     Uses centralized paths from paths.py module.
     """
-    def __init__(self, results_dir: Optional[Union[str, Path]] = None, logs_dir: Optional[Union[str, Path]] = None):
+    def __init__(self, results_dir: Optional[Union[str, Path]] = None, logs_dir: Optional[Union[str, Path]] = None, user_slug: Optional[str] = None):
         self.results_dir = Path(results_dir) if results_dir else None
         self.logs_dir = Path(logs_dir) if logs_dir else None
+        self.user_slug = user_slug
 
     def get_sql_path(self, instance_id: str, model_name: str = "default_model") -> str:
-        return str(InstancePaths.sql(instance_id, model_name, base_dir=self.results_dir))
+        return str(InstancePaths.sql(instance_id, model_name, base_dir=self.results_dir, user_slug=self.user_slug))
 
     def get_log_path(self, instance_id: str, model_name: str = "default_model") -> str:
-        return str(InstancePaths.log(instance_id, model_name, base_dir=self.logs_dir))
+        return str(InstancePaths.log(instance_id, model_name, base_dir=self.logs_dir, user_slug=self.user_slug))
 
 
 
@@ -40,7 +41,7 @@ class FileCoordinator:
 
     def write_csv(self, instance_id: str, rows: List[List[Any]], columns: List[str], model_name: str = "default_model"):
         import csv
-        path = str(InstancePaths.csv(instance_id, model_name, base_dir=self.results_dir))
+        path = str(InstancePaths.csv(instance_id, model_name, base_dir=self.results_dir, user_slug=self.user_slug))
         try:
             with open(path, "w", encoding="utf-8", newline="") as f:
                 writer = csv.writer(f)

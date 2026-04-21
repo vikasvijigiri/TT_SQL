@@ -3,6 +3,7 @@ import yaml
 import functools
 from typing import List, Dict, Union, Any
 from app.repositories.registry.paths import PROMPTS_DIR
+from app.repositories.config import settings
 
 
 @functools.lru_cache(maxsize=32)
@@ -34,6 +35,12 @@ class PromptLoader:
         if not os.path.exists(file_path):
             raise FileNotFoundError(f"Prompt file not found: {file_path}")
         
+        # Inject global variables from settings if not overridden
+        if "product_name" not in kwargs:
+            kwargs["product_name"] = settings.PRODUCT_NAME
+        if "product_role" not in kwargs:
+            kwargs["product_role"] = settings.PRODUCT_ROLE
+
         # Process kwargs to load file references
         processed_kwargs = {}
         for key, value in kwargs.items():

@@ -7,7 +7,6 @@ from typing import Generator
 import requests
 
 from app.repositories.config import settings
-from app.repositories.registry.paths import METADATA_DIR
 from app.services.metadata.extraction_service import ExtractionService
 from app.services.metadata.enrichment_service import EnrichmentService
 from app.services.metadata.ingestion_service import IngestService
@@ -24,11 +23,11 @@ class PrepService:
         self.enrichment_service = enrichment_service or EnrichmentService()
         self.ingestion_service = ingestion_service or IngestService()
 
-    def run_pipeline(self, force: bool = False) -> Generator[str, None, None]:
+    def run_pipeline(self, force: bool = False, user_slug: str = None) -> Generator[str, None, None]:
         """
         Runs the prep pipeline and yields log messages.
         """
-        thread = threading.Thread(target=self._execute_pipeline, args=(force,))
+        thread = threading.Thread(target=self._execute_pipeline, args=(force, user_slug))
         thread.start()
 
         while True:
@@ -40,13 +39,46 @@ class PrepService:
     def _log(self, message: str, level: str = "INFO"):
         self.log_queue.put({"message": message, "level": level})
 
-    def _execute_pipeline(self, force: bool):
+    def _execute_pipeline(self, force: bool, user_slug: str = None):
         try:
-            schema_name = settings.SCHEMA or "public"
-            collection_name = settings.COLLECTION_NAME or schema_name
-            metadata_path = METADATA_DIR / f"{schema_name}.json"
+            from app.repositories.registry.paths import get_metadata_dir
+            from app.repositories.connectors.sql_repo import DBRepository
+            from app.repositories.registry.project_repo import ProjectRepository
+            import re
+            
+            # Resolve current project and database context
+            active = DBRepository._get_active_connection(user_slug=user_slug)
+            
+            # FIX: Validate that an active project is selected
+            if not active or not active.get("db_type"):
+                self._log("ERROR: No active project selected. Please select a database project first.", "ERROR")
+                self.log_queue.put(None)  # Signal end of stream
+                return
+            
+            schema_name = active.get("schema") or "public"
+            
+            # Use standardized collection name resolution
+            collection_name = DBRepository.get_collection_name(active, schema_name)
+            
+            # CRITICAL FIX: Derive project_slug from active project to ensure consistent metadata paths
+            active_project_id = None
+            from app.repositories.registry.user_repo import UserRepository
+            user_state = UserRepository.get_state(user_slug)
+            active_project_id = user_state.get("activeProjectId")
+            
+            project_slug = "default_project"
+            if active_project_id:
+                project = ProjectRepository.get_project_by_id(active_project_id, user_slug=user_slug)
+                if project and project.get("name"):
+                    project_slug = re.sub(r'[^a-zA-Z0-9]', '_', project["name"]).lower().strip('_')
+            
+            # Resolve metadata directory using correct project context
+            # Path: results/{user}/{project}/metadata_extracts/{collection}.json
+            metadata_registry = get_metadata_dir(user_slug, project_slug)
+            metadata_path = metadata_registry / f"{collection_name}.json"
 
             self._log("Starting", "START")
+            print(f"DEBUG [PrepService]: Using collection='{collection_name}', schema='{schema_name}', path={metadata_path}")
 
             # --- Step 1: Extraction & Enrichment ---
             metadata = None
@@ -56,23 +88,26 @@ class PrepService:
                     metadata = json.load(f)
             else:
                 self._log("Extracting")
-                metadata = self.extraction_service.extract_metadata(schema_name)
+                metadata = self.extraction_service.extract_metadata(schema_name, user_slug=user_slug)
                 
                 self._log("Enriching")
                 metadata = self.enrichment_service.enrich_metadata(metadata)
                 
-                # Save metadata
-                METADATA_DIR.mkdir(parents=True, exist_ok=True)
+                # Save metadata to user-scoped registry
+                self._log("Saving metadata")
+                metadata_registry.mkdir(parents=True, exist_ok=True)
                 with open(metadata_path, "w", encoding="utf-8") as f:
                     json.dump(metadata, f, indent=4)
-                self._log(f"Metadata saved to {metadata_path}")
+                self._log(f"Metadata saved successfully")
+                print(f"DEBUG [PrepService]: Metadata saved to {metadata_path}")
 
             # --- Step 2: Ingestion ---
             collection_exists = False
+            q_url = (active.get("qdrant_url") or settings.QDRANT_URL).rstrip("/")
+            q_api = active.get("qdrant_api_key") or settings.QDRANT_API_KEY
+            
             if not force:
                 try:
-                    q_url = settings.QDRANT_URL.rstrip("/")
-                    q_api = settings.QDRANT_API_KEY
                     resp = requests.get(f"{q_url}/collections/{collection_name}", headers={"api-key": q_api}, timeout=5)
                     if resp.status_code == 200:
                         collection_exists = True
@@ -83,7 +118,11 @@ class PrepService:
                 self._log("Ready")
             else:
                 self._log("Ingesting")
-                self.ingestion_service.ingest_to_vector_store(metadata, collection_name)
+                try:
+                    self.ingestion_service.ingest_to_vector_store(metadata, collection_name, qdrant_url=q_url, qdrant_api_key=q_api)
+                except Exception as e:
+                    self._log(f"Ingestion Failed: {e}", "FAILURE")
+                    return
 
             self._log("Complete", "SUCCESS")
         except Exception as e:

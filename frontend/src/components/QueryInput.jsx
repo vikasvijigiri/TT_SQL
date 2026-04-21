@@ -1,8 +1,8 @@
 import React, { useState } from 'react';
-import { Send, Search } from 'lucide-react';
+import { Send, Search, Square } from 'lucide-react';
 import './QueryInput.css';
 
-const QueryInput = ({ onSend, loading }) => {
+const QueryInput = ({ onSend, onStop, loading }) => {
   const [query, setQuery] = useState('');
   const inputRef = React.useRef(null);
 
@@ -15,7 +15,12 @@ const QueryInput = ({ onSend, loading }) => {
 
   const handleSubmit = (e) => {
     e.preventDefault();
-    if (query.trim() && !loading) {
+    if (loading) {
+      onStop?.();
+      return;
+    }
+    
+    if (query.trim()) {
       onSend(query);
       setQuery('');
     }
@@ -36,8 +41,17 @@ const QueryInput = ({ onSend, loading }) => {
           className="main-input"
           disabled={loading}
         />
-        <button type="submit" className={`send-btn ${loading ? 'loading' : ''}`} disabled={loading}>
-          {loading ? <div className="spinner" /> : <Send size={18} />}
+        <button 
+          type="submit" 
+          className={`send-btn ${loading ? 'stop-btn' : ''}`}
+        >
+          {loading ? (
+            <div className="stop-icon-wrapper">
+              <Square size={16} fill="currentColor" strokeWidth={0} />
+            </div>
+          ) : (
+            <Send size={18} />
+          )}
         </button>
       </form>
     </div>
