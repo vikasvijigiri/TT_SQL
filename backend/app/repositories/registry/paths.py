@@ -1,6 +1,12 @@
 """
 Centralized Path Configuration
-Defines all file and directory paths used throughout the application
+Defines all file and directory paths used throughout the application.
+
+DATA PERSISTENCE POLICY:
+Projects and their associated analytical results are saved FOREVER in the 
+repositories/data/ directory. No automated cleanup or expiration logic 
+is permitted. Data removal must only occur via explicit user action 
+(e.g., through the "Delete Project" or "Wipe Results" UI actions).
 """
 from pathlib import Path
 import os

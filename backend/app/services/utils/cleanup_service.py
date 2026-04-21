@@ -6,7 +6,11 @@ from typing import List, Dict, Any
 
 class CleanupService:
     """
-    Service to manage data retention and selective purging of analytical results.
+    Service to manage selective purging of analytical results as requested by users.
+    
+    IMPORTANT: This service MUST ONLY be used for manual, user-initiated deletions.
+    Automatic or periodic cleanup is strictly prohibited to ensure project 
+    persistence as per the "Forever Saved" policy.
     """
     
     @staticmethod

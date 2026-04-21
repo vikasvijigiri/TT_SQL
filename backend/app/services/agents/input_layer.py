@@ -132,7 +132,55 @@ class ContextEnrichmentAgent(BaseAgent):
         self.log(state, "Step: Identifying Relevant Schema (Advanced RAG Enrichment)")
         
         try:
-            # Invoke the structured RAG pipeline
+            # 1. Check if RAG is disabled - If so, perform Full Schema Pass-through
+            if not state.use_rag:
+                self.log(state, "RAG is disabled. Initiating Full Schema Pass-through...")
+                
+                # Resolve metadata path
+                from app.repositories.registry.paths import get_metadata_dir
+                from app.repositories.connectors.sql_repo import DBRepository
+                active_conn = DBRepository._get_active_connection(user_slug=self.user_slug)
+                collection_name = DBRepository.get_collection_name(active_conn, state.db_name or "metadata")
+                metadata_path = get_metadata_dir(self.user_slug) / f"{collection_name}.json"
+                
+                if not metadata_path.exists():
+                    self.log(state, f"Metadata not found at {metadata_path}. Please run 'Inject Knowledge' first.", level="WARNING")
+                    state.schema_info = {}
+                    return state
+
+                from app.services.utils.schema_registry import SchemaRegistry
+                metadata = SchemaRegistry.get_metadata(str(metadata_path))
+                
+                # Convert metadata dict to table metadata list for downstream agents
+                full_schema = {}
+                all_rag_cols = []
+                for tname, tmeta in metadata.items():
+                    table_cols = []
+                    for cm in tmeta.get("columns", []):
+                        col_obj = {
+                            "table_name": tname,
+                            "column_name": cm.get("column_name"),
+                            "type": cm.get("type", "unknown"),
+                            "description": cm.get("description", ""),
+                            "sample_values": cm.get("sample_values", []),
+                            "pk": cm.get("pk", False)
+                        }
+                        table_cols.append(col_obj)
+                        all_rag_cols.append(col_obj)
+                    full_schema[tname] = {"columns": table_cols, "foreign_keys": tmeta.get("foreign_keys", [])}
+                
+                state.schema_info = full_schema
+                state.rag_columns = all_rag_cols
+                state.rag_pool = all_rag_cols
+                state.relevant_tables = list(full_schema.keys())
+                db_type = (state.connection_details or {}).get("db_type", "postgres")
+                state.formatted_rag_pool = format_rag_columns(state.rag_pool, db_type=db_type)
+                state.context_reasoning = "RAG disabled: Entire database schema loaded into context."
+                
+                self.log(state, f"Full schema loaded: {len(full_schema)} tables, {len(all_rag_cols)} columns.")
+                return state
+
+            # 2. Invoke the structured RAG pipeline (Standard Path)
             import inspect
             actual_kwargs = {
                 "collection_name": state.db_name,

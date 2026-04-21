@@ -4,6 +4,7 @@ import shutil
 from app.repositories.registry.paths import INPUT_QUERIES_DIR, PROJECT_ROOT
 from app.repositories.connectors.sql_repo import DBRepository
 from app.repositories.config import settings
+from app.services.utils.batch_runner import BatchRunner
 
 router = APIRouter(prefix="/api/data", tags=["Data"])
 
@@ -316,3 +317,24 @@ async def cleanup_session(period: str = "today", user_email: str = None, user_na
     user_slug = get_user_slug(user_email=user_email, user_name=user_name)
     success = ProjectRepository.cleanup_period_results(period, user_slug=user_slug)
     return {"status": "success" if success else "failed"}
+
+@router.post("/batch/run")
+async def run_batch_dataset(file: UploadFile = File(...), user_email: str = None, user_name: str = None):
+    """
+    Auto-provision projects and run questions from a JSONL file.
+    Streams logs via SSE.
+    """
+    # 1. Save temp file
+    os.makedirs(INPUT_QUERIES_DIR, exist_ok=True)
+    temp_path = INPUT_QUERIES_DIR / f"temp_batch_{file.filename}"
+    with open(temp_path, "wb") as buffer:
+        shutil.copyfileobj(file.file, buffer)
+    
+    # 2. Trigger BatchRunner
+    from fastapi.responses import StreamingResponse
+    runner = BatchRunner()
+    
+    return StreamingResponse(
+        runner.run_batch(str(temp_path), user_email=user_email, user_name=user_name),
+        media_type="text/event-stream"
+    )

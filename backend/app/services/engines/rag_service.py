@@ -132,29 +132,74 @@ def query_qdrant(query_text, collection_name=None, instance_id=None, results_dir
     model = get_model()
     query_vector = model.encode(query_text).tolist()
 
-    logger.info(f"🔍 Executing Single-Pass High-Precision Scan (Limit: {window_size})")
+    logger.info(f"🔍 Multi-Stage Retrieval: Stage 1 (Table Discovery)")
     
+    top_tables = []
     try:
-        dense_payload = {
+        # 1. Discover Top Tables
+        table_payload = {
             "vector": {"name": "text_embedding", "vector": query_vector},
-            "limit": window_size,
+            "limit": 5,
+            "with_payload": True,
+            "filter": {"must": [{"key": "chunk_type", "match": {"value": "table"}}]}
+        }
+        t_res = requests.post(f"{qdrant_url.rstrip('/')}/collections/{collection_name}/points/search", 
+                             headers={"api-key": qdrant_api_key, "Content-Type": "application/json"},
+                             json=table_payload, timeout=10).json()
+        top_tables = [r["payload"]["table_name"] for r in t_res.get("result", [])]
+        logger.info(f"Top 5 Candidate Tables: {top_tables}")
+    except Exception as e:
+        logger.warning(f"Table Discovery failed, falling back: {e}")
+
+    logger.info(f"🔍 Multi-Stage Retrieval: Stage 2 (Column Scanning)")
+    
+    all_candidates = []
+    try:
+        # 2. Scan Columns
+        column_payload = {
+            "vector": {"name": "text_embedding", "vector": query_vector},
+            "limit": 30,
             "with_payload": True,
             "filter": {"must": [{"key": "chunk_type", "match": {"value": "column"}}]}
         }
-        res = requests.post(f"{qdrant_url.rstrip('/')}/collections/{collection_name}/points/search", 
-                            headers={"api-key": qdrant_api_key, "Content-Type": "application/json"},
-                            json=dense_payload, timeout=15).json()
+        c_res = requests.post(f"{qdrant_url.rstrip('/')}/collections/{collection_name}/points/search", 
+                             headers={"api-key": qdrant_api_key, "Content-Type": "application/json"},
+                             json=column_payload, timeout=10).json()
         
-        all_candidates = []
-        for r in res.get("result", []):
+        column_candidates = []
+        for r in c_res.get("result", []):
             p = r["payload"]
-            all_candidates.append({
+            column_candidates.append({
                 "table_name": p["table_name"],
                 "column_name": p["column_name"],
                 "score": r["score"]
             })
         
-        logger.info(f"Collected {len(all_candidates)} schema candidates.")
+        # 3. Rerank and Post-Process
+        def rerank(candidates, table_anchors, query_anchors):
+            scored = []
+            for c in candidates:
+                s = c["score"]
+                t = c["table_name"].lower()
+                col = c["column_name"].lower()
+                
+                # Table context boost
+                if t in [ta.lower() for ta in table_anchors]:
+                    s += 0.2
+                
+                # Anchor keyword boost
+                for qa in query_anchors:
+                    qa_low = qa.lower()
+                    if qa_low in col or qa_low in t:
+                        s += 0.3
+                        break
+                c["rerank_score"] = s
+                scored.append(c)
+            scored.sort(key=lambda x: x["rerank_score"], reverse=True)
+            return scored[:15] # Return top 15 high-confidence hits
+
+        all_candidates = rerank(column_candidates, top_tables, anchors)
+        logger.info(f"Refined {len(all_candidates)} schema candidates after reranking.")
 
         # Single-pass sufficiency check
         check = _check_sufficiency(query_text, anchors, all_candidates, llm)
@@ -165,7 +210,7 @@ def query_qdrant(query_text, collection_name=None, instance_id=None, results_dir
             logger.info("⚠️ Context is partially sufficient. Proceeding with best-available candidates.")
 
     except Exception as e:
-        logger.error(f"Single-Pass Scan Failed: {e}")
+        logger.error(f"RAG multi-stage retrieval failed: {e}")
         is_sufficient = False
 
     def partition_to_sets(cols):
@@ -201,7 +246,7 @@ def query_qdrant(query_text, collection_name=None, instance_id=None, results_dir
         "final_sets": top_sets,
         "metadata_path": str(get_metadata_dir(user_slug) / f"{collection_name}.json"),
         "count": len(all_candidates),
-        "iterations": i + 1,
+        "iterations": 1,
         "sufficient": is_sufficient
     }
 
