@@ -52,7 +52,7 @@ class CriticAgent(BaseAgent):
         except Exception:
             dialect = "SQLite"; dialect_instructions = "Validate against standard SQL syntax."
 
-        potential_pool = format_rag_columns(state.rag_pool[:50]) if state.rag_pool else "No pool available."
+        potential_pool = format_rag_columns(state.rag_pool) if state.rag_pool else "No pool available."
 
         messages = self.prompt_loader.load_prompt("sql_critic", user_query=state.user_query, action_plan=action_plan, sql=sql_to_criticize, schema_path=schema_context, potential_pool=potential_pool, previous_feedback=getattr(state, 'critic_feedback', 'None'), dialect=dialect, dialect_instructions=dialect_instructions, execution_results=execution_context)
         
