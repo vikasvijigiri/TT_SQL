@@ -13,6 +13,14 @@ def _load_yaml_cached(file_path: str) -> dict:
         return yaml.safe_load(f)
 
 
+@functools.lru_cache(maxsize=32)
+def _load_json_cached(file_path: str) -> dict:
+    """Cached JSON file loader for schema-in-prompt injections."""
+    import json
+    with open(file_path, 'r', encoding='utf-8') as f:
+        return json.load(f)
+
+
 class PromptLoader:
     """
     Loads prompt templates from YAML files in the prompts directory.
@@ -50,7 +58,7 @@ class PromptLoader:
             else:
                 processed_kwargs[key] = value
             
-        # Use LRU-cached YAML load â€” no repeated disk reads
+        # Use LRU-cached YAML load — no repeated disk reads
         full_data = _load_yaml_cached(file_path)
             
         # Select data based on sub_key
@@ -87,19 +95,16 @@ class PromptLoader:
         return messages
     
     def _load_json_file(self, file_path: str) -> str:
-        """Load a JSON file and return it as a formatted string"""
-        import json
+        """Load a JSON file and return it as a formatted string using LRU caching."""
         from app.services.utils.logger import Logger
-        
-        Logger.log(f"Attempting to load JSON file from: {file_path}")
         
         if not os.path.exists(file_path):
             Logger.log(f"WARNING: JSON file not found: {file_path}", level="WARNING")
             return f"[File not found: {file_path}]"
         
         try:
-            with open(file_path, 'r', encoding='utf-8') as f:
-                data = json.load(f)
+            # Use cached JSON load
+            data = _load_json_cached(file_path)
             
             # Format as readable schema
             if isinstance(data, dict):

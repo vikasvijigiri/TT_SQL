@@ -168,14 +168,8 @@ class ContextEnrichmentAgent(BaseAgent):
                 collection_name = DBRepository.get_collection_name(active_conn, state.db_name or "metadata")
                 metadata_path = get_metadata_dir(self.user_slug) / f"{collection_name}.json"
             
-            if not os.path.exists(metadata_path):
-                err_msg = f"RAG Schema Metadata Missing: Could not find {metadata_path.name}. Please re-run the Knowledge Injection pipeline."
-                self.log(state, err_msg, level="ERROR")
-                state.execution_result = {"error": err_msg}
-                return state
-
-            with open(metadata_path, 'r', encoding='utf-8') as f:
-                metadata = json.load(f).get("tables", {})
+            from app.services.utils.schema_registry import SchemaRegistry
+            metadata = SchemaRegistry.get_metadata(str(metadata_path))
 
             # Hydrate the column metadata for the chosen set
             state.rag_columns = self.hydrate_columns(primary_set, metadata)

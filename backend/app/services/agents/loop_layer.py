@@ -51,7 +51,7 @@ class RefinementLoopAgent(BaseAgent):
 
         self.critic = CriticAgent(llm_service, results_dir=results_dir, logs_dir=logs_dir, metadata_dir=metadata_dir, user_slug=user_slug)
         self.file_coordinator = FileCoordinator(results_dir=results_dir, logs_dir=logs_dir, user_slug=user_slug)
-        self.max_retries = 3
+        self.max_retries = 1
 
     def run(self, state: AgentState, on_token: callable = None, on_intermediate: callable = None) -> AgentState:
         """
