@@ -17,9 +17,9 @@ class SQLiteExecutorAgent(BaseAgent):
     SQLiteExecutorAgent executes SQL queries against a local SQLite database.
     It handles result caching, error reporting, and background CSV persistence.
     """
-    def __init__(self, db_path: Optional[str] = None, results_dir: str = None, logs_dir: str = None, metadata_dir: str = None):
-        super().__init__(name="SQLiteExecutor", results_dir=results_dir, logs_dir=logs_dir, metadata_dir=metadata_dir)
-        self.file_coordinator = FileCoordinator(results_dir=results_dir, logs_dir=logs_dir)
+    def __init__(self, db_path: Optional[str] = None, results_dir: str = None, logs_dir: str = None, metadata_dir: str = None, user_slug: str = None):
+        super().__init__(name="SQLiteExecutor", results_dir=results_dir, logs_dir=logs_dir, metadata_dir=metadata_dir, user_slug=user_slug)
+        self.file_coordinator = FileCoordinator(results_dir=results_dir, logs_dir=logs_dir, user_slug=user_slug)
         self.db_path = db_path
         
     def get_table_schema(self, table_name: str) -> Dict[str, Any]:
@@ -145,11 +145,11 @@ class PostgresExecutorAgent(BaseAgent):
                     pass
             cls._SHARED_CONN = None
 
-    def __init__(self, results_dir: str = None, logs_dir: str = None, metadata_dir: str = None):
-        super().__init__(name="PostgresExecutor", results_dir=results_dir, logs_dir=logs_dir, metadata_dir=metadata_dir)
-        self.file_coordinator = FileCoordinator(results_dir=results_dir, logs_dir=logs_dir)
+    def __init__(self, results_dir: str = None, logs_dir: str = None, metadata_dir: str = None, user_slug: str = None):
+        super().__init__(name="PostgresExecutor", results_dir=results_dir, logs_dir=logs_dir, metadata_dir=metadata_dir, user_slug=user_slug)
+        self.file_coordinator = FileCoordinator(results_dir=results_dir, logs_dir=logs_dir, user_slug=user_slug)
 
-    def get_table_schema(self, table_name: str, schema_name: str = "public") -> Dict[str, Any]:
+    def get_table_schema(self, table_name: str, schema_name: str = "public", active_conn: dict = None) -> Dict[str, Any]:
         """
         Retrieves real-time schema metadata for an RDS table.
         
@@ -162,13 +162,15 @@ class PostgresExecutorAgent(BaseAgent):
         """
         schema = schema_name.strip().replace('"', '')
         conn = None
+        active = active_conn or {}
+        if not active: return {}
         try:
             conn = psycopg2.connect(
-                host=settings.RDS_HOST,
-                database=settings.RDS_DATABASE,
-                user=settings.RDS_USER,
-                password=settings.RDS_PASSWORD,
-                port=settings.RDS_PORT,
+                host=active.get("host"),
+                database=active.get("database"),
+                user=active.get("user"),
+                password=active.get("password"),
+                port=active.get("port"),
                 connect_timeout=5
             )
             cursor = conn.cursor()
@@ -207,13 +209,22 @@ class PostgresExecutorAgent(BaseAgent):
         result = ExecutionResult()
         
         try:
-            with PostgresExecutorAgent._CONN_LOCK:
-                if PostgresExecutorAgent._SHARED_CONN and not PostgresExecutorAgent._SHARED_CONN.closed:
-                    conn = PostgresExecutorAgent._SHARED_CONN
-                else:
-                    conn = psycopg2.connect(host=settings.RDS_HOST, database=settings.RDS_DATABASE, user=settings.RDS_USER, password=settings.RDS_PASSWORD, port=settings.RDS_PORT, connect_timeout=10)
-                    conn.autocommit = True
-                    PostgresExecutorAgent._SHARED_CONN = conn
+            if PostgresExecutorAgent._SHARED_CONN and not PostgresExecutorAgent._SHARED_CONN.closed:
+                conn = PostgresExecutorAgent._SHARED_CONN
+            else:
+                active = getattr(state, "connection_details", {})
+                if not active:
+                    raise ValueError("No database connection details provided for this project.")
+                conn = psycopg2.connect(
+                    host=active.get("host"),
+                    database=active.get("database"),
+                    user=active.get("user"),
+                    password=active.get("password"),
+                    port=active.get("port"),
+                    connect_timeout=10
+                )
+                conn.autocommit = True
+                PostgresExecutorAgent._SHARED_CONN = conn
             
             cursor = conn.cursor()
             if schema and schema.lower() != "public":
@@ -334,17 +345,19 @@ class BigQueryExecutorAgent(BaseAgent):
     """
     Executes SQL queries against Google Cloud BigQuery.
     """
-    def __init__(self, results_dir: str = None, logs_dir: str = None, metadata_dir: str = None):
-        super().__init__(name="BigQueryExecutor", results_dir=results_dir, logs_dir=logs_dir, metadata_dir=metadata_dir)
-        self.file_coordinator = FileCoordinator(results_dir=results_dir, logs_dir=logs_dir)
+    def __init__(self, results_dir: str = None, logs_dir: str = None, metadata_dir: str = None, user_slug: str = None):
+        super().__init__(name="BigQueryExecutor", results_dir=results_dir, logs_dir=logs_dir, metadata_dir=metadata_dir, user_slug=user_slug)
+        self.file_coordinator = FileCoordinator(results_dir=results_dir, logs_dir=logs_dir, user_slug=user_slug)
 
-    def get_table_schema(self, table_name: str, dataset_name: str = None) -> Dict[str, Any]:
+    def get_table_schema(self, table_name: str, dataset_name: str = None, active_conn: dict = None) -> Dict[str, Any]:
         from google.cloud import bigquery
         from google.oauth2 import service_account
         
-        creds_path = getattr(settings, "BQ_CREDENTIALS_PATH", "")
-        project_id = settings.RDS_DATABASE # reusing database for project_id
-        dataset_id = dataset_name or settings.SCHEMA
+        active = active_conn or {}
+        if not active: return {}
+        creds_path = active.get("bq_credentials_path")
+        project_id = active.get("database")
+        dataset_id = dataset_name or active.get("schema")
         
         try:
             if not os.path.exists(creds_path): return {}
@@ -370,12 +383,13 @@ class BigQueryExecutorAgent(BaseAgent):
         if not state.chosen_query: return state
         
         start_t = time.time()
-        active_conn = {
-            "database": settings.RDS_DATABASE,
-            "schema": settings.SCHEMA,
-            "bq_credentials_path": getattr(settings, "BQ_CREDENTIALS_PATH", "")
+        active_conn = getattr(state, "connection_details", {})
+        active_params = {
+            "database": active_conn.get("database"),
+            "schema": active_conn.get("schema"),
+            "bq_credentials_path": active_conn.get("bq_credentials_path")
         }
-        res = DBRepository._execute_bigquery(state.chosen_query, active_conn)
+        res = DBRepository._execute_bigquery(state.chosen_query, active_params)
         res.execution_time_ms = (time.time() - start_t) * 1000
         state.execution_result = res
         
@@ -400,24 +414,26 @@ class SnowflakeExecutorAgent(BaseAgent):
     """
     Executes SQL queries against Snowflake.
     """
-    def __init__(self, results_dir: str = None, logs_dir: str = None, metadata_dir: str = None):
-        super().__init__(name="SnowflakeExecutor", results_dir=results_dir, logs_dir=logs_dir, metadata_dir=metadata_dir)
-        self.file_coordinator = FileCoordinator(results_dir=results_dir, logs_dir=logs_dir)
+    def __init__(self, results_dir: str = None, logs_dir: str = None, metadata_dir: str = None, user_slug: str = None):
+        super().__init__(name="SnowflakeExecutor", results_dir=results_dir, logs_dir=logs_dir, metadata_dir=metadata_dir, user_slug=user_slug)
+        self.file_coordinator = FileCoordinator(results_dir=results_dir, logs_dir=logs_dir, user_slug=user_slug)
 
-    def get_table_schema(self, table_name: str, schema_name: str = None) -> Dict[str, Any]:
-        active_conn = {
-            "user": settings.RDS_USER,
-            "password": settings.RDS_PASSWORD,
-            "host": settings.RDS_HOST,
-            "database": settings.RDS_DATABASE,
-            "schema": schema_name or settings.SCHEMA,
-            "sf_warehouse": getattr(settings, "SF_WAREHOUSE", ""),
-            "sf_role": getattr(settings, "SF_ROLE", "")
+    def get_table_schema(self, table_name: str, schema_name: str = None, active_conn: dict = None) -> Dict[str, Any]:
+        active = active_conn or {}
+        if not active: return {}
+        params = {
+            "user": active.get("user"),
+            "password": active.get("password"),
+            "host": active.get("host"),
+            "database": active.get("database"),
+            "schema": schema_name or active.get("schema"),
+            "sf_warehouse": active.get("sf_warehouse"),
+            "sf_role": active.get("sf_role")
         }
         
         try:
-            query = f"DESCRIBE TABLE {active_conn['database']}.{active_conn['schema']}.{table_name}"
-            res = DBRepository._execute_snowflake(query, active_conn)
+            query = f"DESCRIBE TABLE {params['database']}.{params['schema']}.{table_name}"
+            res = DBRepository._execute_snowflake(query, params)
             
             if res.error_message or not res.rows: return {}
             
@@ -438,16 +454,17 @@ class SnowflakeExecutorAgent(BaseAgent):
         if not state.chosen_query: return state
         
         start_t = time.time()
-        active_conn = {
-            "user": settings.RDS_USER,
-            "password": settings.RDS_PASSWORD,
-            "host": settings.RDS_HOST,
-            "database": settings.RDS_DATABASE,
-            "schema": settings.SCHEMA,
-            "sf_warehouse": getattr(settings, "SF_WAREHOUSE", ""),
-            "sf_role": getattr(settings, "SF_ROLE", "")
+        active = getattr(state, "connection_details", {})
+        params = {
+            "user": active.get("user"),
+            "password": active.get("password"),
+            "host": active.get("host"),
+            "database": active.get("database"),
+            "schema": active.get("schema"),
+            "sf_warehouse": active.get("sf_warehouse"),
+            "sf_role": active.get("sf_role")
         }
-        res = DBRepository._execute_snowflake(state.chosen_query, active_conn)
+        res = DBRepository._execute_snowflake(state.chosen_query, params)
         res.execution_time_ms = (time.time() - start_t) * 1000
         state.execution_result = res
         

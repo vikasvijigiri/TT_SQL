@@ -16,16 +16,16 @@ class MultiCandidateGeneratorAgent(BaseAgent):
     the execution plan and the enriched schema context. It utilizes the LLM to 
     generate candidate queries tailored to the target database dialect.
     """
-    def __init__(self, llm_service: LLMService, results_dir: str = None, logs_dir: str = None, metadata_dir: str = None):
-        super().__init__(name="SQLBuilder", results_dir=results_dir, logs_dir=logs_dir, metadata_dir=metadata_dir)
+    def __init__(self, llm_service: LLMService, results_dir: str = None, logs_dir: str = None, metadata_dir: str = None, user_slug: str = None):
+        super().__init__(name="SQLBuilder", results_dir=results_dir, logs_dir=logs_dir, metadata_dir=metadata_dir, user_slug=user_slug)
         self.llm = llm_service
         self.prompt_loader = PromptLoader()
-        self.file_coordinator = FileCoordinator(results_dir=results_dir, logs_dir=logs_dir)
+        self.file_coordinator = FileCoordinator(results_dir=results_dir, logs_dir=logs_dir, user_slug=user_slug)
 
     def _format_compact_schema(self, schema_info: dict) -> str:
         """Formats schema as: - Table: col1 (desc), col2 (desc)..."""
         if not schema_info:
-            return "No schema context available."
+            return ""
         
         lines = []
         for table, data in schema_info.items():
@@ -60,7 +60,7 @@ class MultiCandidateGeneratorAgent(BaseAgent):
                 previous_sql = ""
 
             # Standardize action plan visualization
-            action_plan = "No plan available."
+            action_plan = ""
             if state.step_by_step_plan:
                 action_plan = "\n".join(f"  {i+1}. {s}" for i, s in enumerate(state.step_by_step_plan))
 
@@ -85,28 +85,31 @@ class MultiCandidateGeneratorAgent(BaseAgent):
                 from app.services.utils.prompt_loader import _load_yaml_cached
                 from app.repositories.registry.paths import PROMPTS_DIR
                 dialects = _load_yaml_cached(str(PROMPTS_DIR / "dialects.yaml"))
-                dialect_config = dialects.get(dialect_key, dialects.get("sqlite", {}))
+                dialect_config = dialects.get(dialect_key, dialects.get("default", {}))
                 dialect_instructions = dialect_config.get("builder_instructions", "")
             except Exception as e:
                 Logger.log(f"Error loading dialects config: {str(e)}", level="ERROR")
-                # Fallback dialect instructions if loading fails
-                if dialect == "BigQuery":
-                    dialect_instructions = "Use GoogleSQL (Standard SQL). Backtick identifiers like `project.dataset.table`."
-                elif dialect == "Snowflake":
-                    dialect_instructions = "Use Snowflake SQL. Use native functions like DATEADD and DATE_TRUNC."
-                else:
-                    dialect_instructions = "Use standard SQL syntax."
+                # Minimal fallback if even the 'default' key fails
+                dialect_instructions = "Use standard SQL syntax compatible with the target database."
 
             # Dynamic context labeling for LLM guidance
             has_critic_feedback = bool(state.history and any(item.get("content") for item in state.history[-1:]))
-            sql_label = "Previous Valid SQL Foundation:"
+            
+            LABEL_MAP = {
+                "REFINEMENT": "PREVIOUS SQL (HAS ERRORS - YOU MUST FIX ALL ISSUES BELOW):",
+                "FOUNDATION": "Previous Valid SQL Foundation:",
+                "EMPTY": "Previous SQL (None):"
+            }
+            
             if has_critic_feedback:
-                sql_label = "PREVIOUS SQL (HAS ERRORS - YOU MUST FIX ALL ISSUES BELOW):"
-            elif not previous_sql:
-                sql_label = "Previous SQL (None):"
+                sql_label = LABEL_MAP["REFINEMENT"]
+            elif previous_sql:
+                sql_label = LABEL_MAP["FOUNDATION"]
+            else:
+                sql_label = "" # Don't show a 'None' label on the first attempt
 
             # Leverage pre-formatted RAG pool for context-heavy generation
-            potential_pool = getattr(state, 'formatted_rag_pool', None) or "No pool available."
+            potential_pool = getattr(state, 'formatted_rag_pool', None) or ""
 
             # Construct and execute LLM completion
             messages = self.prompt_loader.load_prompt(
@@ -129,41 +132,23 @@ class MultiCandidateGeneratorAgent(BaseAgent):
                         msg["content"] += f"\n\nCRITIC FEEDBACK:\n{feedback}"
                         break
 
-            # Parse candidate response
-            candidates = []
+            # Use a single high-quality SQL candidate rather than managing lists
             response = self.llm.get_json_completion(messages, state=state, agent_name=self.name)
             
-            if response:
+            if response and response.get("sql"):
+                sql_str = response.get("sql").replace("```sql", "").replace("```", "").strip()
                 corrections = response.get("corrections", [])
-                sql_str = response.get("sql")
-                approach = response.get("approach", "standard")
-                explanation = response.get("explanation", "")
                 
-                if sql_str:
-                    # Clean markdown markers
-                    sql_str = sql_str.replace("```sql", "").replace("```", "").strip()
-                    
-                    if corrections:
-                        self.log(state, f"SQL Refinement Applied: {', '.join(corrections)}")
+                if corrections:
+                    self.log(state, f"SQL Refinement Applied: {', '.join(corrections)}")
 
-                    candidates.append(CandidateQuery(
-                        sql=sql_str, 
-                        approach=approach,
-                        explanation=explanation,
-                        score=0.9
-                    ))
-
-            # Handle generation failures gracefully
-            if not candidates:
+                state.chosen_query = sql_str
+                state.candidate_queries = [CandidateQuery(sql=sql_str, approach=response.get("approach", "standard"), score=0.9)]
+            else:
                 error_details = getattr(state, 'last_raw_response', "Empty response")
                 self.log(state, f"SQL Generation Failed. Raw context: {error_details[:200]}...", level="ERROR")
                 state.chosen_query = f"ERROR: Generation Failure - {error_details[:100]}"
                 return state
-
-            # Finalize candidate selection
-            chosen = candidates[0]
-            state.candidate_queries = candidates
-            state.chosen_query = chosen.sql
             
             # Non-blocking persistent storage
             def _bg_write_sql():

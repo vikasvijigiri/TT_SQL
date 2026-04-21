@@ -10,14 +10,15 @@ class CleanupService:
     """
     
     @staticmethod
-    def get_project_dir(project_slug: str) -> Path:
+    def get_project_dir(project_slug: str, user_slug: str = None) -> Path:
         from app.repositories.registry.paths import DATA_DIR
-        return DATA_DIR / "results" / project_slug
+        user_slug = user_slug or "default_user"
+        return DATA_DIR / "results" / user_slug / project_slug
 
     @staticmethod
-    def purge_project(project_slug: str) -> Dict[str, Any]:
+    def purge_project(project_slug: str, user_slug: str = None) -> Dict[str, Any]:
         """Completely removes the results directory for a project."""
-        target_dir = CleanupService.get_project_dir(project_slug)
+        target_dir = CleanupService.get_project_dir(project_slug, user_slug)
         if not target_dir.exists():
             return {"status": "skipped", "message": "Project directory not found"}
             
@@ -28,9 +29,9 @@ class CleanupService:
             return {"status": "error", "message": str(e)}
 
     @staticmethod
-    def purge_by_time(project_slug: str, seconds_limit: int) -> Dict[str, Any]:
+    def purge_by_time(project_slug: str, seconds_limit: int, user_slug: str = None) -> Dict[str, Any]:
         """Deletes files in a project results directory modified within the last N seconds."""
-        target_dir = CleanupService.get_project_dir(project_slug)
+        target_dir = CleanupService.get_project_dir(project_slug, user_slug)
         if not target_dir.exists():
             return {"status": "skipped", "message": "Project directory not found"}
 
@@ -66,9 +67,9 @@ class CleanupService:
         }
 
     @staticmethod
-    def purge_date_range(project_slug: str, start_ts: float, end_ts: float) -> Dict[str, Any]:
+    def purge_date_range(project_slug: str, start_ts: float, end_ts: float, user_slug: str = None) -> Dict[str, Any]:
         """Purge files modified between two timestamps."""
-        target_dir = CleanupService.get_project_dir(project_slug)
+        target_dir = CleanupService.get_project_dir(project_slug, user_slug)
         if not target_dir.exists():
             return {"status": "skipped", "message": "Project directory not found"}
 

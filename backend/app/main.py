@@ -10,23 +10,59 @@ import logging
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger("nQuire")
 
+# === STARTUP: VALIDATE PATH STRUCTURE ===
+# This must run FIRST before any path operations
+print("\n" + "="*70)
+print("INITIALIZATION: VALIDATING PATH STRUCTURE")
+print("="*70)
+
+try:
+    from app.repositories.registry.path_config import get_path_structure
+    path_structure = get_path_structure()
+    validation_report = path_structure.validate_and_initialize()
+    
+    if validation_report['status'] != 'ok':
+        print(f"⚠ Warning: Path validation has issues:")
+        for error in validation_report.get('errors', []):
+            print(f"  ✗ {error}")
+        for warning in validation_report.get('warnings', []):
+            print(f"  ⚠ {warning}")
+    else:
+        print("✓ Path structure validated successfully")
+        print(f"  Results DIR: {validation_report['paths'].get('results_dir')}")
+        print(f"  Data DIR: {validation_report['paths'].get('data_dir')}")
+except Exception as e:
+    print(f"⚠ Path structure validation error: {e}")
+    # Continue anyway - app can still run with defaults
+
+print("="*70 + "\n")
+
 # Import settings to trigger .env loading early and paths to ensure project structure
+# Ensure the backend directory is in sys.path
+BACKEND_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+if BACKEND_DIR not in sys.path:
+    sys.path.insert(0, BACKEND_DIR)
+
+# Ensure the backend/app directory is in sys.path
+APP_DIR = os.path.dirname(os.path.abspath(__file__))
+if APP_DIR not in sys.path:
+    sys.path.insert(0, APP_DIR)
+
 from app.repositories.config import settings
 from app.repositories.registry.paths import PROJECT_ROOT, initialize_directories
 initialize_directories()
 
-# Ensure the project root is in sys.path
-if str(PROJECT_ROOT) not in sys.path:
-    sys.path.insert(0, str(PROJECT_ROOT))
-
-from app.controllers.query_controller import router as query_router
-from app.controllers.health_controller import router as health_router
-from app.controllers.prep_controller import router as prep_router
-from app.controllers.data_controller import router as data_router
-from app.controllers.project_controller import router as project_router
-from app.controllers.discovery_controller import router as discovery_router
-from app.controllers.insight_controller import router as insight_router
-from app.services.utils.health_service import HealthService
+from controllers.query_controller import router as query_router
+from controllers.health_controller import router as health_router
+from controllers.prep_controller import router as prep_router
+from controllers.data_controller import router as data_router
+from controllers.project_controller import router as project_router
+from controllers.discovery_controller import router as discovery_router
+from controllers.insight_controller import router as insight_router
+from controllers.auth_controller import router as auth_router
+from controllers.user_controller import router as user_router
+from controllers.logs_controller import router as logs_router
+from services.utils.health_service import HealthService
 
 app = FastAPI(
     title="nQuire",
@@ -93,6 +129,9 @@ app.include_router(data_router)
 app.include_router(project_router)
 app.include_router(discovery_router)
 app.include_router(insight_router)
+app.include_router(auth_router)
+app.include_router(user_router)
+app.include_router(logs_router)
 
 if __name__ == "__main__":
     import uvicorn

@@ -6,6 +6,8 @@ from app.services.utils.logger import Logger
 class EnrichmentService:
     def __init__(self, llm_service=None):
         self.llm = llm_service or LLMService()
+        from app.services.utils.prompt_loader import PromptLoader
+        self.prompt_loader = PromptLoader()
         self.logger = Logger
 
     def enrich_metadata(self, metadata: Dict[str, Any], max_workers: int = 5) -> Dict[str, Any]:
@@ -17,17 +19,12 @@ class EnrichmentService:
                 f"- {c['column_name']} ({c['type']}). Samples: {c['sample_values']}" 
                 for c in columns
             ])
-            system_prompt = (
-                "You are a Senior Data Analyst. Provide concise (1-2 lines), business-oriented descriptions "
-                "for the following database columns. Expand abbreviations and use sample values for context."
-                "\n\nOutput ONLY a valid JSON object: {\"column_name\": \"description\"}"
-            )
-            user_prompt = f"Table: {table_name}\nColumns:\n{col_list_str}"
             try:
-                messages = [
-                    {"role": "system", "content": system_prompt},
-                    {"role": "user", "content": user_prompt}
-                ]
+                messages = self.prompt_loader.load_prompt(
+                    "metadata_enrichment", 
+                    table_name=table_name, 
+                    col_list_str=col_list_str
+                )
                 return self.llm.get_json_completion(messages)
             except Exception as e:
                 self.logger.log(f"Failed to enrich {table_name}: {e}", level="WARN")

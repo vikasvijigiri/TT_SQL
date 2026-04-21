@@ -35,7 +35,7 @@ def format_schema_to_str(schema_info: Dict[str, Any], detailed: bool = True) -> 
         if detailed:
             lines.append(f"Table: {table}")
             if not cols:
-                lines.append(" - (No columns found)")
+                lines.append("")
             for c in cols:
                 if isinstance(c, dict):
                     cname = c.get("column_name") or c.get("name") or "unknown"
@@ -55,10 +55,10 @@ def format_schema_to_str(schema_info: Dict[str, Any], detailed: bool = True) -> 
             lines.append(f"{table}({', '.join(col_names)})")
     return "\n".join(lines).strip()
 
-def format_rag_columns(rag_columns: list) -> str:
+def format_rag_columns(rag_columns: list, db_type: str = "postgres") -> str:
     """Formats the raw RAG retrieved columns list into a detailed, prompt-ready string."""
     if not rag_columns:
-        return "No RAG columns retrieved."
+        return ""
     
     tables = {}
     for col in rag_columns:
@@ -68,9 +68,7 @@ def format_rag_columns(rag_columns: list) -> str:
         tables[tname].append(col)
 
     lines = []
-    from app.repositories.config import settings
-    db_type = settings.DB_TYPE
-    is_postgres = db_type in ["postgres", "postgresql"]
+    is_postgres = db_type.lower() in ["postgres", "postgresql"]
 
     for tname, cols in tables.items():
         lines.append(f"Table: {tname}")
@@ -99,9 +97,9 @@ class ContextEnrichmentAgent(BaseAgent):
     metadata using vector search (RAG). It identifies the most pertinent tables
     and columns to provide the necessary context for SQL generation.
     """
-    def __init__(self, results_dir: str = None, logs_dir: str = None, metadata_dir: str = None):
-        super().__init__(name="TableSelector", results_dir=results_dir, logs_dir=logs_dir, metadata_dir=metadata_dir)
-        self.file_coordinator = FileCoordinator(results_dir=results_dir, logs_dir=logs_dir)
+    def __init__(self, results_dir: str = None, logs_dir: str = None, metadata_dir: str = None, user_slug: str = None):
+        super().__init__(name="TableSelector", results_dir=results_dir, logs_dir=logs_dir, metadata_dir=metadata_dir, user_slug=user_slug)
+        self.file_coordinator = FileCoordinator(results_dir=results_dir, logs_dir=logs_dir, user_slug=user_slug)
 
     def hydrate_columns(self, set_data: Dict[str, List[str]], metadata: Dict[str, Any]) -> List[Dict[str, Any]]:
         """Helper to hydrate column names into full metadata objects."""
@@ -140,8 +138,9 @@ class ContextEnrichmentAgent(BaseAgent):
                 "collection_name": state.db_name,
                 "instance_id": state.instance_id,
                 "results_dir": self.results_dir,
-                "logs_dir": self.logs_dir,
-                "metadata_dir": self.metadata_dir
+                "user_slug": self.user_slug,
+                "qdrant_url": (state.connection_details or {}).get("qdrant_url"),
+                "qdrant_api_key": (state.connection_details or {}).get("qdrant_api_key")
             }
             
             # Dynamic filtering of kwargs based on actual service signature
@@ -151,49 +150,40 @@ class ContextEnrichmentAgent(BaseAgent):
             results = query_qdrant(state.user_query, **filtered_kwargs)
             
             if not results or ("final_sets" not in results and "top_3_sets" not in results):
-                self.log(state, "RAG returned no candidates. Please verify the Qdrant collection and metadata.", level="WARNING")
+                err_msg = "RAG retrieval failed: No relevant context found in Knowledge Base. Please ensure you have run 'Inject Knowledge' for this project."
+                self.log(state, err_msg, level="WARNING")
                 state.rag_pool = []
                 state.schema_info = {}
                 return state
 
-            # Access Top 3 sets (new compact format)
-            all_sets = results.get("top_3_sets") or results.get("final_sets")
-            state.rag_multi_sets = all_sets # Store the compact version for reference
+            # Access Primary Schema Set
+            primary_set = results.get("primary_set") or results.get("Set A") or list(results.get("top_3_sets", {}).values())[0]
             
             # Load metadata for re-hydration
             metadata_path = results.get("metadata_path")
             if not metadata_path or not os.path.exists(metadata_path):
                 from app.repositories.registry.paths import get_metadata_dir
-                metadata_path = get_metadata_dir() / f"{state.db_name or 'metadata_injestion_files'}.json"
+                from app.repositories.connectors.sql_repo import DBRepository
+                active_conn = DBRepository._get_active_connection(user_slug=self.user_slug)
+                collection_name = DBRepository.get_collection_name(active_conn, state.db_name or "metadata")
+                metadata_path = get_metadata_dir(self.user_slug) / f"{collection_name}.json"
             
             if not os.path.exists(metadata_path):
-                self.log(state, f"Metadata file not found for re-hydration: {metadata_path}", level="ERROR")
+                err_msg = f"RAG Schema Metadata Missing: Could not find {metadata_path.name}. Please re-run the Knowledge Injection pipeline."
+                self.log(state, err_msg, level="ERROR")
+                state.execution_result = {"error": err_msg}
                 return state
 
             with open(metadata_path, 'r', encoding='utf-8') as f:
                 metadata = json.load(f).get("tables", {})
 
-            # Re-hydrate the primary set (Set A) for state.schema_info and state.rag_columns
-            primary_set_name = "Set A" if "Set A" in all_sets else list(all_sets.keys())[0]
-            primary_hydrated = self.hydrate_columns(all_sets[primary_set_name], metadata)
-            
-            # Deduplicate all candidates across multi-sets for rag_pool
-            seen_cols = set()
-            rag_pool = []
-            for sname, sdata in all_sets.items():
-                hydrated_set = self.hydrate_columns(sdata, metadata)
-                for col in hydrated_set:
-                    key = f"{col['table_name']}.{col['column_name']}"
-                    if key not in seen_cols:
-                        seen_cols.add(key)
-                        rag_pool.append(col)
-            
-            state.rag_pool = rag_pool
-            state.rag_columns = primary_hydrated
+            # Hydrate the column metadata for the chosen set
+            state.rag_columns = self.hydrate_columns(primary_set, metadata)
+            state.rag_pool = state.rag_columns # Simplify: pool is the primary set for now
             
             # Group metadata by table for downstream agent consumption (state.schema_info)
             rag_schema = {}
-            for col in primary_hydrated:
+            for col in state.rag_columns:
                 tname = col["table_name"]
                 if tname not in rag_schema:
                     rag_schema[tname] = {"columns": [], "foreign_keys": []}
@@ -201,7 +191,8 @@ class ContextEnrichmentAgent(BaseAgent):
 
             state.schema_info = rag_schema
             state.relevant_tables = list(rag_schema.keys())
-            state.formatted_rag_pool = format_rag_columns(state.rag_pool)
+            db_type = (state.connection_details or {}).get("db_type", "postgres")
+            state.formatted_rag_pool = format_rag_columns(state.rag_pool, db_type=db_type)
             state.query_intent = "DATA_RETRIEVAL"
             state.complexity_score = "MEDIUM"
             
@@ -221,7 +212,6 @@ class ContextEnrichmentAgent(BaseAgent):
             self.log(state, f"📍 Anchors Identified: {', '.join(anchors)}")
             self.log(state, f"🔍 Iterative Scan: Completed {iterations} windows. Sufficiency: {'✅' if sufficient else '⚠️ Partial'}")
             self.log(state, f"Schema Context Hydrated: {len(rag_schema)} tables, {col_count} columns.")
-            self.log(state, f"RAG Re-hydration Success: {len(all_sets)} sets synthesized for parallel analysis.")
 
         except Exception as e:
             import traceback

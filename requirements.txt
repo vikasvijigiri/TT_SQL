@@ -1,2 +1,0 @@
-# Backend requirements redirected to backend/requirements.txt
--r backend/requirements.txt

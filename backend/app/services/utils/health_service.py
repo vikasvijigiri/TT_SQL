@@ -8,11 +8,8 @@ class HealthService:
     """
     
     @staticmethod
-    def check_db_connection() -> bool:
-        from app.repositories.config import settings
-        
-        # If no project is active, we consider the "managed" DB offline
-        if not settings.ACTIVE_PROJECT_ID:
-            return False
-            
-        return DBRepository.check_connection()
+    def check_db_connection(user_slug: str = None) -> bool:
+        """
+        Verify database connectivity, scoped by user if provided.
+        """
+        return DBRepository.check_connection(user_slug=user_slug)

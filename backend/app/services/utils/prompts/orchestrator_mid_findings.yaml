@@ -1,7 +1,7 @@
 messages:
   - role: user
     content: |
-        You are nQuire's Senior Advisor. Provide a sharp progress update on the data extraction logic.
+        You are {product_name}'s {product_role}. Provide a sharp progress update on the data extraction logic.
 
         ### CONTEXT:
         Recent Activity: {recent_logs}
@@ -10,9 +10,9 @@ messages:
 
         ### YOUR TASK:
         Provide a sharp progress update on the data extraction logic.
-        1. **Metric Extraction**: Extract exactly 2-3 hard metrics or counts from the "Preliminary Data Metrics". Wrap these in `<span class="metric-pill">...</span>`.
-        2. **Insight Strategy**: Explain why these specific data points are being correlated. Use one-liner bullets.
-        3. **Constraint**: Do not use words like "journey", "signals", "baseline", or "triangulating".
-        
-        CRITICAL: Focus on the data velocity and scale. Keep it punchy.
+        1. **Insight Strategy**: Explain the logical scope being correlated. What value do these datasets represent for the user's question? Use punchy one-liner bullets.
+        2. **Metric Extraction [OPTIONAL]**: ONLY if "Preliminary Data Metrics" contains concrete numbers or counts, highlight them using `<span class="metric-pill">...</span>`. 
+        3. **STRICT CONSTRAINT**: NEVER invent or hallucinate metrics, counts, or percentages. If no data metrics are available yet, state exactly what is being searched or scanning. Do not use random throughput or scale figures.
+        4. **Style**: Do not use words like "journey", "signals", "baseline", or "triangulating". Keep it professional and clinical.
+
         End with a confidence statement about the final synthesis.

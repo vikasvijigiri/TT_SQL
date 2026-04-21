@@ -16,7 +16,7 @@ const AgentLogs = ({ historyLog, loadingHistory }) => {
     return (
         <div className="agent-logs glass-panel">
             <div className="logs-header">
-                <h3>Full Execution History</h3>
+                <h3>Engine Reasoning</h3>
             </div>
             
             <div className="logs-container" ref={scrollRef}>

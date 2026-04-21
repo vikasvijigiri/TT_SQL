@@ -51,25 +51,33 @@ async def upload_env(file: UploadFile = File(...)):
         raise HTTPException(status_code=500, detail=f"Failed to update .env: {e}")
 
 @router.get("/schema")
-async def get_schema():
+async def get_schema(user_email: str = None, user_name: str = None):
     """
     Fetch the database schema (tables, columns, foreign keys).
     """
-    db_type = settings.DB_TYPE
-    schema_name = settings.SCHEMA
+    from app.repositories.registry.paths import get_user_slug
+    user_slug = get_user_slug(user_email=user_email, user_name=user_name)
+    active = DBRepository._get_active_connection(user_slug=user_slug)
+    
+    # Validate that an active connection exists
+    if not active or not active.get("db_type"):
+        raise HTTPException(status_code=400, detail="No active database connection. Please select or create a project first.")
+    
+    db_type = active["db_type"]
+    schema_name = active["schema"]
 
     if db_type.lower() in ["postgres", "postgresql"]:
         # Get Tables
         tables_res = DBRepository.execute_query(
             f"SELECT table_name FROM information_schema.tables WHERE table_schema = '{schema_name}';",
-            db_type=db_type, db_name=schema_name
+            db_type=db_type, db_name=schema_name, user_slug=user_slug
         )
         if tables_res.error_message: raise HTTPException(status_code=500, detail=tables_res.error_message)
         tables = [row[0] for row in tables_res.rows]
 
         # Get Columns
         cols_query = f"SELECT table_name, column_name, data_type FROM information_schema.columns WHERE table_schema = '{schema_name}';"
-        cols_res = DBRepository.execute_query(cols_query, db_type=db_type, db_name=schema_name)
+        cols_res = DBRepository.execute_query(cols_query, db_type=db_type, db_name=schema_name, user_slug=user_slug)
         if cols_res.error_message: raise HTTPException(status_code=500, detail=cols_res.error_message)
         
         columns = {}
@@ -95,7 +103,7 @@ async def get_schema():
               AND ccu.table_schema = tc.table_schema
         WHERE tc.constraint_type = 'FOREIGN KEY' AND tc.table_schema='{schema_name}';
         """
-        fk_res = DBRepository.execute_query(fk_query, db_type=db_type, db_name=schema_name)
+        fk_res = DBRepository.execute_query(fk_query, db_type=db_type, db_name=schema_name, user_slug=user_slug)
         
         foreign_keys = []
         if not fk_res.error_message:
@@ -114,18 +122,18 @@ async def get_schema():
         }
     else:
         # SQLite implementation (fallback)
-        sqlite_path = settings.SQLITE_DB_PATH
-        tables_res = DBRepository.execute_query("SELECT name FROM sqlite_master WHERE type='table';", db_type="sqlite", db_name="", db_path=sqlite_path)
+        sqlite_path = active["sqlite_path"]
+        tables_res = DBRepository.execute_query("SELECT name FROM sqlite_master WHERE type='table';", db_type="sqlite", db_name="", db_path=sqlite_path, user_slug=user_slug)
         if tables_res.error_message: raise HTTPException(status_code=500, detail=tables_res.error_message)
         tables = [row[0] for row in tables_res.rows]
         
         columns = {}
         foreign_keys = []
         for t in tables:
-            c_res = DBRepository.execute_query(f"PRAGMA table_info({t});", db_type="sqlite", db_name="", db_path=sqlite_path)
+            c_res = DBRepository.execute_query(f"PRAGMA table_info({t});", db_type="sqlite", db_name="", db_path=sqlite_path, user_slug=user_slug)
             columns[t] = [{"name": r[1], "type": r[2]} for r in c_res.rows] if not c_res.error_message else []
             
-            fk_res = DBRepository.execute_query(f"PRAGMA foreign_key_list({t});", db_type="sqlite", db_name="", db_path=sqlite_path)
+            fk_res = DBRepository.execute_query(f"PRAGMA foreign_key_list({t});", db_type="sqlite", db_name="", db_path=sqlite_path, user_slug=user_slug)
             if not fk_res.error_message:
                 for r in fk_res.rows:
                     foreign_keys.append({
@@ -142,22 +150,30 @@ async def get_schema():
         }
 
 @router.get("/preview/{table_name}")
-async def preview_table(table_name: str):
+async def preview_table(table_name: str, user_email: str = None, user_name: str = None):
     """
     Fetch the top 50 rows of a table for previewing.
     """
-    db_type = settings.DB_TYPE
-    schema_name = settings.SCHEMA
+    from app.repositories.registry.paths import get_user_slug
+    user_slug = get_user_slug(user_email=user_email, user_name=user_name)
+    active = DBRepository._get_active_connection(user_slug=user_slug)
+    
+    # Validate that an active connection exists
+    if not active or not active.get("db_type"):
+        raise HTTPException(status_code=400, detail="No active database connection. Please select or create a project first.")
+    
+    db_type = active["db_type"]
+    schema_name = active["schema"]
     
     # Basic sanitization
     table_name = "".join(c for c in table_name if c.isalnum() or c in ['_', '-'])
     
     if db_type.lower() in ["postgres", "postgresql"]:
         query = f'SELECT * FROM "{schema_name}"."{table_name}" LIMIT 50;'
-        res = DBRepository.execute_query(query, db_type=db_type, db_name=schema_name)
+        res = DBRepository.execute_query(query, db_type=db_type, db_name=schema_name, user_slug=user_slug)
     else:
         query = f'SELECT * FROM "{table_name}" LIMIT 50;'
-        res = DBRepository.execute_query(query, db_type="sqlite", db_name="", db_path=settings.SQLITE_DB_PATH)
+        res = DBRepository.execute_query(query, db_type="sqlite", db_name="", db_path=active["sqlite_path"], user_slug=user_slug)
         
     if res.error_message:
         raise HTTPException(status_code=500, detail=res.error_message)
@@ -183,23 +199,34 @@ async def preview_table(table_name: str):
         "rows": formatted_rows
     }
 @router.get("/logs/history")
-async def get_execution_history():
+async def get_execution_history(instance_id: str = None, user_email: str = None):
     """
-    Fetch the cumulative execution log from the project-scoped log folder.
+    Fetch the execution log. If instance_id is provided, returns ONLY the log for that query.
+    Otherwise returns cumulative log.
     """
-    from app.repositories.registry.paths import get_results_base_dir
+    from app.repositories.registry.paths import get_results_base_dir, InstancePaths
     
-    # Path is now results/[project_slug]/log/execution_log.md
-    log_path = get_results_base_dir() / "log" / "execution_log.md"
+    user_slug = user_email.split('@')[0] if user_email else None
+    
+    # Priority 1: Specific Instance Log (The new "current question only" behavior)
+    if instance_id and instance_id != 'unknown':
+        log_path = InstancePaths.log(instance_id, user_slug=user_slug)
+        if not os.path.exists(log_path):
+            # Fallback to cumulative if specific not found (backward compatibility)
+            log_path = get_results_base_dir(user_slug) / "log" / "execution_log.md"
+    else:
+        # Priority 2: Cumulative log
+        log_path = get_results_base_dir(user_slug) / "log" / "execution_log.md"
     
     if not os.path.exists(log_path):
         return {"content": "No execution history found yet."}
     
     try:
-        # Read the last 500,000 characters
+        # Read the file
         file_size = os.path.getsize(log_path)
         with open(log_path, "r", encoding="utf-8") as f:
-            if file_size > 500000:
+            # If it's a huge cumulative log, truncate. If specific qXXX.md, send all.
+            if not instance_id and file_size > 500000:
                 f.seek(file_size - 500000)
                 f.readline()
                 content = "--- (Earlier logs truncated for performance) ---\n\n" + f.read()
@@ -211,16 +238,26 @@ async def get_execution_history():
         raise HTTPException(status_code=500, detail=f"Failed to read log: {e}")
 
 @router.get("/storage/workspaces")
-async def get_all_workspace_stats():
-    """Fetch storage usage stats for ALL projects in the results directory."""
-    from app.services.utils.storage_service import StorageService
-    return StorageService.get_all_storage_stats()
+async def get_storage_stats(user_email: str = None, user_name: str = None):
+    """
+    Returns workspace registry stats.
+    """
+    from app.repositories.registry.paths import get_user_slug
+    from app.repositories.registry.project_repo import ProjectRepository
+    user_slug = get_user_slug(user_email=user_email, user_name=user_name)
+    return ProjectRepository.get_storage_stats(user_slug=user_slug)
 
 @router.delete("/cleanup/workspace/{slug}")
-async def wipe_workspace_data(slug: str):
-    """Wipes all analytical results for a specific project workspace by slug."""
-    from app.services.utils.cleanup_service import CleanupService
-    return CleanupService.purge_project(slug)
+async def wipe_workspace(slug: str, user_email: str = None, user_name: str = None):
+    """
+    Wipes all analytical results for a workspace.
+    """
+    from app.repositories.registry.paths import get_user_slug
+    from app.repositories.registry.project_repo import ProjectRepository
+    # Note: the slug passed in URL is the PROJECT slug, but we need the USER slug for pathing
+    user_slug = get_user_slug(user_email=user_email, user_name=user_name)
+    success = ProjectRepository.wipe_workspace_results(slug, user_slug=user_slug)
+    return {"status": "success" if success else "failed"}
 
 @router.delete("/cache/{instance_id}")
 async def clear_query_cache(instance_id: str):
@@ -259,42 +296,23 @@ async def clear_query_cache(instance_id: str):
     return {"status": "success", "deleted_files": deleted_count, "instance_id": instance_id}
 
 @router.delete("/cleanup/project")
-async def wipe_project_data():
-    """Wipes all analytical results for the active project."""
-    from app.repositories.registry.paths import get_active_project_slug
-    from app.services.utils.cleanup_service import CleanupService
-    
-    slug = get_active_project_slug()
-    return CleanupService.purge_project(slug)
+async def cleanup_project(user_email: str = None, user_name: str = None):
+    """
+    Wipes ALL analytical results for the ACTIVE project.
+    """
+    from app.repositories.registry.paths import get_user_slug
+    from app.repositories.registry.project_repo import ProjectRepository
+    user_slug = get_user_slug(user_email=user_email, user_name=user_name)
+    success = ProjectRepository.cleanup_active_project_results(user_slug=user_slug)
+    return {"status": "success" if success else "failed"}
 
 @router.delete("/cleanup/session")
-async def purge_session_data(period: str = "hour"):
+async def cleanup_session(period: str = "today", user_email: str = None, user_name: str = None):
     """
-    Purge results based on duration.
-    Options: hour, hour2, hour4, today, yesterday
+    Wipes recently generated results from the ACTIVE project.
     """
-    from app.repositories.registry.paths import get_active_project_slug
-    from app.services.utils.cleanup_service import CleanupService
-    from datetime import datetime, time as dtime, timedelta
-    
-    slug = get_active_project_slug()
-    now = datetime.now()
-    
-    if period == "hour":
-        return CleanupService.purge_by_time(slug, 3600)
-    elif period == "hour2":
-        return CleanupService.purge_by_time(slug, 7200)
-    elif period == "hour4":
-        return CleanupService.purge_by_time(slug, 14400)
-    elif period == "today":
-        # Seconds since midnight
-        midnight = datetime.combine(now.date(), dtime.min)
-        seconds_since_midnight = (now - midnight).total_seconds()
-        return CleanupService.purge_by_time(slug, int(seconds_since_midnight))
-    elif period == "yesterday":
-        # Entire previous day
-        yesterday_start = datetime.combine(now.date() - timedelta(days=1), dtime.min)
-        yesterday_end = datetime.combine(now.date() - timedelta(days=1), dtime.max)
-        return CleanupService.purge_date_range(slug, yesterday_start.timestamp(), yesterday_end.timestamp())
-    else:
-        raise HTTPException(status_code=400, detail="Invalid period. Use 'hour', 'hour2', 'hour4', 'today', or 'yesterday'.")
+    from app.repositories.registry.paths import get_user_slug
+    from app.repositories.registry.project_repo import ProjectRepository
+    user_slug = get_user_slug(user_email=user_email, user_name=user_name)
+    success = ProjectRepository.cleanup_period_results(period, user_slug=user_slug)
+    return {"status": "success" if success else "failed"}

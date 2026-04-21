@@ -33,13 +33,18 @@ class StorageService:
         stats_list = []
         for item in results_root.iterdir():
             if item.is_dir():
-                slug = item.name
+                folder_name = item.name
+                
+                # Try to extract the project slug part (last part after underscore)
+                # This helps match friendly names from the registry even with user prefixes
+                project_slug = folder_name.split('_')[-1] if '_' in folder_name else folder_name
+                
                 size_bytes, file_count, breakdown = StorageService._calculate_dir_stats(item)
                 
                 stats_list.append({
-                    "slug": slug,
-                    "name": slug_map.get(slug, slug), # Use slug if no registry entry (orphaned)
-                    "is_orphaned": slug not in slug_map,
+                    "slug": folder_name,
+                    "name": slug_map.get(project_slug, slug_map.get(folder_name, folder_name)),
+                    "is_orphaned": project_slug not in slug_map and folder_name not in slug_map,
                     "size_mb": round(size_bytes / (1024 * 1024), 2),
                     "file_count": file_count,
                     "breakdown": breakdown
@@ -52,22 +57,37 @@ class StorageService:
     def _calculate_dir_stats(path: Path):
         total_size = 0
         total_files = 0
-        breakdown = {"log": 0, "sql": 0, "csv": 0, "other": 0}
+        breakdown = {"logs": 0, "sql": 0, "csv": 0, "metadata": 0, "other": 0}
         
         for root, dirs, files in os.walk(path):
+            current_path = Path(root)
+            relative_root = current_path.relative_to(path)
+            
             for f in files:
-                fp = Path(root) / f
+                fp = current_path / f
                 try:
                     size = os.path.getsize(fp)
                     total_size += size
                     total_files += 1
                     
-                    # Simple extension-based breakdown
-                    ext = fp.suffix.lower()
-                    if ext == '.md': breakdown["log"] += size
-                    elif ext == '.sql': breakdown["sql"] += size
-                    elif ext == '.csv': breakdown["csv"] += size
-                    else: breakdown["other"] += size
+                    # Category mapping based on subfolder or extension
+                    parts = relative_root.parts
+                    if "logs" in parts:
+                        breakdown["logs"] += size
+                    elif "sql" in parts:
+                        breakdown["sql"] += size
+                    elif "csv" in parts:
+                        breakdown["csv"] += size
+                    elif "metadata_extracts" in parts:
+                        breakdown["metadata"] += size
+                    else:
+                        # Fallback to extension
+                        ext = fp.suffix.lower()
+                        if ext == '.md': breakdown["logs"] += size
+                        elif ext == '.sql': breakdown["sql"] += size
+                        elif ext == '.csv': breakdown["csv"] += size
+                        elif ext == '.json' and "metadata" in f.lower(): breakdown["metadata"] += size
+                        else: breakdown["other"] += size
                 except: continue
         
         # Convert breakdown to MB

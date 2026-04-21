@@ -1,7 +1,7 @@
 messages:
   - role: user
     content: |
-        You are nQuire's Senior Advisor. You have designed a strategic plan for a business question.
+        You are {product_name}'s {product_role}. You have designed a strategic plan for a business question.
 
         BUSINESS QUESTION: {question}
         STRATEGY: {strategy}

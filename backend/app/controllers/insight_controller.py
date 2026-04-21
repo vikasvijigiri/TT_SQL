@@ -42,11 +42,13 @@ def _format_schema_for_llm(metadata: Dict[str, Any]) -> str:
     return "\n\n".join(lines)
 
 @router.get("/{project_id}/samples")
-async def get_sample_questions(project_id: str):
+async def get_sample_questions(project_id: str, user_email: str = None, user_name: str = None):
     """
     Generate or retrieve cached sample analytical questions for a project.
     """
-    project = ProjectRepository.get_project_by_id(project_id)
+    from app.repositories.registry.paths import get_user_slug
+    user_slug = get_user_slug(user_email=user_email, user_name=user_name)
+    project = ProjectRepository.get_project_by_id(project_id, user_slug=user_slug)
     if not project:
         raise HTTPException(status_code=404, detail="Project not found")
     
@@ -62,8 +64,12 @@ async def get_sample_questions(project_id: str):
     # Determine the metadata filename from the connection details (first priority) or project name
     db_name = project.get("connection", {}).get("db_name") or project.get("connection", {}).get("qdrant_collection") or project.get("name")
     
-    # Try to load metadata if it exists
-    metadata_path = get_metadata_dir() / f"{db_name}.json"
+    # Derive project slug for consistent metadata path resolution
+    import re
+    project_slug = re.sub(r'[^a-zA-Z0-9]', '_', project.get("name", "")).lower().strip('_') or "default_project"
+    
+    # Try to load metadata if it exists - Path: results/{user}/{project}/metadata_extracts/{collection}.json
+    metadata_path = get_metadata_dir(user_slug, project_slug) / f"{db_name}.json"
     
     if not os.path.exists(metadata_path):
         return {
@@ -81,22 +87,10 @@ async def get_sample_questions(project_id: str):
             
         schema_summary = _format_schema_for_llm(metadata)
         
-        system_prompt = (
-            "You are a Senior Business Intelligence Lead. Your goal is to look at the database schema, "
-            "table descriptions, and sample data values provided, and pick the most relevant tables to generate "
-            "3 varied, and highly insightful natural language questions that a business leader might ask."
-            "\n\nRules:"
-            "\n1. Questions must be answerable using the provided columns."
-            "\n2. Use the sample values to understand the domain (e.g., if you see names like 'Royal Challengers', generate cricket-specific questions)."
-            "\n3. Generate varied levels (e.g., one summary count, one top-performing analysis, and one trend/time-based analysis)."
-            "\n4. Return ONLY a valid JSON object: {\"questions\": [\"Question 1\", \"Question 2\", \"Question 3\"]}"
-        )
-        user_prompt = f"DATABASE SCHEMA:\n{schema_summary}"
+        from app.services.utils.prompt_loader import PromptLoader
+        loader = PromptLoader()
         
-        messages = [
-            {"role": "system", "content": system_prompt},
-            {"role": "user", "content": user_prompt}
-        ]
+        messages = loader.load_prompt("business_insight", schema_summary=schema_summary)
         
         result = llm_service.get_json_completion(messages)
         

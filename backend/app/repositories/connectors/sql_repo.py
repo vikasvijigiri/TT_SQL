@@ -13,17 +13,27 @@ class DBRepository:
     """
 
     @staticmethod
-    def _get_active_connection() -> Dict[str, Any]:
+    def _get_active_connection(user_slug: str = None) -> Dict[str, Any]:
         """
         Resolve the active database connection at runtime.
-        Reads the ACTIVE_PROJECT_ID and fetches credentials from ProjectRepository.
-        Falls back to static settings if no active project is set.
+        Priority: User Registry (user_slug) > os.environ > settings.
         """
-        active_id = os.environ.get("ACTIVE_PROJECT_ID") or settings.ACTIVE_PROJECT_ID
+        active_id = None
+
+        # 1. Check User Registry if slug provided
+        if user_slug:
+            from app.repositories.registry.user_repo import UserRepository
+            user_repo = UserRepository()
+            user_state = user_repo.get_state(user_slug)
+            active_id = user_state.get("activeProjectId")
+
+        # 2. Fallback to global env only if still no project
+        if not active_id:
+            active_id = os.environ.get("ACTIVE_PROJECT_ID") or settings.ACTIVE_PROJECT_ID
 
         if active_id:
             from app.repositories.registry.project_repo import ProjectRepository
-            project = ProjectRepository.get_project_by_id(active_id)
+            project = ProjectRepository.get_project_by_id(active_id, user_slug=user_slug)
             if project and project.get("connection"):
                 conn = project["connection"]
                 return {
@@ -34,54 +44,112 @@ class DBRepository:
                     "database": conn.get("database", "postgres"),
                     "user": conn.get("user", ""),
                     "password": conn.get("password", ""),
-                    "sqlite_path": conn.get("sqlite_path", ""),
+                    "sqlite_path": DBRepository._resolve_sqlite_path(conn.get("sqlite_path", ""), conn.get("db_name", "")),
                     "bq_credentials_path": conn.get("bq_credentials_path", ""),
                     "sf_warehouse": conn.get("sf_warehouse", ""),
                     "sf_role": conn.get("sf_role", ""),
+                    "qdrant_collection": conn.get("qdrant_collection", ""),
+                    "qdrant_url": conn.get("qdrant_url", ""),
+                    "qdrant_api_key": conn.get("qdrant_api_key", ""),
                 }
 
-        # Fallback to static settings
-        return {
-            "db_type": settings.DB_TYPE,
-            "schema": settings.SCHEMA,
-            "host": settings.RDS_HOST,
-            "port": settings.RDS_PORT,
-            "database": settings.RDS_DATABASE,
-            "user": settings.RDS_USER,
-            "password": settings.RDS_PASSWORD,
-            "sqlite_path": settings.SQLITE_DB_PATH,
-            "bq_credentials_path": getattr(settings, "BQ_CREDENTIALS_PATH", ""),
-            "sf_warehouse": getattr(settings, "SF_WAREHOUSE", ""),
-            "sf_role": getattr(settings, "SF_ROLE", ""),
-        }
+        # If no active project, return empty or throw? 
+        # The user said "not from the .env file", so we should return an empty structure
+        return {}
 
     @staticmethod
-    def execute_query(query: str, db_type: Optional[str] = None, db_name: Optional[str] = None, db_path: Optional[str] = None) -> ExecutionResult:
+    def get_collection_name(active_conn: Dict[str, Any] = None, default: str = None) -> str:
+        """
+        Centralized collection name resolution for RAG/Vector Store operations.
+        Uses single source of truth to prevent path mismatches.
+        
+        Priority:
+        1. qdrant_collection (explicit project setting)
+        2. schema (db_name from connection)
+        3. database (fallback)
+        4. default parameter
+        5. "default" (final fallback)
+        """
+        if not active_conn:
+            return default or "default"
+        
+        collection_name = (
+            active_conn.get("qdrant_collection") or
+            active_conn.get("schema") or
+            active_conn.get("database") or
+            default or
+            "default"
+        )
+        
+        return collection_name
+
+    @staticmethod
+    def _resolve_sqlite_path(path: str, schema: str = "") -> str:
+        """
+        Ensures a SQLite path is absolute. Resolves relative paths or 
+        simple filenames against the default analytical database directory.
+        """
+        if not path:
+            if not schema: return ""
+            from app.repositories.registry.paths import InstancePaths
+            return str(InstancePaths.database(schema))
+            
+        if os.path.isabs(path):
+            return path
+            
+        from app.repositories.registry.paths import InstancePaths
+        # Try resolving the path itself as a DB name (e.g. "chinook.sqlite")
+        resolved = str(InstancePaths.database(path))
+        if os.path.exists(resolved):
+            return resolved
+            
+        # Fallback: resolve the schema name if provided
+        if schema:
+            return str(InstancePaths.database(schema))
+            
+        return path
+
+    @staticmethod
+    def execute_query(query: str, db_type: Optional[str] = None, db_name: Optional[str] = None, db_path: Optional[str] = None, user_slug: str = None) -> ExecutionResult:
         """
         Execute a SQL query and return an ExecutionResult.
         Defaults to the active project settings if parameters are omitted.
         """
-        active = DBRepository._get_active_connection()
-        _type = db_type or active["db_type"]
+        active = DBRepository._get_active_connection(user_slug=user_slug)
+        if not active:
+             return ExecutionResult(error_message="No active project connected. Please select a project first.")
+
+        _type = db_type or active.get("db_type")
+        if not _type:
+             return ExecutionResult(error_message="Database type not configured for this project.")
 
         if _type.lower() in ["postgres", "postgresql"]:
-            _schema = db_name or active["schema"]
+            _schema = db_name or active.get("schema", "public")
             return DBRepository._execute_postgres(query, _schema, active)
         elif _type.lower() == "bigquery":
             return DBRepository._execute_bigquery(query, active)
         elif _type.lower() == "snowflake":
             return DBRepository._execute_snowflake(query, active)
         else:
+            # Path is already resolved in _get_active_connection, 
+            # but if it's passed explicitly here we resolve it too
             _path = db_path or active["sqlite_path"]
+            if _path and not os.path.isabs(_path):
+                _path = DBRepository._resolve_sqlite_path(_path, db_name or active["schema"])
+                
             return DBRepository._execute_sqlite(query, _path)
 
     @staticmethod
-    def check_connection(db_type: Optional[str] = None, db_name: Optional[str] = None, db_path: Optional[str] = None) -> bool:
+    def check_connection(db_type: Optional[str] = None, db_name: Optional[str] = None, db_path: Optional[str] = None, user_slug: str = None) -> bool:
         """
         Verify if the database is accessible, defaulting to the active project context.
         """
-        active = DBRepository._get_active_connection()
-        _type = db_type or active["db_type"]
+        active = DBRepository._get_active_connection(user_slug=user_slug)
+        if not active:
+            return False
+        _type = db_type or active.get("db_type")
+        if not _type:
+            return False
 
         try:
             if _type.lower() in ["postgres", "postgresql"]:
@@ -120,6 +188,9 @@ class DBRepository:
                 conn.close()
             else:
                 _path = db_path or active["sqlite_path"]
+                if _path and not os.path.isabs(_path):
+                    _path = DBRepository._resolve_sqlite_path(_path, db_name or active["schema"])
+                    
                 if not _path or not os.path.exists(_path):
                     return False
                 conn = sqlite3.connect(_path)

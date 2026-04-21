@@ -39,9 +39,14 @@ class QueryService:
         print(f"DEBUG: Starting stream for query: {request.query[:30]}")
         self.logger.register_listener(log_listener)
 
-        from app.repositories.registry.paths import get_next_instance_id
+        from app.repositories.registry.paths import get_next_instance_id, initialize_directories, get_user_slug
+        user_slug = get_user_slug(user_email=request.user_email)
+        
         if not request.instance_id or request.instance_id == "unknown":
-            request.instance_id = get_next_instance_id(self.model_name)
+            request.instance_id = get_next_instance_id(self.model_name, user_slug=user_slug)
+
+        # Lazy initialize user/session directory
+        initialize_directories(user_slug=user_slug)
 
         # Immediate feedback events
         log_queue.put({"type": "id", "instance_id": request.instance_id})
@@ -61,8 +66,11 @@ class QueryService:
                     instance_id=request.instance_id,
                     model_name=self.model_name,
                     use_rag=request.use_rag,
+                    user_email=request.user_email,
+                    session_id=request.session_id,
                     verbose=True,
-                    on_token=lambda t: log_queue.put({"type": "token", "token": t})
+                    on_token=lambda t: log_queue.put({"type": "token", "token": t}),
+                    on_result=lambda s: log_queue.put({**self._format_final_result(s), "type": "result", "status": "Finalizing Analysis..."})
                 )
                 
                 # Emit the final structured result for UI termination and rendering
@@ -145,9 +153,13 @@ class QueryService:
             from app.repositories.config import settings
             request.db_name = settings.COLLECTION_NAME
 
-        from app.repositories.registry.paths import get_next_instance_id
+        from app.repositories.registry.paths import get_next_instance_id, initialize_directories, get_user_slug
+        user_slug = get_user_slug(user_email=request.user_email)
+        
         if not request.instance_id or request.instance_id == "unknown":
-            request.instance_id = get_next_instance_id(self.model_name)
+            request.instance_id = get_next_instance_id(self.model_name, user_slug=user_slug)
+            
+        initialize_directories(user_slug=user_slug)
             
         final_state = run_analysis_pipeline(
             question=request.query,
@@ -156,6 +168,8 @@ class QueryService:
             instance_id=request.instance_id,
             model_name=self.model_name,
             use_rag=request.use_rag,
+            user_email=request.user_email,
+            session_id=request.session_id,
             verbose=True
         )
         

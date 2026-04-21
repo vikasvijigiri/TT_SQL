@@ -42,22 +42,25 @@ class Logger:
         with open(cls._storage.log_file, "w", encoding="utf-8") as f:
             f.write("# Query Execution Trace\n\n")
 
+    _write_lock = threading.Lock()
+
     @classmethod
     def _write_to_files(cls, content: str):
-        """Internal helper to write to both available log targets."""
-        # 1. Write to instance log
-        instance_log = cls._get_log_file()
-        try:
-            with open(instance_log, "a", encoding="utf-8") as f:
-                f.write(content)
-        except Exception: pass
-        
-        # 2. Write to master log
-        if cls._master_log_file:
+        """Internal helper to write to both available log targets with thread safety."""
+        with cls._write_lock:
+            # 1. Write to instance log
+            instance_log = cls._get_log_file()
             try:
-                with open(cls._master_log_file, "a", encoding="utf-8") as f:
+                with open(instance_log, "a", encoding="utf-8") as f:
                     f.write(content)
             except Exception: pass
+            
+            # 2. Write to master log
+            if cls._master_log_file:
+                try:
+                    with open(cls._master_log_file, "a", encoding="utf-8") as f:
+                        f.write(content)
+                except Exception: pass
 
     @classmethod
     def log(cls, message: str, level: str = "INFO", agent_name: str = None):
