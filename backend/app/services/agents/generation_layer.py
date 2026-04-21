@@ -153,16 +153,19 @@ class MultiCandidateGeneratorAgent(BaseAgent):
             # Non-blocking persistent storage
             def _bg_write_sql():
                 try:
-                    sql_lines = [line for line in chosen.sql.split('\n') if line.strip()]
+                    sql_lines = [line for line in sql_str.split('\n') if line.strip()]
                     self.file_coordinator.write_sql(state.instance_id, sql_lines, state.model_name)
                 except Exception as e:
                     Logger.log(f"Background SQL write failed: {str(e)}", level="DEBUG")
                     
             threading.Thread(target=_bg_write_sql, daemon=True).start()
 
-            self.log(state, f"Approach: {chosen.approach}")
-            if chosen.explanation:
-                self.log(state, f"Reasoning: {chosen.explanation}")
+            approach = response.get("approach", "standard")
+            explanation = response.get("explanation", "")
+
+            self.log(state, f"Approach: {approach}")
+            if explanation:
+                self.log(state, f"Reasoning: {explanation}")
                 
             Logger.log_code(state.chosen_query, language="sql")
 
