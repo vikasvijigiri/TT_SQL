@@ -125,64 +125,49 @@ def query_qdrant(query_text, collection_name=None, instance_id=None, results_dir
     anchors = _extract_anchors(query_text, llm)
     logger.info(f"📍 Extracted Anchors: {anchors}")
 
-    all_candidates = []
+    all_candidates = []    
     seen_cols = set()
-    window_size = 12
-    max_scans = 4
-    is_sufficient = False
+    window_size = 25
     
     model = get_model()
     query_vector = model.encode(query_text).tolist()
 
-    for i in range(max_scans):
-        offset = i * window_size
-        logger.info(f"🔍 Scan {i+1} (Offset: {offset}, Limit: {window_size})")
+    logger.info(f"🔍 Executing Single-Pass High-Precision Scan (Limit: {window_size})")
+    
+    try:
+        dense_payload = {
+            "vector": {"name": "text_embedding", "vector": query_vector},
+            "limit": window_size,
+            "with_payload": True,
+            "filter": {"must": [{"key": "chunk_type", "match": {"value": "column"}}]}
+        }
+        res = requests.post(f"{qdrant_url.rstrip('/')}/collections/{collection_name}/points/search", 
+                            headers={"api-key": qdrant_api_key, "Content-Type": "application/json"},
+                            json=dense_payload, timeout=15).json()
         
-        try:
-            dense_payload = {
-                "vector": {"name": "text_embedding", "vector": query_vector},
-                "limit": window_size,
-                "offset": offset,
-                "with_payload": True,
-                "filter": {"must": [{"key": "chunk_type", "match": {"value": "column"}}]}
-            }
-            res = requests.post(f"{qdrant_url.rstrip('/')}/collections/{collection_name}/points/search", 
-                                headers={"api-key": qdrant_api_key, "Content-Type": "application/json"},
-                                json=dense_payload, timeout=15).json()
-            
-            new_batch = []
-            for r in res.get("result", []):
-                p = r["payload"]
-                col_key = f"{p['table_name']}.{p['column_name']}"
-                if col_key not in seen_cols:
-                    new_item = {
-                        "table_name": p["table_name"],
-                        "column_name": p["column_name"],
-                        "score": r["score"]
-                    }
-                    new_batch.append(new_item)
-                    seen_cols.add(col_key)
-            
-            all_candidates.extend(new_batch)
-            logger.info(f"   Collected {len(new_batch)} new columns. Pool size: {len(all_candidates)}")
+        all_candidates = []
+        for r in res.get("result", []):
+            p = r["payload"]
+            all_candidates.append({
+                "table_name": p["table_name"],
+                "column_name": p["column_name"],
+                "score": r["score"]
+            })
+        
+        logger.info(f"Collected {len(all_candidates)} schema candidates.")
 
-            # Check sufficiency
-            check = _check_sufficiency(query_text, anchors, all_candidates, llm)
-            is_sufficient = check.get("sufficient", False)
-            logger.info(f"   Sufficiency Check: {is_sufficient} | Reasoning: {check.get('reasoning')}")
-            
-            if is_sufficient:
-                logger.info("✅ Context is sufficient. Stopping retrieval.")
-                break
-            else:
-                missing = check.get("missing", [])
-                if missing: logger.info(f"   ⚠️ Missing: {missing}")
+        # Single-pass sufficiency check
+        check = _check_sufficiency(query_text, anchors, all_candidates, llm)
+        is_sufficient = check.get("sufficient", False)
+        logger.info(f"Sufficiency Check: {is_sufficient} | Reasoning: {check.get('reasoning')}")
+        
+        if not is_sufficient:
+            logger.info("⚠️ Context is partially sufficient. Proceeding with best-available candidates.")
 
-        except Exception as e:
-            logger.error(f"Scan {i+1} Failed: {e}")
-            break
+    except Exception as e:
+        logger.error(f"Single-Pass Scan Failed: {e}")
+        is_sufficient = False
 
-    # Final Partitioning into Sets (Compact & Complete)
     def partition_to_sets(cols):
         sets = {"Set A": {}, "Set B": {}, "Set C": {}}
         # Set A: Top 1/3
