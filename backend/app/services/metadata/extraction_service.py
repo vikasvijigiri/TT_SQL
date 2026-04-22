@@ -1,8 +1,8 @@
 import psycopg2
 import sqlite3
 from typing import Dict, Any, List
-from app.repositories.connectors.sql_repo import DBRepository
-from app.services.utils.logger import Logger
+from app.db.sql_repo import DBRepository
+from app.core.logger import Logger
 
 class ExtractionService:
     def __init__(self):
@@ -14,14 +14,22 @@ class ExtractionService:
         Supports both PostgreSQL and SQLite.
         """
         active = DBRepository._get_active_connection(user_slug=user_slug)
-        db_type = active.get("db_type", "postgres").lower()
+        db_type = active.get("db_type", "").lower()
         
+        if not db_type:
+            self.logger.log("Fail: No database project is active or db_type is missing.", level="ERROR")
+            return {"schema": schema_name, "tables": {}}
+
         self.logger.log(f"Extracting raw schema for user {user_slug} (Type: {db_type})")
         
         if db_type == "sqlite":
             return self._extract_sqlite(active.get("sqlite_path"), user_slug)
-        else:
+        elif db_type in ["postgres", "postgresql"]:
             return self._extract_postgres(schema_name, active, user_slug)
+        else:
+            # Fallback for other types or implement BigQuery/Snowflake specifically
+            self.logger.log(f"Warning: Metadata extraction not yet optimized for {db_type}")
+            return {"schema": schema_name, "tables": {}}
 
     def _extract_postgres(self, schema_name: str, active: dict, user_slug: str) -> Dict[str, Any]:
         self.logger.log(f"Extracting Postgres schema: {schema_name}")

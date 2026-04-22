@@ -31,6 +31,44 @@
     background: rgba(255, 255, 255, 0.95);
 }
 
+.input-actions-left {
+    display: flex;
+    align-items: center;
+    gap: 0.25rem;
+}
+
+.bulk-btn {
+    background: #f1f5f9;
+    color: #475569;
+    border: none;
+    border-radius: 8px;
+    width: 32px;
+    height: 32px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    transition: all 0.2s ease;
+}
+
+.bulk-btn:hover {
+    background: #e2e8f0;
+    color: #2563eb;
+    transform: scale(1.05);
+}
+
+.bulk-btn:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+}
+
+.divider-v {
+    width: 1px;
+    height: 20px;
+    background: #e2e8f0;
+    margin: 0 0.5rem;
+}
+
 .input-icon {
     margin-right: 0.75rem;
     /* Tighter margin */

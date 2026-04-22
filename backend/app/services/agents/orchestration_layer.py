@@ -1,10 +1,10 @@
 import json
 from typing import Dict, Any, List
 from app.services.agents.base import BaseAgent
-from app.services.schemas.agent_state import AgentState
-from app.services.engines.llm_service import LLMService
-from app.services.utils.prompt_loader import PromptLoader
-from app.services.utils.logger import Logger
+from app.schemas.agent_state import AgentState
+from app.services.llm_service import LLMService
+from app.utils.prompt_loader import PromptLoader
+from app.core.logger import Logger
 
 class OrchestratorAgent(BaseAgent):
     """
@@ -15,8 +15,8 @@ class OrchestratorAgent(BaseAgent):
     If multiple candidate results exist (from parallel schema analysis), 
     it evaluates them to present the most coherent insight.
     """
-    def __init__(self, llm_service: LLMService, results_dir: str = None, logs_dir: str = None, metadata_dir: str = None, user_slug: str = None):
-        super().__init__(name="Orchestrator", results_dir=results_dir, logs_dir=logs_dir, metadata_dir=metadata_dir, user_slug=user_slug)
+    def __init__(self, llm_service: LLMService, results_dir: str = None, logs_dir: str = None, metadata_dir: str = None, user_slug: str = None, project_slug: str = None):
+        super().__init__(name="Orchestrator", results_dir=results_dir, logs_dir=logs_dir, metadata_dir=metadata_dir, user_slug=user_slug, project_slug=project_slug)
         self.llm = llm_service
 
     def run(self, state: AgentState, on_token: callable = None, mode: str = "FINAL") -> AgentState:

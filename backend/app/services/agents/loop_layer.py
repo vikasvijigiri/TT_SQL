@@ -1,14 +1,14 @@
 import os
 from app.services.agents.base import BaseAgent
-from app.services.schemas.agent_state import AgentState
-from app.services.engines.llm_service import LLMService
-from app.services.utils.prompt_loader import PromptLoader
+from app.schemas.agent_state import AgentState
+from app.services.llm_service import LLMService
+from app.utils.prompt_loader import PromptLoader
 from app.services.agents.critic_layer import CriticAgent
-from app.services.utils.logger import Logger
+from app.core.logger import Logger
 from app.services.agents.generation_layer import MultiCandidateGeneratorAgent
-from app.repositories.persistence.file_coordinator import FileCoordinator
+from app.repositories.file_coordinator import FileCoordinator
 from app.services.agents.input_layer import format_rag_columns
-from app.repositories.config import settings
+from app.core.settings import settings
 
 def _is_clean_success(state: AgentState, attempt: int) -> bool:
     """
@@ -33,14 +33,14 @@ class RefinementLoopAgent(BaseAgent):
     criticism cycle. It implements a self-healing loop that attempts to resolve
     execution errors through automated feedback and candidate regeneration.
     """
-    def __init__(self, llm_service: LLMService, results_dir: str = None, logs_dir: str = None, metadata_dir: str = None, user_slug: str = None):
-        super().__init__(name="RefinementLoop", results_dir=results_dir, logs_dir=logs_dir, metadata_dir=metadata_dir, user_slug=user_slug)
+    def __init__(self, llm_service: LLMService, results_dir: str = None, logs_dir: str = None, metadata_dir: str = None, user_slug: str = None, project_slug: str = None):
+        super().__init__(name="RefinementLoop", results_dir=results_dir, logs_dir=logs_dir, metadata_dir=metadata_dir, user_slug=user_slug, project_slug=project_slug)
         self.llm = llm_service
         self.prompt_loader = PromptLoader()
         
         # Initialize internal agent components
         self.generator = MultiCandidateGeneratorAgent(
-            llm_service, results_dir=results_dir, logs_dir=logs_dir, metadata_dir=metadata_dir, user_slug=user_slug
+            llm_service, results_dir=results_dir, logs_dir=logs_dir, metadata_dir=metadata_dir, user_slug=user_slug, project_slug=project_slug
         )
 
         # Executor is resolved dynamically in run() based on current settings.DB_TYPE
@@ -49,8 +49,8 @@ class RefinementLoopAgent(BaseAgent):
         self._logs_dir = logs_dir
         self._metadata_dir = metadata_dir
 
-        self.critic = CriticAgent(llm_service, results_dir=results_dir, logs_dir=logs_dir, metadata_dir=metadata_dir, user_slug=user_slug)
-        self.file_coordinator = FileCoordinator(results_dir=results_dir, logs_dir=logs_dir, user_slug=user_slug)
+        self.critic = CriticAgent(llm_service, results_dir=results_dir, logs_dir=logs_dir, metadata_dir=metadata_dir, user_slug=user_slug, project_slug=project_slug)
+        self.file_coordinator = FileCoordinator(results_dir=results_dir, logs_dir=logs_dir, user_slug=user_slug, project_slug=project_slug)
         self.max_retries = 1
 
     def run(self, state: AgentState, on_token: callable = None, on_intermediate: callable = None) -> AgentState:

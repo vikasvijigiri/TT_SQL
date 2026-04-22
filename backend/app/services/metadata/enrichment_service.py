@@ -1,12 +1,12 @@
 from typing import Dict, Any
 from concurrent.futures import ThreadPoolExecutor, as_completed
-from app.services.engines.llm_service import LLMService
-from app.services.utils.logger import Logger
+from app.services.llm_service import LLMService
+from app.core.logger import Logger
 
 class EnrichmentService:
     def __init__(self, llm_service=None):
         self.llm = llm_service or LLMService()
-        from app.services.utils.prompt_loader import PromptLoader
+        from app.utils.prompt_loader import PromptLoader
         self.prompt_loader = PromptLoader()
         self.logger = Logger
 

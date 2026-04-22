@@ -4,8 +4,10 @@ import { motion, AnimatePresence } from 'framer-motion';
 import {
     Database, Plus, ChevronRight, Server, HardDrive, Play, Trash2,
     Home, LayoutGrid, CheckCircle2, Layers, Globe, FlaskConical,
-    Plug, ArrowRight, Pencil, Shield, X, Zap, Cloud, Triangle, Clock
+    Plug, ArrowRight, Pencil, Shield, X, Zap, Cloud, Triangle, Clock,
+    Lock, Unlock, RotateCcw, Upload, FolderKanban
 } from 'lucide-react';
+import EnvUpload from './EnvUpload';
 
 const API_BASE_URL = 'http://localhost:8001';
 
@@ -24,7 +26,7 @@ const ProjectsScreen = ({ onProjectConnected, onStartChat, onProjectDeleted, use
     const [testResult, setTestResult] = useState({ id: null, status: null, message: '', tables: [] });
     const [dbType, setDbType] = useState('postgres');
     const [dbName, setDbName] = useState('');
-    const [database, setDatabase] = useState('postgres');
+    const [database, setDatabase] = useState('');
     const [host, setHost] = useState('');
     const [port, setPort] = useState('5432');
     const [user, setUser] = useState('');
@@ -41,6 +43,17 @@ const ProjectsScreen = ({ onProjectConnected, onStartChat, onProjectDeleted, use
     const [sfWarehouse, setSfWarehouse] = useState('');
     const [sfRole, setSfRole] = useState('');
 
+    // LLM Fields
+    const [llmProvider, setLlmProvider] = useState('bedrock');
+    const [llmModel, setLlmModel] = useState('');
+    const [llmApiBase, setLlmApiBase] = useState('');
+    const [llmApiKey, setLlmApiKey] = useState('');
+    const [embeddingModel, setEmbeddingModel] = useState('');
+
+    const [bedrockRegion, setBedrockRegion] = useState('');
+    const [bedrockAccessKey, setBedrockAccessKey] = useState('');
+    const [bedrockSecretKey, setBedrockSecretKey] = useState('');
+
     // Discovery State
     const [isDiscoveryMode, setIsDiscoveryMode] = useState(false);
     const [discoveryStep, setDiscoveryStep] = useState(1); // 1: Creds/Path, 2: DBs/Files, 3: Schemas (Postgres only)
@@ -52,6 +65,21 @@ const ProjectsScreen = ({ onProjectConnected, onStartChat, onProjectDeleted, use
     const [sqliteDir, setSqliteDir] = useState('');
     const [discovering, setDiscovering] = useState(false);
 
+    // Global Settings State
+    const [globalSettings, setGlobalSettings] = useState({
+        llm_provider: 'bedrock',
+        llm_model: '',
+        llm_api_base: '',
+        openai_api_key: '',
+        embedding_model: '',
+        bedrock_region: '',
+        bedrock_access_key: '',
+        bedrock_secret_key: '',
+        qdrant_url: '',
+        qdrant_api_key: ''
+    });
+    const [isConfigLocked, setIsConfigLocked] = useState(true);
+
     const [saving, setSaving] = useState(false);
     const [activationData, setActivationData] = useState({ id: null, status: null });
     const [justActivated, setJustActivated] = useState(null);
@@ -59,7 +87,57 @@ const ProjectsScreen = ({ onProjectConnected, onStartChat, onProjectDeleted, use
     useEffect(() => {
         fetchProjects();
         fetchActiveProject();
+        fetchGlobalSettings();
     }, []);
+
+    const fetchGlobalSettings = async () => {
+        try {
+            const res = await axios.get(`${API_BASE_URL}/api/settings`);
+            if (Object.keys(res.data).length > 0) {
+                setGlobalSettings(prev => ({ ...prev, ...res.data }));
+            }
+        } catch (err) {
+            console.error("Failed to fetch global settings", err);
+        }
+    };
+    const handleSaveGlobalSettings = async (e) => {
+        if (e) e.preventDefault();
+        setSaving(true);
+        try {
+            await axios.put(`${API_BASE_URL}/api/settings`, globalSettings);
+            alert("Global settings saved successfully!");
+        } catch (err) {
+            console.error("Failed to save global settings", err);
+            alert("Failed to save settings.");
+        } finally {
+            setSaving(false);
+        }
+    };
+
+    const handleEnvUploaded = (data) => {
+        if (Object.keys(data).length === 0) {
+            alert("No matching configuration keys found in the .env file.");
+            return;
+        }
+        setGlobalSettings(prev => ({ ...prev, ...data }));
+        setIsConfigLocked(false);
+    };
+
+    const handleResetGlobalSettings = async () => {
+        if (!window.confirm("Are you sure you want to RESET global settings? This will revert to system defaults (env).")) return;
+        setSaving(true);
+        try {
+            await axios.delete(`${API_BASE_URL}/api/settings`);
+            await fetchGlobalSettings();
+            setIsConfigLocked(true);
+            alert("Global settings reset to defaults!");
+        } catch (err) {
+            console.error("Failed to reset settings", err);
+            alert("Failed to reset settings.");
+        } finally {
+            setSaving(false);
+        }
+    };
 
     const fetchProjects = async () => {
         setLoading(true);
@@ -105,7 +183,7 @@ const ProjectsScreen = ({ onProjectConnected, onStartChat, onProjectDeleted, use
     };
 
     const resetForm = () => {
-        setDbName(''); setDatabase('postgres'); setHost(''); setPort('5432');
+        setDbName(''); setDatabase(''); setHost(''); setPort('5432');
         setUser(''); setPassword('');
         setSqlitePath(''); setQdrantCollection('');
         setQdrantUrl(''); setQdrantApiKey('');
@@ -127,7 +205,7 @@ const ProjectsScreen = ({ onProjectConnected, onStartChat, onProjectDeleted, use
         const conn = project.connection || {};
         setDbType(conn.db_type || 'postgres');
         setDbName(conn.db_name || '');
-        setDatabase(conn.database || 'postgres');
+        setDatabase(conn.database || '');
         setHost(conn.host || '');
         setPort(conn.port || '5432');
         setUser(conn.user || '');
@@ -143,6 +221,10 @@ const ProjectsScreen = ({ onProjectConnected, onStartChat, onProjectDeleted, use
         if (conn.db_type === 'sqlite') setSelectedTab('sqlite');
         else if (conn.db_type === 'bigquery') setSelectedTab('bigquery');
         else if (conn.db_type === 'snowflake') setSelectedTab('snowflake');
+        else if (conn.db_type === 'bulk_sqlite') {
+            setSelectedTab('bulk_sqlite');
+            setSqlitePath(conn.db_root || '');
+        }
         else setSelectedTab('postgres');
     };
 
@@ -158,8 +240,11 @@ const ProjectsScreen = ({ onProjectConnected, onStartChat, onProjectDeleted, use
                 qdrant_api_key: qdrantApiKey,
                 bq_credentials_path: bqCredentialsPath,
                 sf_warehouse: sfWarehouse,
-                sf_role: sfRole
+                sf_role: sfRole,
+                db_root: selectedTab === 'bulk_sqlite' ? sqlitePath : ''
             };
+            // Override dbType if explicitly using bulk_sqlite tab
+            if (selectedTab === 'bulk_sqlite') payload.db_type = 'bulk_sqlite';
             await axios.put(`${API_BASE_URL}/api/projects/${selectedProjectId}/connection`, payload, {
                 params: { user_email: userEmail, user_name: userName }
             });
@@ -483,6 +568,7 @@ const ProjectsScreen = ({ onProjectConnected, onStartChat, onProjectDeleted, use
                         { key: 'sqlite', label: 'SQLite', icon: <HardDrive size={16} />, color: '#7c3aed' },
                         { key: 'bigquery', label: 'GCP BigQuery', icon: <Cloud size={16} />, color: '#ea4335' },
                         { key: 'snowflake', label: 'Snowflake', icon: <Triangle size={16} style={{ transform: 'rotate(180deg)' }} />, color: '#29b5e8' },
+                        { key: 'bulk_sqlite', label: 'Bulk SQLite', icon: <FolderKanban size={16} />, color: '#059669' },
                     ].map(item => (
                         <button
                             key={item.key}
@@ -506,6 +592,23 @@ const ProjectsScreen = ({ onProjectConnected, onStartChat, onProjectDeleted, use
                             <ChevronRight size={14} color="#94a3b8" />
                         </button>
                     ))}
+                </div>
+
+                {/* Global Configuration Button */}
+                <div style={{ padding: '4px 18px', marginBottom: '8px' }}>
+                    <button
+                        onClick={() => { setSelectedTab('GlobalConfig'); }}
+                        style={{
+                            display: 'flex', alignItems: 'center', gap: '10px', width: '100%',
+                            padding: '10px 12px',
+                            backgroundColor: selectedTab === 'GlobalConfig' ? '#f0f9ff' : 'transparent',
+                            border: 'none', borderRadius: '8px', cursor: 'pointer',
+                            color: selectedTab === 'GlobalConfig' ? '#0369a1' : '#475569',
+                            fontWeight: '500', fontSize: '13px', transition: 'all 0.15s'
+                        }}
+                    >
+                        <Shield size={16} /> Global Config
+                    </button>
                 </div>
 
                 {/* Saved Projects Button */}
@@ -753,7 +856,8 @@ const ProjectsScreen = ({ onProjectConnected, onStartChat, onProjectDeleted, use
                                                     {p.connection?.db_type === 'sqlite' ? <HardDrive size={17} color="#7c3aed" /> :
                                                         p.connection?.db_type === 'bigquery' ? <Cloud size={17} color="#ea4335" /> :
                                                             p.connection?.db_type === 'snowflake' ? <Triangle size={17} color="#29b5e8" style={{ transform: 'rotate(180deg)' }} /> :
-                                                                <Server size={17} color="#2563eb" />}
+                                                                p.connection?.db_type === 'bulk_sqlite' ? <FolderKanban size={17} color="#059669" /> :
+                                                                    <Server size={17} color="#2563eb" />}
                                                     <div style={{ display: 'flex', flexDirection: 'column' }}>
                                                         <span style={{ fontSize: '14px', fontWeight: '600', color: '#0f172a' }}>
                                                             {p.name}
@@ -801,36 +905,42 @@ const ProjectsScreen = ({ onProjectConnected, onStartChat, onProjectDeleted, use
                                                                 Type
                                                             </div>
                                                             <div style={valueStyle}>
-                                                                {p.connection.db_type === 'sqlite' ? 'SQLite' : 'PostgreSQL'}
+                                                                {p.connection.db_type === 'sqlite' ? 'SQLite' : p.connection.db_type === 'bulk_sqlite' ? 'Bulk SQLite' : 'PostgreSQL'}
                                                             </div>
                                                         </div>
-                                                        <div>
-                                                            <div style={labelStyle}>
-                                                                <Shield size={10} style={{ verticalAlign: 'middle', marginRight: '3px' }} />
-                                                                Schema
+                                                        {!['bulk_sqlite'].includes(p.connection.db_type) && (
+                                                            <div>
+                                                                <div style={labelStyle}>
+                                                                    <Shield size={10} style={{ verticalAlign: 'middle', marginRight: '3px' }} />
+                                                                    Schema
+                                                                </div>
+                                                                <div style={valueStyle}>{p.connection.db_name || '--'}</div>
                                                             </div>
-                                                            <div style={valueStyle}>{p.connection.db_name || '--'}</div>
-                                                        </div>
-                                                        <div>
+                                                        )}
+                                                        <div style={{ gridColumn: p.connection.db_type === 'bulk_sqlite' ? 'span 2' : 'span 1' }}>
                                                             <div style={labelStyle}>
-                                                                <Globe size={10} style={{ verticalAlign: 'middle', marginRight: '3px' }} />
-                                                                {p.connection?.db_type === 'bigquery' ? 'Location' : 'Host'}
+                                                                {p.connection?.db_type === 'bulk_sqlite' ? <FolderKanban size={10} style={{ verticalAlign: 'middle', marginRight: '3px' }} /> : <Globe size={10} style={{ verticalAlign: 'middle', marginRight: '3px' }} />}
+                                                                {p.connection?.db_type === 'bulk_sqlite' ? 'Root Folder' : p.connection?.db_type === 'bigquery' ? 'Location' : 'Host'}
                                                             </div>
-                                                            <div style={{ ...valueStyle, fontSize: '12px', wordBreak: 'break-all' }}>
+                                                            <div style={{ ...valueStyle, fontSize: '11px', wordBreak: 'break-all', fontStyle: p.connection.db_type === 'bulk_sqlite' ? 'italic' : 'normal' }}>
                                                                 {p.connection.db_type === 'sqlite'
                                                                     ? 'Local File'
-                                                                    : (p.connection.host ? `${p.connection.host}${p.connection.port ? ':' + p.connection.port : ''}` : '--')}
+                                                                    : p.connection.db_type === 'bulk_sqlite'
+                                                                        ? p.connection.db_root
+                                                                        : (p.connection.host ? `${p.connection.host}${p.connection.port ? ':' + p.connection.port : ''}` : '--')}
                                                             </div>
                                                         </div>
-                                                        <div>
-                                                            <div style={labelStyle}>
-                                                                <Layers size={10} style={{ verticalAlign: 'middle', marginRight: '3px' }} />
-                                                                Collection
+                                                        {!['bulk_sqlite'].includes(p.connection.db_type) && (
+                                                            <div>
+                                                                <div style={labelStyle}>
+                                                                    <Layers size={10} style={{ verticalAlign: 'middle', marginRight: '3px' }} />
+                                                                    Collection
+                                                                </div>
+                                                                <div style={valueStyle}>
+                                                                    {p.connection.qdrant_collection || p.connection.db_name || '--'}
+                                                                </div>
                                                             </div>
-                                                            <div style={valueStyle}>
-                                                                {p.connection.qdrant_collection || p.connection.db_name || '--'}
-                                                            </div>
-                                                        </div>
+                                                        )}
                                                         <div>
                                                             <div style={labelStyle}>
                                                                 <Clock size={10} style={{ verticalAlign: 'middle', marginRight: '3px' }} />
@@ -949,7 +1059,7 @@ const ProjectsScreen = ({ onProjectConnected, onStartChat, onProjectDeleted, use
                                                                 <div>{testResult.message}</div>
                                                                 {testResult.status === 'success' && testResult.tables?.length > 0 && (
                                                                     <div style={{ marginTop: '6px', fontSize: '11px', color: '#065f46' }}>
-                                                                        <strong>{testResult.tables.length} tables:</strong>{' '}
+                                                                        <strong>{p.connection?.db_type === 'bulk_sqlite' ? 'Databases found:' : 'Tables found:'}</strong>{' '}
                                                                         {testResult.tables.length <= 6
                                                                             ? testResult.tables.join(', ')
                                                                             : `${testResult.tables.slice(0, 6).join(', ')}...`}
@@ -992,24 +1102,26 @@ const ProjectsScreen = ({ onProjectConnected, onStartChat, onProjectDeleted, use
                 )}
 
                 {/* ----- CONNECTION FORM TAB ----- */}
-                {(selectedTab === 'postgres' || selectedTab === 'sqlite' || selectedTab === 'bigquery' || selectedTab === 'snowflake') && (
+                {(['postgres', 'sqlite', 'bigquery', 'snowflake', 'bulk_sqlite'].includes(selectedTab)) && (
                     <div className="animation-fade-in" style={{ maxWidth: '560px' }}>
                         <div style={{ display: 'flex', alignItems: 'center', gap: '12px', marginBottom: '6px' }}>
                             {selectedTab === 'postgres' ? <Server size={22} color="#2563eb" /> :
                                 selectedTab === 'sqlite' ? <HardDrive size={22} color="#7c3aed" /> :
                                     selectedTab === 'bigquery' ? <Cloud size={22} color="#ea4335" /> :
-                                        <Triangle size={22} color="#29b5e8" style={{ transform: 'rotate(180deg)' }} />}
+                                        selectedTab === 'bulk_sqlite' ? <FolderKanban size={22} color="#059669" /> :
+                                            <Triangle size={22} color="#29b5e8" style={{ transform: 'rotate(180deg)' }} />}
                             <h2 style={{ fontSize: '22px', color: '#0f172a', margin: 0, fontWeight: '600', fontFamily: "'Outfit', sans-serif" }}>
                                 {selectedTab === 'postgres' ? 'PostgreSQL' :
                                     selectedTab === 'sqlite' ? 'SQLite' :
-                                        selectedTab === 'bigquery' ? 'GCP BigQuery' : 'Snowflake'} Connection
+                                        selectedTab === 'bigquery' ? 'GCP BigQuery' :
+                                            selectedTab === 'bulk_sqlite' ? 'Bulk Database Folder' : 'Snowflake'} Connection
                             </h2>
                         </div>
                         <p style={{ color: '#94a3b8', fontSize: '13px', marginBottom: '24px' }}>
                             Configure database credentials and vector store settings.
                         </p>
 
-                        {(selectedTab === 'postgres' || selectedTab === 'sqlite' || selectedTab === 'bigquery' || selectedTab === 'snowflake') && (
+                        {(['postgres', 'sqlite', 'bigquery', 'snowflake', 'bulk_sqlite'].includes(selectedTab)) && (
                             <div style={{ display: 'flex', gap: '8px', marginBottom: '20px' }}>
                                 <button
                                     onClick={() => { setIsDiscoveryMode(false); setDiscoveryStep(1); }}
@@ -1475,7 +1587,23 @@ const ProjectsScreen = ({ onProjectConnected, onStartChat, onProjectDeleted, use
                                                     </div>
                                                 </div>
                                             </>
-                                        ) : (
+                                        ) : selectedTab === 'bulk_sqlite' ? (
+                                    <div style={{ display: 'flex', flexDirection: 'column', gap: '5px' }}>
+                                        <label style={{ fontSize: '13px', fontWeight: '600', color: '#334155', display: 'flex', alignItems: 'center', gap: '5px' }}>
+                                            <FolderKanban size={13} color="#64748b" /> Databases Root Folder
+                                        </label>
+                                        <input
+                                            type="text" required value={sqlitePath}
+                                            onChange={e => setSqlitePath(e.target.value)}
+                                            placeholder="C:/datasets/spider/databases"
+                                            style={inputStyle}
+                                            onFocus={inputFocusHandler} onBlur={inputBlurHandler}
+                                        />
+                                        <span style={{ fontSize: '11px', color: '#94a3b8' }}>
+                                            Folder containing all .sqlite files. DB names will be resolved automatically from dataset.
+                                        </span>
+                                    </div>
+                                ) : (
                                             <div style={{ display: 'flex', flexDirection: 'column', gap: '5px' }}>
                                                 <label style={{ fontSize: '13px', fontWeight: '600', color: '#334155', display: 'flex', alignItems: 'center', gap: '5px' }}>
                                                     <HardDrive size={13} color="#64748b" /> SQLite File Path
@@ -1491,55 +1619,6 @@ const ProjectsScreen = ({ onProjectConnected, onStartChat, onProjectDeleted, use
                                         )}
                                     </>
                                 )}
-
-                                {/* Divider */}
-                                <div style={{ height: '1px', backgroundColor: '#f1f5f9', margin: '2px 0' }} />
-
-                                {/* Qdrant Configuration */}
-                                <div style={{ display: 'flex', flexDirection: 'column', gap: '12px', padding: '16px', backgroundColor: '#f8fafc', borderRadius: '10px', border: '1px solid #e2e8f0' }}>
-                                    <h4 style={{ fontSize: '13px', fontWeight: '700', color: '#1e293b', margin: '0 0 4px 0', display: 'flex', alignItems: 'center', gap: '6px' }}>
-                                        <Globe size={14} color="#2563eb" /> RAG & Vector Store Configuration
-                                    </h4>
-                                    
-                                    <div style={{ display: 'flex', gap: '12px' }}>
-                                        <div style={{ flex: 1, display: 'flex', flexDirection: 'column', gap: '5px' }}>
-                                            <label style={{ fontSize: '12px', fontWeight: '600', color: '#64748b' }}>Qdrant URL</label>
-                                            <input
-                                                type="text" value={qdrantUrl}
-                                                onChange={e => setQdrantUrl(e.target.value)}
-                                                placeholder="http://localhost:6333"
-                                                style={{ ...inputStyle, padding: '8px 12px' }}
-                                                onFocus={inputFocusHandler} onBlur={inputBlurHandler}
-                                            />
-                                        </div>
-                                        <div style={{ flex: 1, display: 'flex', flexDirection: 'column', gap: '5px' }}>
-                                            <label style={{ fontSize: '12px', fontWeight: '600', color: '#64748b' }}>API Key</label>
-                                            <input
-                                                type="password" value={qdrantApiKey}
-                                                onChange={e => setPassword(e.target.value)}
-                                                placeholder="optional-key"
-                                                style={{ ...inputStyle, padding: '8px 12px' }}
-                                                onFocus={inputFocusHandler} onBlur={inputBlurHandler}
-                                            />
-                                        </div>
-                                    </div>
-
-                                    <div style={{ display: 'flex', flexDirection: 'column', gap: '5px' }}>
-                                        <label style={{ fontSize: '12px', fontWeight: '600', color: '#64748b', display: 'flex', alignItems: 'center', gap: '6px' }}>
-                                            <Layers size={14} color="#7c3aed" /> Collection Name
-                                        </label>
-                                        <input
-                                            type="text" value={qdrantCollection}
-                                            onChange={e => setQdrantCollection(e.target.value)}
-                                            placeholder={dbName ? `Defaults to "${dbName}"` : 'Defaults to schema name'}
-                                            style={{ ...inputStyle, padding: '8px 12px' }}
-                                            onFocus={inputFocusHandler} onBlur={inputBlurHandler}
-                                        />
-                                        <span style={{ fontSize: '10px', color: '#94a3b8' }}>
-                                            Leave blank to use the schema/database name as the vector collection.
-                                        </span>
-                                    </div>
-                                </div>
 
                                 {/* Actions */}
                                 <div style={{ marginTop: '4px', display: 'flex', gap: '10px' }}>
@@ -1566,6 +1645,230 @@ const ProjectsScreen = ({ onProjectConnected, onStartChat, onProjectDeleted, use
                                 </div>
                             </form>
                         )}
+                    </div>
+                )}
+
+                {/* ----- GLOBAL CONFIG TAB ----- */}
+                {selectedTab === 'GlobalConfig' && (
+                    <div className="animation-fade-in" style={{ maxWidth: '800px' }}>
+                        <div style={{ marginBottom: '24px', display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
+                            <div>
+                                <div style={{ display: 'flex', alignItems: 'center', gap: '12px', marginBottom: '8px' }}>
+                                    <Shield size={22} color="#0369a1" />
+                                    <h2 style={{ fontSize: '22px', color: '#0f172a', margin: 0, fontWeight: '600', fontFamily: "'Outfit', sans-serif" }}>
+                                        Global Configuration
+                                    </h2>
+                                    <div
+                                        onClick={() => setIsConfigLocked(!isConfigLocked)}
+                                        style={{
+                                            padding: '4px 10px', borderRadius: '20px',
+                                            background: isConfigLocked ? '#f1f5f9' : '#dcfce7',
+                                            color: isConfigLocked ? '#64748b' : '#166534',
+                                            display: 'flex', alignItems: 'center', gap: '6px',
+                                            fontSize: '11px', fontWeight: '700', cursor: 'pointer',
+                                            transition: 'all 0.2s', border: '1px solid',
+                                            borderColor: isConfigLocked ? '#e2e8f0' : '#bbf7d0',
+                                            marginLeft: '10px'
+                                        }}
+                                    >
+                                        {isConfigLocked ? <Lock size={12} /> : <Unlock size={12} />}
+                                        {isConfigLocked ? "LOCKED" : "UNLOCKED"}
+                                    </div>
+                                </div>
+                                <p style={{ fontSize: '14px', color: '#64748b', margin: 0 }}>
+                                    These settings apply across all projects and handle AI models, discovery, and vector database connections.
+                                </p>
+                            </div>
+                            <div style={{ display: 'flex', gap: '10px' }}>
+                                <EnvUpload 
+                                    apiUrl={`${API_BASE_URL}/api/settings/parse-env`}
+                                    onUploadResponse={handleEnvUploaded}
+                                    title="Auto-fill settings from .env file"
+                                    icon={<Upload size={14} />}
+                                />
+                                <button
+                                    type="button"
+                                    onClick={handleResetGlobalSettings}
+                                    disabled={saving}
+                                    style={{
+                                        display: 'flex', alignItems: 'center', gap: '6px',
+                                        background: '#fff', color: '#dc2626', border: '1px solid #fecaca',
+                                        borderRadius: '8px', padding: '8px 16px', fontSize: '13px',
+                                        fontWeight: '600', cursor: 'pointer', transition: 'all 0.2s'
+                                    }}
+                                    onMouseEnter={e => e.currentTarget.style.background = '#fef2f2'}
+                                    onMouseLeave={e => e.currentTarget.style.background = '#fff'}
+                                >
+                                    <RotateCcw size={14} /> Reset to Defaults
+                                </button>
+                            </div>
+                        </div>
+
+                        <form onSubmit={handleSaveGlobalSettings} style={{ display: 'flex', flexDirection: 'column', gap: '24px' }}>
+                            {/* LLM Model Configuration */}
+                            <div style={{ backgroundColor: 'white', padding: '24px', borderRadius: '12px', border: '1px solid #e2e8f0', boxShadow: '0 1px 3px rgba(0,0,0,0.05)', opacity: isConfigLocked ? 0.75 : 1 }}>
+                                <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '20px', paddingBottom: '12px', borderBottom: '1px solid #f1f5f9' }}>
+                                    <FlaskConical size={18} color="#2563eb" />
+                                    <h3 style={{ fontSize: '16px', fontWeight: '600', color: '#1e293b', margin: 0 }}>LLM Model Configuration</h3>
+                                </div>
+
+                                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '20px' }}>
+                                    <div style={{ display: 'flex', flexDirection: 'column', gap: '5px' }}>
+                                        <label style={{ fontSize: '12px', fontWeight: '600', color: '#64748b' }}>LLM Provider</label>
+                                        <select
+                                            disabled={isConfigLocked}
+                                            value={globalSettings.llm_provider}
+                                            onChange={e => setGlobalSettings({ ...globalSettings, llm_provider: e.target.value })}
+                                            style={{ ...inputStyle, padding: '8px 12px', cursor: isConfigLocked ? 'not-allowed' : 'default' }}
+                                        >
+                                            <option value="bedrock">Amazon Bedrock</option>
+                                            <option value="openai">OpenAI / Compatible Proxy</option>
+                                        </select>
+                                    </div>
+                                    <div style={{ display: 'flex', flexDirection: 'column', gap: '5px' }}>
+                                        <label style={{ fontSize: '12px', fontWeight: '600', color: '#64748b' }}>LLM Model Name</label>
+                                        <input
+                                            disabled={isConfigLocked}
+                                            type="text" value={globalSettings.llm_model}
+                                            onChange={e => setGlobalSettings({ ...globalSettings, llm_model: e.target.value })}
+                                            placeholder={globalSettings.llm_provider === 'bedrock' ? "bedrock/openai.gpt-oss-safeguard-120b" : "gpt-4o"}
+                                            style={{ ...inputStyle, padding: '8px 12px', cursor: isConfigLocked ? 'not-allowed' : 'text' }}
+                                            onFocus={inputFocusHandler} onBlur={inputBlurHandler}
+                                        />
+                                    </div>
+                                    <div style={{ display: 'flex', flexDirection: 'column', gap: '5px' }}>
+                                        <label style={{ fontSize: '12px', fontWeight: '600', color: '#64748b' }}>API Base URL (Optional)</label>
+                                        <input
+                                            disabled={isConfigLocked}
+                                            type="text" value={globalSettings.llm_api_base}
+                                            onChange={e => setGlobalSettings({ ...globalSettings, llm_api_base: e.target.value })}
+                                            placeholder="https://api.openai.com/v1"
+                                            style={{ ...inputStyle, padding: '8px 12px', cursor: isConfigLocked ? 'not-allowed' : 'text' }}
+                                            onFocus={inputFocusHandler} onBlur={inputBlurHandler}
+                                        />
+                                    </div>
+                                    <div style={{ display: 'flex', flexDirection: 'column', gap: '5px' }}>
+                                        <label style={{ fontSize: '12px', fontWeight: '600', color: '#64748b' }}>{globalSettings.llm_provider === 'openai' ? 'OpenAI API Key' : 'API Key (if using proxy)'}</label>
+                                        <input
+                                            disabled={isConfigLocked}
+                                            type="password" value={globalSettings.openai_api_key}
+                                            onChange={e => setGlobalSettings({ ...globalSettings, openai_api_key: e.target.value })}
+                                            placeholder="sk-..."
+                                            style={{ ...inputStyle, padding: '8px 12px', cursor: isConfigLocked ? 'not-allowed' : 'text' }}
+                                            onFocus={inputFocusHandler} onBlur={inputBlurHandler}
+                                        />
+                                    </div>
+                                    <div style={{ display: 'flex', flexDirection: 'column', gap: '5px' }}>
+                                        <label style={{ fontSize: '12px', fontWeight: '600', color: '#64748b' }}>Embedding Model</label>
+                                        <input
+                                            disabled={isConfigLocked}
+                                            type="text" value={globalSettings.embedding_model}
+                                            onChange={e => setGlobalSettings({ ...globalSettings, embedding_model: e.target.value })}
+                                            placeholder="BAAI/bge-base-en-v1.5"
+                                            style={{ ...inputStyle, padding: '8px 12px', cursor: isConfigLocked ? 'not-allowed' : 'text' }}
+                                            onFocus={inputFocusHandler} onBlur={inputBlurHandler}
+                                        />
+                                    </div>
+                                </div>
+
+                                {globalSettings.llm_provider === 'bedrock' && (
+                                    <div style={{ display: 'flex', flexDirection: 'column', gap: '12px', padding: '16px', backgroundColor: '#f0f9ff', borderRadius: '8px', border: '1px solid #bae6fd', marginTop: '20px' }}>
+                                        <div style={{ fontSize: '11px', fontWeight: '700', color: '#0369a1', textTransform: 'uppercase' }}>Bedrock AWS Credentials</div>
+                                        <div style={{ display: 'flex', gap: '12px' }}>
+                                            <div style={{ flex: 1, display: 'flex', flexDirection: 'column', gap: '5px' }}>
+                                                <label style={{ fontSize: '11px', fontWeight: '600', color: '#64748b' }}>Region</label>
+                                                <input
+                                                    disabled={isConfigLocked}
+                                                    type="text" value={globalSettings.bedrock_region}
+                                                    onChange={e => setGlobalSettings({ ...globalSettings, bedrock_region: e.target.value })}
+                                                    placeholder="us-east-1"
+                                                    style={{ ...inputStyle, padding: '8px 12px', fontSize: '13px', cursor: isConfigLocked ? 'not-allowed' : 'text' }}
+                                                />
+                                            </div>
+                                            <div style={{ flex: 2, display: 'flex', flexDirection: 'column', gap: '5px' }}>
+                                                <label style={{ fontSize: '11px', fontWeight: '600', color: '#64748b' }}>Access Key ID</label>
+                                                <input
+                                                    disabled={isConfigLocked}
+                                                    type="text" value={globalSettings.bedrock_access_key}
+                                                    onChange={e => setGlobalSettings({ ...globalSettings, bedrock_access_key: e.target.value })}
+                                                    placeholder="AKIA..."
+                                                    style={{ ...inputStyle, padding: '8px 12px', fontSize: '13px', cursor: isConfigLocked ? 'not-allowed' : 'text' }}
+                                                />
+                                            </div>
+                                        </div>
+                                        <div style={{ display: 'flex', flexDirection: 'column', gap: '5px' }}>
+                                            <label style={{ fontSize: '11px', fontWeight: '600', color: '#64748b' }}>Secret Access Key</label>
+                                            <input
+                                                disabled={isConfigLocked}
+                                                type="password" value={globalSettings.bedrock_secret_key}
+                                                onChange={e => setGlobalSettings({ ...globalSettings, bedrock_secret_key: e.target.value })}
+                                                placeholder="AWS Secret Key"
+                                                style={{ ...inputStyle, padding: '8px 12px', fontSize: '13px', cursor: isConfigLocked ? 'not-allowed' : 'text' }}
+                                            />
+                                        </div>
+                                    </div>
+                                )}
+                            </div>
+
+                            {/* RAG & Vector Store Configuration */}
+                            <div style={{ backgroundColor: 'white', padding: '24px', borderRadius: '12px', border: '1px solid #e2e8f0', boxShadow: '0 1px 3px rgba(0,0,0,0.05)', opacity: isConfigLocked ? 0.75 : 1 }}>
+                                <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '20px', paddingBottom: '12px', borderBottom: '1px solid #f1f5f9' }}>
+                                    <Layers size={18} color="#7c3aed" />
+                                    <h3 style={{ fontSize: '16px', fontWeight: '600', color: '#1e293b', margin: 0 }}>RAG & Vector Store</h3>
+                                </div>
+
+                                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '20px' }}>
+                                    <div style={{ display: 'flex', flexDirection: 'column', gap: '5px' }}>
+                                        <label style={{ fontSize: '12px', fontWeight: '600', color: '#64748b' }}>Qdrant URL</label>
+                                        <input
+                                            disabled={isConfigLocked}
+                                            type="text" value={globalSettings.qdrant_url}
+                                            onChange={e => setGlobalSettings({ ...globalSettings, qdrant_url: e.target.value })}
+                                            placeholder="http://localhost:6333"
+                                            style={{ ...inputStyle, padding: '8px 12px', cursor: isConfigLocked ? 'not-allowed' : 'text' }}
+                                            onFocus={inputFocusHandler} onBlur={inputBlurHandler}
+                                        />
+                                    </div>
+                                    <div style={{ display: 'flex', flexDirection: 'column', gap: '5px' }}>
+                                        <label style={{ fontSize: '12px', fontWeight: '600', color: '#64748b' }}>Qdrant API Key (Optional)</label>
+                                        <input
+                                            disabled={isConfigLocked}
+                                            type="password" value={globalSettings.qdrant_api_key}
+                                            onChange={e => setGlobalSettings({ ...globalSettings, qdrant_api_key: e.target.value })}
+                                            placeholder="API Key for Qdrant Cloud"
+                                            style={{ ...inputStyle, padding: '8px 12px', cursor: isConfigLocked ? 'not-allowed' : 'text' }}
+                                            onFocus={inputFocusHandler} onBlur={inputBlurHandler}
+                                        />
+                                    </div>
+                                </div>
+                            </div>
+
+                            {!isConfigLocked && (
+                                <div style={{ display: 'flex', gap: '12px', marginTop: '10px' }} className="animation-fade-in">
+                                    <button
+                                        type="submit" disabled={saving}
+                                        style={{
+                                            backgroundColor: '#2563eb', color: 'white', border: 'none',
+                                            borderRadius: '8px', padding: '12px 32px', fontSize: '14px',
+                                            fontWeight: '600', cursor: 'pointer', transition: 'all 0.2s',
+                                            boxShadow: '0 4px 12px rgba(37, 99, 235, 0.2)'
+                                        }}
+                                    >
+                                        {saving ? 'Saving...' : 'Save Global Configuration'}
+                                    </button>
+                                    <button
+                                        type="button" onClick={() => setIsConfigLocked(true)}
+                                        style={{
+                                            backgroundColor: 'white', color: '#475569', border: '1px solid #e2e8f0',
+                                            borderRadius: '8px', padding: '12px 24px', fontSize: '14px',
+                                            fontWeight: '600', cursor: 'pointer'
+                                        }}
+                                    >
+                                        Cancel
+                                    </button>
+                                </div>
+                            )}
+                        </form>
                     </div>
                 )}
             </div>

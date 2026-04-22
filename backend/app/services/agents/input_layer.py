@@ -2,13 +2,13 @@ import os
 import json
 from typing import Dict, Any, List
 from app.services.agents.base import BaseAgent
-from app.services.schemas.agent_state import AgentState
-from app.repositories.persistence.file_coordinator import FileCoordinator
+from app.schemas.agent_state import AgentState
+from app.repositories.file_coordinator import FileCoordinator
 import sys
 from pathlib import Path
 
 import re
-from app.services.engines.rag_service import query_qdrant
+from app.services.rag_service import query_qdrant
 
 def sanitize_string(text: str) -> str:
     """Removes newlines, extra whitespace, and problematic characters."""
@@ -97,9 +97,9 @@ class ContextEnrichmentAgent(BaseAgent):
     metadata using vector search (RAG). It identifies the most pertinent tables
     and columns to provide the necessary context for SQL generation.
     """
-    def __init__(self, results_dir: str = None, logs_dir: str = None, metadata_dir: str = None, user_slug: str = None):
-        super().__init__(name="TableSelector", results_dir=results_dir, logs_dir=logs_dir, metadata_dir=metadata_dir, user_slug=user_slug)
-        self.file_coordinator = FileCoordinator(results_dir=results_dir, logs_dir=logs_dir, user_slug=user_slug)
+    def __init__(self, results_dir: str = None, logs_dir: str = None, metadata_dir: str = None, user_slug: str = None, project_slug: str = None):
+        super().__init__(name="TableSelector", results_dir=results_dir, logs_dir=logs_dir, metadata_dir=metadata_dir, user_slug=user_slug, project_slug=project_slug)
+        self.file_coordinator = FileCoordinator(results_dir=results_dir, logs_dir=logs_dir, user_slug=user_slug, project_slug=project_slug)
 
     def hydrate_columns(self, set_data: Dict[str, List[str]], metadata: Dict[str, Any]) -> List[Dict[str, Any]]:
         """Helper to hydrate column names into full metadata objects."""
@@ -136,19 +136,30 @@ class ContextEnrichmentAgent(BaseAgent):
             if not state.use_rag:
                 self.log(state, "RAG is disabled. Initiating Full Schema Pass-through...")
                 
-                # Resolve metadata path
-                from app.repositories.registry.paths import get_metadata_dir
-                from app.repositories.connectors.sql_repo import DBRepository
+                # Resolve metadata path with correct project slug
+                # Resolve metadata path with correct project slug
+                from app.repositories.paths import get_metadata_dir, get_active_project_slug
+                from app.db.sql_repo import DBRepository
+                
                 active_conn = DBRepository._get_active_connection(user_slug=self.user_slug)
                 collection_name = DBRepository.get_collection_name(active_conn, state.db_name or "metadata")
-                metadata_path = get_metadata_dir(self.user_slug) / f"{collection_name}.json"
+                
+                # Prioritize project_slug from state (essential for batch/async processing)
+                project_slug = state.project_slug or get_active_project_slug(user_slug=self.user_slug)
+                metadata_dir = get_metadata_dir(self.user_slug, project_slug, model_name=state.model_name)
+                
+                # Check for database-specific extract first, then project default
+                metadata_path = metadata_dir / f"{collection_name}.json"
+                if not metadata_path.exists() and collection_name != "metadata":
+                    metadata_path = metadata_dir / "metadata.json"
                 
                 if not metadata_path.exists():
-                    self.log(state, f"Metadata not found at {metadata_path}. Please run 'Inject Knowledge' first.", level="WARNING")
+                    self.log(state, f"Schema metadata not found for '{collection_name}' in project '{project_slug}'.", level="WARNING")
+                    self.log(state, "TIP: Run 'Extract Knowledge' in the UI to generate detailed schema extracts for better SQL results.", level="INFO")
                     state.schema_info = {}
                     return state
 
-                from app.services.utils.schema_registry import SchemaRegistry
+                from app.utils.schema_registry import SchemaRegistry
                 metadata = SchemaRegistry.get_metadata(str(metadata_path))
                 
                 # Convert metadata dict to table metadata list for downstream agents
@@ -210,13 +221,14 @@ class ContextEnrichmentAgent(BaseAgent):
             # Load metadata for re-hydration
             metadata_path = results.get("metadata_path")
             if not metadata_path or not os.path.exists(metadata_path):
-                from app.repositories.registry.paths import get_metadata_dir
-                from app.repositories.connectors.sql_repo import DBRepository
+                from app.repositories.paths import get_metadata_dir, get_active_project_slug
+                from app.db.sql_repo import DBRepository
                 active_conn = DBRepository._get_active_connection(user_slug=self.user_slug)
                 collection_name = DBRepository.get_collection_name(active_conn, state.db_name or "metadata")
-                metadata_path = get_metadata_dir(self.user_slug) / f"{collection_name}.json"
+                project_slug = get_active_project_slug(user_slug=self.user_slug)
+                metadata_path = get_metadata_dir(self.user_slug, project_slug) / f"{collection_name}.json"
             
-            from app.services.utils.schema_registry import SchemaRegistry
+            from app.utils.schema_registry import SchemaRegistry
             metadata = SchemaRegistry.get_metadata(str(metadata_path))
 
             # Hydrate the column metadata for the chosen set

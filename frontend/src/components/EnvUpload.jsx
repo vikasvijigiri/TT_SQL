@@ -4,7 +4,7 @@ import axios from 'axios';
 
 const API_BASE_URL = 'http://localhost:8001';
 
-const EnvUpload = ({ onUploadSuccess, apiUrl }) => {
+const EnvUpload = ({ onUploadSuccess, onUploadResponse, onUploadError, apiUrl, title, icon }) => {
     const [uploading, setUploading] = useState(false);
     const [error, setError] = useState(null);
     const [success, setSuccess] = useState(false);
@@ -15,8 +15,9 @@ const EnvUpload = ({ onUploadSuccess, apiUrl }) => {
         if (!file) return;
 
         // More lenient check for .env files
-        if (!file.name.includes('env')) {
+        if (!file.name.includes('env') && !file.name.startsWith('.')) {
             setError('Please upload a .env file');
+            if (onUploadError) onUploadError('Please upload a .env file');
             return;
         }
 
@@ -29,18 +30,21 @@ const EnvUpload = ({ onUploadSuccess, apiUrl }) => {
 
         try {
             const url = apiUrl || `${API_BASE_URL}/api/data/upload-env`;
-            await axios.post(url, formData, {
+            const res = await axios.post(url, formData, {
                 headers: {
                     'Content-Type': 'multipart/form-data',
                 },
             });
 
             setSuccess(true);
+            if (onUploadResponse) onUploadResponse(res.data);
             if (onUploadSuccess) onUploadSuccess();
             setTimeout(() => setSuccess(false), 3000);
         } catch (err) {
             console.error('Upload failed:', err);
-            setError(err.response?.data?.detail || 'Upload failed');
+            const errMsg = err.response?.data?.detail || 'Upload failed';
+            setError(errMsg);
+            if (onUploadError) onUploadError(errMsg);
         } finally {
             setUploading(false);
             if (fileInputRef.current) fileInputRef.current.value = '';
@@ -60,9 +64,11 @@ const EnvUpload = ({ onUploadSuccess, apiUrl }) => {
                 className={`icon-btn ${uploading ? 'loading' : ''} ${success ? 'success' : ''}`}
                 onClick={() => fileInputRef.current?.click()}
                 disabled={uploading}
-                title="Upload .env config"
+                title={title || "Upload .env config"}
+                style={{ display: 'flex', alignItems: 'center', gap: '6px' }}
             >
-                {success ? <Check size={18} color="#10b981" /> : <Settings size={18} />}
+                {success ? <Check size={18} color="#10b981" /> : (icon || <Settings size={18} />)}
+                {onUploadResponse && <span style={{ fontSize: '12px', fontWeight: '600' }}>Import .env</span>}
             </button>
 
             {error && (

@@ -3,11 +3,11 @@ import os
 import threading
 from typing import List
 from app.services.agents.base import BaseAgent
-from app.services.schemas.agent_state import AgentState, CandidateQuery
-from app.services.engines.llm_service import LLMService
-from app.services.utils.prompt_loader import PromptLoader
-from app.repositories.persistence.file_coordinator import FileCoordinator
-from app.services.utils.logger import Logger
+from app.schemas.agent_state import AgentState, CandidateQuery
+from app.services.llm_service import LLMService
+from app.utils.prompt_loader import PromptLoader
+from app.repositories.file_coordinator import FileCoordinator
+from app.core.logger import Logger
 from app.services.agents.input_layer import format_rag_columns
 
 class MultiCandidateGeneratorAgent(BaseAgent):
@@ -16,11 +16,11 @@ class MultiCandidateGeneratorAgent(BaseAgent):
     the execution plan and the enriched schema context. It utilizes the LLM to 
     generate candidate queries tailored to the target database dialect.
     """
-    def __init__(self, llm_service: LLMService, results_dir: str = None, logs_dir: str = None, metadata_dir: str = None, user_slug: str = None):
-        super().__init__(name="SQLBuilder", results_dir=results_dir, logs_dir=logs_dir, metadata_dir=metadata_dir, user_slug=user_slug)
+    def __init__(self, llm_service: LLMService, results_dir: str = None, logs_dir: str = None, metadata_dir: str = None, user_slug: str = None, project_slug: str = None):
+        super().__init__(name="SQLBuilder", results_dir=results_dir, logs_dir=logs_dir, metadata_dir=metadata_dir, user_slug=user_slug, project_slug=project_slug)
         self.llm = llm_service
         self.prompt_loader = PromptLoader()
-        self.file_coordinator = FileCoordinator(results_dir=results_dir, logs_dir=logs_dir, user_slug=user_slug)
+        self.file_coordinator = FileCoordinator(results_dir=results_dir, logs_dir=logs_dir, user_slug=user_slug, project_slug=project_slug)
 
     def _format_compact_schema(self, schema_info: dict) -> str:
         """Formats schema as: - Table: col1 (desc), col2 (desc)..."""
@@ -65,7 +65,7 @@ class MultiCandidateGeneratorAgent(BaseAgent):
                 action_plan = "\n".join(f"  {i+1}. {s}" for i, s in enumerate(state.step_by_step_plan))
 
             # Dialect resolution logic
-            from app.repositories.config import settings
+            from app.core.settings import settings
             db_type_env = settings.DB_TYPE.lower()
             
             if db_type_env in ["postgres", "postgresql"]:
@@ -82,8 +82,8 @@ class MultiCandidateGeneratorAgent(BaseAgent):
                 dialect = "SQLite"
             
             try:
-                from app.services.utils.prompt_loader import _load_yaml_cached
-                from app.repositories.registry.paths import PROMPTS_DIR
+                from app.utils.prompt_loader import _load_yaml_cached
+                from app.repositories.paths import PROMPTS_DIR
                 dialects = _load_yaml_cached(str(PROMPTS_DIR / "dialects.yaml"))
                 dialect_config = dialects.get(dialect_key, dialects.get("default", {}))
                 dialect_instructions = dialect_config.get("builder_instructions", "")
