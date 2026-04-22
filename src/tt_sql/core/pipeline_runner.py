@@ -12,14 +12,13 @@ from tt_sql.core.llm_service import LLMService
 from tt_sql.core.agent_base import AgentState
 from tt_sql.core.paths import initialize_directories, InstancePaths
 from tt_sql.core.config import get_settings
-from tt_sql.core.pipeline_config import PipelineConfig
+# (Removed PipelineConfig dependency)
 
-# Import Agents
-from tt_sql.agents.input_layer import ContextEnrichmentAgent
-from tt_sql.agents.table_selector_agent import TableSelectorAgent
-from tt_sql.agents.planning_layer import StepByStepPlannerAgent
-from tt_sql.agents.loop_layer import RefinementLoopAgent
-from tt_sql.agents.execution_layer import SQLiteExecutorAgent, PostgresExecutorAgent, BigQueryExecutorAgent, SnowflakeExecutorAgent
+# Import Agents (Consolidated)
+from tt_sql.agents.planner import ContextEnrichmentAgent, StepByStepPlannerAgent
+from tt_sql.agents.selector import TableSelectorAgent
+from tt_sql.agents.builder import RefinementLoopAgent
+from tt_sql.agents.executor import SQLiteExecutorAgent, PostgresExecutorAgent, BigQueryExecutorAgent, SnowflakeExecutorAgent
 
 
 def reset_pipeline_infrastructure(include_heavy_models: bool = False):
@@ -40,40 +39,7 @@ def reset_pipeline_infrastructure(include_heavy_models: bool = False):
     except Exception:
         pass
 
-def get_agents(llm_service, instance_id=None):
-    """Factory to create agents with the given LLM service."""
-    # Load central config
-    pipeline_cfg = PipelineConfig()
-    
-    # Determine executor based on DB_TYPE or instance_id prefix
-    db_type = os.getenv("DB_TYPE", "sqlite").lower()
-    
-    if (instance_id and instance_id.startswith("bq")) or db_type == "bigquery":
-        executor_name = "BigQueryExecutor"
-        executor = BigQueryExecutorAgent()
-    elif (instance_id and instance_id.startswith("sf")) or db_type == "snowflake":
-        executor_name = "SnowflakeExecutor"
-        executor = SnowflakeExecutorAgent()
-    elif db_type in ["postgres", "postgresql"]:
-        executor_name = "PostgresExecutor"
-        executor = PostgresExecutorAgent()
-    else:
-        executor_name = "SQLiteExecutor"
-        executor = SQLiteExecutorAgent()
-
-    # Get prompt configs for each agent
-    ts_cfg = pipeline_cfg.get_agent_prompt_config("TableSelector")
-    qp_cfg = pipeline_cfg.get_agent_prompt_config("QueryPlanner")
-    sb_cfg = pipeline_cfg.get_agent_prompt_config("SQLBuilder")
-    # For executors, they might not have specific prompt roles yet, but we pass config anyway
-
-    return [
-        ContextEnrichmentAgent(config=ts_cfg),
-        TableSelectorAgent(llm_service, config=ts_cfg), # Reuse ts_cfg for table selection
-        StepByStepPlannerAgent(llm_service, config=qp_cfg),
-        RefinementLoopAgent(llm_service, executor=executor, config=sb_cfg), # RefinementLoop uses SQLBuilder prompt config
-        executor
-    ]
+# (Removed factory-based get_agents)
 
 class OutputHandler:
     """Handles output logging and optional console printing."""
@@ -109,6 +75,7 @@ def run_analysis_pipeline(
     Core pipeline execution logic. Pure Python, no UI dependencies.
     Returns: (final_state, iter_count, is_fatal, captured_transcript)
     """
+    Logger.log_call("run_analysis_pipeline", {"instance_id": instance_id, "model": model_name})
     # 0. Strict Task Isolation Reset
     reset_pipeline_infrastructure()
 
@@ -175,13 +142,23 @@ def run_analysis_pipeline(
     # Initialize directories (Production Entry point) (5. Done)
     initialize_directories(settings.LLM_MODEL)
 
-    # Initialize Components
+    # Initialize Components (Directly)
     llm_service = LLMService(model=model_name)
-    agents_list = get_agents(llm_service, instance_id=instance_id)
+    
+    # Determine executor based on DB_TYPE or instance_id prefix
+    db_type = os.getenv("DB_TYPE", "sqlite").lower()
+    if (instance_id and instance_id.startswith("bq")) or db_type == "bigquery":
+        executor = BigQueryExecutorAgent()
+    elif (instance_id and instance_id.startswith("sf")) or db_type == "snowflake":
+        executor = SnowflakeExecutorAgent()
+    elif db_type in ["postgres", "postgresql"]:
+        executor = PostgresExecutorAgent()
+    else:
+        executor = SQLiteExecutorAgent()
 
-
-    # Build agent map
-    agent_map = {agent.name: agent for agent in agents_list}
+    # Instantiate fixed set of agents
+    context_agent = ContextEnrichmentAgent()
+    refinement_loop = RefinementLoopAgent(llm_service, executor=executor)
 
     # Initial State
     state = AgentState(
@@ -192,7 +169,8 @@ def run_analysis_pipeline(
         rag_source=rag_source,
         use_rag=use_rag,
         rag_limit=rag_limit,
-        model_name=model_name
+        model_name=model_name,
+        external_knowledge=external_knowledge
     )
 
     start_time = time.time()
@@ -222,35 +200,42 @@ def run_analysis_pipeline(
                 rag_limit=state.rag_limit,
                 model_name=state.model_name,
                 schema_info=state.schema_info,
-                query_intent=state.query_intent
+                query_intent=state.query_intent,
+                external_knowledge=state.external_knowledge
             )
             
-            # --- Stage 4: Context Enrichment ---
+            # --- Fixed Lean Flow Sequence ---
             if stop_checker and stop_checker(): return None, 0, True, output_handler.captured_text
-            if "TableSelector" in agent_map:
-                current_state = agent_map["TableSelector"].run(current_state)
-
-            Logger.log_stage_header("📋 PLANNING LAYER")
-
-            # --- Stage 6: Step-by-Step Planner ---
-            if stop_checker and stop_checker(): return None, 0, True, output_handler.captured_text
-            if "QueryPlanner" in agent_map:
-                current_state = agent_map["QueryPlanner"].run(current_state)
-
-            Logger.log_stage_header("⚡ GENERATION LAYER")
-
-            # --- Stage 7: Refinement Loop ---
-            if stop_checker and stop_checker(): return None, 0, True, output_handler.captured_text
-            # Sync stop signal
-            if stop_checker and stop_checker(): current_state.stop_requested = True
             
-            if "RefinementLoop" in agent_map:
-                current_state = agent_map["RefinementLoop"].run(current_state)
+            # 1. System Setup (Context Enrichment)
+            current_state = context_agent.run(current_state)
+
+            # --- Strict 4-Stage Lean Sequence ---
+            if stop_checker and stop_checker(): return None, 0, True, output_handler.captured_text
+            
+            # Step 1: Query Planner
+            Logger.log_call("Step 1: Query Planner")
+            planner_agent = StepByStepPlannerAgent(llm_service)
+            current_state = planner_agent.run(current_state)
+
+            # Step 2: Table Selector
+            Logger.log_call("Step 2: Table Selector")
+            table_selector = TableSelectorAgent(llm_service)
+            current_state = table_selector.run(current_state)
+
+            # Step 3: Builder-Critic Loop
+            Logger.log_call("Step 3: Builder-Critic Loop")
+            if stop_checker and stop_checker(): current_state.stop_requested = True
+            current_state = refinement_loop.run(current_state)
+
+            # Step 4: Final Executor
+            Logger.log_call("Step 4: Final Executor")
+            current_state = executor.run(current_state)
 
             # Stage 8: Final Execution Result
             # (Execution is handled within RefinementLoopAgent to enable iteration)
             if not current_state.execution_result:
-                self.log_to_all(f"No execution result found for {instance_id}")
+                Logger.log(f"No execution result found for {instance_id}")
 
             # Check fatal errors
             if (current_state.chosen_query and "ERROR:" in current_state.chosen_query) or \

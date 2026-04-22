@@ -1,5 +1,6 @@
 # Local execution results and logs
 results/
+data/
 logs/
 resources/
 kb_docs/

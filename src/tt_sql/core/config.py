@@ -25,7 +25,6 @@ class Settings(BaseSettings):
     BEDROCK_REGION: str = Field(default="us-east-1")
     LLM_PROVIDER: str = Field(default="bedrock")
     LLM_MODEL: str = Field(default="bedrock/openai.gpt-oss-safeguard-120b")
-    LLM_API_BASE: Optional[str] = None
     LLM_TEMPERATURE: float = Field(default=0.0)
     LLM_MAX_TOKENS: int = Field(default=4096)
 
@@ -45,7 +44,7 @@ class Settings(BaseSettings):
     
     # Google Cloud / BigQuery
     GCP_PROJECT_ID: Optional[str] = None
-    GCP_CREDENTIALS_PATH: str = Field(default="text2sql_gcp_credentials.json")
+    GCP_CREDENTIALS_PATH: str = Field(default="config/gcp_credentials.json")
     
     # Snowflake
     SF_CREDENTIALS_PATH: str = Field(default="config/sf_credentials.json")

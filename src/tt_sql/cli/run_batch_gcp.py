@@ -8,7 +8,7 @@ from tt_sql.core.paths import DATA_DIR
 def main():
     parser = argparse.ArgumentParser(description="GCP/BigQuery Batch Runner")
     parser.add_argument("--dataset", type=str, default=str(DATA_DIR / "spider2-lite-bigquery.jsonl"))
-    parser.add_argument("--model", type=str, default=os.getenv("LLM_MODEL", "gpt-4o"))
+    parser.add_argument("--model", type=str, default=os.getenv("LLM_MODEL", "bedrock/openai.gpt-oss-safeguard-120b"))
     parser.add_argument("--workers", type=int, default=4)
     parser.add_argument("--limit", type=int, default=0)
     parser.add_argument("--overwrite", action="store_true")

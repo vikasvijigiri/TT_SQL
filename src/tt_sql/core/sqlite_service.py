@@ -1,12 +1,49 @@
 import sqlite3
+import time
 from typing import Dict, Any, List
+from tt_sql.core.state import ExecutionResult
 
 class SQLiteService:
     """
-    Service to interact with local SQLite databases for schema extraction.
+    Service to interact with local SQLite databases for schema extraction and query execution.
     """
     def __init__(self, db_path: str):
         self.db_path = db_path
+
+    def execute_query(self, query: str, sampling: bool = False) -> ExecutionResult:
+        """Executes a query and returns an ExecutionResult object."""
+        start_t = time.time()
+        result = ExecutionResult()
+        try:
+            conn = sqlite3.connect(self.db_path)
+            cursor = conn.cursor()
+            
+            # Final sanity check: must start with SELECT, WITH, etc.
+            if not any(query.upper().strip().startswith(kw) for kw in ["SELECT", "WITH", "PRAGMA", "EXPLAIN"]):
+                 raise sqlite3.Error(f"String does not appear to be a valid SQL command: '{query[:50]}...'")
+
+            cursor.execute(query)
+            
+            # Fetch columns
+            if cursor.description:
+                result.columns = [description[0] for description in cursor.description]
+            
+            # Fetch rows
+            if sampling:
+                rows = cursor.fetchmany(5)
+            else:
+                rows = cursor.fetchall()
+            
+            result.rows = [list(row) for row in rows]
+            result.row_count = len(rows)
+            conn.close()
+            
+        except sqlite3.Error as e:
+            result.error_message = str(e)
+        finally:
+            result.execution_time_ms = (time.time() - start_t) * 1000
+            
+        return result
 
     def get_full_schema(self) -> Dict[str, Any]:
         """
