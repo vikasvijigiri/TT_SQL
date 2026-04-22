@@ -23,39 +23,39 @@ User Query
     │
     ▼
 ┌──────────────────────────────────────────────┐
-│  📥 INPUT LAYER                               │
-│  SQLiteFileLoader → SchemaAnalyzer            │
-│                   → TableSelector (🤖 LLM)    │
+│  📥 INPUT LAYER (Context & Pruning)           │
+│  ContextEnrichmentAgent (RAG / Schema API)    │
+│  └→ TableSelectorAgent (🤖 LLM Pruning)       │
 │                                               │
 │  Outputs: schema_info, relevant_tables,       │
-│           query_intent, complexity             │
+│           query_intent, complexity            │
 └────────────────────┬─────────────────────────┘
                      │
                      ▼
 ┌──────────────────────────────────────────────┐
-│  📋 PLANNING LAYER                            │
-│  RelationshipGraphBuilder → QueryPlanner (🤖) │
+│  📋 PLANNING LAYER (Strategy)                 │
+│  StepByStepPlannerAgent (🤖 LLM Planning)     │
 │                                               │
-│  Outputs: FK relationship_graph,              │
-│           step_by_step_plan                    │
+│  Outputs: execution_roadmap, sub_tasks        │
 └────────────────────┬─────────────────────────┘
                      │
                      ▼
 ┌──────────────────────────────────────────────┐
 │  ⚡ GENERATION LAYER (RefinementLoop)         │
 │                                               │
-│  ┌───────────┐  feedback  ┌──────────┐       │
-│  │SQLBuilder │◄───────────│SQLCritic │       │
-│  │   (🤖)    │───────────►│   (🤖)   │       │
-│  └───────────┘  SQL       └──────────┘       │
-│       ▲                       │ ✅ PASS       │
-│       └── retry (max 5) ─────┘               │
+│  ┌────────────┐ feedback ┌────────────┐      │
+│  │ SQLBuilder  │◄────────┤ SQLCritic  │      │
+│  │    (🤖)     │────────►│    (🤖)     │      │
+│  └────────────┘   SQL    └────────────┘      │
+│        ▲                      │ ✅ PASS      │
+│        └─── retry (max 5) ────┘              │
 └────────────────────┬─────────────────────────┘
                      │
                      ▼
 ┌──────────────────────────────────────────────┐
-│  🚀 EXECUTION LAYER                          │
-│  SQLiteExecutor → .sql + .csv output files    │
+│  🚀 EXECUTION LAYER (Dialect-Specific)        │
+│  SQLite / BigQuery / Snowflake / Postgres     │
+│  └→ .sql + .csv results                       │
 └──────────────────────────────────────────────┘
 ```
 
@@ -63,17 +63,25 @@ User Query
 
 ### Agent Summary
 
-| # | Agent | Layer | LLM? | Purpose |
-|---|-------|-------|------|---------|
-| 1 | `SQLiteFileLoader` | Input | No | Locates the `.sqlite` database file |
-| 2 | `SchemaAnalyzer` | Input | No | Extracts full schema (tables, columns, types, FKs) |
-| 3 | `TableSelector` | Input | **Yes** (or No) | Picks relevant tables + classifies intent. LLM can be bypassed using `--use-rag` flag. |
-| 4 | `RelationshipGraphBuilder` | Planning | No | Builds FK relationship graph between selected tables |
-| 5 | `QueryPlanner` | Planning | **Yes** | Breaks query into a step-by-step action plan |
-| 6 | `SQLBuilder` | Generation | **Yes** | Generates SQL from plan + schema + critic feedback |
-| 7 | `SQLCritic` | Generation | **Yes** | Validates SQL logic (no execution, pure analysis) |
-| 8 | `SQLiteExecutor` | Execution | No | Executes final SQL, saves `.sql` + `.csv` |
-| 9 | `RefinementLoop` | Generation | No | Orchestrates Builder→Critic loop (max 5 retries) |
+#### Core Pipeline Agents
+
+| # | Agent Class | Layer | LLM? | Purpose |
+|---|-------------|-------|------|---------|
+| 1 | `ContextEnrichmentAgent` | Input | No | Fetches full schema (SQLite/BQ/SF) and performs RAG column retrieval. |
+| 2 | `TableSelectorAgent` | Input | **Yes** | Uses LLM to prune irrelevant tables and detect query intent/complexity. |
+| 3 | `StepByStepPlannerAgent` | Planning | **Yes** | Generates a high-level execution roadmap for the query. |
+| 4 | `MultiCandidateGeneratorAgent`| Generation| **Yes** | Generates SQL candidates (CTE, Joins, etc.) based on the plan. |
+| 5 | `CriticAgent` | Generation | **Yes** | Validates SQL logic against a checklist (no execution). |
+| 6 | `RefinementLoopAgent` | Generation | No | Orchestrates the Builder-Critic retry cycle. |
+| 7 | `ExecutorAgent` | Execution | No | Dialect-specific execution (SQLite, BigQuery, Snowflake, Postgres). |
+
+#### Post-Processing & Analysis Agents
+
+| Agent Class | Purpose |
+|-------------|---------|
+| `SuccessAnalysisAgent` | Identifies success patterns in generated SQL for future few-shot learning. |
+| `FailureAnalysisAgent` | Performs post-mortem analysis on failed queries to classify error types (hallucination, logic, etc.). |
+| `DatasetFormatterAgent` | Intelligent utility that uses LLM to convert unstructured text/CSV into JSONL pipeline format. |
 
 ---
 
@@ -321,10 +329,10 @@ nQuiry supports **Retrieval-Augmented Generation (RAG)** to improve accuracy via
 
 | Pipeline Stage | LLM Calls |
 |---|---|
-| TableSelector (tables + intent + complexity) | 1 *(0 if `--use-rag` enabled)* |
-| QueryPlanner (step-by-step plan) | 1 |
-| SQLBuilder (per attempt) | 1 |
-| SQLCritic (per attempt) | 1 |
+| `TableSelectorAgent` (Pruning + Intent) | 1 *(0 if RAG matches precisely)* |
+| `StepByStepPlannerAgent` (Roadmap) | 1 |
+| `MultiCandidateGeneratorAgent` (Builder) | 1 per attempt |
+| `CriticAgent` (Analysis) | 1 per attempt |
 | **Minimum (1 attempt)** | **4** |
 | **Maximum (5 retries)** | **12** |
 
