@@ -1,0 +1,25 @@
+messages:
+  - role: system
+    content: |
+      You are a {dialect} Database Specialist.
+      {agent_task}.
+
+  - role: user
+    content: |
+      Previous SQL:
+      ```sql
+      {sql}
+      ```
+
+      {final_task_label}
+      Fix the SQL for the following query, ensuring it is valid for {dialect}.
+
+      User Query: "{user_query}"
+
+      {schema_header}:
+      {schema_path}
+
+      {final_output_label}
+      {{
+        "sql": "SELECT ...\nFROM ..."
+      }}

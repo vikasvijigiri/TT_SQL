@@ -1,20 +1,19 @@
 # Local execution results and logs
 results/
-old_results/
+logs/
 resources/
 kb_docs/
 JSON_logs/
 log.txt
-execution_log.md
 failed_ids.csv
 *.log
-.venv
-*.csv
-*.sql
+
+# Sensitive configs
+config/*.json
+
 # Environment and Virtual Env
 .env
 new_venv/
 venv/
 __pycache__/
 *.pyc
-.venv/
