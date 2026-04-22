@@ -3,7 +3,7 @@ name = "tt-sql"
 version = "0.1.0"
 description = ""
 authors = [
-    {name = "vikas.v@ngenux.com",email = "vikas.v@ngenux.com"}
+    {name = "vikas.v@ngenux.com", email = "vikas.v@ngenux.com"}
 ]
 readme = "README.md"
 requires-python = ">=3.13"
@@ -11,7 +11,11 @@ dependencies = [
 ]
 
 [tool.poetry]
-packages = [{include = "tt_sql", from = "src"}]
+packages = [{include = "*", from = "src"}]
+
+[tool.pytest.ini_options]
+pythonpath = ["src"]
+testpaths = ["tests"]
 
 [build-system]
 requires = ["poetry-core>=2.0.0,<3.0.0"]

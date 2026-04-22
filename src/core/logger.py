@@ -1,16 +1,19 @@
+import logging
 import os
 import threading
-import logging
-from typing import List, Optional, Callable
+from collections.abc import Callable
+
 from .config import get_settings
+
 
 class Logger:
     """
     Standardized logging service for the Text2SQL pipeline.
     Uses buffered file handling for performance and thread safety.
     """
-    _current_log_file: Optional[str] = None
-    _listeners: List[Callable[[str, str], None]] = []
+
+    _current_log_file: str | None = None
+    _listeners: list[Callable[[str, str], None]] = []
     _lock = threading.Lock()
     _internal_logger = logging.getLogger("tt_sql")
 
@@ -39,14 +42,16 @@ class Logger:
             for handler in cls._internal_logger.handlers[:]:
                 if isinstance(handler, logging.FileHandler):
                     cls._internal_logger.removeHandler(handler)
-            
+
             # Ensure directory exists
             os.makedirs(os.path.dirname(path), exist_ok=True)
-            
+
             # Set up new buffered file handler
-            handler = logging.FileHandler(path, mode='w', encoding='utf-8')
+            handler = logging.FileHandler(path, mode="w", encoding="utf-8")
             # Use same format as internal/SQLite logs for parity
-            formatter = logging.Formatter('[%(asctime)s] [%(levelname)s] %(message)s', datefmt='%Y-%m-%d %H:%M:%S')
+            formatter = logging.Formatter(
+                "[%(asctime)s] [%(levelname)s] %(message)s", datefmt="%Y-%m-%d %H:%M:%S"
+            )
             handler.setFormatter(formatter)
             cls._internal_logger.addHandler(handler)
             cls._internal_logger.setLevel(get_settings().LOG_LEVEL)

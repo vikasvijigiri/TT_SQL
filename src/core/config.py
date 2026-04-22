@@ -1,18 +1,19 @@
-from pydantic_settings import BaseSettings, SettingsConfigDict
-from pydantic import Field
-from typing import Optional, List
 from pathlib import Path
-import os
+
+from pydantic import Field
+from pydantic_settings import BaseSettings, SettingsConfigDict
+
 
 class Settings(BaseSettings):
     """
     Centralized configuration for the Text2SQL pipeline using Pydantic Settings.
     This provides type safety, validation, and environment-variable support.
     """
+
     model_config = SettingsConfigDict(
-        env_file=".env", 
+        env_file=".env",
         env_file_encoding="utf-8",
-        extra="ignore" # Ignore extra env vars
+        extra="ignore",  # Ignore extra env vars
     )
 
     # Database Configuration
@@ -20,8 +21,8 @@ class Settings(BaseSettings):
     SQLITE_DB_PATH: str = Field(default="resources")
 
     # Amazon Bedrock Configuration
-    BEDROCK_ACCESS_KEY: Optional[str] = Field(None, alias="BEDROCK_ACCESS_KEY_ID")
-    BEDROCK_SECRET_ACCESS_KEY: Optional[str] = None
+    BEDROCK_ACCESS_KEY: str | None = Field(None, alias="BEDROCK_ACCESS_KEY_ID")
+    BEDROCK_SECRET_ACCESS_KEY: str | None = None
     BEDROCK_REGION: str = Field(default="us-east-1")
     LLM_PROVIDER: str = Field(default="bedrock")
     LLM_MODEL: str = Field(default="bedrock/openai.gpt-oss-safeguard-120b")
@@ -34,49 +35,51 @@ class Settings(BaseSettings):
     TIMEOUT_SECONDS: int = Field(default=90)
 
     # Qdrant Vector DB
-    QDRANT_URL: Optional[str] = None
-    QDRANT_API_KEY: Optional[str] = Field(None, alias="QDRANT_API")
-    QDRANT_COLLECTION: Optional[str] = None
+    QDRANT_URL: str | None = None
+    QDRANT_API_KEY: str | None = Field(None, alias="QDRANT_API")
+    QDRANT_COLLECTION: str | None = None
 
     # AWS Postgres / Bedrock KB / S3
-    S3_BUCKET_NAME: Optional[str] = None
-    BEDROCK_KB_ID: Optional[str] = None
-    
+    S3_BUCKET_NAME: str | None = None
+    BEDROCK_KB_ID: str | None = None
+
     # Google Cloud / BigQuery
-    GCP_PROJECT_ID: Optional[str] = None
+    GCP_PROJECT_ID: str | None = None
     GCP_CREDENTIALS_PATH: str = Field(default="config/gcp_credentials.json")
-    
+
     # Snowflake
     SF_CREDENTIALS_PATH: str = Field(default="config/sf_credentials.json")
 
     @property
-    def gcp_credentials_abs_path(self) -> Optional[str]:
+    def gcp_credentials_abs_path(self) -> str | None:
         """Resolves the GCP credentials path to an absolute path."""
         if not self.GCP_CREDENTIALS_PATH:
             return None
         p = Path(self.GCP_CREDENTIALS_PATH)
         if p.is_absolute():
             return str(p)
-        
+
         # Try relative to project root
         # src/tt_sql/core/config.py -> .parent.parent.parent.parent
         root = Path(__file__).resolve().parent.parent.parent.parent
         return str(root / p)
 
     @property
-    def sf_credentials_abs_path(self) -> Optional[str]:
+    def sf_credentials_abs_path(self) -> str | None:
         """Resolves the Snowflake credentials path to an absolute path."""
         if not self.SF_CREDENTIALS_PATH:
             return None
         p = Path(self.SF_CREDENTIALS_PATH)
         if p.is_absolute():
             return str(p)
-        
+
         root = Path(__file__).resolve().parent.parent.parent.parent
         return str(root / p)
 
+
 # Singleton settings instance
-_settings: Optional[Settings] = None
+_settings: Settings | None = None
+
 
 def get_settings() -> Settings:
     """Returns the global settings instance, initializing if necessary."""

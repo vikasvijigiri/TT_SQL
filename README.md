@@ -94,7 +94,7 @@ User Query
 
 ### 2. Clone the Repository
 ```bash
-git clone https://github.com/NG-VikasV/TT_SQL.git
+git clone https://github.com/NG-VikasV/git
 cd TT_SQL
 ```
 
@@ -171,7 +171,7 @@ GENERATOR_MODEL=bedrock/openai.gpt-oss-safeguard-120b
 
 ### Single Question (CLI)
 ```bash
-python -m tt_sql.cli.run_single --id local020 --model gpt-4o
+python -m cli.run_single --id local020 --model gpt-4o
 ```
 
 ### Batch Processing (CLI)
@@ -180,19 +180,19 @@ We provide dedicated batch runners optimized for each database dialect.
 #### 1. SQLite Batch Runner
 Best for local testing with the Spider 2.0 dataset.
 ```bash
-python -m tt_sql.cli.run_batch_sqlite --dataset data/spider2-lite-sqlite.jsonl --model gpt-4o --workers 4
+python -m cli.run_batch_sqlite --dataset data/spider2-lite-sqlite.jsonl --model gpt-4o --workers 4
 ```
 
 #### 2. BigQuery (GCP) Batch Runner
 Connects to Google BigQuery datasets.
 ```bash
-python -m tt_sql.cli.run_batch_gcp --dataset data/spider2-lite-bigquery.jsonl --model gpt-4o --workers 4
+python -m cli.run_batch_gcp --dataset data/spider2-lite-bigquery.jsonl --model gpt-4o --workers 4
 ```
 
 #### 3. Snowflake Batch Runner
 Connects to Snowflake cloud data warehouses.
 ```bash
-python -m tt_sql.cli.run_batch_snowflake --dataset data/spider2-lite-snowflake.jsonl --model gpt-4o --workers 4
+python -m cli.run_batch_snowflake --dataset data/spider2-lite-snowflake.jsonl --model gpt-4o --workers 4
 ```
 
 **Batch Runner Options:**
@@ -233,14 +233,14 @@ python scripts/generate_gold_results.py
 
 ### Executing Gold SQL Files
 
-Use `python -m tt_sql.cli.execute_sql` to run isolated SQL files.
+Use `python -m cli.execute_sql` to run isolated SQL files.
 
 ```bash
 # Execute all SQL files in the default directory (data/gold/sql/)
-python -m tt_sql.cli.execute_sql
+python -m cli.execute_sql
 
 # Execute SQL files from a specific directory
-python -m tt_sql.cli.execute_sql --dir data/gold/sql/
+python -m cli.execute_sql --dir data/gold/sql/
 ```
 
 **Formatter Options:**

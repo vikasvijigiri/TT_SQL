@@ -27,42 +27,55 @@ Usage
     # Let the file's own column supply the db:
     python scripts/format_dataset.py --input file.csv
 """
-import os
-import sys
-import re
-import json
-import csv
-import uuid
+
 import argparse
+import csv
+import json
+import os
+import re
+import sys
 from pathlib import Path
-from typing import List, Dict, Optional, Any
+from typing import Any
+
 from dotenv import load_dotenv
 
 PROJECT_ROOT = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(PROJECT_ROOT / "src"))
 
-from tt_sql.core.llm_service import LLMService
+from core.llm_service import LLMService
 
 load_dotenv()
 
 # ─── helpers ──────────────────────────────────────────────────────────────────
 
+
 def _auto_id(prefix: str, index: int) -> str:
     return f"{prefix}{str(index).zfill(3)}"
 
 
-def _normalise_columns(row: Dict[str, Any]) -> Dict[str, Any]:
+def _normalise_columns(row: dict[str, Any]) -> dict[str, Any]:
     """Return a lower-cased, stripped copy of a dict's keys."""
     return {k.strip().lower(): v for k, v in row.items()}
 
 
-_QUESTION_ALIASES   = {"question", "questions", "query", "queries", "q", "text", "prompt", "input", "nl", "natural_language"}
-_DB_ALIASES         = {"db", "database", "db_name", "database_name", "table"}
-_ID_ALIASES         = {"instance_id", "id", "instance", "idx", "row_id"}
-_KB_ALIASES         = {"external_knowledge", "knowledge", "external", "context", "kb"}
+_QUESTION_ALIASES = {
+    "question",
+    "questions",
+    "query",
+    "queries",
+    "q",
+    "text",
+    "prompt",
+    "input",
+    "nl",
+    "natural_language",
+}
+_DB_ALIASES = {"db", "database", "db_name", "database_name", "table"}
+_ID_ALIASES = {"instance_id", "id", "instance", "idx", "row_id"}
+_KB_ALIASES = {"external_knowledge", "knowledge", "external", "context", "kb"}
 
 
-def _pick(row: Dict, aliases: set, fallback=None):
+def _pick(row: dict, aliases: set, fallback=None):
     for key in aliases:
         if key in row:
             v = row[key]
@@ -70,15 +83,16 @@ def _pick(row: Dict, aliases: set, fallback=None):
     return fallback
 
 
-def _build_record(row: Dict, index: int, default_db: Optional[str],
-                  id_prefix: str = "custom") -> Optional[Dict]:
+def _build_record(
+    row: dict, index: int, default_db: str | None, id_prefix: str = "custom"
+) -> dict | None:
     norm = _normalise_columns(row)
-    question  = _pick(norm, _QUESTION_ALIASES)
+    question = _pick(norm, _QUESTION_ALIASES)
     if not question:
-        return None                 # skip rows with no question
+        return None  # skip rows with no question
     instance_id = _pick(norm, _ID_ALIASES) or _auto_id(id_prefix, index)
-    db          = _pick(norm, _DB_ALIASES)  or default_db or "unknown"
-    ext_know    = _pick(norm, _KB_ALIASES)
+    db = _pick(norm, _DB_ALIASES) or default_db or "unknown"
+    ext_know = _pick(norm, _KB_ALIASES)
     return {
         "instance_id": str(instance_id),
         "db": str(db),
@@ -89,18 +103,19 @@ def _build_record(row: Dict, index: int, default_db: Optional[str],
 
 # ─── readers ──────────────────────────────────────────────────────────────────
 
+
 class DatasetFormatterAgent:
     """
     Converts any input file into spider2-lite JSONL format.
     For unstructured text files (.txt, .md) an LLM is used to extract questions.
     """
 
-    def __init__(self, llm_service: Optional[LLMService] = None):
+    def __init__(self, llm_service: LLMService | None = None):
         self.llm = llm_service
 
     # ── readers ──────────────────────────────────────────────────────────────
 
-    def _read_csv(self, path: Path) -> List[Dict]:
+    def _read_csv(self, path: Path) -> list[dict]:
         rows = []
         with open(path, newline="", encoding="utf-8-sig") as f:
             reader = csv.DictReader(f)
@@ -108,17 +123,23 @@ class DatasetFormatterAgent:
                 rows.append(dict(row))
         return rows
 
-    def _read_excel(self, path: Path) -> List[Dict]:
+    def _read_excel(self, path: Path) -> list[dict]:
         try:
             import openpyxl
         except ImportError:
-            import subprocess, sys
+            import subprocess
+            import sys
+
             print("[info] openpyxl not found — installing automatically...")
-            subprocess.check_call([sys.executable, "-m", "pip", "install", "openpyxl", "-q"])
+            subprocess.check_call(
+                [sys.executable, "-m", "pip", "install", "openpyxl", "-q"]
+            )
             import openpyxl
         wb = openpyxl.load_workbook(path, data_only=True)
         ws = wb.active
-        headers = [str(cell.value or "").strip() for cell in next(ws.iter_rows(max_row=1))]
+        headers = [
+            str(cell.value or "").strip() for cell in next(ws.iter_rows(max_row=1))
+        ]
         rows = []
         for row in ws.iter_rows(min_row=2, values_only=True):
             rec = {}
@@ -131,7 +152,7 @@ class DatasetFormatterAgent:
                 rows.append(rec)
         return rows
 
-    def _read_json(self, path: Path) -> List[Dict]:
+    def _read_json(self, path: Path) -> list[dict]:
         with open(path, encoding="utf-8") as f:
             data = json.load(f)
         if isinstance(data, list):
@@ -140,7 +161,7 @@ class DatasetFormatterAgent:
             return [data]
         raise ValueError("JSON file must contain a list or a single object.")
 
-    def _read_jsonl(self, path: Path) -> List[Dict]:
+    def _read_jsonl(self, path: Path) -> list[dict]:
         rows = []
         with open(path, encoding="utf-8") as f:
             for line in f:
@@ -148,7 +169,7 @@ class DatasetFormatterAgent:
                     rows.append(json.loads(line))
         return rows
 
-    def _read_text(self, path: Path) -> List[Dict]:
+    def _read_text(self, path: Path) -> list[dict]:
         """Use LLM to extract question objects from free-form text."""
         if not self.llm:
             raise RuntimeError(
@@ -172,13 +193,19 @@ class DatasetFormatterAgent:
         try:
             parsed = json.loads(raw)
         except json.JSONDecodeError:
-            raise ValueError(f"LLM did not return valid JSON. Response was:\n{raw[:400]}")
+            raise ValueError(
+                f"LLM did not return valid JSON. Response was:\n{raw[:400]}"
+            )
         return parsed
 
     # ── orchestrator ──────────────────────────────────────────────────────────
 
-    def convert(self, input_path: str, default_db: Optional[str] = None,
-                id_prefix: str = "custom") -> List[Dict]:
+    def convert(
+        self,
+        input_path: str,
+        default_db: str | None = None,
+        id_prefix: str = "custom",
+    ) -> list[dict]:
         """
         Read *any* file and return a list of spider2-lite records.
         """
@@ -211,7 +238,7 @@ class DatasetFormatterAgent:
 
         return records
 
-    def save(self, records: List[Dict], output_path: str) -> None:
+    def save(self, records: list[dict], output_path: str) -> None:
         """Write records as JSONL."""
         out = Path(output_path)
         out.parent.mkdir(parents=True, exist_ok=True)
@@ -223,22 +250,38 @@ class DatasetFormatterAgent:
 
 # ─── CLI entry point ──────────────────────────────────────────────────────────
 
+
 def main():
     parser = argparse.ArgumentParser(
         description="Convert any question file into spider2-lite JSONL format."
     )
-    parser.add_argument("--input",  "-i", required=True,
-                        help="Path to the input file (csv, xlsx, json, jsonl, txt, md).")
-    parser.add_argument("--output", "-o", default=None,
-                        help="Path for the output JSONL file. "
-                             "Defaults to data/<input_stem>.jsonl")
-    parser.add_argument("--db", default=None,
-                        help="Default database name to use when the input file "
-                             "does not supply one.")
-    parser.add_argument("--id-prefix", default="custom",
-                        help="Prefix for auto-generated instance IDs (default: 'custom').")
-    parser.add_argument("--model", default=os.getenv("LLM_MODEL"),
-                        help="LLM model to use for unstructured text parsing.")
+    parser.add_argument(
+        "--input",
+        "-i",
+        required=True,
+        help="Path to the input file (csv, xlsx, json, jsonl, txt, md).",
+    )
+    parser.add_argument(
+        "--output",
+        "-o",
+        default=None,
+        help="Path for the output JSONL file. Defaults to data/<input_stem>.jsonl",
+    )
+    parser.add_argument(
+        "--db",
+        default=None,
+        help="Default database name to use when the input file does not supply one.",
+    )
+    parser.add_argument(
+        "--id-prefix",
+        default="custom",
+        help="Prefix for auto-generated instance IDs (default: 'custom').",
+    )
+    parser.add_argument(
+        "--model",
+        default=os.getenv("LLM_MODEL"),
+        help="LLM model to use for unstructured text parsing.",
+    )
     args = parser.parse_args()
 
     # Default output location
@@ -249,7 +292,13 @@ def main():
     # Only initialise LLM when we might need it
     ext = Path(args.input).suffix.lower()
     llm = None
-    if ext in (".txt", ".md") or ext not in (".csv", ".xlsx", ".xls", ".json", ".jsonl"):
+    if ext in (".txt", ".md") or ext not in (
+        ".csv",
+        ".xlsx",
+        ".xls",
+        ".json",
+        ".jsonl",
+    ):
         model = args.model or os.getenv("LLM_MODEL", "gpt-4o")
         print(f"[info] Unstructured input — using LLM ({model}) to extract questions.")
         llm = LLMService(model=model)
