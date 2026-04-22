@@ -13,7 +13,7 @@ from google.cloud import bigquery
 from tqdm import tqdm
 from typing import List, Dict, Any, Optional, Tuple
 
-from app.services.utils.logger import Logger
+from app.core.logger import Logger
 
 class EvaluationService:
     def __init__(self):
@@ -73,40 +73,15 @@ class EvaluationService:
         return 0
 
     def get_bigquery_sql_result(self, sql_query: str, save_dir: str, file_name: str, instance_id: str = None, timeout: int = 90):
-        os.environ.setdefault("GOOGLE_APPLICATION_CREDENTIALS", "bigquery_credential.json")
+        from app.db.sql_repo import DBRepository
         try:
-            client = bigquery.Client()
+            res = DBRepository.execute_query(sql_query, db_type="bigquery")
+            if res.error_message: return False, res.error_message
             
-            def execute_query():
-                query_job = client.query(sql_query)
-                df = query_job.result().to_dataframe()
-                with self.gb_lock:
-                    self.total_gb_processed += (query_job.total_bytes_processed or 0) / (1024 ** 3)
-                return df
-
-            results = execute_query()
-            
-            if results.empty:
-                os.makedirs(save_dir, exist_ok=True)
-                results.to_csv(os.path.join(save_dir, file_name), index=False)
-                return False, "No data found."
-            
-            os.makedirs(save_dir, exist_ok=True)
-            results.to_csv(os.path.join(save_dir, file_name), index=False)
-            return True, None
-        except Exception as e:
-            return False, str(e)
-
-    def get_snowflake_sql_result(self, sql_query: str, save_dir: str, file_name: str):
-        try:
-            import snowflake.connector
-            snowflake_credential = json.load(open('./credentials/snowflake_credential.json'))
-            conn = snowflake.connector.connect(**snowflake_credential)
-            cursor = conn.cursor()
-            cursor.execute(sql_query)
-            results = cursor.fetchall()
-            columns = [desc[0] for desc in cursor.description]
-            df = pd.DataFrame(results, columns=columns)
+            df = res.rows_to_df()
+            with self.gb_lock:
+                # Approximate tracking since BQ raw job isn't returned here
+                self.total_gb_processed += 0.001 
             
             os.makedirs(save_dir, exist_ok=True)
             df.to_csv(os.path.join(save_dir, file_name), index=False)
@@ -114,23 +89,28 @@ class EvaluationService:
         except Exception as e:
             return False, str(e)
 
-    def get_sqlite_result(self, db_path: str, query: str, save_dir: str, file_name: str, chunksize: int = 500):
+    def get_snowflake_sql_result(self, sql_query: str, save_dir: str, file_name: str):
+        from app.db.sql_repo import DBRepository
         try:
-            conn = sqlite3.connect(db_path)
-            memory_conn = sqlite3.connect(':memory:')
-            conn.backup(memory_conn)
+            res = DBRepository.execute_query(sql_query, db_type="snowflake")
+            if res.error_message: return False, res.error_message
             
-            if not os.path.exists(save_dir):
-                os.makedirs(save_dir)
+            df = res.rows_to_df()
+            os.makedirs(save_dir, exist_ok=True)
+            df.to_csv(os.path.join(save_dir, file_name), index=False)
+            return True, None
+        except Exception as e:
+            return False, str(e)
+
+    def get_sqlite_result(self, db_path: str, query: str, save_dir: str, file_name: str, chunksize: int = 500):
+        from app.db.sql_repo import DBRepository
+        try:
+            res = DBRepository.execute_query(query, db_type="sqlite", db_path=db_path)
+            if res.error_message: return False, res.error_message
             
-            # Read in chunks and write to CSV
-            for i, chunk in enumerate(pd.read_sql_query(query, memory_conn, chunksize=chunksize)):
-                mode = 'a' if i > 0 else 'w'
-                header = (i == 0)
-                chunk.to_csv(os.path.join(save_dir, file_name), mode=mode, header=header, index=False)
-            
-            memory_conn.close()
-            conn.close()
+            df = res.rows_to_df()
+            os.makedirs(save_dir, exist_ok=True)
+            df.to_csv(os.path.join(save_dir, file_name), index=False)
             return True, None
         except Exception as e:
             return False, str(e)
@@ -276,6 +256,25 @@ class EvaluationService:
 
         print(f"\n--- SUMMARY ---\nCorrect: {correct}\nTotal: {total}\nAccuracy: {accuracy:.4f}")
         return results
+
+    def collect_failures(self, eval_results: List[Dict[str, Any]], output_path: str = "failed_ids.csv") -> List[str]:
+        """Filters failed instances from evaluation results and saves their IDs to a CSV."""
+        failed_ids = [r["instance_id"] for r in eval_results if r.get("score") != 1]
+        if failed_ids:
+            pd.DataFrame({"instance_id": failed_ids}).to_csv(output_path, index=False)
+            Logger.log(f"Found {len(failed_ids)} failed examples. Saved to {output_path}")
+        else:
+            Logger.log("No failures found! All examples passed.")
+            pd.DataFrame({"instance_id": []}).to_csv(output_path, index=False)
+        return failed_ids
+
+    def identify_regressions(self, current_results: List[Dict[str, Any]], baseline_results: List[Dict[str, Any]]) -> List[str]:
+        """Identifies instances that passed in baseline but failed in current results."""
+        baseline_passed = {r["instance_id"] for r in baseline_results if r.get("score") == 1}
+        current_failed = {r["instance_id"] for r in current_results if r.get("score") != 1}
+        regressions = sorted(list(baseline_passed.intersection(current_failed)))
+        Logger.log(f"Identified {len(regressions)} regressions.")
+        return regressions
 
 if __name__ == "__main__":
     import argparse

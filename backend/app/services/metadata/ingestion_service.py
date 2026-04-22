@@ -1,8 +1,8 @@
 import requests
 from typing import Dict, Any
 from sentence_transformers import SentenceTransformer
-from app.repositories.config import settings
-from app.services.utils.logger import Logger
+from app.core.settings import settings
+from app.core.logger import Logger
 
 class IngestService:
     def __init__(self, embedding_model=None):
@@ -156,9 +156,10 @@ class IngestService:
         """
         Exports a summary of indexed metadata to a text file.
         """
-        from app.repositories.registry.paths import get_metadata_dir
+        from app.repositories.paths import get_metadata_dir, get_active_project_slug
         coll = collection_name or settings.COLLECTION_NAME
-        metadata_registry = get_metadata_dir(user_slug)
+        project_slug = get_active_project_slug(user_slug=user_slug)
+        metadata_registry = get_metadata_dir(user_slug, project_slug)
         metadata_path = metadata_registry / f"{coll}.json"
         output_path = metadata_registry / f"{coll}_retrieval_info.txt"
 

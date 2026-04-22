@@ -3,7 +3,7 @@ import axios from 'axios';
 import {
   Zap, RefreshCw, Brain, Trash2, Database,
   FolderKanban, MessageSquare, Eraser, HardDrive,
-  Clock, Calendar, ShieldAlert
+  Clock, Calendar, ShieldAlert, CheckCircle2
 } from 'lucide-react';
 import QueryInput from './components/QueryInput';
 import AgentLogs from './components/AgentLogs';
@@ -127,8 +127,24 @@ function App() {
     if (user) {
       checkDbStatus();
       fetchActiveProject();
+      fetchGlobalSettings();
     }
   }, [user]);
+
+  const fetchGlobalSettings = async () => {
+    try {
+      const res = await axios.get(`${API_BASE_URL}/api/settings`);
+      const settingsData = res.data;
+      if (settingsData && settingsData.llm_model) {
+        setSelectedModel(settingsData.llm_model);
+      }
+      if (settingsData && settingsData.use_rag !== undefined) {
+        setUseRag(settingsData.use_rag);
+      }
+    } catch (err) {
+      console.error("Failed to fetch global settings for UI initialization", err);
+    }
+  };
 
   useEffect(() => {
     if (activeProject?.id) {
@@ -603,6 +619,97 @@ function App() {
     }
   };
 
+  const handleBulkUpload = async (file) => {
+    if (loading) return;
+
+    const assistantMessageId = Date.now() + 1;
+    setMessages(prev => [...prev, {
+      id: assistantMessageId,
+      role: 'assistant',
+      type: 'batch',
+      status: 'Uploading batch file...',
+      payload: { completed: 0, total: 0 }
+    }]);
+
+    setLoading(true);
+
+    const formData = new FormData();
+    formData.append('file', file);
+    if (user?.email) formData.append('user_email', user.email);
+    if (user?.name) formData.append('user_name', user.name);
+    formData.append('use_rag', useRag);
+    formData.append('model_name', selectedModel);
+
+    try {
+      const response = await fetch(`${API_BASE_URL}/api/data/batch/run`, {
+        method: 'POST',
+        body: formData,
+      });
+
+      if (!response.ok) throw new Error("Batch upload failed");
+
+      const reader = response.body.getReader();
+      const decoder = new TextDecoder();
+      let buffer = '';
+
+      while (true) {
+        const { value, done } = await reader.read();
+        if (done) break;
+
+        buffer += decoder.decode(value, { stream: true });
+        const lines = buffer.split('\n');
+        buffer = lines.pop();
+
+        for (const line of lines) {
+          if (line.startsWith('data: ')) {
+            try {
+              const data = JSON.parse(line.replace('data: ', '').trim());
+              setMessages(prev => {
+                const newMessages = [...prev];
+                const idx = newMessages.findIndex(m => m.id === assistantMessageId);
+                if (idx !== -1) {
+                  if (data.type === 'start') {
+                    newMessages[idx] = { 
+                      ...newMessages[idx], 
+                      status: 'Executing batch tasks...', 
+                      payload: { ...newMessages[idx].payload, total: data.total } 
+                    };
+                  } else if (data.type === 'progress') {
+                    newMessages[idx] = { 
+                      ...newMessages[idx], 
+                      payload: { ...newMessages[idx].payload, completed: data.completed, total: data.total } 
+                    };
+                  } else if (data.type === 'complete') {
+                    newMessages[idx] = { 
+                      ...newMessages[idx], 
+                      status: null,
+                      payload: { ...newMessages[idx].payload } 
+                    };
+                  }
+                }
+                return newMessages;
+              });
+            } catch (e) {
+              console.error("Error parsing batch stream chunk:", e);
+            }
+          }
+        }
+      }
+    } catch (err) {
+      console.error(err);
+      setMessages(prev => {
+        const newMessages = [...prev];
+        const idx = newMessages.findIndex(m => m.id === assistantMessageId);
+        if (idx !== -1) {
+          newMessages[idx] = { ...newMessages[idx], type: 'error', content: err.message, status: null };
+        }
+        return newMessages;
+      });
+    } finally {
+      setLoading(false);
+    }
+  };
+
   const handleStopQuery = () => {
     if (abortControllerRef.current) {
       abortControllerRef.current.abort();
@@ -733,10 +840,12 @@ function App() {
               <div className="top-bar-center">
                 {activeProject && (
                   <div className="active-project-badge">
-                    <span className="project-dot" />
+                    <span className={`project-dot ${dbConnected ? 'connected' : 'disconnected'}`} />
                     <span className="project-name">{activeProject.name}</span>
                     <span className="project-db-type">
-                      {activeProject.connection?.db_type === 'sqlite' ? 'SQLite' : 'PostgreSQL'}
+                      {activeProject.connection?.db_type === 'sqlite' ? 'SQLite' : 
+                       activeProject.connection?.db_type === 'bulk_sqlite' ? 'SQLite (Bulk)' : 
+                       activeProject.connection?.db_type?.toUpperCase() || 'DB'}
                     </span>
                   </div>
                 )}
@@ -891,6 +1000,31 @@ function App() {
                                     />
                                   )}
 
+                                  {msg.type === 'batch' && (
+                                    <div className="batch-progress-container">
+                                      <div className="batch-header">
+                                        <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                                           {msg.payload.completed === msg.payload.total && msg.payload.total > 0 
+                                             ? <CheckCircle2 size={18} color="#10b981" /> 
+                                             : <div className="spinner-tiny" />}
+                                           <span style={{ fontWeight: '600' }}>Bulk Processing Job</span>
+                                        </div>
+                                        <span className="batch-counter">{msg.payload.completed} / {msg.payload.total}</span>
+                                      </div>
+                                      <div className="batch-progress-bar">
+                                        <div 
+                                          className="batch-progress-fill" 
+                                          style={{ width: `${(msg.payload.completed / (msg.payload.total || 1)) * 100}%` }}
+                                        />
+                                      </div>
+                                      {msg.payload.completed === msg.payload.total && msg.payload.total > 0 && (
+                                        <div className="batch-summary">
+                                          Batch execution complete. Results for all {msg.payload.total} instances have been generated and archived in their respective project workspaces.
+                                        </div>
+                                      )}
+                                    </div>
+                                  )}
+
                                   {msg.type === 'error' && (
                                     <div className="error-display">
                                       <div className="error-message">{msg.content}</div>
@@ -909,6 +1043,7 @@ function App() {
                     <QueryInput
                       onSend={handleSendQuery}
                       onStop={handleStopQuery}
+                      onBulkUpload={handleBulkUpload}
                       loading={loading}
                     />
                   </footer>

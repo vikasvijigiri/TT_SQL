@@ -1,20 +1,21 @@
 from abc import ABC, abstractmethod
 from typing import Any
-from app.services.schemas.agent_state import AgentState
-from app.services.utils.logger import Logger
+from app.schemas.agent_state import AgentState
+from app.core.logger import Logger
 
 class BaseAgent(ABC):
     """
     Abstract base class for all agents in the orchestration layer.
     """
     
-    def __init__(self, name: str, config: dict = None, results_dir: str = None, logs_dir: str = None, metadata_dir: str = None, user_slug: str = None):
+    def __init__(self, name: str, config: dict = None, results_dir: str = None, logs_dir: str = None, metadata_dir: str = None, user_slug: str = None, project_slug: str = None):
         self.name = name
         self.config = config or {}
         self.results_dir = results_dir
         self.logs_dir = logs_dir
         self.metadata_dir = metadata_dir
         self.user_slug = user_slug
+        self.project_slug = project_slug
 
     @abstractmethod
     def run(self, state: AgentState, on_token: callable = None) -> AgentState:

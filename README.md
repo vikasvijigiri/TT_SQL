@@ -61,7 +61,6 @@ RDS_PORT=5432
 RDS_DATABASE=xxx
 RDS_USER=xxx
 RDS_PASSWORD=xxx
-DB_TYPE=postgres
 ```
 
 ### 5. Data Retrieval Preparation (RAG)

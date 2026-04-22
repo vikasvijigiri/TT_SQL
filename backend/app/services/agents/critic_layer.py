@@ -2,11 +2,11 @@ import json
 import os
 from typing import Dict, Any, List
 from app.services.agents.base import BaseAgent
-from app.services.schemas.agent_state import AgentState
-from app.services.engines.llm_service import LLMService
-from app.services.utils.prompt_loader import PromptLoader
-from app.repositories.persistence.file_coordinator import FileCoordinator
-from app.services.utils.logger import Logger
+from app.schemas.agent_state import AgentState
+from app.services.llm_service import LLMService
+from app.utils.prompt_loader import PromptLoader
+from app.repositories.file_coordinator import FileCoordinator
+from app.core.logger import Logger
 from app.services.agents.input_layer import format_rag_columns
 
 class CriticAgent(BaseAgent):
@@ -14,11 +14,11 @@ class CriticAgent(BaseAgent):
     Evaluates the SQL logic using a strict checklist approach.
     Decides if the result is satisfactory or requires refinement.
     """
-    def __init__(self, llm_service: LLMService, results_dir: str = None, logs_dir: str = None, metadata_dir: str = None, user_slug: str = None):
-        super().__init__(name="SQLCritic", results_dir=results_dir, logs_dir=logs_dir, metadata_dir=metadata_dir, user_slug=user_slug)
+    def __init__(self, llm_service: LLMService, results_dir: str = None, logs_dir: str = None, metadata_dir: str = None, user_slug: str = None, project_slug: str = None):
+        super().__init__(name="SQLCritic", results_dir=results_dir, logs_dir=logs_dir, metadata_dir=metadata_dir, user_slug=user_slug, project_slug=project_slug)
         self.llm = llm_service
         self.prompt_loader = PromptLoader()
-        self.file_coordinator = FileCoordinator(results_dir=results_dir, logs_dir=logs_dir, user_slug=user_slug)
+        self.file_coordinator = FileCoordinator(results_dir=results_dir, logs_dir=logs_dir, user_slug=user_slug, project_slug=project_slug)
 
     def run(self, state: AgentState, on_token: callable = None) -> AgentState:
         sql_to_criticize = state.chosen_query or ""
@@ -40,11 +40,11 @@ class CriticAgent(BaseAgent):
                         table_lines.append(f"| {row_str} |")
                     execution_context = "\n".join(table_lines)
 
-        from app.repositories.config import settings
+        from app.core.settings import settings
         dialect_key = "postgresql" if settings.DB_TYPE.lower() in ["postgres", "postgresql"] else "sqlite"
         try:
-            from app.services.utils.prompt_loader import _load_yaml_cached
-            from app.repositories.registry.paths import PROMPTS_DIR
+            from app.utils.prompt_loader import _load_yaml_cached
+            from app.repositories.paths import PROMPTS_DIR
             dialects = _load_yaml_cached(str(PROMPTS_DIR / "dialects.yaml"))
             dialect_config = dialects.get(dialect_key, dialects.get("sqlite", {}))
             dialect = "PostgreSQL" if dialect_key == "postgresql" else "SQLite"
