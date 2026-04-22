@@ -7,21 +7,21 @@ from dotenv import load_dotenv
 
 # Absolute imports from the package
 # Agent Imports (Consolidated)
-from tt_sql.agents.planner import ContextEnrichmentAgent, StepByStepPlannerAgent
-from tt_sql.agents.selector import TableSelectorAgent
-from tt_sql.agents.builder import RefinementLoopAgent
-from tt_sql.agents.executor import SQLiteExecutorAgent, PostgresExecutorAgent, BigQueryExecutorAgent, SnowflakeExecutorAgent
+from agents.planner import ContextEnrichmentAgent, StepByStepPlannerAgent
+from agents.selector import TableSelectorAgent
+from agents.builder import RefinementLoopAgent
+from agents.executor import SQLiteExecutorAgent, PostgresExecutorAgent, BigQueryExecutorAgent, SnowflakeExecutorAgent
 
-from tt_sql.core.state import AgentState
-from tt_sql.core.llm_service import LLMService
-from tt_sql.core.logger import Logger
-from tt_sql.core.paths import (
+from core.state import AgentState
+from core.llm_service import LLMService
+from core.logger import Logger
+from core.paths import (
     initialize_directories, 
     InstancePaths, 
     DATA_DIR, 
     get_model_results_dir
 )
-from tt_sql.core.file_coordinator import FileCoordinator
+from core.file_coordinator import FileCoordinator
 
 def run_single(target_id: str, model_name: str, use_rag: bool = False, args=None):
     """Run a single Text-to-SQL instance logic."""
@@ -103,8 +103,8 @@ def run_single(target_id: str, model_name: str, use_rag: bool = False, args=None
     # 2. Instantiate and Run Agents (Strict 4-Stage Sequence)
     # Simplified imports already handled at top level if needed, 
     # but keeping them here for local scope if preferred, updated to new paths:
-    from tt_sql.agents.planner import StepByStepPlannerAgent
-    from tt_sql.agents.selector import TableSelectorAgent
+    from agents.planner import StepByStepPlannerAgent
+    from agents.selector import TableSelectorAgent
     
     context_agent = ContextEnrichmentAgent()
     refinement_loop = RefinementLoopAgent(llm_service, executor=executor)

@@ -1,16 +1,16 @@
 import os
 import json
 from typing import Dict, Any, List
-from tt_sql.core.agent_base import BaseAgent, AgentState
-from tt_sql.core.file_coordinator import FileCoordinator
-from tt_sql.rag.vector_store import VectorStoreAgent
-from tt_sql.core.sqlite_service import SQLiteService
-from tt_sql.core.utils import format_schema_to_str, format_rag_columns
-from tt_sql.core.logger import Logger
-from tt_sql.core.llm_service import LLMService
-from tt_sql.core.prompt_loader import PromptLoader
-from tt_sql.core.bq_service import BigQueryService
-from tt_sql.core.sf_service import SnowflakeService
+from core.agent_base import BaseAgent, AgentState
+from core.file_coordinator import FileCoordinator
+from rag.vector_store import VectorStoreAgent
+from core.sqlite_service import SQLiteService
+from core.utils import format_schema_to_str, format_rag_columns
+from core.logger import Logger
+from core.llm_service import LLMService
+from core.prompt_loader import PromptLoader
+from core.bq_service import BigQueryService
+from core.sf_service import SnowflakeService
 
 class ContextEnrichmentAgent(BaseAgent):
     """

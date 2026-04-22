@@ -1,10 +1,10 @@
 import json
 import re
 from typing import List, Dict, Any
-from tt_sql.core.agent_base import BaseAgent, AgentState
-from tt_sql.core.llm_service import LLMService
-from tt_sql.core.prompt_loader import PromptLoader
-from tt_sql.core.utils import format_schema_to_str
+from core.agent_base import BaseAgent, AgentState
+from core.llm_service import LLMService
+from core.prompt_loader import PromptLoader
+from core.utils import format_schema_to_str
 
 class TableSelectorAgent(BaseAgent):
     """

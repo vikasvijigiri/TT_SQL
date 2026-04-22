@@ -4,8 +4,8 @@ import json
 import socket
 from urllib.parse import urlparse
 from typing import List, Dict, Optional
-from tt_sql.core.logger import Logger
-from tt_sql.core.config import get_settings
+from core.logger import Logger
+from core.config import get_settings
 
 class VectorStoreAgent:
     """

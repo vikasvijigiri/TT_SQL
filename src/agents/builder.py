@@ -2,14 +2,14 @@ import json
 import os
 import yaml
 from typing import List, Dict, Any
-from tt_sql.core.agent_base import BaseAgent, AgentState
-from tt_sql.core.state import CandidateQuery
-from tt_sql.core.llm_service import LLMService
-from tt_sql.core.prompt_loader import PromptLoader
-from tt_sql.core.logger import Logger
-from tt_sql.core.file_coordinator import FileCoordinator
-from tt_sql.core.utils import format_schema_to_str, format_rag_columns
-from tt_sql.core.paths import DIALECT_RULES
+from core.agent_base import BaseAgent, AgentState
+from core.state import CandidateQuery
+from core.llm_service import LLMService
+from core.prompt_loader import PromptLoader
+from core.logger import Logger
+from core.file_coordinator import FileCoordinator
+from core.utils import format_schema_to_str, format_rag_columns
+from core.paths import DIALECT_RULES
 
 class SQLBuilderAgent(BaseAgent):
     """
