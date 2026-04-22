@@ -263,7 +263,6 @@ old_txt_sql_spider2.0/
 ├── config/                 # External configuration (secrets, global configs)
 ├── data/                   # Dataset management (raw and processed)
 ├── docs/                   # Documentation and Architecture
-├── logs/                   # Standardized log output directory
 ├── results/                # Analytical outputs (SQL, CSVs, logs)
 ├── scripts/                # Internal utility and analysis scripts
 │   └── analysis/           # Result analysis and post-mortems
@@ -275,25 +274,9 @@ old_txt_sql_spider2.0/
 │       ├── prompts/        # YAML templates
 │       ├── rag/            # Vector store/RAG logic
 │       └── utils/          # Shared utilities
-├── tests/                  # Unit and integration tests
 ├── .env                    # Environment variables
 ├── pyproject.toml           # Package metadata
-├── requirements.txt         # Dependencies
-└── .env                     # Environment variables
-```
-
----
-
-## 🧪 Testing
-
-The `tests/` directory contains unit and integration tests. To run them, use `pytest`:
-
-```bash
-# Run all tests
-pytest tests/
-
-# Run a specific test
-pytest tests/test_rag_update.py
+└── requirements.txt         # Dependencies
 ```
 
 ---
