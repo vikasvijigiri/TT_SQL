@@ -180,9 +180,25 @@ GENERATOR_MODEL=gpt-4o
 python -m tt_sql.cli.run_single --id local020 --model gpt-4o
 ```
 
-### Batch Processing (CLI) — Recommended
+### Batch Processing (CLI)
+We provide dedicated batch runners optimized for each database dialect.
+
+#### 1. SQLite Batch Runner
+Best for local testing with the Spider 2.0 dataset.
 ```bash
-python -m tt_sql.cli.run_batch --dataset data/spider2-lite-sqlite.jsonl --model gpt-4o --workers 4
+python -m tt_sql.cli.run_batch_sqlite --dataset data/spider2-lite-sqlite.jsonl --model gpt-4o --workers 4
+```
+
+#### 2. BigQuery (GCP) Batch Runner
+Connects to Google BigQuery datasets.
+```bash
+python -m tt_sql.cli.run_batch_gcp --dataset data/spider2-lite-bigquery.jsonl --model gpt-4o --workers 4
+```
+
+#### 3. Snowflake Batch Runner
+Connects to Snowflake cloud data warehouses.
+```bash
+python -m tt_sql.cli.run_batch_snowflake --dataset data/spider2-lite-snowflake.jsonl --model gpt-4o --workers 4
 ```
 
 **Batch Runner Options:**
