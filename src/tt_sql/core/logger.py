@@ -45,7 +45,9 @@ class Logger:
             
             # Set up new buffered file handler
             handler = logging.FileHandler(path, mode='w', encoding='utf-8')
-            handler.setFormatter(logging.Formatter('%(message)s'))
+            # Use same format as internal/SQLite logs for parity
+            formatter = logging.Formatter('[%(asctime)s] [%(levelname)s] %(message)s', datefmt='%Y-%m-%d %H:%M:%S')
+            handler.setFormatter(formatter)
             cls._internal_logger.addHandler(handler)
             cls._internal_logger.setLevel(get_settings().LOG_LEVEL)
 
@@ -109,3 +111,11 @@ class Logger:
     def log_completion(cls, status: str):
         """Logs the final completion state."""
         cls.log(f"\n# 🏁 PIPELINE {status.upper()}\n")
+
+    @classmethod
+    def log_call(cls, target: str, params: dict = None):
+        """Logs a trace entry for function/agent execution."""
+        msg = f"▶️ [CALL]: {target}"
+        if params:
+            msg += f" (params={params})"
+        cls.log(msg)

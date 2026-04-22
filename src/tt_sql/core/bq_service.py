@@ -62,8 +62,7 @@ class BigQueryService:
         SELECT 
             table_name, 
             column_name, 
-            data_type, 
-            description 
+            data_type
         FROM 
             `{target_project}.{target_dataset}.INFORMATION_SCHEMA.COLUMNS`
         ORDER BY 
@@ -76,14 +75,15 @@ class BigQueryService:
             
             schema_info = {}
             for row in results:
-                tname = row.table_name
-                if tname not in schema_info:
-                    schema_info[tname] = {"columns": []}
+                # Use fully qualified table names to ensure LLM generates executable SQL
+                full_table_name = f"{target_project}.{target_dataset}.{row.table_name}"
+                if full_table_name not in schema_info:
+                    schema_info[full_table_name] = {"columns": []}
                 
-                schema_info[tname]["columns"].append({
+                schema_info[full_table_name]["columns"].append({
                     "column_name": row.column_name,
                     "type": row.data_type,
-                    "description": row.description or "",
+                    "description": "",
                     "pk": False # BQ doesn't have traditional PKs in INFORMATION_SCHEMA
                 })
             

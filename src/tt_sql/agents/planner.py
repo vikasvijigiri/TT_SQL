@@ -5,83 +5,23 @@ from tt_sql.core.agent_base import BaseAgent, AgentState
 from tt_sql.core.file_coordinator import FileCoordinator
 from tt_sql.rag.vector_store import VectorStoreAgent
 from tt_sql.core.sqlite_service import SQLiteService
-import yaml
-from tt_sql.core.paths import PIPELINE_CONFIG
-
-def format_schema_to_str(schema_info: Dict[str, Any], detailed: bool = True) -> str:
-    """Formats schema dict into a detailed multi-line or compact string."""
-    if not schema_info: return ""
-    lines = []
-    for table, data in schema_info.items():
-        # Handle potential dictionary structure
-        if isinstance(data, dict) and "columns" in data:
-            cols = data["columns"]
-        elif isinstance(data, list):
-            cols = data
-        else:
-            cols = []
-            
-        if detailed:
-            lines.append(f"Table: {table}")
-            if not cols:
-                lines.append(" - (No columns found)")
-            for c in cols:
-                if isinstance(c, dict):
-                    cname = c.get("column_name") or c.get("name") or "unknown"
-                    ctype = c.get("type") or c.get("data_type") or ""
-                    desc  = c.get("description") or ""
-                    lines.append(f" - {cname} {f'({ctype})' if ctype else ''}{f' -- {desc}' if desc else ''}")
-                else:
-                    lines.append(f" - {str(c)}")
-            lines.append("") # Blank line
-        else:
-            col_names = []
-            for c in cols:
-                if isinstance(c, dict):
-                    col_names.append(str(c.get("column_name") or c.get("name") or "unknown"))
-                else:
-                    col_names.append(str(c))
-            lines.append(f"{table}({', '.join(col_names)})")
-    return "\n".join(lines).strip()
-
-
-def format_rag_columns(rag_columns: list) -> str:
-    """Formats the raw RAG retrieved columns list into a compact, prompt-ready string.
-    Each entry: table_name | column_name | type | description
-    """
-    if not rag_columns:
-        return "No RAG columns retrieved."
-    # Group by table
-    tables = {}
-    for col in rag_columns:
-        tname = col.get("table_name", "unknown")
-        cname = col.get("column_name", "unknown")
-        if tname not in tables:
-            tables[tname] = []
-        tables[tname].append(cname)
-
-    lines = []
-    for tname, cols in tables.items():
-        lines.append(f"Table: {tname}")
-        lines.append(f"- Columns: {', '.join(cols)}")
-        lines.append("")
-    
-    return "\n".join(lines).strip()
-
-
-
-from ..core.bq_service import BigQueryService
-from ..core.sf_service import SnowflakeService
+from tt_sql.core.utils import format_schema_to_str, format_rag_columns
+from tt_sql.core.logger import Logger
+from tt_sql.core.llm_service import LLMService
+from tt_sql.core.prompt_loader import PromptLoader
+from tt_sql.core.bq_service import BigQueryService
+from tt_sql.core.sf_service import SnowflakeService
 
 class ContextEnrichmentAgent(BaseAgent):
     """
-    Enriches context using column-level RAG retrieval or direct BigQuery schema fetch.
+    Enriches context using column-level RAG retrieval or direct schema fetches (BQ/SF/SQLite).
     """
     def __init__(self, config: dict = None):
-        super().__init__(name="TableSelector", config=config)
+        super().__init__(name="ContextEnrichment", config=config)
         self.file_coordinator = FileCoordinator()
         
     def run(self, state: AgentState) -> AgentState:
+        Logger.log_call(f"{self.name}.run", {"instance_id": state.instance_id})
         is_bigquery = state.instance_id.startswith("bq")
         is_snowflake = state.instance_id.startswith("sf")
         
@@ -114,7 +54,7 @@ class ContextEnrichmentAgent(BaseAgent):
         else:
             self.log(state, "RAG is disabled. Fetching full schema.")
 
-        # 2. SQLite Full Schema Logic (if applicable and schema info is still empty or RAG was skipped/failed)
+        # 2. SQLite Full Schema Logic (if applicable)
         if not is_bigquery and not is_snowflake and (not state.schema_info or not getattr(state, "use_rag", False)):
             if os.path.exists(state.db_path):
                 try:
@@ -127,39 +67,41 @@ class ContextEnrichmentAgent(BaseAgent):
                 except Exception as e:
                     self.log(state, f"Local schema extraction failed: {e}", level="ERROR")
 
-        # 2. BigQuery Fallback: If BQ task and schema is still thin, fetch from API
+        # 2. BigQuery Fallback
         if is_bigquery and (state.db_name or state.external_knowledge):
             try:
                 bq_service = BigQueryService()
                 datasets_to_try = []
                 if state.db_name: datasets_to_try.append(state.db_name)
                 
-                # Extract potential dataset from external_knowledge (e.g. "dataset_name.table_name.md")
                 if state.external_knowledge and "." in state.external_knowledge:
                     potential_ds = state.external_knowledge.split(".")[0]
                     if potential_ds not in datasets_to_try:
                         datasets_to_try.append(potential_ds)
+                
+                final_datasets_to_try = []
+                for ds in datasets_to_try:
+                    final_datasets_to_try.append(ds)
+                    if "." not in ds:
+                        final_datasets_to_try.append(f"bigquery-public-data.{ds}")
 
                 bq_schema = {}
-                for ds in datasets_to_try:
+                for ds in final_datasets_to_try:
                     self.log(state, f"BigQuery API fetch starting for: {ds}")
                     bq_schema = bq_service.get_dataset_schema(ds)
                     if bq_schema:
                         state.schema_info = bq_schema
                         self.log(state, f"BigQuery API: Fetched full schema for dataset '{ds}' ({len(bq_schema)} tables).")
                         break
-                
-                if not bq_schema:
-                    self.log(state, f"BigQuery API: No tables found for datasets {datasets_to_try}.", level="WARN")
             except Exception as e:
                 self.log(state, f"BigQuery API fetch failed: {e}", level="WARN")
 
-        # 3. Snowflake Fallback: Fetch from API
+        # 3. Snowflake Fallback
         if is_snowflake and (state.db_name or state.external_knowledge):
             try:
                 sf_service = SnowflakeService()
-                database = state.db_name or "PATENTS" # Default fallback
-                schema = "PUBLIC" # Snowflake default
+                database = state.db_name or "PATENTS"
+                schema = "PUBLIC"
                 
                 if "." in database:
                     parts = database.split(".")
@@ -170,9 +112,7 @@ class ContextEnrichmentAgent(BaseAgent):
                 sf_schema = sf_service.get_schema(database, schema)
                 if sf_schema:
                     state.schema_info = sf_schema
-                    self.log(state, f"Snowflake API: Fetched full schema for `{database}.{schema}` ({len(sf_schema)} tables).")
-                else:
-                    self.log(state, "Snowflake API: No tables found.", level="WARN")
+                    self.log(state, f"Snowflake API: Fetched full schema ({len(sf_schema)} tables).")
             except Exception as e:
                 self.log(state, f"Snowflake API fetch failed: {e}", level="WARN")
 
@@ -181,11 +121,49 @@ class ContextEnrichmentAgent(BaseAgent):
         else:
             self.file_coordinator.write_schema(state.instance_id, state.schema_info, state.model_name)
 
-        # Load defaults from config
-        with open(PIPELINE_CONFIG, 'r') as f:
-            pipeline_cfg = yaml.safe_load(f)
-            defaults = pipeline_cfg.get("defaults", {})
+        # Defaults
+        state.query_intent = "DATA_RETRIEVAL"
+        state.complexity_score = "MEDIUM"
+        return state
 
-        state.query_intent = defaults.get("query_intent", "DATA_RETRIEVAL")
-        state.complexity_score = defaults.get("complexity_score", "MEDIUM")
+class StepByStepPlannerAgent(BaseAgent):
+    """
+    Generates a high-level plan for answering the user query.
+    """
+    def __init__(self, llm_service: LLMService, config: dict = None):
+        super().__init__(name="QueryPlanner", config=config)
+        self.llm = llm_service
+        self.prompt_loader = PromptLoader()
+        self.file_coordinator = FileCoordinator()
+
+    def run(self, state: AgentState) -> AgentState:
+        roadmap_label = "Execution Roadmap"
+        self.log(state, f"PLAN_CATEGORY: {roadmap_label}")
+        
+        intent_context = f"Intent: {state.query_intent}, Complexity: {state.complexity_score}"
+        
+        if state.rag_columns:
+            schema_str = format_rag_columns(state.rag_columns)
+        elif state.schema_info:
+            schema_str = format_schema_to_str(state.schema_info)
+        else:
+            schema_str = "No schema info available."
+
+        messages = self.prompt_loader.load_prompt(
+            "query_planner",
+            user_query=state.user_query,
+            schema=schema_str,
+            intent_path=intent_context,
+            agent_role=self.role,
+            agent_task=self.task
+        )
+                    
+        response = self.llm.get_json_completion(messages, state=state, agent_name=self.name)
+        if response and "step_by_step_approach" in response:
+            state.step_by_step_plan = response["step_by_step_approach"]
+            self.file_coordinator.write_plan(state.instance_id, state.step_by_step_plan, state.model_name)
+        else:
+            state.step_by_step_plan = ["Analyze Schema", "Generate SQL"]
+            
+        self.log(state, f"Generated execution plan with {len(state.step_by_step_plan)} sub-tasks.")
         return state

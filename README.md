@@ -90,7 +90,7 @@ User Query
 ### 1. Prerequisites
 - **Python 3.10+**
 - **Git**
-- An API key for **OpenAI** (GPT-4o) or **AWS Bedrock** (Claude 3.5 Sonnet)
+- An API key for **AWS Bedrock** (e.g., Claude 3.5 Sonnet or Custom Safeguard models)
 
 ### 2. Clone the Repository
 ```bash
@@ -140,20 +140,14 @@ pip install -e .
 
 Create a `.env` file in the project root:
 
-### 🔒 LLM Provider (Choose One)
+### 🔒 LLM Configuration (Bedrock)
 
-**Option A — OpenAI (GPT-4o):**
-```ini
-OPENAI_API_KEY=sk-proj-xxxxxxxxxxxxxxxxxxxxxxxx
-LLM_MODEL=gpt-4o
-```
-
-**Option B — AWS Bedrock (Claude 3.5 Sonnet):**
 ```ini
 AWS_ACCESS_KEY_ID=AKIAxxxxxxxxxxxx
 AWS_SECRET_ACCESS_KEY=xxxxxxxxxxxxxxxxxxxxxxxxxxxx
 AWS_DEFAULT_REGION=us-east-1
-LLM_MODEL=bedrock/anthropic.claude-3-5-sonnet-20240620-v1:0
+LLM_MODEL=bedrock/openai.gpt-oss-safeguard-120b
+LLM_API_BASE=http://... # Optional if using proxy
 ```
 
 ### 🔓 Optional Variables
@@ -167,8 +161,8 @@ QDRANT_API_KEY=your-api-key-if-cloud-hosted
 BEDROCK_KB_ID=your-knowledge-base-id
 
 # Model overrides per agent
-PLANNER_MODEL=gpt-4o
-GENERATOR_MODEL=gpt-4o
+PLANNER_MODEL=bedrock/openai.gpt-oss-safeguard-120b
+GENERATOR_MODEL=bedrock/openai.gpt-oss-safeguard-120b
 ```
 
 ---
