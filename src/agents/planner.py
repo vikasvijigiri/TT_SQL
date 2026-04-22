@@ -223,6 +223,10 @@ class StepByStepPlannerAgent(BaseAgent):
         else:
             schema_str = "No schema info available."
 
+        self.log(state, f"PROMPT_VAR: intent_path={intent_context}")
+        schema_summary = schema_str[:100] + "..." if len(schema_str) > 100 else schema_str
+        self.log(state, f"PROMPT_VAR: schema={schema_summary}")
+
         messages = self.prompt_loader.load_prompt(
             "query_planner",
             user_query=state.user_query,

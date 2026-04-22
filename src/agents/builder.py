@@ -75,6 +75,10 @@ class SQLBuilderAgent(BaseAgent):
             "PREVIOUS SQL (HAS ERRORS - FIX THEM):" if previous_sql else ""
         )
 
+        self.log(state, f"PROMPT_VAR: action_plan={action_plan[:200]}...")
+        schema_sum = str(schema_context)[:100] + "..." if len(str(schema_context)) > 100 else str(schema_context)
+        self.log(state, f"PROMPT_VAR: schema_path={schema_sum}")
+
         messages = self.prompt_loader.load_prompt(
             "sql_builder",
             user_query=state.user_query,
@@ -186,6 +190,9 @@ class SQLCriticAgent(BaseAgent):
 
         previous_feedback = state.critic_feedback if state.critic_feedback else "None"
 
+        self.log(state, f"PROMPT_VAR: execution_results={str(execution_results)[:100]}...")
+        self.log(state, f"PROMPT_VAR: previous_feedback={str(previous_feedback)[:100]}...")
+
         messages = self.prompt_loader.load_prompt(
             "sql_critic",
             agent_role="Expert SQL Logic Auditor",
@@ -206,15 +213,16 @@ class SQLCriticAgent(BaseAgent):
         )
 
         if response:
-            verdict = response.get("verdict", "FAIL").upper()
+            is_valid = response.get("is_valid", False)
             feedback = response.get("feedback", "No feedback provided.")
 
-            state.is_result_valid = verdict == "PASS"
+            state.is_result_valid = is_valid
             state.critic_feedback = feedback
 
-            self.log(state, f"Critic Verdict: {verdict}")
+            verdict_str = "PASS" if is_valid else "FAIL"
+            self.log(state, f"Critic Verdict: {verdict_str}")
             if not state.is_result_valid:
-                self.log(state, f"Critic Feedback: {feedback[:100]}...")
+                self.log(state, f"Critic Feedback: {str(feedback)[:100]}...")
         else:
             self.log(
                 state,

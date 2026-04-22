@@ -22,19 +22,23 @@ messages:
 
   - role: user
     content: |
-      Identify the relevant tables for the following request.
+      Select the relevant tables for the following request.
 
       User Query: "{user_query}"
 
-      Context:
+      ---
+      INTENT ANALYSIS:
       {intent_path}
 
-      Knowledge Base:
+      ---
+      KNOWLEDGE BASE / RAG CONTEXT:
       {kb_context}
 
-      Database Schema:
+      ---
+      AVAILABLE DATABASE SCHEMA:
       {schema_path}
 
+      ---
       TASK:
       1. Identify entities mentioned in the user query.
       2. Map these entities to tables in the schema.
