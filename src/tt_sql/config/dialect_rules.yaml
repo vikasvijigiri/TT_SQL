@@ -1,0 +1,53 @@
+bigquery:
+  dialect: "BigQuery"
+  instructions: |
+    - YOU MUST USE GOOGLE BIGQUERY (STANDARD SQL) SYNTAX.
+    - Use backticks `project.dataset.table` for fully qualified table names.
+    - IMPORTANT: For public datasets, the project is often `bigquery-public-data`. 
+    - If the dataset name is provided (e.g., 'ga4'), you MUST qualify it correctly. Example: `bigquery-public-data.ga4.user_engagement`.
+    - Use standard aggregations: SUM, COUNT, AVG.
+    - Use SAFE_DIVIDE(x, y) to avoid division by zero errors.
+    - Use CURRENT_DATE() and TIMESTAMP('YYYY-MM-DD HH:MM:SS') for date/time literals.
+    - ROUNDING: Always round numeric results to 2 decimal places using ROUND(x, 2).
+  critic_instructions: |
+    - YOU MUST VALIDATE AGAINST GOOGLE BIGQUERY (STANDARD SQL) SYNTAX.
+    - Identifiers should use backticks (e.g., `dataset.table`).
+    - Date literals should use TIMESTAMP('...') or CURRENT_DATE().
+    - Aggregations like COUNT(DISTINCT ...) are standard.
+    - SAFE_DIVIDE is preferred for division.
+    - Ensure tables are qualified with the correct dataset/project. (e.g. `bigquery-public-data.ga4.events`).
+
+postgresql:
+  dialect: "PostgreSQL"
+  instructions: |
+    - YOU MUST ONLY USE POSTGRESQL COMMANDS. ANY SQLITE-SPECIFIC SYNTAX WILL CAUSE A FATAL ERROR.
+    - Use CURRENT_DATE for the current date. NEVER use date('now').
+    - Use INTERVAL for date arithmetic (e.g., col + INTERVAL '1 month').
+    - Use DATE_TRUNC('month', col) for month-level grouping or filtering.
+    - Use ILIKE for case-insensitive matching.
+    - ROUND OFF: ALWAYS round numeric results, percentages, and averages to 2 decimal places using ROUND(v::numeric, 2).
+    - DATE CASTING: For columns containing dates as strings (character varying), you MUST use TO_DATE(col, 'YYYY-MM-DD') before comparison or truncation.
+    - Use NULLIF(denominator, 0) to prevent division by zero.
+    - SCHEMA QUALIFICATION: You MUST always qualify table names with the schema name in double quotes: "acme-chatbot".table_name (e.g. FROM "acme-chatbot".otif).
+    - PRIORITIZE INBUILT FUNCTIONS: Use native PostgreSQL functions (e.g., DATE_TRUNC, COALESCE, GREATEST, LEAST) whenever possible instead of complex manual logic.
+  critic_instructions: |
+    - STRICTLY VALIDATE AGAINST POSTGRESQL SYNTAX. FAIL IF ANY SQLITE COMMANDS ARE USED.
+    - Ensure CURRENT_DATE is used instead of date('now').
+    - Ensure DATE_TRUNC('month', col) is used for month groupings.
+    - FAIL IF ROUND(v, d) IS USED. PostgreSQL does not support it for double precision.
+    - Ensure native PostgreSQL functions (COALESCE, NULLIF, etc.) are used where appropriate.
+    - Verify all tables are qualified with '"acme-chatbot".'.
+
+sqlite:
+  dialect: "SQLite"
+  instructions: |
+    - Use SQLite syntax only.
+    - Use date('now') for current date.
+    - Use datetime(col, '+1 month') for date arithmetic.
+    - For division: CAST(x AS REAL) / y.
+    - No ILIKE, use LOWER(col) = LOWER('val').
+    - No POWER() function, use x * x.
+  critic_instructions: |
+    - Validate against SQLite syntax.
+    - Check for date('now') and numeric types.
+    - No ILIKE allowed.

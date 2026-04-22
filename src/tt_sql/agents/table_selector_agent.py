@@ -1,0 +1,83 @@
+import json
+import re
+from typing import List, Dict, Any
+from tt_sql.core.agent_base import BaseAgent, AgentState
+from tt_sql.core.llm_service import LLMService
+from tt_sql.core.prompt_loader import PromptLoader
+from .input_layer import format_schema_to_str
+
+class TableSelectorAgent(BaseAgent):
+    """
+    Agent responsible for selecting a subset of relevant tables from the full schema.
+    This helps reduce context noise for the subsequent planning and generation steps.
+    """
+    def __init__(self, llm_service: LLMService, config: dict = None):
+        super().__init__(name="TableSelector", config=config)
+        self.llm = llm_service
+        self.prompt_loader = PromptLoader()
+
+    def run(self, state: AgentState) -> AgentState:
+        # If schema is empty, there is nothing to select
+        if not state.schema_info:
+            self.log(state, "No schema info available to select tables from.", level="WARN")
+            return state
+
+        # If RAG already narrowed down the schema and it's small, we might skip
+        if getattr(state, "use_rag", False) and len(state.schema_info) < 5:
+            self.log(state, f"RAG already narrowed schema to {len(state.schema_info)} tables. Skipping LLM selection.")
+            return state
+
+        self.log(state, f"Starting LLM-based table selection from {len(state.schema_info)} available tables.")
+
+        # Prepare prompt variables
+        schema_str = format_schema_to_str(state.schema_info, detailed=False)
+        
+        # We use intent_path and kb_context placeholders as seen in the YAML
+        prompt_vars = {
+            "user_query": state.user_query,
+            "intent_path": state.query_intent or "Not analyzed yet.",
+            "kb_context": state.external_knowledge or "No external context provided.",
+            "schema_path": schema_str
+        }
+
+        # Load and fill prompt
+        messages = self.prompt_loader.load_prompt("table_selector", **prompt_vars)
+
+        try:
+            # Get LLM response
+            response_text = self.llm.get_completion(messages, state=state, agent_name=self.name)
+            state.last_raw_response = response_text
+            
+            # Parse JSON response
+            # Sometimes LLMs wrap JSON in code blocks
+            json_match = re.search(r'(\{.*\})', response_text, re.DOTALL)
+            if json_match:
+                response_json = json.loads(json_match.group(1))
+            else:
+                response_json = json.loads(response_text)
+
+            selected_tables = response_json.get("relevant_tables", [])
+            state.query_intent = response_json.get("intent", state.query_intent)
+            state.complexity_score = response_json.get("complexity", state.complexity_score)
+            reasoning = response_json.get("reasoning", "")
+
+            # Validation: Ensure selected tables actually exist in schema
+            valid_tables = [t for t in selected_tables if t in state.schema_info]
+            
+            if valid_tables:
+                state.relevant_tables = valid_tables
+                self.log(state, f"Selected {len(valid_tables)} tables: {', '.join(valid_tables)}")
+                self.log(state, f"Reasoning: {reasoning}")
+                
+                # Prune schema_info to only include selected tables for subsequent agents
+                pruned_schema = {t: state.schema_info[t] for t in valid_tables}
+                state.schema_info = pruned_schema
+            else:
+                self.log(state, "LLM failed to select any valid tables. Falling back to full schema.", level="WARN")
+                state.relevant_tables = list(state.schema_info.keys())
+
+        except Exception as e:
+            self.log(state, f"Table selection failed: {e}. Falling back to full schema.", level="ERROR")
+            state.relevant_tables = list(state.schema_info.keys())
+
+        return state
