@@ -9,7 +9,7 @@ from pathlib import Path
 from dotenv import load_dotenv
 
 # Absolute imports from the package
-from tt_sql.core.paths import DATA_DIR, PROJECT_ROOT
+from core.paths import DATA_DIR, PROJECT_ROOT
 
 def get_qdrant_creds():
     url = os.environ.get("QDRANT_URL", "").strip()

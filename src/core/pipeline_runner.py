@@ -7,18 +7,18 @@ import requests
 import urllib3
 from typing import Optional, Dict, Any, List
 
-from tt_sql.core.logger import Logger
-from tt_sql.core.llm_service import LLMService
-from tt_sql.core.agent_base import AgentState
-from tt_sql.core.paths import initialize_directories, InstancePaths
-from tt_sql.core.config import get_settings
+from core.logger import Logger
+from core.llm_service import LLMService
+from core.agent_base import AgentState
+from core.paths import initialize_directories, InstancePaths
+from core.config import get_settings
 # (Removed PipelineConfig dependency)
 
 # Import Agents (Consolidated)
-from tt_sql.agents.planner import ContextEnrichmentAgent, StepByStepPlannerAgent
-from tt_sql.agents.selector import TableSelectorAgent
-from tt_sql.agents.builder import RefinementLoopAgent
-from tt_sql.agents.executor import SQLiteExecutorAgent, PostgresExecutorAgent, BigQueryExecutorAgent, SnowflakeExecutorAgent
+from agents.planner import ContextEnrichmentAgent, StepByStepPlannerAgent
+from agents.selector import TableSelectorAgent
+from agents.builder import RefinementLoopAgent
+from agents.executor import SQLiteExecutorAgent, PostgresExecutorAgent, BigQueryExecutorAgent, SnowflakeExecutorAgent
 
 
 def reset_pipeline_infrastructure(include_heavy_models: bool = False):
@@ -29,12 +29,12 @@ def reset_pipeline_infrastructure(include_heavy_models: bool = False):
     LLMService.clear_cache()
     Logger.reset()
     # 3. Vector Database
-    from tt_sql.rag.vector_store import VectorStoreAgent
+    from rag.vector_store import VectorStoreAgent
     VectorStoreAgent.clear_caches(include_models=include_heavy_models)
     
     # 5. Snowflake Service
     try:
-        from tt_sql.core.sf_service import SnowflakeService
+        from core.sf_service import SnowflakeService
         SnowflakeService.reset()
     except Exception:
         pass

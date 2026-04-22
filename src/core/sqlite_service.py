@@ -1,7 +1,7 @@
 import sqlite3
 import time
 from typing import Dict, Any, List
-from tt_sql.core.state import ExecutionResult
+from core.state import ExecutionResult
 
 class SQLiteService:
     """

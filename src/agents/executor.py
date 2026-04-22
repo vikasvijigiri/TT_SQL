@@ -3,13 +3,13 @@ import time
 import sqlite3
 import psycopg2
 from typing import Dict, Any, List, Optional
-from tt_sql.core.sqlite_service import SQLiteService
-from tt_sql.core.logger import Logger
-from tt_sql.core.agent_base import BaseAgent, AgentState
-from tt_sql.core.state import ExecutionResult
-from tt_sql.core.file_coordinator import FileCoordinator
-from tt_sql.core.bq_service import BigQueryService
-from tt_sql.core.sf_service import SnowflakeService
+from core.sqlite_service import SQLiteService
+from core.logger import Logger
+from core.agent_base import BaseAgent, AgentState
+from core.state import ExecutionResult
+from core.file_coordinator import FileCoordinator
+from core.bq_service import BigQueryService
+from core.sf_service import SnowflakeService
 
 class SQLiteExecutorAgent(BaseAgent):
     """

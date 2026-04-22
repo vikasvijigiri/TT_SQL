@@ -1,21 +1,21 @@
 import os
 import argparse
 from dotenv import load_dotenv
-from tt_sql.core.data_loader import DataLoader
-from tt_sql.core.batch_runner import BatchRunner
-from tt_sql.core.paths import DATA_DIR
+from core.data_loader import DataLoader
+from core.batch_runner import BatchRunner
+from core.paths import DATA_DIR
 
 def main():
-    parser = argparse.ArgumentParser(description="Snowflake Batch Runner")
-    parser.add_argument("--dataset", type=str, default=str(DATA_DIR / "spider2-lite-snowflake.jsonl"))
-    parser.add_argument("--model", type=str, default=os.getenv("LLM_MODEL", "gpt-4o"))
+    parser = argparse.ArgumentParser(description="GCP/BigQuery Batch Runner")
+    parser.add_argument("--dataset", type=str, default=str(DATA_DIR / "spider2-lite-bigquery.jsonl"))
+    parser.add_argument("--model", type=str, default=os.getenv("LLM_MODEL", "bedrock/openai.gpt-oss-safeguard-120b"))
     parser.add_argument("--workers", type=int, default=4)
     parser.add_argument("--limit", type=int, default=0)
     parser.add_argument("--overwrite", action="store_true")
     args = parser.parse_args()
     
     load_dotenv()
-    os.environ["DB_TYPE"] = "snowflake" # Explicit session setting
+    os.environ["DB_TYPE"] = "bigquery" # Explicit session setting
     
     tasks = DataLoader.load_jsonl(args.dataset)
     if args.limit > 0:

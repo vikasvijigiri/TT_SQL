@@ -3,8 +3,8 @@ import re
 import json
 import logging
 from typing import List, Dict, Optional, Any
-from tt_sql.core.logger import Logger
-from tt_sql.core.config import get_settings
+from core.logger import Logger
+from core.config import get_settings
 from botocore.config import Config
 
 class LLMService:
