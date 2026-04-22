@@ -1,11 +1,9 @@
 # Local execution results and logs
 results/
 data/
+gold/
 logs/
 resources/
-kb_docs/
-JSON_logs/
-log.txt
 failed_ids.csv
 *.log
 
@@ -18,3 +16,7 @@ new_venv/
 venv/
 __pycache__/
 *.pyc
+
+
+.pytest_cache/
+.ruff_cache/

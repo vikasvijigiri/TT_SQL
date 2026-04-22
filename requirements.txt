@@ -17,3 +17,5 @@ tqdm
 openpyxl
 pydantic-settings
 snowflake-connector-python
+pytest
+ruff

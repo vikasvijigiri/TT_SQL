@@ -1,21 +1,25 @@
 import os
+from typing import Any
+
 from google.cloud import bigquery
 from google.oauth2 import service_account
-from typing import Dict, Any, List, Optional
+
 from .config import get_settings
 from .logger import Logger
 
+
 class BigQueryService:
     """
-    Service for BigQuery interactions. 
+    Service for BigQuery interactions.
     Optimized for batch metadata retrieval using INFORMATION_SCHEMA.
     """
+
     _instance = None
     _client = None
 
     def __new__(cls):
         if cls._instance is None:
-            cls._instance = super(BigQueryService, cls).__new__(cls)
+            cls._instance = super().__new__(cls)
         return cls._instance
 
     @classmethod
@@ -30,22 +34,29 @@ class BigQueryService:
             settings = get_settings()
             creds_path = settings.gcp_credentials_abs_path
             project_id = settings.GCP_PROJECT_ID
-            
+
             if creds_path and os.path.exists(creds_path):
-                credentials = service_account.Credentials.from_service_account_file(creds_path)
-                self._client = bigquery.Client(credentials=credentials, project=project_id or credentials.project_id)
+                credentials = service_account.Credentials.from_service_account_file(
+                    creds_path
+                )
+                self._client = bigquery.Client(
+                    credentials=credentials,
+                    project=project_id or credentials.project_id,
+                )
             else:
                 self._client = bigquery.Client(project=project_id)
         return self._client
 
-    def get_dataset_schema(self, dataset_name: str, project_id: str = None) -> Dict[str, Any]:
+    def get_dataset_schema(
+        self, dataset_name: str, project_id: str = None
+    ) -> dict[str, Any]:
         """
         Fetch schema for all tables in a dataset using a single optimized query to INFORMATION_SCHEMA.COLUMNS.
         """
         client = self.get_client()
         settings = get_settings()
         target_project = project_id or settings.GCP_PROJECT_ID or client.project
-        
+
         # Resolve dataset and project reference
         if "." in dataset_name:
             # Handle project.dataset format
@@ -55,8 +66,10 @@ class BigQueryService:
         else:
             target_dataset = dataset_name
 
-        Logger.log(f"[BQ] Fetching Batch Schema for `{target_project}.{target_dataset}` via INFORMATION_SCHEMA...")
-        
+        Logger.log(
+            f"[BQ] Fetching Batch Schema for `{target_project}.{target_dataset}` via INFORMATION_SCHEMA..."
+        )
+
         # Single query to get all columns for all tables in the dataset
         query = f"""
         SELECT 
@@ -68,26 +81,30 @@ class BigQueryService:
         ORDER BY 
             table_name, ordinal_position
         """
-        
+
         try:
             query_job = client.query(query)
             results = query_job.result()
-            
+
             schema_info = {}
             for row in results:
                 # Use fully qualified table names to ensure LLM generates executable SQL
                 full_table_name = f"{target_project}.{target_dataset}.{row.table_name}"
                 if full_table_name not in schema_info:
                     schema_info[full_table_name] = {"columns": []}
-                
-                schema_info[full_table_name]["columns"].append({
-                    "column_name": row.column_name,
-                    "type": row.data_type,
-                    "description": "",
-                    "pk": False # BQ doesn't have traditional PKs in INFORMATION_SCHEMA
-                })
-            
-            Logger.log(f"[BQ] Schema Discovery Complete: Found {len(schema_info)} tables in `{target_dataset}`.")
+
+                schema_info[full_table_name]["columns"].append(
+                    {
+                        "column_name": row.column_name,
+                        "type": row.data_type,
+                        "description": "",
+                        "pk": False,  # BQ doesn't have traditional PKs in INFORMATION_SCHEMA
+                    }
+                )
+
+            Logger.log(
+                f"[BQ] Schema Discovery Complete: Found {len(schema_info)} tables in `{target_dataset}`."
+            )
             return schema_info
         except Exception as e:
             Logger.log(f"[BQ] Failed to fetch Batch Schema: {e}", level="ERROR")
