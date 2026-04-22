@@ -62,6 +62,11 @@ class TableSelectorAgent(BaseAgent):
             "schema_path": schema_str,
         }
 
+        self.log(state, f"PROMPT_VAR: intent_path={prompt_vars['intent_path']}")
+        self.log(state, f"PROMPT_VAR: kb_context={prompt_vars['kb_context']}")
+        schema_summary = schema_str[:100] + "..." if len(schema_str) > 100 else schema_str
+        self.log(state, f"PROMPT_VAR: schema_path={schema_summary}")
+
         messages = self.prompt_loader.load_prompt("table_selector", **prompt_vars)
 
         try:
