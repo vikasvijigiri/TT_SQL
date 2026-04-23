@@ -72,6 +72,7 @@ class AgentState(BaseModel):
     instance_id: str = "default"  # Required for file-based tracking Header
     external_knowledge: str | None = None  # For BigQuery dataset resolution
     model_name: str = "default_model"  # Track which model is running this task
+    dialect: str = "sqlite"  # Database dialect (sqlite, bigquery, snowflake, postgres)
     sub_questions: list[str] = Field(
         default_factory=list
     )  # Decomposed questions for multi-part queries

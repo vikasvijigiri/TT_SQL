@@ -5,7 +5,7 @@ from pathlib import Path
 
 from dotenv import load_dotenv
 
-from agents.builder import RefinementLoopAgent
+from agents.sql_builder import RefinementLoopAgent
 from agents.executor import (
     BigQueryExecutorAgent,
     PostgresExecutorAgent,
@@ -15,11 +15,12 @@ from agents.executor import (
 
 # Absolute imports from the package
 # Agent Imports (Consolidated)
-from agents.planner import ContextEnrichmentAgent, StepByStepPlannerAgent
-from agents.selector import TableSelectorAgent
+from agents.query_planner import ContextEnrichmentAgent, StepByStepPlannerAgent
+from agents.table_selector import TableSelectorAgent
 from core.file_coordinator import FileCoordinator
 from core.llm_service import LLMService
 from core.logger import Logger
+from core.config import get_settings
 from core.paths import (
     DATA_DIR,
     InstancePaths,
@@ -88,6 +89,21 @@ def run_single(target_id: str, model_name: str, use_rag: bool = False, args=None
 
     db_path = str(InstancePaths.database(task_data["db"]))
 
+    # 1. Determine executor and dialect based on DB_TYPE or target_id prefix
+    db_type = os.getenv("DB_TYPE", "sqlite").lower()
+    if (target_id and target_id.startswith("bq")) or db_type == "bigquery":
+        executor = BigQueryExecutorAgent()
+        dialect = "bigquery"
+    elif (target_id and target_id.startswith("sf")) or db_type == "snowflake":
+        executor = SnowflakeExecutorAgent()
+        dialect = "snowflake"
+    elif db_type in ["postgres", "postgresql"]:
+        executor = PostgresExecutorAgent()
+        dialect = "postgres"
+    else:
+        executor = SQLiteExecutorAgent()
+        dialect = "sqlite"
+
     initial_state = AgentState(
         user_query=task_data["question"],
         db_path=db_path,
@@ -96,22 +112,12 @@ def run_single(target_id: str, model_name: str, use_rag: bool = False, args=None
         instance_id=target_id,
         use_rag=use_rag,
         model_name=model_name,
+        dialect=dialect,
     )
 
     print("Starting lean execution...")
     Logger.set_log_file(str(log_full_path))
     Logger.log_call("run_single", {"target_id": target_id, "model_name": model_name})
-
-    # 1. Determine executor based on DB_TYPE or target_id prefix
-    db_type = os.getenv("DB_TYPE", "sqlite").lower()
-    if (target_id and target_id.startswith("bq")) or db_type == "bigquery":
-        executor = BigQueryExecutorAgent()
-    elif (target_id and target_id.startswith("sf")) or db_type == "snowflake":
-        executor = SnowflakeExecutorAgent()
-    elif db_type in ["postgres", "postgresql"]:
-        executor = PostgresExecutorAgent()
-    else:
-        executor = SQLiteExecutorAgent()
 
     # 2. Instantiate and Run Agents (Strict 4-Stage Sequence)
     # Simplified imports already handled at top level if needed,
@@ -159,12 +165,15 @@ def run_single(target_id: str, model_name: str, use_rag: bool = False, args=None
 
 
 def main():
+    load_dotenv()
+    settings = get_settings()
+
     parser = argparse.ArgumentParser(description="Run single text-to-SQL instance")
     parser.add_argument("--id", type=str, default="local020", help="Instance ID to run")
     parser.add_argument(
         "--model",
         type=str,
-        default=os.getenv("LLM_MODEL", "bedrock/openai.gpt-oss-safeguard-120b"),
+        default=settings.LLM_MODEL,
         help="Model name",
     )
     parser.add_argument("--dataset", type=str, help="Specific dataset file to search")

@@ -25,7 +25,7 @@ class Settings(BaseSettings):
     BEDROCK_SECRET_ACCESS_KEY: str | None = None
     BEDROCK_REGION: str = Field(default="us-east-1")
     LLM_PROVIDER: str = Field(default="bedrock")
-    LLM_MODEL: str = Field(default="bedrock/openai.gpt-oss-safeguard-120b")
+    LLM_MODEL: str = Field(default="bedrock/default-model")
     LLM_TEMPERATURE: float = Field(default=0.0)
     LLM_MAX_TOKENS: int = Field(default=4096)
 
@@ -59,10 +59,9 @@ class Settings(BaseSettings):
         if p.is_absolute():
             return str(p)
 
-        # Try relative to project root
-        # src/tt_sql/core/config.py -> .parent.parent.parent.parent
-        root = Path(__file__).resolve().parent.parent.parent.parent
-        return str(root / p)
+        from .paths import PROJECT_ROOT
+
+        return str(PROJECT_ROOT / p)
 
     @property
     def sf_credentials_abs_path(self) -> str | None:
@@ -73,8 +72,9 @@ class Settings(BaseSettings):
         if p.is_absolute():
             return str(p)
 
-        root = Path(__file__).resolve().parent.parent.parent.parent
-        return str(root / p)
+        from .paths import PROJECT_ROOT
+
+        return str(PROJECT_ROOT / p)
 
 
 # Singleton settings instance

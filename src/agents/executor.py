@@ -139,7 +139,7 @@ class BigQueryExecutorAgent(BaseAgent):
 class SnowflakeExecutorAgent(BaseAgent):
     """Agent responsible for executing SQL queries on Snowflake.
 
-    This agent uses the Snowflake connector to run queries and
+    This agent uses the SnowflakeService to run queries and
     captures the resulting data and metadata.
     """
 
@@ -162,39 +162,13 @@ class SnowflakeExecutorAgent(BaseAgent):
         if not state.chosen_query or state.chosen_query.upper().startswith("ERROR"):
             return state
 
-        database = state.db_name
-        schema = "PUBLIC"
-        if database and "." in database:
-            parts = database.split(".")
-            database, schema = parts[0], parts[1]
+        sampling = getattr(state, "sampling_enabled", False)
+        result = self.sf_service.execute_query(state.chosen_query, sampling=sampling)
 
-        conn = self.sf_service.get_connection(database=database, schema=schema)
-        if not conn:
-            state.error_message = "Failed to establish Snowflake connection."
-            return state
-
-        start_t = time.time()
-        result = ExecutionResult()
-        try:
-            cursor = conn.cursor()
-            cursor.execute(state.chosen_query)
-            result.columns = (
-                [desc[0] for desc in cursor.description] if cursor.description else []
-            )
-            rows = (
-                cursor.fetchmany(5)
-                if getattr(state, "sampling_enabled", False)
-                else cursor.fetchall()
-            )
-            result.rows = [list(row) for row in rows]
-            result.row_count = len(rows)
-        except Exception as e:
-            result.error_message = str(e)
-            state.error_message = str(e)
-            self.log(state, f"Snowflake Execution Error: {e}")
-            state.execution_error_history.append(f"Snowflake Error: {str(e)}")
-        finally:
-            result.execution_time_ms = (time.time() - start_t) * 1000
+        if result.error_message:
+            state.error_message = result.error_message
+            self.log(state, f"Snowflake Execution Error: {result.error_message}")
+            state.execution_error_history.append(f"Snowflake Error: {result.error_message}")
 
         state.execution_result = result
         self.log(

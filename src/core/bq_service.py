@@ -36,6 +36,9 @@ class BigQueryService:
             project_id = settings.GCP_PROJECT_ID
 
             if creds_path and os.path.exists(creds_path):
+                Logger.log(
+                    f"[BQ] Initializing client with credentials from: {creds_path}"
+                )
                 credentials = service_account.Credentials.from_service_account_file(
                     creds_path
                 )
@@ -44,7 +47,13 @@ class BigQueryService:
                     project=project_id or credentials.project_id,
                 )
             else:
+                Logger.log(
+                    f"[BQ] Credentials file NOT found at {creds_path}. Falling back to default credentials.",
+                    level="WARN",
+                )
                 self._client = bigquery.Client(project=project_id)
+            
+            Logger.log(f"[BQ] Using Google Project ID: {self._client.project}")
         return self._client
 
     def get_dataset_schema(

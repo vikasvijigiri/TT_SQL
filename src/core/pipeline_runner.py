@@ -4,7 +4,7 @@ import time
 import requests
 import urllib3
 
-from agents.builder import RefinementLoopAgent
+from agents.sql_builder import RefinementLoopAgent
 from agents.executor import (
     BigQueryExecutorAgent,
     PostgresExecutorAgent,
@@ -14,8 +14,8 @@ from agents.executor import (
 
 # (Removed PipelineConfig dependency)
 # Import Agents (Consolidated)
-from agents.planner import ContextEnrichmentAgent, StepByStepPlannerAgent
-from agents.selector import TableSelectorAgent
+from agents.query_planner import ContextEnrichmentAgent, StepByStepPlannerAgent
+from agents.table_selector import TableSelectorAgent
 from core.agent_base import AgentState
 from core.config import get_settings
 from core.llm_service import LLMService
@@ -174,16 +174,20 @@ def run_analysis_pipeline(
     # Initialize Components (Directly)
     llm_service = LLMService(model=model_name)
 
-    # Determine executor based on DB_TYPE or instance_id prefix
-    db_type = os.getenv("DB_TYPE", "sqlite").lower()
-    if (instance_id and instance_id.startswith("bq")) or db_type == "bigquery":
+    # Determine executor and dialect based on DB_TYPE or instance_id prefix
+    db_type_env = os.getenv("DB_TYPE", "sqlite").lower()
+    if (instance_id and instance_id.startswith("bq")) or db_type_env == "bigquery":
         executor = BigQueryExecutorAgent()
-    elif (instance_id and instance_id.startswith("sf")) or db_type == "snowflake":
+        dialect = "bigquery"
+    elif (instance_id and instance_id.startswith("sf")) or db_type_env == "snowflake":
         executor = SnowflakeExecutorAgent()
-    elif db_type in ["postgres", "postgresql"]:
+        dialect = "snowflake"
+    elif db_type_env in ["postgres", "postgresql"]:
         executor = PostgresExecutorAgent()
+        dialect = "postgres"
     else:
         executor = SQLiteExecutorAgent()
+        dialect = "sqlite"
 
     # Instantiate fixed set of agents
     context_agent = ContextEnrichmentAgent()
@@ -200,6 +204,7 @@ def run_analysis_pipeline(
         rag_limit=rag_limit,
         model_name=model_name,
         external_knowledge=external_knowledge,
+        dialect=dialect,
     )
 
     start_time = time.time()
@@ -233,6 +238,7 @@ def run_analysis_pipeline(
                 schema_info=state.schema_info,
                 query_intent=state.query_intent,
                 external_knowledge=state.external_knowledge,
+                dialect=state.dialect,
             )
 
             # --- Fixed Lean Flow Sequence ---

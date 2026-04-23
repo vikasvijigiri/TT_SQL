@@ -1,7 +1,7 @@
 import pytest
-from agents.planner import ContextEnrichmentAgent, StepByStepPlannerAgent
-from agents.selector import TableSelectorAgent
-from agents.builder import SQLBuilderAgent
+from agents.query_planner import ContextEnrichmentAgent, StepByStepPlannerAgent
+from agents.table_selector import TableSelectorAgent
+from agents.sql_builder import SQLBuilderAgent
 
 def test_agent_initialization(mock_llm):
     """Verify that agents can be initialized without errors."""
