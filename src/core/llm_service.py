@@ -52,7 +52,7 @@ class LLMService:
         try:
             from langchain_aws import ChatBedrockConverse
 
-            # Strip provider prefix if present (e.g. 'bedrock/openai...' -> 'openai...')
+            # Strip provider prefix if present (e.g. 'bedrock/model-id' -> 'model-id')
             model_id = (
                 self.model_name.split("/")[-1]
                 if "/" in self.model_name

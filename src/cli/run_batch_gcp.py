@@ -4,11 +4,15 @@ import os
 from dotenv import load_dotenv
 
 from core.batch_runner import BatchRunner
+from core.config import get_settings
 from core.data_loader import DataLoader
 from core.paths import DATA_DIR
 
 
 def main():
+    load_dotenv()
+    settings = get_settings()
+
     parser = argparse.ArgumentParser(description="GCP/BigQuery Batch Runner")
     parser.add_argument(
         "--dataset", type=str, default=str(DATA_DIR / "spider2-lite-bigquery.jsonl")
@@ -16,14 +20,12 @@ def main():
     parser.add_argument(
         "--model",
         type=str,
-        default=os.getenv("LLM_MODEL", "bedrock/openai.gpt-oss-safeguard-120b"),
+        default=settings.LLM_MODEL,
     )
     parser.add_argument("--workers", type=int, default=4)
     parser.add_argument("--limit", type=int, default=0)
     parser.add_argument("--overwrite", action="store_true")
     args = parser.parse_args()
-
-    load_dotenv()
     os.environ["DB_TYPE"] = "bigquery"  # Explicit session setting
 
     tasks = DataLoader.load_jsonl(args.dataset)

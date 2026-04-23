@@ -1,11 +1,13 @@
 import json
 import os
+import time
 from typing import Any
 
 import snowflake.connector
 
 from .config import get_settings
 from .logger import Logger
+from .state import ExecutionResult
 
 
 class SnowflakeService:
@@ -61,6 +63,9 @@ class SnowflakeService:
             target_warehouse = (
                 warehouse or creds.get("warehouse") or os.getenv("SNOWFLAKE_WAREHOUSE")
             )
+            target_role = (
+                creds.get("role") or os.getenv("SNOWFLAKE_ROLE")
+            )
 
             if not all([user, password, account]):
                 Logger.log(
@@ -77,65 +82,114 @@ class SnowflakeService:
                     warehouse=target_warehouse,
                     database=target_database,
                     schema=target_schema,
+                    role=target_role,
                 )
-                Logger.log(f"[SF] Connected to account `{account}`.")
+                Logger.log(f"[SF] Connected to account `{account}` (Role: {target_role}).")
             except Exception as e:
                 Logger.log(f"[SF] Connection failed: {e}", level="ERROR")
                 return None
 
         return self._conn
 
-    def get_schema(self, database: str, schema: str = "PUBLIC") -> dict[str, Any]:
+    def get_schema(self, database: str, schema: str | None = None) -> dict[str, Any]:
         """
         Fetch schema for all tables in a Snowflake database/schema using INFORMATION_SCHEMA.
         """
+        if not database:
+            return {}
+
         conn = self.get_connection(database=database, schema=schema)
         if not conn:
             return {}
 
-        Logger.log(
-            f"[SF] Fetching Batch Schema for `{database}.{schema}` via INFORMATION_SCHEMA..."
-        )
+        # Default to PUBLIC if not specified, but allow fallback to DATABASE name as schema
+        active_schema = schema or "PUBLIC"
+        schemas_to_try = [active_schema]
+        if database and active_schema.upper() == "PUBLIC" and database.upper() != "PUBLIC":
+            schemas_to_try.append(database)
 
-        query = f"""
-        SELECT 
-            table_name, 
-            column_name, 
-            data_type, 
-            comment 
-        FROM 
-            {database}.INFORMATION_SCHEMA.COLUMNS
-        WHERE 
-            table_schema = '{schema.upper()}'
-        ORDER BY 
-            table_name, ordinal_position
-        """
+        for current_schema in schemas_to_try:
+            Logger.log(
+                f"[SF] Fetching Batch Schema for `{database}.{current_schema}` via INFORMATION_SCHEMA..."
+            )
 
+            query = f"""
+            SELECT 
+                table_name, 
+                column_name, 
+                data_type, 
+                comment 
+            FROM 
+                {database}.INFORMATION_SCHEMA.COLUMNS
+            WHERE 
+                table_schema = '{current_schema.upper()}'
+            ORDER BY 
+                table_name, ordinal_position
+            """
+
+            try:
+                cursor = conn.cursor()
+                cursor.execute(query)
+                results = cursor.fetchall()
+
+                if not results:
+                    continue
+
+                schema_info = {}
+                for row in results:
+                    # row structure: (table_name, column_name, data_type, comment)
+                    tname = row[0]
+                    if tname not in schema_info:
+                        schema_info[tname] = {"columns": []}
+
+                    schema_info[tname]["columns"].append(
+                        {
+                            "column_name": row[1],
+                            "type": row[2],
+                            "description": row[3] or "",
+                            "pk": False,  # Metadata for PKs requires separate query or parsing
+                        }
+                    )
+
+                Logger.log(
+                    f"[SF] Schema Discovery Complete: Found {len(schema_info)} tables in `{database}.{current_schema}`."
+                )
+                return schema_info
+            except Exception as e:
+                Logger.log(f"[SF] Failed to fetch Snowflake Schema for `{current_schema}`: {e}", level="ERROR")
+        
+        return {}
+
+    def execute_query(self, query: str, sampling: bool = False) -> ExecutionResult:
+        """Executes a query and returns an ExecutionResult object."""
+        start_t = time.time()
+        result = ExecutionResult()
         try:
+            # Note: We rely on the established connection or defaults
+            conn = self.get_connection()
+            if not conn:
+                raise Exception("Failed to establish Snowflake connection.")
+
             cursor = conn.cursor()
             cursor.execute(query)
-            results = cursor.fetchall()
 
-            schema_info = {}
-            for row in results:
-                # row structure: (table_name, column_name, data_type, comment)
-                tname = row[0]
-                if tname not in schema_info:
-                    schema_info[tname] = {"columns": []}
+            # Fetch columns
+            if cursor.description:
+                result.columns = [description[0] for description in cursor.description]
 
-                schema_info[tname]["columns"].append(
-                    {
-                        "column_name": row[1],
-                        "type": row[2],
-                        "description": row[3] or "",
-                        "pk": False,  # Metadata for PKs requires separate query or parsing
-                    }
-                )
+            # Fetch rows
+            if sampling:
+                rows = cursor.fetchmany(5)
+            else:
+                rows = cursor.fetchall()
 
-            Logger.log(
-                f"[SF] Schema Discovery Complete: Found {len(schema_info)} tables in `{database}.{schema}`."
-            )
-            return schema_info
+            result.rows = [list(row) for row in rows]
+            result.row_count = len(rows)
+
         except Exception as e:
-            Logger.log(f"[SF] Failed to fetch Snowflake Schema: {e}", level="ERROR")
-            return {}
+            result.error_message = str(e)
+            Logger.log(f"[SF] Query execution failed: {e}", level="ERROR")
+        finally:
+            result.execution_time_ms = (time.time() - start_t) * 1000
+
+        return result

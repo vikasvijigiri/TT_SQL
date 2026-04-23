@@ -39,8 +39,8 @@ class ContextEnrichmentAgent(BaseAgent):
             AgentState: The updated state containing schema_info and metadata.
         """
         Logger.log_call(f"{self.name}.run", {"instance_id": state.instance_id})
-        is_bigquery = state.instance_id.startswith("bq")
-        is_snowflake = state.instance_id.startswith("sf")
+        is_bigquery = state.dialect == "bigquery"
+        is_snowflake = state.dialect == "snowflake"
 
         # 1. Try RAG if enabled
         if getattr(state, "use_rag", False):
@@ -147,10 +147,10 @@ class ContextEnrichmentAgent(BaseAgent):
         if is_snowflake and (state.db_name or state.external_knowledge):
             try:
                 sf_service = SnowflakeService()
-                database = state.db_name or "PATENTS"
-                schema = "PUBLIC"
+                database = state.db_name
+                schema = None # Will attempt fallback in service if None
 
-                if "." in database:
+                if database and "." in database:
                     parts = database.split(".")
                     database = parts[0]
                     schema = parts[1]
@@ -158,7 +158,7 @@ class ContextEnrichmentAgent(BaseAgent):
                 self.log(
                     state, f"Snowflake API fetch starting for: {database}.{schema}"
                 )
-                sf_schema = sf_service.get_schema(database, schema)
+                sf_schema = sf_service.get_schema(database, schema) if database else {}
                 if sf_schema:
                     state.schema_info = sf_schema
                     self.log(

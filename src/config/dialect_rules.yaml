@@ -3,8 +3,8 @@ bigquery:
   instructions: |
     - YOU MUST USE GOOGLE BIGQUERY (STANDARD SQL) SYNTAX.
     - Use backticks `project.dataset.table` for fully qualified table names.
-    - IMPORTANT: For public datasets, the project is often `bigquery-public-data`. 
-    - If the dataset name is provided (e.g., 'ga4'), you MUST qualify it correctly. Example: `bigquery-public-data.ga4.user_engagement`.
+    - If the dataset name is provided, you MUST qualify it correctly in the format: `project.dataset.table`.
+    - Handle project IDs correctly (e.g. `bigquery-public-data` for public datasets).
     - Use standard aggregations: SUM, COUNT, AVG.
     - Use SAFE_DIVIDE(x, y) to avoid division by zero errors.
     - Use CURRENT_DATE() and TIMESTAMP('YYYY-MM-DD HH:MM:SS') for date/time literals.
@@ -15,7 +15,7 @@ bigquery:
     - Date literals should use TIMESTAMP('...') or CURRENT_DATE().
     - Aggregations like COUNT(DISTINCT ...) are standard.
     - SAFE_DIVIDE is preferred for division.
-    - Ensure tables are qualified with the correct dataset/project. (e.g. `bigquery-public-data.ga4.events`).
+    - Ensure tables are qualified with the correct project and dataset.
 
 postgresql:
   dialect: "PostgreSQL"
@@ -28,7 +28,7 @@ postgresql:
     - ROUND OFF: ALWAYS round numeric results, percentages, and averages to 2 decimal places using ROUND(v::numeric, 2).
     - DATE CASTING: For columns containing dates as strings (character varying), you MUST use TO_DATE(col, 'YYYY-MM-DD') before comparison or truncation.
     - Use NULLIF(denominator, 0) to prevent division by zero.
-    - SCHEMA QUALIFICATION: You MUST always qualify table names with the schema name in double quotes: "acme-chatbot".table_name (e.g. FROM "acme-chatbot".otif).
+    - SCHEMA QUALIFICATION: Always qualify table names with the schema name using double quotes: "schema_name"."table_name".
     - PRIORITIZE INBUILT FUNCTIONS: Use native PostgreSQL functions (e.g., DATE_TRUNC, COALESCE, GREATEST, LEAST) whenever possible instead of complex manual logic.
   critic_instructions: |
     - STRICTLY VALIDATE AGAINST POSTGRESQL SYNTAX. FAIL IF ANY SQLITE COMMANDS ARE USED.
@@ -36,7 +36,7 @@ postgresql:
     - Ensure DATE_TRUNC('month', col) is used for month groupings.
     - FAIL IF ROUND(v, d) IS USED. PostgreSQL does not support it for double precision.
     - Ensure native PostgreSQL functions (COALESCE, NULLIF, etc.) are used where appropriate.
-    - Verify all tables are qualified with '"acme-chatbot".'.
+    - Verify all tables are qualified with the appropriate schema prefix in double quotes.
 
 sqlite:
   dialect: "SQLite"
@@ -51,3 +51,19 @@ sqlite:
     - Validate against SQLite syntax.
     - Check for date('now') and numeric types.
     - No ILIKE allowed.
+
+snowflake:
+  dialect: "Snowflake"
+  instructions: |
+    - YOU MUST USE SNOWFLAKE (SQL) SYNTAX.
+    - TABLE ACCESS: You MUST always access tables using the fully qualified identifier format: "DATABASE"."SCHEMA"."TABLE".
+    - QUOTING: Use double quotes for EVERY identifier (database, schema, table, column names, and aliases) to ensure case sensitivity is correctly handled.
+    - DATE HANDLING: Use CURRENT_DATE() for the current date and DATEADD(unit, count, column) for date arithmetic. 
+    - TYPE CASTING: Use the :: syntax for type conversions (e.g., "column"::TEXT).
+    - CONDITIONAL LOGIC: Use IFF(condition, true_val, false_val) and TRY_DIVIDE(x, y) to prevent division by zero.
+    - ROUNDING: Always round numeric results to 2 decimal places using ROUND("column", 2).
+  critic_instructions: |
+    - VALIDATE AGAINST SNOWFLAKE SQL SYNTAX.
+    - Ensure ALL tables are accessed via the "DATABASE"."SCHEMA"."TABLE" format.
+    - Verify that ALL identifiers (including CTE names and aliases) are wrapped in double quotes.
+    - Fail if standard Snowflake functions (DATEADD, TRY_DIVIDE, IFF) are not used where applicable.
