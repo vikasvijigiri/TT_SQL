@@ -27,13 +27,21 @@ messages:
       User Query: "{user_query}"
 
       ---
+      SCHEMA CONTEXT:
+      {schema}
+
+      ---
       INTENT ANALYSIS:
       {intent_path}
 
       ---
+      FAILURE HISTORY (IF ANY):
+      {failure_history}
+
+      ---
       INSTRUCTIONS:
-      1. Outline the logical approach step-by-step in natural language. Keep it simple (but not too simple).
-      2. DO NOT reference any specific table names or column names, since you do not have access to the databases schema.
-      3. Ensure the steps lead directly to solving the user's specific question at the end. No mathematical operations too should not be referenced. 
+      1. Outline the logical approach step-by-step in natural language.
+      2. Utilize the SCHEMA CONTEXT to identify relevant tables and logical joins.
+      3. Ensure the steps lead directly to solving the user's specific question at the end.
       4. Just give the approach in plain simple natural language ONLY.
-      4. Return ONLY the JSON object.
+      5. Return ONLY the JSON object.

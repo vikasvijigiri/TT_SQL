@@ -168,8 +168,10 @@ def run_analysis_pipeline(
                     run_analysis_pipeline._qdrant_cache[cache_key] = False
                     use_rag = False
 
-    # Initialize directories (Production Entry point) (5. Done)
-    initialize_directories(settings.LLM_MODEL)
+    # Initialize directories (Production Entry point) - skip redundant checks in batch
+    if not hasattr(run_analysis_pipeline, "_dirs_initialized"):
+        initialize_directories(settings.LLM_MODEL)
+        run_analysis_pipeline._dirs_initialized = True
 
     # Initialize Components (Directly)
     llm_service = LLMService(model=model_name)
@@ -189,18 +191,20 @@ def run_analysis_pipeline(
         executor = SQLiteExecutorAgent()
         dialect = "sqlite"
 
-    # Instantiate fixed set of agents
+    # 1. Instantiate and Run Agents (Mirroring run_single.py)
     context_agent = ContextEnrichmentAgent()
+    planner_agent = StepByStepPlannerAgent(llm_service)
+    table_selector = TableSelectorAgent(llm_service)
     refinement_loop = RefinementLoopAgent(llm_service, executor=executor)
 
-    # Initial State
+    # Initial State (Aligning with run_single constructor)
     state = AgentState(
         user_query=question,
         db_path=db_path_absolute,
-        db_name=db_name,  # pass raw db name for RAG collection routing
+        db_name=db_name,
         instance_id=instance_id,
-        rag_source=rag_source,
         use_rag=use_rag,
+        rag_source=rag_source,
         rag_limit=rag_limit,
         model_name=model_name,
         external_knowledge=external_knowledge,
@@ -212,101 +216,35 @@ def run_analysis_pipeline(
     try:
         Logger.log_stage_header("📥 INPUT LAYER")
 
-        # --- SUB-QUESTION EXECUTION LOOP ---
-        questions_to_process = (
-            state.sub_questions if state.sub_questions else [question]
-        )
-        final_states = []
-        is_any_fatal = False
+        # Stage 0: Context Enrichment
+        state = context_agent.run(state)
 
-        for i, sub_q in enumerate(questions_to_process):
-            # Reuse base instance ID (no suffixes)
-            sub_id = instance_id
+        # Step 1: Query Planner
+        Logger.log_call("Step 1: Query Planner")
+        state = planner_agent.run(state)
 
-            Logger.log(f"--- Starting Task {sub_id}: {sub_q} ---")
+        # Step 2: Table Selector
+        Logger.log_call("Step 2: Table Selector")
+        state = table_selector.run(state)
 
-            # Create sub-state reusing schema & intent
-            current_state = AgentState(
-                user_query=sub_q,
-                db_path=state.db_path,
-                db_name=state.db_name,
-                instance_id=sub_id,
-                rag_source=state.rag_source,
-                use_rag=state.use_rag,
-                rag_limit=state.rag_limit,
-                model_name=state.model_name,
-                schema_info=state.schema_info,
-                query_intent=state.query_intent,
-                external_knowledge=state.external_knowledge,
-                dialect=state.dialect,
-            )
+        # Step 3: Builder-Critic Loop
+        Logger.log_call("Step 3: Builder-Critic Loop")
+        state = refinement_loop.run(state)
 
-            # --- Fixed Lean Flow Sequence ---
-            if stop_checker and stop_checker():
-                return None, 0, True, output_handler.captured_text
-
-            # 1. System Setup (Context Enrichment)
-            current_state = context_agent.run(current_state)
-
-            # --- Strict 4-Stage Lean Sequence ---
-            if stop_checker and stop_checker():
-                return None, 0, True, output_handler.captured_text
-
-            # Step 1: Query Planner
-            Logger.log_call("Step 1: Query Planner")
-            planner_agent = StepByStepPlannerAgent(llm_service)
-            current_state = planner_agent.run(current_state)
-
-            # Step 2: Table Selector
-            Logger.log_call("Step 2: Table Selector")
-            table_selector = TableSelectorAgent(llm_service)
-            current_state = table_selector.run(current_state)
-
-            # Step 3: Builder-Critic Loop
-            Logger.log_call("Step 3: Builder-Critic Loop")
-            if stop_checker and stop_checker():
-                current_state.stop_requested = True
-            current_state = refinement_loop.run(current_state)
-
-            # Step 4: Final Executor
-            Logger.log_call("Step 4: Final Executor")
-            current_state = executor.run(current_state)
-
-            # Stage 8: Final Execution Result
-            # (Execution is handled within RefinementLoopAgent to enable iteration)
-            if not current_state.execution_result:
-                Logger.log(f"No execution result found for {instance_id}")
-
-            # Check fatal errors
-            if (
-                current_state.chosen_query and "ERROR:" in current_state.chosen_query
-            ) or (
-                current_state.error_message and "ERROR:" in current_state.error_message
-            ):
-                is_any_fatal = True
-
-            final_states.append(current_state)
+        # Step 4: Final Executor
+        Logger.log_call("Step 4: Final Executor")
+        state = executor.run(state)
 
         elapsed = time.time() - start_time
         Logger.log(f"Analysis completed in {elapsed:.2f} seconds.")
-        last_state = final_states[-1] if final_states else state
 
-        # Comprehensive Fatal Error Check
-        if not is_any_fatal:
-            for s in final_states:
-                if (
-                    (s.execution_result and s.execution_result.error_message)
-                    or (s.error_message and "ERROR:" in s.error_message.upper())
-                    or (s.chosen_query and "ERROR:" in s.chosen_query.upper())
-                ):
-                    is_any_fatal = True
-                    break
+        # Determine if is_fatal (Same logic as run_single success check)
+        is_any_fatal = False
+        if (state.execution_result and state.execution_result.error_message) or \
+           (state.error_message and "ERROR:" in state.error_message.upper()):
+            is_any_fatal = True
 
-        # Check Fatal Errors
-        if is_any_fatal:
-            output_handler.error("Errors occurred in one or more sub-questions.")
-
-        return last_state, 0, is_any_fatal, output_handler.captured_text
+        return state, 0, is_any_fatal, output_handler.captured_text
 
     except Exception as e:
         output_handler.error(f"Critical Pipeline Error: {str(e)}")

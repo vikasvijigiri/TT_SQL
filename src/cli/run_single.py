@@ -4,7 +4,7 @@ import os
 from pathlib import Path
 
 from dotenv import load_dotenv
-
+ 
 from agents.sql_builder import RefinementLoopAgent
 from agents.executor import (
     BigQueryExecutorAgent,
@@ -12,9 +12,8 @@ from agents.executor import (
     SnowflakeExecutorAgent,
     SQLiteExecutorAgent,
 )
-
+ 
 # Absolute imports from the package
-# Agent Imports (Consolidated)
 from agents.query_planner import ContextEnrichmentAgent, StepByStepPlannerAgent
 from agents.table_selector import TableSelectorAgent
 from core.file_coordinator import FileCoordinator
@@ -44,17 +43,13 @@ def run_single(target_id: str, model_name: str, use_rag: bool = False, args=None
     llm_service = LLMService(model=model_name)
     file_coordinator = FileCoordinator()
 
-    # (Removed Orchestrator setup)
-
     # Find task
     task_data = None
     dataset_files = []
 
-    # 1. If a specific dataset is provided, check that first
     if hasattr(args, "dataset") and args.dataset:
         dataset_files.append(Path(args.dataset))
 
-    # 2. Otherwise/also check known spider datasets
     dataset_files.extend(
         [
             DATA_DIR / "spider2-lite-bigquery.jsonl",
@@ -64,7 +59,6 @@ def run_single(target_id: str, model_name: str, use_rag: bool = False, args=None
         ]
     )
 
-    # deduplicate while preserving order
     seen = set()
     dataset_files = [
         f for f in dataset_files if f.exists() and not (f in seen or seen.add(f))
@@ -89,7 +83,6 @@ def run_single(target_id: str, model_name: str, use_rag: bool = False, args=None
 
     db_path = str(InstancePaths.database(task_data["db"]))
 
-    # 1. Determine executor and dialect based on DB_TYPE or target_id prefix
     db_type = os.getenv("DB_TYPE", "sqlite").lower()
     if (target_id and target_id.startswith("bq")) or db_type == "bigquery":
         executor = BigQueryExecutorAgent()
@@ -119,49 +112,60 @@ def run_single(target_id: str, model_name: str, use_rag: bool = False, args=None
     Logger.set_log_file(str(log_full_path))
     Logger.log_call("run_single", {"target_id": target_id, "model_name": model_name})
 
-    # 2. Instantiate and Run Agents (Strict 4-Stage Sequence)
-    # Simplified imports already handled at top level if needed,
-    # but keeping them here for local scope if preferred, updated to new paths:
-
     context_agent = ContextEnrichmentAgent()
     refinement_loop = RefinementLoopAgent(llm_service, executor=executor)
 
-    # Stage 0: Context Enrichment
     initial_state = context_agent.run(initial_state)
 
-    # Step 1: Query Planner
     Logger.log_call("Step 1: Query Planner")
     planner_agent = StepByStepPlannerAgent(llm_service)
     initial_state = planner_agent.run(initial_state)
 
-    # Step 2: Table Selector
     Logger.log_call("Step 2: Table Selector")
     table_selector = TableSelectorAgent(llm_service)
     initial_state = table_selector.run(initial_state)
 
-    # Step 3: Builder-Critic Loop
     Logger.log_call("Step 3: Builder-Critic Loop")
     initial_state = refinement_loop.run(initial_state)
 
-    # Step 4: Final Executor
     Logger.log_call("Step 4: Final Executor")
     final_state = executor.run(initial_state)
 
     print("Execution finished.")
 
-    # Check if log has content-length (ResponseMetadata)
+    # --- HIGH-PRECISION SUCCESS CHECK (Reject Ghost Content) ---
     log_path = get_model_results_dir(model_name) / "log" / f"{target_id}.md"
-    print(f"Checking log at {log_path}")
+    csv_path = get_model_results_dir(model_name) / "csv" / f"{target_id}.csv"
+    
+    print(f"Final Validation: Log @ {log_path.name}, CSV @ {csv_path.name}")
 
+    log_success = False
     if log_path.exists():
         with open(log_path, encoding="utf-8") as f:
-            content = f.read()
-            if "content-length" in content:
-                print("SUCCESS: 'content-length' found in log.")
+            if "content-length" in f.read():
+                log_success = True
+    
+    csv_success = False
+    if csv_path.exists():
+        with open(csv_path, encoding="utf-8") as f:
+            meaningless = ["", '""', "none", "null", "[]", "{}", "nan", "undefined"]
+            data_rows = []
+            for line in f:
+                parts = [p.strip().lower() for p in line.split(",")]
+                # A row is meaningful if at least one column has actual content
+                if any(p not in meaningless for p in parts):
+                    data_rows.append(line)
+            
+            if len(data_rows) >= 2: # Header + 1 Meaningful Row
+                csv_success = True
             else:
-                print("FAILURE: 'content-length' NOT found in log.")
+                print(f"⚠️ [WARNING]: No meaningful data rows found. (Header only or Empty values).")
+
+    if log_success and csv_success:
+        print(f"✅ SUCCESS: Task {target_id} yielded valid SQL and DATA.")
     else:
-        print("Log file not found.")
+        status = "FAILED"
+        print(f"❌ {status}: Log={log_success}, DataPresence={csv_success}")
 
 
 def main():
@@ -187,7 +191,6 @@ def main():
 
     load_dotenv()
 
-    # Pass args object so run_single can access args.dataset
     def run_wrapper():
         run_single(args.id, args.model, args.use_rag, args=args)
 

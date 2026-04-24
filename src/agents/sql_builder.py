@@ -1,5 +1,4 @@
 import os
-
 import yaml
 
 from core.agent_base import AgentState, BaseAgent
@@ -12,70 +11,53 @@ from core.utils import format_rag_columns, format_schema_to_str
 
 
 class SQLBuilderAgent(BaseAgent):
-    """Agent responsible for generating SQL queries.
-
-    This agent takes the execution plan, the narrowed schema context,
-    and any previous feedback to generate a syntactically correct and
-    logically sound SQL query for the target database dialect.
-    """
+    """Agent responsible for generating SQL queries."""
 
     def __init__(self, llm_service: LLMService, config: dict = None):
-        """Initializes the SQLBuilderAgent.
-
-        Args:
-            llm_service (LLMService): Service for interacting with LLM APIs.
-            config (dict, optional): Configuration dictionary for the agent.
-        """
         super().__init__(name="SQLBuilder", config=config)
         self.llm = llm_service
         self.prompt_loader = PromptLoader()
         self.file_coordinator = FileCoordinator()
 
     def run(self, state: AgentState) -> AgentState:
-        """Executes the SQL generation workflow.
-
-        Args:
-            state (AgentState): The current shared state of the pipeline.
-
-        Returns:
-            AgentState: The updated state containing the chosen_query.
-        """
+        """Executes the SQL generation workflow without historical leakage."""
         Logger.log_call(f"{self.name}.run", {"instance_id": state.instance_id})
 
-        # Schema Context
-        if state.rag_columns:
-            schema_context = format_rag_columns(state.rag_columns)
-        elif state.schema_info:
-            schema_context = format_schema_to_str(state.schema_info)
-        else:
-            schema_context = "Schema not available."
+        # 1. Schema Context (Context Expansion Strategy)
+        target_schema = state.schema_info
+        expansion_active = False
+        if state.iteration_count > 2 and state.full_schema_info:
+            target_schema = state.full_schema_info
+            expansion_active = True
+            self.log(state, "CONTEXT_EXPANSION: TableSelector may have missed tables. Using Full Schema.", level="WARN")
 
-        # Action Plan
-        action_plan = "No plan available."
-        if state.step_by_step_plan:
-            action_plan = "\n".join(
-                f"  {i + 1}. {s}" for i, s in enumerate(state.step_by_step_plan)
-            )
+        schema_context = format_schema_to_str(target_schema) if target_schema else "No schema."
 
-        # Dialect
+        # 2. Action Plan
+        action_plan = "\n".join(f"  {i+1}. {s}" for i, s in enumerate(state.step_by_step_plan)) if state.step_by_step_plan else "No plan."
+
+        # 3. Dialect rules
         db_type = state.dialect
-
         with open(DIALECT_RULES) as f:
             all_rules = yaml.safe_load(f)
         rules = all_rules.get(db_type, all_rules["sqlite"])
         dialect = rules["dialect"]
-        dialect_instructions = rules.get(
-            "instructions", rules.get("generator_instructions", "")
-        )
+        dialect_instructions = rules.get("instructions", "")
 
+        # 4. Success/Failure Evidence
         previous_sql = state.chosen_query or ""
-        previous_sql_label = (
-            "PREVIOUS SQL (HAS ERRORS - FIX THEM):" if previous_sql else ""
-        )
+        previous_sql_label = "PREVIOUS SQL (FAILED ATTEMPT):" if previous_sql else ""
 
-        self.log(state, f"PROMPT_VAR: action_plan={action_plan[:200]}...")
-        schema_sum = str(schema_context)[:100] + "..." if len(str(schema_context)) > 100 else str(schema_context)
-        self.log(state, f"PROMPT_VAR: schema_path={schema_sum}")
+        from core.utils import format_execution_results
+        execution_results = format_execution_results(state.execution_result) if state.execution_result else "No results."
+
+        # --- COMPREHENSIVE FAILURE HISTORY (Issue 1/3) ---
+        history_lines = []
+        if state.execution_error_history:
+            for i, (err, fback) in enumerate(zip(state.execution_error_history, state.feedback_history or [])):
+                history_lines.append(f"--- ATTEMPT {i+1} ---\nERROR: {err}\nCRITIC: {fback}")
+        
+        failure_history = "\n\n".join(history_lines) if history_lines else "None."
 
         messages = self.prompt_loader.load_prompt(
             "sql_builder",
@@ -85,43 +67,41 @@ class SQLBuilderAgent(BaseAgent):
             potential_pool=schema_context,
             previous_sql=previous_sql,
             previous_sql_label=previous_sql_label,
+            execution_results=execution_results,
+            failure_history=failure_history,
             dialect=dialect,
             dialect_instructions=dialect_instructions,
         )
 
-        # Add feedback from history if present
-        if state.history:
-            feedback_raw = state.history[-1].get("content", "")
-            if isinstance(feedback_raw, list):
-                feedback_str = "\n".join(f"- {item}" for item in feedback_raw)
-            else:
-                feedback_str = str(feedback_raw)
-
-            extra_context = (
-                "\n\nCRITIC FEEDBACK (YOU MUST FIX ALL ISSUES BELOW):\n" + feedback_str
-            )
-            for msg in reversed(messages):
-                if msg["role"] == "user":
-                    msg["content"] += extra_context
-                    break
-
-        response = self.llm.get_json_completion(
-            messages, state=state, agent_name=self.name
+        # MANDATORY CORRECTION BLOCK
+        latest_error = state.execution_error_history[-1] if state.execution_error_history else "None."
+        latest_feedback = state.critic_feedback or "No previous logic-review."
+        
+        feedback_context = (
+            f"\n\n### [MANDATORY RECOVERY PROTOCOL]\n"
+            f"1. **Analyze History**: Look at ALL previous attempts below. Identify why they were rejected.\n"
+            f"2. **Constraint Enforcement**: If an attempt failed due to a Specific Syntax Error, DO NOT use that exact syntax again.\n"
+            f"3. **Consistency**: You are oscillating. Ensure this SQL solves the LATEST ERROR without re-introducing previous ones.\n\n"
+            f"LATEST CRITIC FEEDBACK: {latest_feedback}\n"
+            f"LATEST EXECUTION ERROR: {latest_error}\n"
+            f"--------------------------------------------"
         )
+        
+        for msg in reversed(messages):
+            if msg["role"] == "user":
+                msg["content"] += feedback_context
+                break
 
-        if response and response.get("sql"):
+        response = self.llm.get_json_completion(messages, state=state, agent_name=self.name)
+
+        if response and isinstance(response, dict) and response.get("sql"):
             sql = response["sql"].replace("```sql", "").replace("```", "").strip()
             state.chosen_query = sql
             state.is_result_valid = True
-
-            sql_lines = [line for line in sql.split("\n") if line.strip()]
-            self.file_coordinator.write_sql(
-                state.instance_id, sql_lines, state.model_name
-            )
-            self.log(state, f"Generated SQL ({len(sql)} chars)")
+            self.file_coordinator.write_sql(state.instance_id, sql.split("\n"), state.model_name)
         else:
-            self.log(state, "Failed to generate SQL.", level="ERROR")
             state.is_result_valid = False
+            state.critic_feedback = "CRITICAL: SQL Generator returned malformed or non-dictionary response."
 
         return state
 
@@ -130,65 +110,34 @@ from .sql_critic import SQLCriticAgent
 
 
 class RefinementLoopAgent(BaseAgent):
-    """Orchestrator for the iterative SQL generation and correction process.
+    """Orchestrator for the iterative SQL generation and correction process."""
 
-    This agent manages the structural flow between the SQLBuilder,
-    SQLCritic, and Executor. It retries generation multiple times if the
-    critic finds issues, ensuring high-quality output.
-    """
-
-    def __init__(
-        self, llm_service: LLMService, executor: BaseAgent, config: dict = None
-    ):
-        """Initializes the RefinementLoopAgent.
-
-        Args:
-            llm_service (LLMService): Service for interacting with LLM APIs.
-            executor (BaseAgent): Database-specific executor agent for final validation.
-            config (dict, optional): Configuration dictionary for the agent.
-        """
+    def __init__(self, llm_service: LLMService, executor: BaseAgent, config: dict = None):
         super().__init__(name="RefinementLoop", config=config)
         self.generator = SQLBuilderAgent(llm_service)
         self.critic = SQLCriticAgent(llm_service)
+        self.max_retries = self.config.get("max_retries", 5)
+        self.pivot_threshold = self.config.get("pivot_threshold", 2)
+        from .query_planner import StepByStepPlannerAgent
+        self.planner = StepByStepPlannerAgent(llm_service)
         self.executor = executor
-        self.max_retries = 5
 
     def run(self, state: AgentState) -> AgentState:
-        """Executes the refinement loop workflow.
-
-        Args:
-            state (AgentState): The current shared state of the pipeline.
-
-        Returns:
-            AgentState: The final state after iterative refinement and final execution.
-        """
-        self.log(state, f"Starting refinement loop (max {self.max_retries} attempts).")
-
         for attempt in range(1, self.max_retries + 1):
-            if getattr(state, "stop_requested", False):
-                break
-
-            Logger.log_title(f"Iteration {attempt} / {self.max_retries}")
-
-            # 1. Generate
+            state.iteration_count = attempt
+            if getattr(state, "stop_requested", False): break
             state = self.generator.run(state)
-            if not state.is_result_valid:
-                break
-
-            # 2. Critic
+            if not state.is_result_valid: break
+            state.sampling_enabled = True
+            state = self.executor.run(state)
             if not getattr(state, "direct_mode", False):
                 state = self.critic.run(state)
-                if state.is_result_valid:
-                    self.log(state, f"Validated on attempt {attempt}.")
-                    break
-
-                # Feedback for next cycle
-                state.history = [{"role": "user", "content": state.critic_feedback}]
+                if state.is_result_valid: break
+                if attempt == self.pivot_threshold:
+                    state = self.planner.run(state)
             else:
-                self.log(state, "Direct mode: skipping critic.")
                 break
-
-        # 3. Final Execution
-        Logger.log_title("Final Execution")
-        state = self.executor.run(state)
+        if state.is_result_valid:
+            state.sampling_enabled = False
+            state = self.executor.run(state)
         return state

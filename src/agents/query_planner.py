@@ -147,16 +147,23 @@ class ContextEnrichmentAgent(BaseAgent):
         if is_snowflake and (state.db_name or state.external_knowledge):
             try:
                 sf_service = SnowflakeService()
-                database = state.db_name
-                schema = None # Will attempt fallback in service if None
+                db_val = state.db_name or os.getenv("SNOWFLAKE_DATABASE")
+                
+                database = db_val
+                schema = None
 
-                if database and "." in database:
-                    parts = database.split(".")
+                if db_val and "." in db_val:
+                    parts = db_val.split(".")
                     database = parts[0]
                     schema = parts[1]
-
+                elif db_val:
+                    # Per user feedback: generally DB and Schema are same
+                    database = db_val
+                    schema = db_val # Default to same name
+                
+                # Log clearly the resolved DB.SCHEMA
                 self.log(
-                    state, f"Snowflake API fetch starting for: {database}.{schema}"
+                    state, f"Snowflake API fetch starting for: {database}.{schema or 'AUTO'}"
                 )
                 sf_schema = sf_service.get_schema(database, schema) if database else {}
                 if sf_schema:
@@ -176,8 +183,9 @@ class ContextEnrichmentAgent(BaseAgent):
             )
 
         # Defaults
-        state.query_intent = "DATA_RETRIEVAL"
-        state.complexity_score = "MEDIUM"
+        if not state.query_intent: state.query_intent = "DATA_RETRIEVAL"
+        if not state.complexity_score: state.complexity_score = "MEDIUM"
+        state.full_schema_info = state.schema_info # Save master copy
         return state
 
 
@@ -216,16 +224,38 @@ class StepByStepPlannerAgent(BaseAgent):
             f"Intent: {state.query_intent}, Complexity: {state.complexity_score}"
         )
 
+        # Pivot context: use full schema if we are re-planning after failures
+        use_full = bool(state.execution_error_history)
+        active_schema = state.full_schema_info if (use_full and state.full_schema_info) else state.schema_info
+
         if state.rag_columns:
             schema_str = format_rag_columns(state.rag_columns)
-        elif state.schema_info:
-            schema_str = format_schema_to_str(state.schema_info)
+        elif active_schema:
+            schema_str = format_schema_to_str(active_schema)
         else:
             schema_str = "No schema info available."
 
         self.log(state, f"PROMPT_VAR: intent_path={intent_context}")
         schema_summary = schema_str[:100] + "..." if len(schema_str) > 100 else schema_str
         self.log(state, f"PROMPT_VAR: schema={schema_summary}")
+
+        # Synthesize CUMULATIVE FAILURE HISTORY for "Plan Pivoting"
+        failure_history = "Initial Plan - No previous failures."
+        if state.execution_error_history:
+            history_lines = []
+            for i, err in enumerate(state.execution_error_history):
+                fback = state.feedback_history[i] if i < len(state.feedback_history) else "No feedback."
+                history_lines.append(f"SQL ATTEMPT {i+1} FAILED.\nERROR: {err}\nCRITIC: {fback}")
+            
+            failure_history = (
+                "### [RETROSPECTIVE: WHY PREVIOUS ATTEMPTS FAILED]\n"
+                "Your previous plan led to these errors. Analyze them carefully:\n"
+                + "\n\n".join(history_lines) + "\n\n"
+                "### [PIVOT INSTRUCTION]\n"
+                "If the errors were SYNTAX-related (e.g., column not found), reconsider your schema interpretation.\n"
+                "If the errors were LOGIC-related (e.g., 0 rows), reconsider your JOIN keys or filters.\n"
+                "Do NOT repeat the same logical strategy if it failed twice. Propose a more robust alternative."
+            )
 
         messages = self.prompt_loader.load_prompt(
             "query_planner",
@@ -234,6 +264,7 @@ class StepByStepPlannerAgent(BaseAgent):
             intent_path=intent_context,
             agent_role=self.role,
             agent_task=self.task,
+            failure_history=failure_history,
         )
 
         response = self.llm.get_json_completion(

@@ -102,11 +102,16 @@ class SnowflakeService:
         if not conn:
             return {}
 
-        # Default to PUBLIC if not specified, but allow fallback to DATABASE name as schema
-        active_schema = schema or "PUBLIC"
-        schemas_to_try = [active_schema]
-        if database and active_schema.upper() == "PUBLIC" and database.upper() != "PUBLIC":
+        # Default to DATABASE name as schema (common pattern), then fallback to PUBLIC
+        schemas_to_try = []
+        if schema:
+            schemas_to_try.append(schema)
+        
+        if database and (not schema or schema.upper() != database.upper()):
             schemas_to_try.append(database)
+            
+        if "PUBLIC" not in [s.upper() for s in schemas_to_try]:
+            schemas_to_try.append("PUBLIC")
 
         for current_schema in schemas_to_try:
             Logger.log(
@@ -139,10 +144,14 @@ class SnowflakeService:
                 for row in results:
                     # row structure: (table_name, column_name, data_type, comment)
                     tname = row[0]
-                    if tname not in schema_info:
-                        schema_info[tname] = {"columns": []}
+                    # Qualify table name with DB and SCHEMA for unambiguous prompt context
+                    qualified_name = f"{database.upper()}.{current_schema.upper()}.{tname.upper()}"
+                    if qualified_name not in schema_info:
+                        # Fetch a sample row for data profiling (crucial for VARIANT types)
+                        sample_data = self._get_sample_row(conn, database, current_schema, tname)
+                        schema_info[qualified_name] = {"columns": [], "sample": sample_data}
 
-                    schema_info[tname]["columns"].append(
+                    schema_info[qualified_name]["columns"].append(
                         {
                             "column_name": row[1],
                             "type": row[2],
@@ -193,3 +202,25 @@ class SnowflakeService:
             result.execution_time_ms = (time.time() - start_t) * 1000
 
         return result
+
+    def _get_sample_row(self, conn, database, schema, table_name) -> str:
+        """Internal helper to sample multiple rows for high-precision profiling."""
+        try:
+            cursor = conn.cursor()
+            # Ensure identifiers are quoted
+            fqn = f'"{database.upper()}"."{schema.upper()}"."{table_name.upper()}"'
+            # Fetch 3 rows for better pattern recognition
+            cursor.execute(f"SELECT * FROM {fqn} LIMIT 3")
+            rows = cursor.fetchall()
+            if not rows:
+                return "NULL_OR_EMPTY"
+            
+            # Map columns to values for a rich data profile
+            cols = [d[0] for d in cursor.description]
+            samples = []
+            for row in rows:
+                samples.append(dict(zip(cols, row)))
+            
+            return samples
+        except Exception as e:
+            return f"SAMPLE_ERROR: {str(e)}"
