@@ -81,7 +81,21 @@ class TableSelectorAgent(BaseAgent):
             else:
                 response_json = json.loads(response_text)
 
-            selected_tables = response_json.get("relevant_tables", [])
+            selected_tables_config = response_json.get("relevant_tables", [])
+            # Handle both list of strings or list of dicts with columns
+            selected_tables = []
+            table_to_cols = {}
+            
+            if isinstance(selected_tables_config, list):
+                for item in selected_tables_config:
+                    if isinstance(item, str):
+                        selected_tables.append(item)
+                    elif isinstance(item, dict):
+                        tname = item.get("table")
+                        if tname:
+                            selected_tables.append(tname)
+                            table_to_cols[tname] = item.get("columns", [])
+
             state.query_intent = response_json.get("intent", state.query_intent)
             state.complexity_score = response_json.get(
                 "complexity", state.complexity_score
@@ -93,9 +107,42 @@ class TableSelectorAgent(BaseAgent):
                 state.relevant_tables = valid_tables
                 self.log(
                     state,
-                    f"Selected {len(valid_tables)} tables: {', '.join(valid_tables)}",
+                    f"Selected {len(valid_tables)} tables.",
                 )
-                pruned_schema = {t: state.schema_info[t] for t in valid_tables}
+                
+                pruned_schema = {}
+                for t in valid_tables:
+                    original_data = state.schema_info[t]
+                    picked_cols = table_to_cols.get(t, [])
+                    
+                    # Always preserve the sample metadata if it exists
+                    sample_metadata = original_data.get("sample") if isinstance(original_data, dict) else None
+
+                    if picked_cols:
+                        # Prune columns to only those picked
+                        if isinstance(original_data, dict) and "columns" in original_data:
+                            new_cols = []
+                            for c in original_data["columns"]:
+                                cname = c.get("column_name") if isinstance(c, dict) else str(c)
+                                if cname in picked_cols:
+                                    new_cols.append(c)
+                            
+                            pruned_schema[t] = {
+                                "columns": new_cols if new_cols else original_data["columns"],
+                                "sample": sample_metadata
+                            }
+                        else:
+                            pruned_schema[t] = original_data
+                    else:
+                        # No column pruning requested, but still preserve sample if it was a dict
+                        if isinstance(original_data, dict):
+                            pruned_schema[t] = {
+                                "columns": original_data.get("columns", []),
+                                "sample": sample_metadata
+                            }
+                        else:
+                            pruned_schema[t] = original_data
+                
                 state.schema_info = pruned_schema
             else:
                 self.log(

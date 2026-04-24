@@ -14,8 +14,13 @@ messages:
 
       OUTPUT FORMAT (JSON ONLY):
       {{
-        "relevant_tables": ["table_name_1", "table_name_2"],
-        "reasoning": "Brief explanation of why these tables are relevant.",
+        "relevant_tables": [
+          {{
+            "table": "table_name_1",
+            "columns": ["column_a", "column_b"]
+          }}
+        ],
+        "reasoning": "Brief explanation of why these columns/tables are relevant.",
         "intent": "<DATA_RETRIEVAL | AGGREGATION | COMPARISON | RANKING | TREND_ANALYSIS>",
         "complexity": "<LOW | MEDIUM | HIGH>"
       }}

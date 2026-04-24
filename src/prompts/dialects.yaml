@@ -47,22 +47,55 @@ bigquery:
 
 snowflake:
   builder_instructions: |
-    - Use Snowflake SQL syntax.
-    - Unquoted identifiers are case-insensitive; double-quoted identifiers are case-sensitive.
-    - Use CURRENT_DATE() for the current date.
-    - Use DATEADD(month, 1, date_col) for date arithmetic.
-    - Use IFF(y=0, NULL, x/y) or DIV0(x, y) to prevent division by zero.
-    - Use DATE_TRUNC('month', date_col) for month-level grouping.
+    - Use Snowflake SQL syntax and semantics.
+    - Prefer unquoted identifiers unless case sensitivity is explicitly required.
+    - Use fully qualified table names when ambiguity exists.
+
+    - Use CURRENT_DATE() for current date.
+    - Use DATEADD(part, value, date_col) for date arithmetic.
+    - Use DATE_TRUNC('part', date_col) for aggregation.
+
     - Use ILIKE for case-insensitive matching.
+    - Use IFF() or DIV0() for safe division.
+
+    - Prefer CTEs over nested queries.
+    - Use QUALIFY for window filtering.
+
+    - NEVER use scalar subqueries.
+    - NEVER use correlated subqueries.
+    - ALWAYS rewrite logic using JOINs.
+
+    - Prefer ROW_NUMBER() + QUALIFY instead of LIMIT.
+
+    - Ensure deterministic ORDER BY.
+    - Minimize repeated scans.
+
   critic_instructions: |
-    - Validate against Snowflake syntax.
-    - Check for DATEADD and DATE_TRUNC functions.
+    - Validate Snowflake syntax correctness.
+    - Ensure DATEADD / DATE_TRUNC usage is correct.
+    - Detect scalar subqueries (not allowed).
+    - Validate column existence and alias correctness.
+    - Ensure JOIN correctness and no cross joins.
+    - Detect runtime risks (NULL, casting, division).
+    - Ensure deterministic ordering.
 
 default:
   builder_instructions: |
-    - Use standard SQL syntax compatible with the target database.
-    - Focus on precision and clarity in join conditions.
-    - Use appropriate aliases for calculated columns.
+    - Use standard SQL syntax.
+    - Ensure clarity and correctness.
+
+    - Use explicit JOIN conditions.
+    - Avoid ambiguous columns.
+
+    - Prefer CTEs for readability.
+    - Avoid unnecessary nesting.
+
+    - Handle NULLs explicitly.
+    - Ensure deterministic ordering.
+
   critic_instructions: |
-    - Validate against standard SQL syntax.
-    - Ensure logical alignment with the user's question.
+    - Validate SQL syntax.
+    - Ensure logical correctness of joins and filters.
+    - Detect invalid column references.
+    - Check for ambiguity or missing conditions.
+    - Ensure proper NULL handling.

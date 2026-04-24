@@ -80,8 +80,20 @@ class LLMService:
                 ),
             )
 
+            # Log the prompt for auditability
+            Logger.log("--- LLM PROMPT START ---")
+            for msg in messages:
+                role = msg.get("role", "unknown").upper()
+                content = msg.get("content", "")
+                Logger.log(f"**[{role}]**:\n{content}\n")
+            Logger.log("--- LLM PROMPT END ---")
+
             response = llm.invoke(messages)
             content = response.content
+            
+            # Log Response Metadata for auditability (including content-length, tokens, etc.)
+            if hasattr(response, "response_metadata"):
+                Logger.log(f"ResponseMetadata: {json.dumps(response.response_metadata)}")
 
             # Simple handle for multi-part content
             if isinstance(content, list):
@@ -128,41 +140,65 @@ class LLMService:
         return self._parse_json(content)
 
     def _parse_json(self, content: str) -> Any:
-        """Parses JSON from LLM response with fallback for noise."""
+        """Parses JSON from LLM response with robust multi-stage recovery.
+        Handles markdown blocks, conversational noise, and trailing commas.
+        """
         if not content or content.startswith("ERROR:"):
             return None
 
+        # 1. Direct Load Attempt
         content_clean = content.strip()
-
         try:
-            # 1. Try extracting content inside markdown code blocks first
-            json_matches = re.findall(
-                r"```(?:json)?\s*(\{.*?\})\s*```", content_clean, re.DOTALL
-            )
-            if json_matches:
-                # Try from last to first (usually the answer is at the end)
-                for candidate in reversed(json_matches):
-                    try:
-                        return json.loads(candidate.strip())
-                    except Exception:
-                        continue
+            return json.loads(content_clean)
+        except Exception:
+            pass
 
-            # 2. Fallback: Extract ANY valid-looking JSON block { ... }
-            # We use a balanced-extraction-like approach or just try all candidates
-            # Regex for finding candidates between balanced braces is hard,
-            # so we'll find all indices of '{' and try everything from there.
-            all_starts = [m.start() for m in re.finditer(r"\{", content_clean)]
-            for start in reversed(all_starts):
-                # Look for the matching last '}'
-                end = content_clean.rfind("}", start)
-                if end != -1:
-                    candidate = content_clean[start : end + 1]
-                    try:
-                        return json.loads(candidate)
-                    except Exception:
-                        continue
+        # 2. Markdown Block Extraction
+        # Look for ```json ... ``` or ``` ... ```
+        json_blocks = re.findall(r"```(?:json)?\s*([\s\S]*?)\s*```", content_clean)
+        for block in reversed(json_blocks):
+            repaired = self._repair_json_string(block)
+            try:
+                return json.loads(repaired)
+            except Exception:
+                continue
 
+        # 3. Brute Force Brace Extraction
+        # Find the first '{' or '[' and the last '}' or ']'
+        try:
+            # Check for Objects first
+            obj_start = content_clean.find("{")
+            obj_end = content_clean.rfind("}")
+            if obj_start != -1 and obj_end != -1:
+                candidate = content_clean[obj_start : obj_end + 1]
+                repaired = self._repair_json_string(candidate)
+                try:
+                    return json.loads(repaired)
+                except Exception:
+                    pass
+
+            # Check for Arrays second
+            arr_start = content_clean.find("[")
+            arr_end = content_clean.rfind("]")
+            if arr_start != -1 and arr_end != -1:
+                candidate = content_clean[arr_start : arr_end + 1]
+                repaired = self._repair_json_string(candidate)
+                try:
+                    return json.loads(repaired)
+                except Exception:
+                    pass
         except Exception:
             pass
 
         return None
+
+    def _repair_json_string(self, raw_str: str) -> str:
+        """Applies common fixes to malformed JSON strings from LLMs."""
+        # 1. Remove trailing commas before closing braces/brackets
+        # This matches a comma followed by whitespace and then a closing brace/bracket
+        repaired = re.sub(r",\s*([\]}])", r"\1", raw_str)
+        
+        # 2. Fix many-to-one escaped quotes if present (less common but happens)
+        # repaired = repaired.replace('\\"', '"') 
+        
+        return repaired.strip()

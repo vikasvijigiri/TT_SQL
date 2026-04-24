@@ -35,25 +35,29 @@ class Logger:
 
     @classmethod
     def set_log_file(cls, path: str):
-        """Sets the active log file and initializes the buffered file handler."""
+        """Sets the active log file and initializes the buffered handlers."""
         with cls._lock:
             cls._current_log_file = path
-            # Remove old file handlers
+            # Remove old handlers
             for handler in cls._internal_logger.handlers[:]:
-                if isinstance(handler, logging.FileHandler):
-                    cls._internal_logger.removeHandler(handler)
+                cls._internal_logger.removeHandler(handler)
 
             # Ensure directory exists
             os.makedirs(os.path.dirname(path), exist_ok=True)
 
-            # Set up new buffered file handler
-            handler = logging.FileHandler(path, mode="w", encoding="utf-8")
-            # Use same format as internal/SQLite logs for parity
+            # 1. Buffered File Handler
+            f_handler = logging.FileHandler(path, mode="w", encoding="utf-8")
             formatter = logging.Formatter(
                 "[%(asctime)s] [%(levelname)s] %(message)s", datefmt="%Y-%m-%d %H:%M:%S"
             )
-            handler.setFormatter(formatter)
-            cls._internal_logger.addHandler(handler)
+            f_handler.setFormatter(formatter)
+            cls._internal_logger.addHandler(f_handler)
+
+            # 2. Live Console Handler (Always mirror to terminal)
+            c_handler = logging.StreamHandler()
+            c_handler.setFormatter(formatter)
+            cls._internal_logger.addHandler(c_handler)
+
             cls._internal_logger.setLevel(get_settings().LOG_LEVEL)
 
     @classmethod

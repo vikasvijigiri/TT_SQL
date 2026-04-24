@@ -62,11 +62,30 @@ class BatchRunner:
             )
 
             duration = time.time() - start_t
-            status = "FAILED" if is_fatal else "SUCCESS"
+            
+            # --- High-Precision Meaningful Occupancy Check ---
+            csv_path = InstancePaths.csv(iid, self.model_name)
+            has_data = False
+            if csv_path.exists():
+                with open(csv_path, encoding="utf-8") as f:
+                    meaningless = ["", '""', "none", "null", "[]", "{}", "nan", "undefined"]
+                    valid_rows = []
+                    for line in f:
+                        parts = [p.strip().lower() for p in line.split(",")]
+                        # A row is meaningful if at least one column has actual content
+                        if any(p not in meaningless for p in parts):
+                            valid_rows.append(line)
+                    
+                    if len(valid_rows) >= 2: # Header + 1 Meaningful Row
+                        has_data = True
 
+            status = "SUCCESS" if (not is_fatal and has_data) else "FAILED"
+            
             error_msg = ""
             if is_fatal and final_state:
                 error_msg = final_state.error_message or "Pipeline Fatal Error"
+            elif not has_data:
+                error_msg = "Query returned 0 meaningful rows (Ghost Content)"
 
             return {
                 "instance_id": iid,

@@ -9,6 +9,7 @@ bigquery:
     - Use SAFE_DIVIDE(x, y) to avoid division by zero errors.
     - Use CURRENT_DATE() and TIMESTAMP('YYYY-MM-DD HH:MM:SS') for date/time literals.
     - ROUNDING: Always round numeric results to 2 decimal places using ROUND(x, 2).
+    - RESERVED KEYWORDS: Alias and CTE names MUST NOT coincide with inbuilt functions or reserved keywords (e.g., avoid 'year', 'date', 'count'). Use unique names like 'val_year'.
   critic_instructions: |
     - YOU MUST VALIDATE AGAINST GOOGLE BIGQUERY (STANDARD SQL) SYNTAX.
     - Identifiers should use backticks (e.g., `dataset.table`).
@@ -30,6 +31,7 @@ postgresql:
     - Use NULLIF(denominator, 0) to prevent division by zero.
     - SCHEMA QUALIFICATION: Always qualify table names with the schema name using double quotes: "schema_name"."table_name".
     - PRIORITIZE INBUILT FUNCTIONS: Use native PostgreSQL functions (e.g., DATE_TRUNC, COALESCE, GREATEST, LEAST) whenever possible instead of complex manual logic.
+    - RESERVED KEYWORDS: Variable/Alias names MUST NOT coincide with inbuilt functions or filters. Use descriptive aliases (e.g., 'mapped_id', 'calc_date').
   critic_instructions: |
     - STRICTLY VALIDATE AGAINST POSTGRESQL SYNTAX. FAIL IF ANY SQLITE COMMANDS ARE USED.
     - Ensure CURRENT_DATE is used instead of date('now').
@@ -47,6 +49,7 @@ sqlite:
     - For division: CAST(x AS REAL) / y.
     - No ILIKE, use LOWER(col) = LOWER('val').
     - No POWER() function, use x * x.
+    - RESERVED KEYWORDS: Avoid using reserved keywords for aliases or variables.
   critic_instructions: |
     - Validate against SQLite syntax.
     - Check for date('now') and numeric types.
@@ -56,14 +59,21 @@ snowflake:
   dialect: "Snowflake"
   instructions: |
     - YOU MUST USE SNOWFLAKE (SQL) SYNTAX.
-    - TABLE ACCESS: You MUST always access tables using the fully qualified identifier format: "DATABASE"."SCHEMA"."TABLE".
-    - QUOTING: Use double quotes for EVERY identifier (database, schema, table, column names, and aliases) to ensure case sensitivity is correctly handled.
-    - DATE HANDLING: Use CURRENT_DATE() for the current date and DATEADD(unit, count, column) for date arithmetic. 
+    - GLOBAL DOUBLE QUOTING: Every single identifier (Database, Schema, Table, Column, Alias, and CTE name) MUST be enclosed in double quotes. 
+    - NEVER write an identifier without double quotes. Example: Use "my_cte", NOT my_cte. Use "p"."publication_date", NOT p.publication_date.
+    - STRICT CASING ALIGNMENT: Use the EXACT casing provided in the [SCHEMA] metadata inside your double quotes.
+    - ALIAS SAFETY: If you alias a table as "p", always access columns as "p"."column_name".
+    - VARIANT DATA: For columns with JSON/Arrays, use FLATTEN(input => "column") or GET_PATH("column", 'path').
+    - FLATTEN PSEUDO-COLUMNS: NEVER quote pseudo-columns from FLATTEN (value, this, key, index). Use f.value, NOT "f"."value".
+    - SINGLE-QUOTE ENFORCEMENT: Use single quotes for all string literals (e.g., 'string_value'). NEVER use double quotes for string literals.
+    - PROPERTY ACCESS: When accessing properties from a VARIANT, use the colon syntax (e.g., f.value:code::TEXT).
+    - DATE HANDLING: Use CURRENT_DATE() for the current date. ALWAYS use TRY_TO_DATE("column"::TEXT, 'format') to handle dirty data safely.
     - TYPE CASTING: Use the :: syntax for type conversions (e.g., "column"::TEXT).
-    - CONDITIONAL LOGIC: Use IFF(condition, true_val, false_val) and TRY_DIVIDE(x, y) to prevent division by zero.
+    - CONDITIONAL LOGIC: Use IFF(condition, true_val, false_val) and TRY_DIVIDE(x, y).
     - ROUNDING: Always round numeric results to 2 decimal places using ROUND("column", 2).
+    - RESERVED KEYWORDS: Variable and Alias names MUST NOT coincide with inbuilt Snowflake functions (avoid 'year', 'rank', 'count', 'date', 'by').
   critic_instructions: |
     - VALIDATE AGAINST SNOWFLAKE SQL SYNTAX.
-    - Ensure ALL tables are accessed via the "DATABASE"."SCHEMA"."TABLE" format.
-    - Verify that ALL identifiers (including CTE names and aliases) are wrapped in double quotes.
+    - ZERO TOLERANCE FOR UNQUOTED IDENTIFIERS: Fail any query that contains a table name, column name, alias, or CTE name that is NOT wrapped in double quotes.
+    - Verify that ALL identifiers match the [SCHEMA] casing exactly.
     - Fail if standard Snowflake functions (DATEADD, TRY_DIVIDE, IFF) are not used where applicable.

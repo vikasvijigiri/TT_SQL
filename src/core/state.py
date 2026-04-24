@@ -79,6 +79,7 @@ class AgentState(BaseModel):
 
     # Analysis
     schema_info: dict[str, Any] = Field(default_factory=dict)
+    full_schema_info: dict[str, Any] = Field(default_factory=dict) # Master copy
     rag_columns: list[dict[str, Any]] = Field(
         default_factory=list
     )  # raw RAG retrieved columns
@@ -134,6 +135,10 @@ class AgentState(BaseModel):
     execution_error_history: list[str] = Field(
         default_factory=list
     )  # Track all execution errors
+    iteration_count: int = 0  # Global iteration counter for refinement loop
+    feedback_history: list[str] = Field(
+        default_factory=list
+    )  # Track all critic feedback
 
     # Interaction
     viz_recommendation: dict[str, Any] | None = None

@@ -1,50 +1,36 @@
-import os
-
 import yaml
 
 from core.agent_base import AgentState, BaseAgent
 from core.llm_service import LLMService
+from core.logger import Logger
 from core.paths import DIALECT_RULES
 from core.prompt_loader import PromptLoader
-from core.utils import format_schema_to_str
 
 
 class SQLCriticAgent(BaseAgent):
-    """Agent responsible for auditing and validating generated SQL.
+    """Agent responsible for reviewing and validating generated SQL queries.
 
-    This agent reviews the generated SQL against the user query, the plan,
-    and the schema. It provides binary validation (pass/fail) and detailed
-    natural language feedback for refinement.
+    This agent acts as a judge, comparing the proposed SQL against the user
+    query, schema, and execution results.
     """
 
     def __init__(self, llm_service: LLMService, config: dict = None):
-        """Initializes the SQLCriticAgent.
-
-        Args:
-            llm_service (LLMService): Service for interacting with LLM APIs.
-            config (dict, optional): Configuration dictionary for the agent.
-        """
         super().__init__(name="SQLCritic", config=config)
         self.llm = llm_service
         self.prompt_loader = PromptLoader()
 
     def run(self, state: AgentState) -> AgentState:
-        """Executes the SQL auditing workflow.
+        # RESET local state signals for this iteration
+        state.is_result_valid = False
+        state.critic_feedback = ""
 
-        Args:
-            state (AgentState): The current shared state of the pipeline.
-
-        Returns:
-            AgentState: The updated state containing is_result_valid and critic_feedback.
-        """
         if not state.chosen_query:
+            state.critic_feedback = "No SQL query provided for review."
             return state
 
-        schema_str = (
-            format_schema_to_str(state.schema_info) if state.schema_info else "N/A"
-        )
+        Logger.log_call(f"{self.name}.run")
 
-        # Preparation for prompt
+        # Dialect rules
         db_type = state.dialect
         with open(DIALECT_RULES) as f:
             all_rules = yaml.safe_load(f)
@@ -54,64 +40,80 @@ class SQLCriticAgent(BaseAgent):
             "critic_instructions", rules.get("instructions", "")
         )
 
-        action_plan = (
-            "\n".join(f"- {s}" for s in state.step_by_step_plan)
-            if state.step_by_step_plan
-            else "N/A"
-        )
-        schema_path = (
-            format_schema_to_str(state.schema_info) if state.schema_info else "N/A"
-        )
-        potential_pool = schema_path  # Simplification: same as schema
-        execution_results = "No execution data yet."
-        if state.execution_result and state.execution_result.rows:
-            execution_results = str(state.execution_result.rows[:5])
+        from core.utils import format_execution_results, format_schema_to_str
 
-        previous_feedback = state.critic_feedback if state.critic_feedback else "None"
+        schema_context = format_schema_to_str(state.schema_info)
+        execution_results = "No execution results available yet."
+        if state.execution_result:
+            execution_results = format_execution_results(state.execution_result)
 
-        self.log(
-            state, f"PROMPT_VAR: execution_results={str(execution_results)[:100]}..."
-        )
-        self.log(
-            state, f"PROMPT_VAR: previous_feedback={str(previous_feedback)[:100]}..."
-        )
+        action_plan = "No plan available."
+        if state.step_by_step_plan:
+            action_plan = "\n".join(
+                f"  {i + 1}. {s}" for i, s in enumerate(state.step_by_step_plan)
+            )
+
+        # CUMULATIVE FEEDBACK HISTORY
+        feedback_history = "None."
+        if state.feedback_history:
+            history_lines = [f"Attempt {i+1}: {fback}" for i, fback in enumerate(state.feedback_history)]
+            feedback_history = "\n".join(history_lines)
 
         messages = self.prompt_loader.load_prompt(
             "sql_critic",
-            agent_role="Expert SQL Logic Auditor",
-            agent_task="Review the following SQL query for logical correctness, schema consistency, and intent alignment.",
             user_query=state.user_query,
             action_plan=action_plan,
             sql=state.chosen_query,
+            execution_results=execution_results,
+            schema_path=schema_context,
+            potential_pool=schema_context,
+            previous_feedback=feedback_history,
             dialect=dialect,
             dialect_instructions=dialect_instructions,
-            schema_path=schema_path,
-            potential_pool=potential_pool,
-            execution_results=execution_results,
-            previous_feedback=previous_feedback,
         )
 
         response = self.llm.get_json_completion(
             messages, state=state, agent_name=self.name
         )
 
-        if response:
+        is_valid = False
+        feedback = "[CRITICAL]: Failed to get logic-review from Critic LLM."
+
+        if response and isinstance(response, dict):
             is_valid = response.get("is_valid", False)
             feedback = response.get("feedback", "No feedback provided.")
+        elif response:
+            feedback = "[CRITICAL]: Critic returned a non-dictionary response. Retrying logic check."
 
-            state.is_result_valid = is_valid
-            state.critic_feedback = feedback
+        # --- HIGH-PRIORITY: SYNTAX/EXECUTION ERROR OVERRIDE ---
+        if state.execution_result and state.execution_result.error_message:
+            is_valid = False
+            feedback = f"[CRITICAL_SYNTAX_ERROR]: Your SQL failed. Error: {state.execution_result.error_message}. Fix this immediately."
+            self.log(state, "Prioritizing syntax error over logic.", level="WARN")
 
-            verdict_str = "PASS" if is_valid else "FAIL"
-            self.log(state, f"Critic Verdict: {verdict_str}")
-            if not state.is_result_valid:
-                self.log(state, f"Critic Feedback: {str(feedback)[:100]}...")
-        else:
-            self.log(
-                state,
-                "Critic failed to respond. Assuming valid to prevent loop.",
-                level="WARN",
-            )
-            state.is_result_valid = True
+        # --- GHOST DATA GUARD (Issue 5 Refinement) ---
+        elif is_valid and state.execution_result:
+            row_count = state.execution_result.row_count
+            if row_count == 0:
+                # Only fail if it's not the final attempt and not explicitly accepted
+                if state.iteration_count < 5 and "expected" not in feedback.lower() and "no data" not in feedback.lower():
+                    is_valid = False
+                    feedback = "[NULL_RESULT_AUDIT]: The query returned 0 rows. This is often a logical failure (e.g., case-sensitivity mismatch or wrong join). Verify if data exists for these filters."
+                else:
+                    self.log(state, "Empty result accepted as potentially valid.", level="INFO")
 
+            elif row_count > 0:
+                first_row = state.execution_result.rows[0]
+                meaningless = ["", "none", "null", "[]", "{}", "nan"]
+                if all(v is None or str(v).strip().lower() in meaningless for v in first_row):
+                    # Ghost data (all nulls) is almost always a failure
+                    if state.iteration_count < 5:
+                        is_valid = False
+                        feedback = "[GHOST_DATA_AUDIT]: Result contains only empty/null values. Logical failure likely on Join keys."
+
+        state.is_result_valid = is_valid
+        state.critic_feedback = feedback
+        state.feedback_history.append(feedback)
+        
+        self.log(state, f"Critic Outcome: {'PASS' if is_valid else 'FAIL'}")
         return state
