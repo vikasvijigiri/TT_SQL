@@ -4,27 +4,27 @@ nQuiry is an industry-grade Text-to-SQL engine that converts natural language qu
 
 ## ✨ Key Features
 
-- **Layered Architecture**: 4-layer pipeline (Input → Planning → Generation → Execution) with 7 specialized agents.
-- **Self-Correction Loop**: A Critic agent validates SQL logic; the Builder auto-refines on failure (up to 5 retries).
-- **Schema-Aware**: Extracts full database schema, selects only relevant tables, and builds FK relationship graphs.
-- **Intent Classification**: Automatically detects query type (AGGREGATION, RANKING, etc.) and complexity.
-- **RAG-Augmented**: Optional vector search (Qdrant) or Amazon Bedrock KB for few-shot learning AND fast vector semantic table retrieval (bypassing LLM when `--use-rag` is set).
-- **Batch Processing**: High-performance parallel batch runner with progress tracking.
+- **Layered Architecture**: 4-layer pipeline (Input → Planning → Generation → Execution) with structured agents.
+- **Self-Correction Loop**: A Critic agent validates SQL logic and schema mapping; the Builder auto-refines on failure (up to 5 retries).
+- **Schema-Agnostic Planning**: Uses bottom-up natural language reasoning for planning, independent of database schema context to prevent early filtering errors.
+- **Sliding Window Selector**: Handles very large schemas by processing tables in iterative windows, bypassing LLM context limits.
+- **Unified Batch Processing**: High-performance parallel batch runner (`run_batch.py`) replacing fragmented scripts, featuring powerful filtering by dialect, database name, and specific task IDs.
+- **Dynamic Metadata Expansion**: The execution pipeline automatically requests missing metadata from the cache rather than failing out immediately.
+- **Centralized Metadata Cache**: Employs a 'Read-Once' structural metadata cache scoped to the DB-level, dramatically reducing API calls across large multi-task datasets like Spider 2.0.
+- **Flattened Output Structure**: Lean, DB-scoped hierarchy structure to maintain cleanly partitioned multi-database outputs.
 - **Safe Execution**: Only executes `SELECT` statements by design.
-
-Read the [Detailed Architecture Guide](docs/ARCHITECTURE.md) for more depth.
 
 ---
 
 ## 🏗️ Architecture Overview
 
-```
+```text
 User Query
     │
     ▼
 ┌──────────────────────────────────────────────┐
 │  📥 INPUT LAYER (Context & Pruning)           │
-│  ContextEnrichmentAgent (RAG / Schema API)    │
+│  ContextEnrichmentAgent (Centralized Cache)   │
 │  └→ TableSelectorAgent (🤖 LLM Pruning)       │
 │                                               │
 │  Outputs: schema_info, relevant_tables,       │
@@ -35,6 +35,7 @@ User Query
 ┌──────────────────────────────────────────────┐
 │  📋 PLANNING LAYER (Strategy)                 │
 │  StepByStepPlannerAgent (🤖 LLM Planning)     │
+│  └→ Bottom-Up Reasoning (Schema-Agnostic)     │
 │                                               │
 │  Outputs: execution_roadmap, sub_tasks        │
 └────────────────────┬─────────────────────────┘
@@ -63,25 +64,14 @@ User Query
 
 ### Agent Summary
 
-#### Core Pipeline Agents
-
 | # | Agent Class | Layer | LLM? | Purpose |
 |---|-------------|-------|------|---------|
-| 1 | `ContextEnrichmentAgent` | Input | No | Fetches full schema (SQLite/BQ/SF) and performs RAG column retrieval. |
-| 2 | `TableSelectorAgent` | Input | **Yes** | Uses LLM to prune irrelevant tables and detect query intent/complexity. |
-| 3 | `StepByStepPlannerAgent` | Planning | **Yes** | Generates a high-level execution roadmap for the query. |
-| 4 | `MultiCandidateGeneratorAgent`| Generation| **Yes** | Generates SQL candidates (CTE, Joins, etc.) based on the plan. |
-| 5 | `CriticAgent` | Generation | **Yes** | Validates SQL logic against a checklist (no execution). |
-| 6 | `RefinementLoopAgent` | Generation | No | Orchestrates the Builder-Critic retry cycle. |
-| 7 | `ExecutorAgent` | Execution | No | Dialect-specific execution (SQLite, BigQuery, Snowflake, Postgres). |
-
-#### Post-Processing & Analysis Agents
-
-| Agent Class | Purpose |
-|-------------|---------|
-| `SuccessAnalysisAgent` | Identifies success patterns in generated SQL for future few-shot learning. |
-| `FailureAnalysisAgent` | Performs post-mortem analysis on failed queries to classify error types (hallucination, logic, etc.). |
-| `DatasetFormatterAgent` | Intelligent utility that uses LLM to convert unstructured text/CSV into JSONL pipeline format. |
+| 1 | `ContextEnrichmentAgent` | Input | No | Leverages centralized metadata cache or dynamically fetches full schema for (SQLite/BQ/SF/Postgres). |
+| 2 | `TableSelectorAgent` | Input | **Yes** | Uses **Sliding Window** LLM selection to safely prune massive database schemas into relevant active contexts. |
+| 3 | `StepByStepPlannerAgent` | Planning | **Yes** | Generates a **Schema-Agnostic** step-by-step roadmap serving as a SQL generation strategy guide. |
+| 4 | `RefinementLoopAgent` | Generation| No | Orchestrates the vital Builder-Critic retry cycle. Detects missing metadata triggers for schema fallback. |
+| 5 | `SQLCriticAgent` | Generation | **Yes** | Validates generated SQL logic against the actual database schema via structural checks (no execution). |
+| 6 | `ExecutorAgent` | Execution | No | Dialect-specific executions handling execution faults and generating final flat DB outputs. |
 
 ---
 
@@ -117,7 +107,7 @@ pip install -r requirements.txt
 ```
 
 ### 5. Environment Setup (Critical)
-To ensure the `tt_sql` package is recognized, set your `PYTHONPATH` to the `src` directory:
+To ensure the code runs reliably from the project root, configure your `PYTHONPATH` to the `src` directory:
 
 **Windows (PowerShell):**
 ```powershell
@@ -127,11 +117,6 @@ $env:PYTHONPATH="src"
 **Mac/Linux:**
 ```bash
 export PYTHONPATH=src
-```
-
-Alternatively, install the project in editable mode:
-```bash
-pip install -e .
 ```
 
 ---
@@ -150,204 +135,108 @@ LLM_MODEL=bedrock/openai.gpt-oss-safeguard-120b
 LLM_API_BASE=http://... # Optional if using proxy
 ```
 
-### 🔓 Optional Variables
-
+### 🔓 Database Path Targets
+By default, the pipeline searches for DB files like `.sqlite` in the `resources` directory unless otherwise specified:
 ```ini
-# RAG — Qdrant vector store (few-shot learning)
-QDRANT_URL=http://localhost:6333
-QDRANT_API_KEY=your-api-key-if-cloud-hosted
-
-# RAG — Amazon Bedrock Knowledge Base
-BEDROCK_KB_ID=your-knowledge-base-id
-
-# Model overrides per agent
-PLANNER_MODEL=bedrock/openai.gpt-oss-safeguard-120b
-GENERATOR_MODEL=bedrock/openai.gpt-oss-safeguard-120b
+SQLITE_DB_PATH=resources/
 ```
 
 ---
 
 ## 🏃‍♂️ Running the Application
 
-### Single Question (CLI)
-```bash
-python -m cli.run_single --id local020 --model gpt-4o
-```
 
-### Batch Processing (CLI)
-We provide dedicated batch runners optimized for each database dialect.
+### Unified Batch Processing (CLI)
+Unlike legacy implementations with fragmented shell scripts, `run_batch.py` handles all execution workflows across BigQuery, Snowflake, and SQLite while intelligently skipping cached results.
 
-#### 1. SQLite Batch Runner
-Best for local testing with the Spider 2.0 dataset.
 ```bash
-python -m cli.run_batch_sqlite --dataset data/spider2-lite-sqlite.jsonl --model gpt-4o --workers 4
-```
+# 1. Run All SQLite tasks (Implicitly selects spider2-lite-sqlite dataset)
+python src/cli/run_batch.py --type sqlite --workers 4
 
-#### 2. BigQuery (GCP) Batch Runner
-Connects to Google BigQuery datasets.
-```bash
-python -m cli.run_batch_gcp --dataset data/spider2-lite-bigquery.jsonl --model gpt-4o --workers 4
-```
+# 2. Filter Batch by Database (Runs only task blocks targeting 'IPL')
+python src/cli/run_batch.py --type sqlite --db IPL --workers 2
 
-#### 3. Snowflake Batch Runner
-Connects to Snowflake cloud data warehouses.
-```bash
-python -m cli.run_batch_snowflake --dataset data/spider2-lite-snowflake.jsonl --model gpt-4o --workers 4
+# 3. Target Specific IDs (Great for re-trying failures)
+python src/cli/run_batch.py --type sqlite --ids local023 local088
+
+# 4. Snowflake execution
+python src/cli/run_batch.py --type snowflake --workers 4
+
+# 5. BigQuery execution targeting specific domains
+python src/cli/run_batch.py --type bigquery --db google_analytics
 ```
 
 **Batch Runner Options:**
 | Flag | Default | Description |
 |------|---------|-------------|
-| `--dataset` | `data/spider2-lite1.jsonl` | Path to JSONL dataset |
-| `--model` | `.env` LLM_MODEL | LLM model name |
-| `--workers` | `4` | Parallel worker threads |
-| `--limit` | `0` (all) | Limit number of tasks |
-| `--rag` | `none` | RAG source (`none`, `qdrant`, `bedrock`) |
-| `--use-rag` | `false` | Bypass LLM and use vector store semantic similarity for table selection |
-| `--overwrite` | `false` | Re-run even if results exist |
-
-### Dataset Formatter — Convert Any File to JSONL
-
-Use `scripts/format_dataset.py` to convert a file of questions (in **any format**) into the `spider2-lite.jsonl` schema the pipeline expects.
-
-**Supported input formats:** `.csv`, `.xlsx`, `.xls`, `.json`, `.jsonl`, `.txt`, `.md`
-
-```bash
-# From a CSV/Excel (no LLM needed)
-python scripts/format_dataset.py --input my_questions.csv --db IPL
-
-# From a free-form text or Markdown file (uses LLM to extract questions)
-python scripts/format_dataset.py --input questions.txt --db bank_sales_trading
-
-# Custom output path and ID prefix
-python scripts/format_dataset.py --input file.csv --output data/my_dataset.jsonl --id-prefix local_custom
-```
-
-### Gold Standard Result Generation
-
-Use `scripts/generate_gold_results.py` to execute ground-truth SQL queries and save the results as individual CSV files.
-
-```bash
-python scripts/generate_gold_results.py
-```
-
-### Executing Gold SQL Files
-
-Use `python -m cli.execute_sql` to run isolated SQL files.
-
-```bash
-# Execute all SQL files in the default directory (data/gold/sql/)
-python -m cli.execute_sql
-
-# Execute SQL files from a specific directory
-python -m cli.execute_sql --dir data/gold/sql/
-```
-
-**Formatter Options:**
-
-| Flag | Description |
-|------|-------------|
-| `--input` / `-i` | Path to the input file (**required**) |
-| `--output` / `-o` | Output JSONL path (default: `data/<input_stem>_formatted.jsonl`) |
-| `--db` | Default database name when not supplied by the file |
-| `--id-prefix` | Prefix for auto-generated `instance_id`s (default: `custom`) |
-| `--model` | LLM model for unstructured text parsing (default: `LLM_MODEL` from `.env`) |
-
-**Column mapping for CSV/Excel:**
-
-The agent intelligently detects columns by name aliases — no strict column naming required:
-
-| Field | Detected aliases |
-|-------|-----------------|
-| `question` | `question`, `query`, `q`, `text`, `prompt`, `input`, `nl` |
-| `db` | `db`, `database`, `db_name`, `database_name` |
-| `instance_id` | `instance_id`, `id`, `instance`, `idx` |
-| `external_knowledge` | `external_knowledge`, `knowledge`, `context`, `kb` |
+| `--type` | `sqlite` | Targeted backend connection (`sqlite`, `snowflake`, `bigquery`) |
+| `--db` | `None` | Filters batch to only process tasks interacting with this Database. |
+| `--ids` | `None` | Restricts batch execution strictly to this space-separated list of IDs. |
+| `--dataset` | *Auto-detected*| Explicit string target to a specific JSONL Dataset path. |
+| `--model` | `.env LLM_MODEL` | Specific LLM proxy model block. |
+| `--workers` | `4` | Parallelized batch threads limit. |
+| `--limit` | `0` (all) | Constrain total batch queries to cap runtimes. |
+| `--overwrite` | `false` | Ignore occupancy caches and overwrite existing output payload. |
 
 ---
 
-### Output
-For each processed question, results are saved under `results/<model>/`:
-- `sql/<instance_id>.sql` — Final validated SQL query
-- `csv/<instance_id>.csv` — Execution result data
-- `log/<instance_id>.md` — Detailed execution log
+## 📂 Project Output Structure
 
----
-
-## 📂 Project Structure
+The application natively generates a flattened configuration logic nested solely by the target Database. Metadata is isolated strictly into the global resource pool preventing redundant generation overheads.
 
 ```text
 old_txt_sql_spider2.0/
 ├── config/                 # External configuration (secrets, global configs)
-├── data/                   # Dataset management (raw and processed)
+├── input_data/             # Dataset management (raw and processed)
 ├── docs/                   # Documentation and Architecture
-├── results/                # Analytical outputs (SQL, CSVs, logs)
-├── scripts/                # Internal utility and analysis scripts
-│   └── analysis/           # Result analysis and post-mortems
+├── resources/              
+│   ├── metadata/           # Cached schemas loaded via Context Enrichment
+│   └── spider2-localdb/    # Target databases
+├── results/                # Organized analytical payload structure
+│   └── <db_name>/          # Flattened output hierarchy avoids subfolder drift
+│       ├── <id>.csv        # Generated data
+│       ├── <id>.md         # Agent reasoning log
+│       ├── <id>_plan.md    # Agent plan log
+│       └── <id>.sql        # Validated query
 ├── src/                    # Source code
-│   └── tt_sql/             # Core package
-│       ├── agents/         # Agent logic layers
-│       ├── cli/            # CLI entry points (run_single, run_batch, etc.)
-│       ├── core/           # Infrastructure and orchestrators
-│       ├── prompts/        # YAML templates
-│       ├── rag/            # Vector store/RAG logic
-│       └── utils/          # Shared utilities
-├── .env                    # Environment variables
-├── pyproject.toml           # Package metadata
-└── requirements.txt         # Dependencies
+│   └── agents/             # Agent logic layers
+│   ├── cli/                # Consolidated CLI workflows
+│   ├── core/               # Infrastructure, Paths, Logger, Coordinators
+│   └── prompts/            # Centralized YAML Dialect templates
+├── .env                    
+└── requirements.txt         
 ```
 
 ---
 
-## 📊 Result Analysis
+## 📊 Result Analysis / Evaluation
 
-After running a batch, you can analyze the results using the specialized scripts in `scripts/analysis/`:
+After running a batch, you can evaluate the accuracy of the generated queries against the gold truth using the official Spider 2.0 evaluation script:
 
-### 1. Success/Failure Identification
 ```bash
-python scripts/analysis/identify_successes.py --model bedrock_openai.gpt-oss-safeguard-120b
+# Evaluate SQL execution accuracy for a specific database using exec_result mode
+python gold/evaluate.py --mode exec_result --result_dir results/IPL --gold_dir gold
 ```
 
-### 2. Post-Mortem Failure Analysis (LLM-based)
-```bash
-python scripts/analysis/failure_analysis.py --csv failed_ids.csv --model gpt-4o
-```
-
-### 3. Consolidated Report Generation
-```bash
-python scripts/analysis/analyze_results.py --model gpt-4o
-```
+*This compares generated `.csv` outputs directly against the gold evaluations and will print out line-by-line validation states (PASS/FAIL) and an accuracy summary.*
 
 ---
 
-## 🧠 RAG Implementation
+## 📊 LLM Call Count Overview
 
-nQuiry supports **Retrieval-Augmented Generation (RAG)** to improve accuracy via few-shot learning:
-
-1. **Vector Store**: Maintains a database of `(Question, Correct SQL)` pairs.
-2. **Retrieval**: Finds top semantically similar past questions for a new query.
-3. **Context Injection**: Injects retrieved examples into the prompt as few-shot examples.
-4. **Continuous Learning**: Successfully executed queries (score=100%) can be upserted back.
-
-**Supported Backends:**
-- **Qdrant** — Local development or Docker deployment
-- **Amazon Bedrock Knowledge Base** — Managed AWS solution
-
----
-
-## 📊 LLM Call Count
+The architecture maximizes strict validation by sacrificing 1-shot API savings for high-precision accuracy. RAG elements have been fully decoupled to streamline context resolution directly derived from source schemas.
 
 | Pipeline Stage | LLM Calls |
 |---|---|
-| `TableSelectorAgent` (Pruning + Intent) | 1 *(0 if RAG matches precisely)* |
-| `StepByStepPlannerAgent` (Roadmap) | 1 |
-| `MultiCandidateGeneratorAgent` (Builder) | 1 per attempt |
-| `CriticAgent` (Analysis) | 1 per attempt |
-| **Minimum (1 attempt)** | **4** |
-| **Maximum (5 retries)** | **12** |
+| `TableSelectorAgent` (Sliding Window Config) | Variable dependent on Schema Scope |
+| `StepByStepPlannerAgent` (Strategy Roadmap) | 1 |
+| `SQLBuilderAgent` (SQL Syntax Synthesis) | 1 per attempt |
+| `SQLCriticAgent` (Analysis / Validation) | 1 per attempt |
+| **Minimum (1 attempt)** | ~4 |
+| **Maximum (5 retries)** | ~12+ |
 
 ---
 
 ## 📄 License
 
-This project is developed for research and educational purposes.
+This project is developed for continuous analytical reporting research purposes.

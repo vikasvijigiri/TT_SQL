@@ -27,21 +27,13 @@ class Settings(BaseSettings):
     LLM_PROVIDER: str = Field(default="bedrock")
     LLM_MODEL: str = Field(default="bedrock/default-model")
     LLM_TEMPERATURE: float = Field(default=0.0)
-    LLM_MAX_TOKENS: int = Field(default=4096)
+    LLM_MAX_TOKENS: int = Field(default=8192)
 
     # Application Settings
     LOG_LEVEL: str = Field(default="INFO")
     MAX_RETRIES: int = Field(default=4)
     TIMEOUT_SECONDS: int = Field(default=90)
 
-    # Qdrant Vector DB
-    QDRANT_URL: str | None = None
-    QDRANT_API_KEY: str | None = Field(None, alias="QDRANT_API")
-    QDRANT_COLLECTION: str | None = None
-
-    # AWS Postgres / Bedrock KB / S3
-    S3_BUCKET_NAME: str | None = None
-    BEDROCK_KB_ID: str | None = None
 
     # Google Cloud / BigQuery
     GCP_PROJECT_ID: str | None = None

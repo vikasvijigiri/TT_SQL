@@ -140,23 +140,30 @@ class SnowflakeService:
                 if not results:
                     continue
 
+                # Fetch Primary Keys / Foreign Keys for relationship mapping
+                constraints = self._get_constraints(conn, database, current_schema)
+                
                 schema_info = {}
                 for row in results:
                     # row structure: (table_name, column_name, data_type, comment)
                     tname = row[0]
-                    # Qualify table name with DB and SCHEMA for unambiguous prompt context
                     qualified_name = f"{database.upper()}.{current_schema.upper()}.{tname.upper()}"
+                    
                     if qualified_name not in schema_info:
-                        # Fetch a sample row for data profiling (crucial for VARIANT types)
                         sample_data = self._get_sample_row(conn, database, current_schema, tname)
-                        schema_info[qualified_name] = {"columns": [], "sample": sample_data}
+                        schema_info[qualified_name] = {
+                            "columns": [], 
+                            "sample": sample_data,
+                            "foreign_keys": constraints.get(tname.upper(), {}).get("foreign_keys", []),
+                            "primary_keys": constraints.get(tname.upper(), {}).get("primary_keys", [])
+                        }
 
                     schema_info[qualified_name]["columns"].append(
                         {
                             "column_name": row[1],
                             "type": row[2],
                             "description": row[3] or "",
-                            "pk": False,  # Metadata for PKs requires separate query or parsing
+                            "pk": row[1].upper() in schema_info[qualified_name]["primary_keys"],
                         }
                     )
 
@@ -174,7 +181,6 @@ class SnowflakeService:
         start_t = time.time()
         result = ExecutionResult()
         try:
-            # Note: We rely on the established connection or defaults
             conn = self.get_connection()
             if not conn:
                 raise Exception("Failed to establish Snowflake connection.")
@@ -182,11 +188,9 @@ class SnowflakeService:
             cursor = conn.cursor()
             cursor.execute(query)
 
-            # Fetch columns
             if cursor.description:
                 result.columns = [description[0] for description in cursor.description]
 
-            # Fetch rows
             if sampling:
                 rows = cursor.fetchmany(5)
             else:
@@ -203,24 +207,71 @@ class SnowflakeService:
 
         return result
 
-    def _get_sample_row(self, conn, database, schema, table_name) -> str:
+    def _get_sample_row(self, conn, database, schema, table_name) -> Any:
         """Internal helper to sample multiple rows for high-precision profiling."""
         try:
             cursor = conn.cursor()
-            # Ensure identifiers are quoted
             fqn = f'"{database.upper()}"."{schema.upper()}"."{table_name.upper()}"'
-            # Fetch 3 rows for better pattern recognition
             cursor.execute(f"SELECT * FROM {fqn} LIMIT 3")
             rows = cursor.fetchall()
             if not rows:
                 return "NULL_OR_EMPTY"
             
-            # Map columns to values for a rich data profile
             cols = [d[0] for d in cursor.description]
             samples = []
             for row in rows:
-                samples.append(dict(zip(cols, row)))
-            
+                row_dict = {}
+                for col, val in zip(cols, row):
+                    if isinstance(val, (bytes, bytearray)):
+                        row_dict[col] = f"<BINARY_DATA: {len(val)} bytes>"
+                    elif hasattr(val, "isoformat"):
+                        row_dict[col] = val.isoformat()
+                    else:
+                        row_dict[col] = val
+                samples.append(row_dict)
             return samples
         except Exception as e:
             return f"SAMPLE_ERROR: {str(e)}"
+
+    def _get_constraints(self, conn, database, schema) -> dict[str, Any]:
+        """Fetches PK and FK constraints for a schema to aid in join discovery."""
+        constraints = {}
+        try:
+            cursor = conn.cursor()
+            # Stage 1: Get Primary Keys
+            try:
+                pk_query = f"SHOW PRIMARY KEYS IN SCHEMA \"{database}\".\"{schema}\""
+                cursor.execute(pk_query)
+                for row in cursor.fetchall():
+                    tname = row[3].upper()
+                    cname = row[4].upper()
+                    if tname not in constraints:
+                        constraints[tname] = {"primary_keys": [], "foreign_keys": []}
+                    constraints[tname]["primary_keys"].append(cname)
+            except:
+                pass
+
+            # Stage 2: Get Foreign Keys
+            try:
+                fk_query = f"SHOW IMPORTED KEYS IN SCHEMA \"{database}\".\"{schema}\""
+                cursor.execute(fk_query)
+                for row in cursor.fetchall():
+                    fk_table = row[7].upper()
+                    fk_col = row[8].upper()
+                    pk_table = row[3]
+                    pk_col = row[4]
+                    
+                    if fk_table not in constraints:
+                        constraints[fk_table] = {"primary_keys": [], "foreign_keys": []}
+                    
+                    constraints[fk_table]["foreign_keys"].append({
+                        "column": fk_col,
+                        "ref_table": pk_table,
+                        "ref_column": pk_col
+                    })
+            except:
+                pass
+        except Exception as e:
+            Logger.log(f"[SF] Constraint Discovery failed for {schema}: {e}", level="WARN")
+        
+        return constraints

@@ -4,7 +4,8 @@ Contains formatting and transformation logic used across multiple agents.
 """
 
 import json
-from typing import Any
+from pathlib import Path
+from typing import Any, Union
 
 
 def format_schema_to_str(schema_info: dict[str, Any], detailed: bool = True) -> str:
@@ -13,99 +14,48 @@ def format_schema_to_str(schema_info: dict[str, Any], detailed: bool = True) -> 
         return ""
     lines = []
     for table, data in schema_info.items():
-        # 1. Resolve columns
-        if isinstance(data, dict) and "columns" in data:
-            cols = data["columns"]
-        elif isinstance(data, list):
-            cols = data
-        else:
-            cols = []
-
-        # 2. Extract column-wise samples from table sample
+        cols = data.get("columns", []) if isinstance(data, dict) else (data if isinstance(data, list) else [])
         col_samples = {}
         if isinstance(data, dict) and data.get("sample"):
             try:
-                # Assuming sample is a JSON string or list of dicts
                 raw_sample = data["sample"]
                 sample_data = json.loads(raw_sample) if isinstance(raw_sample, str) else raw_sample
-                
-                if isinstance(sample_data, list) and len(sample_data) > 0:
+                if isinstance(sample_data, list):
                     for row in sample_data:
                         for cname, cval in row.items():
-                            # Store in normalized uppercase to ensure matching
                             norm_name = str(cname).strip().upper()
-                            if norm_name not in col_samples:
-                                col_samples[norm_name] = []
-                            # Store unique, non-null values for prompts
                             val_str = str(cval).strip()
-                            if val_str and val_str not in col_samples[norm_name]:
-                                if len(col_samples[norm_name]) < 3: # Limit to 3 samples for brevity
-                                    # Truncate very long values (e.g. huge JSON blobs)
-                                    if len(val_str) > 100:
-                                        val_str = val_str[:100] + "..."
-                                    col_samples[norm_name].append(val_str)
-            except Exception:
-                pass # Fallback to no samples if parsing fails
+                            if val_str and norm_name not in col_samples: col_samples[norm_name] = [val_str]
+                            elif val_str and val_str not in col_samples[norm_name] and len(col_samples[norm_name]) < 2:
+                                col_samples[norm_name].append(val_str)
+            except Exception: pass
 
         if detailed:
             lines.append(f"Table: {table}")
-            if not cols:
-                lines.append(" - (No columns found)")
-            
             for c in cols:
                 if isinstance(c, dict):
-                    cname = c.get("column_name") or c.get("name") or "unknown"
-                    ctype = c.get("type") or c.get("data_type") or ""
-                    desc = c.get("description") or ""
-                    
-                    # Add in-line samples if available (Case-Insensitive lookup)
-                    samples = col_samples.get(cname.upper(), [])
-                    sample_str = f" [SAMPLES: {', '.join(samples)}]" if samples else ""
-                    
-                    lines.append(
-                        f" - {cname} {f'({ctype})' if ctype else ''}{sample_str}{f' -- {desc}' if desc else ''}"
-                    )
-                else:
-                    cname = str(c)
-                    samples = col_samples.get(cname.upper(), [])
-                    sample_str = f" [SAMPLES: {', '.join(samples)}]" if samples else ""
-                    lines.append(f" - {cname}{sample_str}")
-            
-            lines.append("")  # Blank line
+                    name = c.get("column_name", c.get("name", "unknown"))
+                    ctype = c.get("type", "")
+                    desc = c.get("description", "").strip()
+                    pk = " (pk)" if c.get("pk") else ""
+                    samples = col_samples.get(name.upper(), [])
+                    smp = f" [e.g. {', '.join(samples)}]" if samples else ""
+                    line = f"- {name}"
+                    if ctype: line += f" ({ctype})"
+                    if desc: line += f" ({desc})"
+                    line += f"{pk}{smp}"
+                    lines.append(line)
+            fks = data.get("foreign_keys", []) if isinstance(data, dict) else []
+            for fk in fks:
+                lines.append(f"  ({fk['column']}) -> {fk['ref_table']}.{fk['ref_column']}")
+            lines.append("") 
         else:
-            col_names = []
-            for i, c in enumerate(cols):
-                if isinstance(c, dict):
-                    col_names.append(
-                        str(c.get("column_name") or c.get("name") or "unknown")
-                    )
-                else:
-                    col_names.append(str(c))
-            lines.append(f"{table}({', '.join(col_names)})")
+            cnames = [str(c.get("column_name", c.get("name", c))) if isinstance(c, dict) else str(c) for c in cols]
+            lines.append(f"{table}({', '.join(cnames)})")
             
     return "\n".join(lines).strip()
 
 
-def format_rag_columns(rag_columns: list[dict[str, Any]]) -> str:
-    """Formats the raw RAG retrieved columns list into a compact string."""
-    if not rag_columns:
-        return "No RAG columns retrieved."
-    # Group by table
-    tables = {}
-    for col in rag_columns:
-        tname = col.get("table_name", "unknown")
-        cname = col.get("column_name", "unknown")
-        if tname not in tables:
-            tables[tname] = []
-        tables[tname].append(cname)
-
-    lines = []
-    for tname, cols in tables.items():
-        lines.append(f"Table: {tname}")
-        lines.append(f"- Columns: {', '.join(cols)}")
-        lines.append("")
-
-    return "\n".join(lines).strip()
 
 
 def format_execution_results(result: Any) -> str:
@@ -130,3 +80,84 @@ def format_execution_results(result: Any) -> str:
         return f"{header}\n" + "-" * len(header) + "\n" + "\n".join(row_strs)
     else:
         return "\n".join([" | ".join(str(v) for v in row) for row in sample])
+
+
+
+def load_jsonl(file_path: Union[str, Path]) -> list[dict[str, Any]]:
+    """Generic Data Loader for Text2SQL datasets. Handles JSONL parsing and field mapping."""
+    tasks = []
+    path = Path(file_path)
+
+    if not path.exists():
+        print(f"Dataset not found: {path}")
+        return []
+
+    try:
+        with open(path, encoding="utf-8") as f:
+            for line in f:
+                if line.strip():
+                    try:
+                        item = json.loads(line)
+                        task = {
+                            "instance_id": item.get("instance_id") or item.get("id") or "unknown",
+                            "db": item.get("db") or item.get("db_id") or item.get("database"),
+                            "question": item.get("question") or item.get("utterance"),
+                            "external_knowledge": item.get("external_knowledge") or item.get("knowledge"),
+                            "raw_data": item,
+                        }
+                        tasks.append(task)
+                    except json.JSONDecodeError:
+                        continue
+
+        return tasks
+    except Exception as e:
+        print(f"Failed to load dataset {path}: {e}")
+        return []
+
+# --- IO HELPERS ---
+
+def write_sql_to_file(instance_id: str, db_name: str, sql: str, model_name: str = "default_model"):
+    """Saves the generated SQL to the instance folder."""
+    from .paths import InstancePaths
+    path = InstancePaths.sql(instance_id, db_name, model_name)
+    path.parent.mkdir(parents=True, exist_ok=True)
+    with open(path, "w", encoding="utf-8") as f:
+        f.write(sql)
+
+def write_csv_to_file(instance_id: str, db_name: str, rows: list[list[Any]], columns: list[str], model_name: str = "default_model"):
+    """Saves the query results to a CSV file."""
+    import csv
+    from .paths import InstancePaths
+    path = InstancePaths.csv(instance_id, db_name, model_name)
+    path.parent.mkdir(parents=True, exist_ok=True)
+    with open(path, "w", encoding="utf-8", newline="") as f:
+        writer = csv.writer(f)
+        if columns:
+            writer.writerow(columns)
+        writer.writerows(rows)
+
+def write_plan_to_file(instance_id: str, db_name: str, plan: list[str], model_name: str = "default_model"):
+    """Saves the action plan to the instance folder."""
+    from .paths import InstancePaths
+    path = InstancePaths.plan(instance_id, db_name, model_name)
+    path.parent.mkdir(parents=True, exist_ok=True)
+    with open(path, "w", encoding="utf-8") as f:
+        f.write("# Step-by-Step Approach\n\n")
+        f.write("\n".join(f"{i+1}. {step}" for i, step in enumerate(plan)))
+
+def write_db_metadata(db_name: str, schema_info: dict[str, Any]):
+    """Writes core schema metadata to the common resources folder."""
+    from .paths import InstancePaths
+    path = InstancePaths.db_metadata(db_name)
+    path.parent.mkdir(parents=True, exist_ok=True)
+    with open(path, "w", encoding="utf-8") as f:
+        json.dump(schema_info, f, indent=2)
+
+def read_db_metadata(db_name: str) -> dict[str, Any] | None:
+    """Reads core schema metadata from the common resources folder."""
+    from .paths import InstancePaths
+    path = InstancePaths.db_metadata(db_name)
+    if path.exists() and path.stat().st_size > 0:
+        with open(path, encoding="utf-8") as f:
+            return json.load(f)
+    return None

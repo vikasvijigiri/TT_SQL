@@ -1,101 +1,80 @@
-postgresql:
-  builder_instructions: |
-    - YOU MUST ONLY USE POSTGRESQL COMMANDS. ANY SQLITE-SPECIFIC SYNTAX WILL CAUSE A FATAL ERROR.
-    - Use CURRENT_DATE for the current date. NEVER use date('now').
-    - Use INTERVAL for date arithmetic (e.g., col + INTERVAL '1 month').
-    - Use DATE_TRUNC('month', col) for month-level grouping or filtering.
-    - Use ILIKE for case-insensitive matching.
-    - ROUND OFF: ALWAYS round numeric results, percentages, and averages to 2 decimal places using ROUND(v::numeric, 2).
-    - DATE CASTING: For columns containing dates as strings (character varying), you MUST use TO_DATE(col, 'YYYY-MM-DD') before comparison or truncation.
-    - Use NULLIF(denominator, 0) to prevent division by zero.
-    - SCHEMA QUALIFICATION: You MUST always qualify table names with the provided schema name in double quotes (e.g., "schema_name"."table_name").
-    - PRIORITIZE INBUILT FUNCTIONS: Use native PostgreSQL functions (e.g., DATE_TRUNC, COALESCE, GREATEST, LEAST) whenever possible instead of complex manual logic.
-  critic_instructions: |
-    - STRICTLY VALIDATE AGAINST POSTGRESQL SYNTAX. FAIL IF ANY SQLITE COMMANDS ARE USED.
-    - Ensure CURRENT_DATE is used instead of date('now').
-    - Ensure DATE_TRUNC('month', col) is used for month groupings.
-    - FAIL IF ROUND(v, d) IS USED WITHOUT CASTING. PostgreSQL does not support it for double precision directly unless cast to numeric.
-    - Ensure native PostgreSQL functions (COALESCE, NULLIF, etc.) are used where appropriate.
-    - Verify all tables are qualified with the table in the schema'.
-
-sqlite:
-  builder_instructions: |
-    - Use SQLite syntax only.
-    - Use date('now') for current date.
-    - Use datetime(col, '+1 month') for date arithmetic.
-    - For division: CAST(x AS REAL) / y.
-    - No ILIKE, use LOWER(col) = LOWER('val').
-    - No POWER() function, use x * x.
-  critic_instructions: |
-    - Validate against SQLite syntax.
-    - Check for date('now') and numeric types.
-    - No ILIKE allowed.
-
 bigquery:
   builder_instructions: |
     - Use GoogleSQL (Standard SQL) syntax.
-    - Identifiers (project, dataset, table) MUST be enclosed in backticks, e.g., `project.dataset.table`.
-    - Use CURRENT_DATE() for the current date.
-    - Use DATE_ADD(date_col, INTERVAL 1 MONTH) for date arithmetic.
-    - Use SAFE_DIVIDE(x, y) to prevent division by zero.
-    - Use FORMAT_DATE('%Y-%m', date_col) for month-level grouping.
-    - String literals use single quotes. Case-insensitive matching requires LOWER().
+    - Prefer backticks `project.dataset.table` for fully qualified table names to handle project IDs correctly.
+    - Use CURRENT_DATE() and TIMESTAMP() for date/time literals.
+    - Use SAFE_DIVIDE(x, y) to avoid division by zero errors.
+    - ROUNDING: Prefer rounding numeric results to 2 decimal places using ROUND(x, 2).
+    - KEYWORDS: Avoid using inbuilt functions or reserved keywords for aliases (e.g., avoid 'year', 'date').
   critic_instructions: |
-    - Ensure identifiers are backticked.
-    - Validate date functions (CURRENT_DATE(), DATE_ADD).
-    - Ensure backticks are used for table names.
+    - Validate against GoogleSQL syntax.
+    - Check for appropriate table qualification.
+    - Ensure date literals use standard BigQuery formats.
+    - Verify division safety with SAFE_DIVIDE.
+
+postgresql:
+  builder_instructions: |
+    - Use PostgreSQL compatible syntax.
+    - Use CURRENT_DATE for the current date.
+    - Use INTERVAL and DATE_TRUNC for date arithmetic and grouping.
+    - Use ILIKE for case-insensitive matching where appropriate.
+    - ROUNDING: Use ROUND(v::numeric, 2) for numeric results.
+    - SCHEMA QUALIFICATION: Qualify table names with the schema name ("schema"."table") to avoid ambiguity.
+    - Prefer native PostgreSQL functions (e.g., COALESCE, NULLIF) for reliability.
+  critic_instructions: |
+    - Validate against PostgreSQL syntax.
+    - Check for correct date and interval usage.
+    - Ensure results are rounded appropriately.
+    - Verify schema-qualified table references.
+
+sqlite:
+  builder_instructions: |
+    - Use standard SQLite syntax.
+    - Use date('now') for current date.
+    - Use datetime(col, '+1 month') for date arithmetic.
+    - For division: Use CAST(x AS REAL) / y to avoid integer division.
+    - Use LOWER(col) = LOWER('val') for case-insensitive matching.
+  critic_instructions: |
+    - Validate against SQLite syntax.
+    - Ensure proper division casting.
+    - Verify date function correctness.
 
 snowflake:
   builder_instructions: |
     - Use Snowflake SQL syntax and semantics.
-    - Prefer unquoted identifiers unless case sensitivity is explicitly required.
-    - Use fully qualified table names when ambiguity exists.
-
-    - Use CURRENT_DATE() for current date.
-    - Use DATEADD(part, value, date_col) for date arithmetic.
-    - Use DATE_TRUNC('part', date_col) for aggregation.
-
-    - Use ILIKE for case-insensitive matching.
-    - Use IFF() or DIV0() for safe division.
-
-    - Prefer CTEs over nested queries.
-    - Use QUALIFY for window filtering.
-
-    - NEVER use scalar subqueries.
-    - NEVER use correlated subqueries.
-    - ALWAYS rewrite logic using JOINs.
-
-    - Prefer ROW_NUMBER() + QUALIFY instead of LIMIT.
-
-    - Ensure deterministic ORDER BY.
-    - Minimize repeated scans.
-
+    - MANDATORY QUOTING: Always double-quote identifiers exactly as they are provided in the [SCHEMA].
+    - Snowflake converts unquoted identifiers to UPPERCASE; use double-quotes (`"Id"`, `"Column_Name"`) to preserve case-sensitivity and handle spaces or special characters.
+    - Use double-quotes if the identifier matches a reserved keyword (e.g., `"GROUP"`, `"ORDER"`).
+    - Use CURRENT_DATE(), DATEADD(), and DATE_TRUNC() for temporal logic.
+    - Use ILIKE for case-insensitive string matching.
+    - Use IFF() or TRY_DIVIDE() for conditional calculations.
+    - Use QUALIFY for window-based filtering.
   critic_instructions: |
+    - MANDATORY: Verify all Snowflake identifiers (tables, columns) are double-quoted.
     - Validate Snowflake syntax correctness.
-    - Ensure DATEADD / DATE_TRUNC usage is correct.
-    - Detect scalar subqueries (not allowed).
-    - Validate column existence and alias correctness.
-    - Ensure JOIN correctness and no cross joins.
-    - Detect runtime risks (NULL, casting, division).
-    - Ensure deterministic ordering.
+    - Check for idiomatic Snowflake function usage (DATEADD, TRY_DIVIDE, etc.).
+    - Detect potential runtime risks (NULLs, precise division).
+
+duckdb:
+  builder_instructions: |
+    - Use DuckDB syntax.
+    - Always use the full table name in query with schema name (e.g., `main.table_name`).
+    - Use current_date for the current date.
+    - Use INTERVAL for date arithmetic.
+    - For percentages, use `100 * (a - b) / a` to prevent rounding issues.
+  critic_instructions: |
+    - Verify full table name qualification (schema.table).
+    - Ensure arithmetic safety for percentages (multiply first).
 
 default:
   builder_instructions: |
     - Use standard SQL syntax.
-    - Ensure clarity and correctness.
-
+    - Prioritize clarity, readability, and correctness.
     - Use explicit JOIN conditions.
-    - Avoid ambiguous columns.
-
-    - Prefer CTEs for readability.
-    - Avoid unnecessary nesting.
-
-    - Handle NULLs explicitly.
-    - Ensure deterministic ordering.
-
+    - Prefer CTEs (WITH clause) over deep nesting for complex transformations.
+    - Handle NULL values explicitly where they might affect aggregations.
+    - When calculating percentages like (a - b) / a * 100, multiply first: `100 * (a - b) / a`.
   critic_instructions: |
-    - Validate SQL syntax.
-    - Ensure logical correctness of joins and filters.
-    - Detect invalid column references.
-    - Check for ambiguity or missing conditions.
-    - Ensure proper NULL handling.
+    - Validate standard SQL syntax.
+    - Ensure logical correctness of filters and grouping.
+    - Verify "multiply before divide" for all percentage calculations.

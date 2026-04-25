@@ -21,13 +21,16 @@ class SQLiteService:
             conn = sqlite3.connect(self.db_path)
             cursor = conn.cursor()
 
-            # Final sanity check: must start with SELECT, WITH, etc.
+            # Clean query for keyword check
+            import re
+            clean_query = re.sub(r'--.*$', '', query, flags=re.MULTILINE).strip()
+            
             if not any(
-                query.upper().strip().startswith(kw)
+                clean_query.upper().startswith(kw)
                 for kw in ["SELECT", "WITH", "PRAGMA", "EXPLAIN"]
             ):
                 raise sqlite3.Error(
-                    f"String does not appear to be a valid SQL command: '{query[:50]}...'"
+                    f"String does not appear to be a valid SQL command: '{clean_query[:50]}...'"
                 )
 
             cursor.execute(query)

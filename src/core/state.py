@@ -3,13 +3,6 @@ from typing import Any
 from pydantic import BaseModel, Field
 
 
-class CandidateQuery(BaseModel):
-    sql: str
-    approach: str = "standard"  # e.g., "CTE", "SUBQUERY", "TEMP_TABLE"
-    explanation: str | None = None
-    score: float = 0.0
-
-
 class ExecutionResult(BaseModel):
     columns: list[str] = Field(default_factory=list)
     rows: list[list[Any]] = Field(default_factory=list)
@@ -26,36 +19,10 @@ class ExecutionResult(BaseModel):
         return pd.DataFrame(self.rows, columns=self.columns)
 
 
-class GeneratorResponse(BaseModel):
-    corrections: list[str] = Field(default_factory=list)
-    sql: str
-    sql_lines: list[str] = Field(default_factory=list)
-    approach: str
-    explanation: str | None = None
-
-
 class CriticResponse(BaseModel):
     is_valid: bool
     feedback: str
     suggestion: str | None = None
-
-
-class SubTaskResult(BaseModel):
-    sub_question: str
-    sub_sql: str | None = None
-    intermediate_rows: list[list[Any]] = Field(default_factory=list)
-    columns: list[str] = Field(default_factory=list)
-    critic_feedback: str | None = None
-    iteration_count: int = 0
-    is_valid: bool = False
-
-    def rows_to_df(self):
-        """Helper to convert results to a pandas DataFrame safely."""
-        import pandas as pd
-
-        if not self.intermediate_rows:
-            return pd.DataFrame(columns=self.columns)
-        return pd.DataFrame(self.intermediate_rows, columns=self.columns)
 
 
 class AgentState(BaseModel):
@@ -66,23 +33,15 @@ class AgentState(BaseModel):
     # Input
     user_query: str
     db_path: str
-    db_name: str | None = (
-        None  # raw DB name; used as Qdrant collection override in RAG mode
-    )
+    db_name: str | None = None  # raw DB name
     instance_id: str = "default"  # Required for file-based tracking Header
     external_knowledge: str | None = None  # For BigQuery dataset resolution
     model_name: str = "default_model"  # Track which model is running this task
     dialect: str = "sqlite"  # Database dialect (sqlite, bigquery, snowflake, postgres)
-    sub_questions: list[str] = Field(
-        default_factory=list
-    )  # Decomposed questions for multi-part queries
 
     # Analysis
     schema_info: dict[str, Any] = Field(default_factory=dict)
     full_schema_info: dict[str, Any] = Field(default_factory=dict) # Master copy
-    rag_columns: list[dict[str, Any]] = Field(
-        default_factory=list
-    )  # raw RAG retrieved columns
     query_intent: str | None = None
     complexity_score: str | None = None  # e.g., "LOW", "MEDIUM", "HIGH"
     relevant_tables: list[str] = Field(default_factory=list)
@@ -105,9 +64,10 @@ class AgentState(BaseModel):
 
     # Planning
     step_by_step_plan: list[str] = Field(default_factory=list)
+    strategies: dict[str, Any] | None = None
+    discovered_values: list[str] = Field(default_factory=list)
 
     # Generation
-    candidate_queries: list[CandidateQuery] = Field(default_factory=list)
     chosen_query: str | None = None
 
     # Execution
@@ -121,17 +81,14 @@ class AgentState(BaseModel):
     # Critic and Refinement
     is_result_valid: bool = False
     critic_feedback: str = ""
+    output_audit_report: dict[str, Any] | None = None
+    audit_context: str = "" # Used for ensemble evaluation
+    sql_candidates: list[dict[str, Any]] = Field(default_factory=list)
     last_raw_response: str = ""  # To debug parsing issues
     error_message: str | None = None
 
     # Execution
-    subtask_history: list[SubTaskResult] = Field(default_factory=list)
-    current_subtask_index: int = 0
     sampling_enabled: bool = False
-    rag_source: str = "qdrant"  # Options: "none", "qdrant", "bedrock"
-    use_rag: bool = False  # If True, use RAG for table retrieval and bypass LLM
-    rag_limit: int = 2  # Number of tables to retrieve from RAG
-    execution_result: ExecutionResult | None = None
     execution_error_history: list[str] = Field(
         default_factory=list
     )  # Track all execution errors
