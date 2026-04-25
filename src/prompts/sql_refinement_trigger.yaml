@@ -3,6 +3,7 @@ messages:
     content: |
       You are the SQL Generation Orchestrator.
       Execute the iterative refinement loop to produce high-quality SQL.
+      CRITICAL: Be extremely concise in your reasoning.
       
       OUTPUT FORMAT (JSON):
       {{

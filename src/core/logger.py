@@ -83,96 +83,93 @@ class Logger:
 
     @classmethod
     def log_section(cls, title: str):
-        """Logs a major section header in markdown."""
-        cls.log(f"\n## 📥 {title.upper()}\n")
+        """Minimal section header."""
+        cls.log(f"\n## 🏛️ {title.upper()}\n")
 
     @classmethod
-    def log_title(cls, title: str):
-        """Logs a major title (Deprecated: use log_section)."""
-        cls.log_section(title)
-
-    @classmethod
-    def log_stage_header(cls, stage: str):
-        """Logs a highlighted stage header with boxed demarcation."""
-        msg = stage.upper()
-        # Use a consistent width or dynamic one
-        border = "_" * 40
-        cls.log(f"\n{border}\n{msg}\n{border}\n")
+    def log_stage_header(cls, title: str):
+        """Minimal stage header."""
+        cls.log(f"\n### ⚙️ {title.upper()}\n")
 
     @classmethod
     def log_divider(cls):
-        """Logs a markdown horizontal rule."""
+        """Minimal divider."""
         cls.log("\n---\n")
 
     @classmethod
     def log_code(cls, code: str, language: str = "sql"):
-        """Logs a formatted code block in markdown."""
+        """Logs a formatted code block in markdown with extra padding."""
         cls.log(f"\n```{language}\n{code}\n```\n")
 
     @classmethod
     def log_step(cls, step: str):
-        """Logs a step with an icon."""
-        cls.log(f"✅ **{step}**")
+        """Logs a step with an icon and bolding."""
+        cls.log(f"📌 **{step}**")
 
     @classmethod
     def log_error(cls, error: str):
-        """Logs an error block with a callout."""
-        cls.log(f"\n> [!CAUTION]\n> **ERROR**: {error}\n")
+        """Logs an error block with a prominent caution callout."""
+        cls.log(f"\n> [!CAUTION]\n> ### ❌ **ERROR**\n> {error}\n")
 
     @classmethod
     def log_completion(cls, status: str):
-        """Logs the final completion state."""
-        cls.log(f"\n# 🏁 PIPELINE {status.upper()}\n")
+        """Logs the final completion state with a celebratory banner."""
+        cls.log("\n" + "💎" * 30)
+        cls.log(f"# 🎉 PIPELINE {status.upper()}")
+        cls.log("💎" * 30 + "\n")
 
     @classmethod
     def log_call(cls, target: str, params: dict = None):
-        """Logs a trace entry for function/agent execution."""
-        msg = f"▶️ [CALL]: {target}"
+        """Logs a trace entry for function/agent execution (Collapsed)."""
         if params:
-            msg += f" (params={params})"
-        cls.log(msg)
+            cls.log(f"<details><summary>⚡ <b>[CALL]</b>: <code>{target}</code></summary>\n\n  * _parameters_: `{params}`\n\n</details>")
+        else:
+            cls.log(f"⚡ **[CALL]**: `{target}`")
 
     @classmethod
     def log_execution(cls, sql: str, result):
-        """Logs the execution result with beautiful demarcation."""
-        cls.log("\n" + "="*60)
-        cls.log("📊 SQL EXECUTION RESULT")
-        cls.log("="*60)
-        cls.log(f"SQL:\n```sql\n{sql}\n```")
+        """Logs the execution result with premium demarcation."""
+        cls.log("\n" + "✨" * 30)
+        cls.log("### 📊 SQL EXECUTION AUDIT")
+        cls.log("✨" * 30)
+        
+        # SQL with collapsible option if too long
+        if len(sql) > 500:
+            cls.log(f"<details><summary><b>View SQL Statement</b></summary>\n\n```sql\n{sql}\n```\n</details>")
+        else:
+            cls.log(f"#### 🔍 SQL QUERY:\n```sql\n{sql}\n```")
         
         if result.error_message:
-            cls.log(f"\n❌ **ERROR**: {result.error_message}")
+            cls.log(f"\n> [!ERROR]\n> **Execution Failed**: {result.error_message}")
         else:
-            cls.log(f"\n✅ **SUCCESS**: {result.row_count} rows returned.")
+            cls.log(f"\n> [!IMPORTANT]\n> **SUCCESS**: {result.row_count} rows retrieved.")
             if result.rows:
-                # Prepare markdown table-like layout
-                cols = " | ".join([str(c) for c in result.columns])
-                cls.log(f"\n| {cols} |")
+                cls.log("\n#### 📋 SAMPLE DATA:")
+                # Prepare markdown table
+                cols = " | ".join([f"**{str(c)}**" for c in result.columns])
+                cls.log(f"| {cols} |")
                 cls.log(f"| {'--- | ' * len(result.columns)}")
-                for row in result.rows[:5]: # Show top 5
+                for row in result.rows[:5]: 
                     r_str = " | ".join([str(v) for v in row])
                     cls.log(f"| {r_str} |")
                 if result.row_count > 5:
-                    cls.log(f"\n*... and {result.row_count - 5} more rows.*")
-        cls.log("="*60 + "\n")
+                    cls.log(f"\n_... and {result.row_count - 5} more rows._")
+        cls.log("\n" + "―" * 40 + "\n")
+
+    @classmethod
+    def log_status_banner(cls, component: str, success: bool, message: str = ""):
+        """Logs a large, color-coded status banner for a component/task."""
+        char = "🟩" if success else "🟥"
+        status = "PASSED" if success else "FAILED"
+        banner_msg = f"{char} {component.upper()}: {status} {char}"
+        
+        cls.log("\n" + char * 35)
+        cls.log(f"{char} {banner_msg.center(64)} {char}")
+        if message:
+            cls.log(f"{char} {'- ' + message[:60].center(64)} {char}")
+        cls.log(char * 35 + "\n")
 
     @classmethod
     def log_comparison(cls, is_passed: bool):
-        """Logs a large visual flag for Ground Truth comparison."""
-        if is_passed:
-            banner = [
-                "🟩" * 30,
-                "🟩" + " " * 56 + "🟩",
-                "🟩          🌟 GROUND TRUTH: PASSED 🌟          🟩",
-                "🟩" + " " * 56 + "🟩",
-                "🟩" * 30
-            ]
-        else:
-            banner = [
-                "🟥" * 30,
-                "🟥" + " " * 56 + "🟥",
-                "🟥          ❌ GROUND TRUTH: FAILED ❌          🟥",
-                "🟥" + " " * 56 + "🟥",
-                "🟥" * 30
-            ]
-        cls.log("\n" + "\n".join(banner) + "\n")
+        """Logs a large visual flag for Ground Truth comparison (Premium Style)."""
+        cls.log_status_banner("GROUND TRUTH", is_passed)

@@ -61,8 +61,6 @@ class LLMService:
 
             # Logger context
             agent_display = agent_name or "Agent"
-            formatted_agent = f"LLM REQUEST: {agent_display.upper()}"
-            Logger.log_stage_header(formatted_agent)
 
             # Configure timeout via botocore
             # settings.TIMEOUT_SECONDS defaults to 90, we can use a higher one for Bedrock
@@ -81,59 +79,72 @@ class LLMService:
                 ),
             )
 
-            # Log the prompt for auditability
-            Logger.log_stage_header(f"LLM REQUEST: {agent_name}")
-            for msg in messages:
-                role = msg.get("role", "unknown").upper()
-                content = msg.get("content", "")
-                Logger.log(f"**[{role}]**:\n{content}\n")
-            Logger.log("_" * 40 + "\n")
-
             response = llm.invoke(messages)
             content = response.content
             
-            # Log Response Metadata
-            if hasattr(response, "response_metadata"):
-                Logger.log(f"ResponseMetadata: {json.dumps(response.response_metadata)}")
-            
-            # Log Result for audit
-            Logger.log_stage_header(f"LLM RESPONSE: {agent_name}")
-            Logger.log(str(content))
-            Logger.log("_" * 40 + "\n")
-
-            # Simple handle for multi-part content
+            # --- [PARSING USEFUL CONTENT] ---
             text_parts = []
             reasoning_parts = []
             
             if isinstance(content, list):
                 for b in content:
-                    if isinstance(b, str):
-                        text_parts.append(b)
+                    if isinstance(b, str): text_parts.append(b)
                     elif isinstance(b, dict):
-                        if b.get("type") == "text":
-                            text_parts.append(str(b.get("text", "")))
+                        if b.get("type") == "text": text_parts.append(str(b.get("text", "")))
                         elif b.get("type") == "reasoning_content":
                             r_val = b.get("reasoning_content", {})
-                            if isinstance(r_val, dict):
-                                reasoning_parts.append(str(r_val.get("text", "")))
-                        elif "text" in b:
-                            text_parts.append(str(b["text"]))
-                        elif "content" in b:
-                            text_parts.append(str(b["content"]))
+                            if isinstance(r_val, dict): reasoning_parts.append(str(r_val.get("text", "")))
+                        elif "text" in b: text_parts.append(str(b["text"]))
                 
-                content = "".join(text_parts)
-                reasoning = "".join(reasoning_parts)
-                if reasoning:
-                    Logger.log(f"\n> [!NOTE]\n> **THOUGHT PROCESS**:\n> {reasoning.replace('\n', '\n> ')}\n")
-            
-            # ...
+                final_content = "".join(text_parts)
+                final_reasoning = "".join(reasoning_parts)
+            else:
+                final_content = str(content)
+                final_reasoning = ""
 
-            # Refresh state with latest response for traceability
+            # --- [SHOWING ONLY IMPORTANT THINGS - PRECISE PARSING] ---
+            if final_reasoning:
+                display_reasoning = final_reasoning if len(final_reasoning) < 1200 else final_reasoning[:1200] + "..."
+                Logger.log(f"#### 💡 THOUGHT PROCESS\n{display_reasoning}\n")
+            
+            parsed_json = None
+            if "{" in final_content:
+                try:
+                    # Look for JSON within the text if wrapped in markdown
+                    json_str = final_content.strip()
+                    if json_str.startswith("```json"): json_str = json_str.split("```json")[1].split("```")[0]
+                    elif json_str.startswith("```"): json_str = json_str.split("```")[1].split("```")[0]
+                    parsed_json = json.loads(json_str)
+                except: pass
+
+            if parsed_json:
+                # Handle specific project keys to make it non-messy
+                if "candidates" in parsed_json:
+                    for i, c in enumerate(parsed_json["candidates"]):
+                        Logger.log(f"#### ✨ SQL CANDIDATE {i+1}")
+                        if "reasoning" in c: Logger.log(f"> {c['reasoning']}")
+                        Logger.log_code(c["sql"], language="sql")
+                elif "winning_id" in parsed_json:
+                    Logger.log(f"#### 🎯 SELECTION RESULT")
+                    Logger.log(f"**Winner**: Candidate {parsed_json.get('winning_id')}")
+                    Logger.log(f"**Feedback**: {parsed_json.get('feedback')}")
+                elif "is_valid" in parsed_json:
+                    Logger.log(f"#### 🔍 AUDIT FEEDBACK")
+                    Logger.log(f"**Valid**: {parsed_json.get('is_valid')}")
+                    Logger.log(f"**Observation**: {parsed_json.get('feedback')}")
+                else:
+                    # Fallback for other JSON types (Planning/Discovery)
+                    Logger.log("#### 📦 GENERATED DATA")
+                    Logger.log_code(json.dumps(parsed_json, indent=2), language="json")
+            elif final_content:
+                Logger.log(f"#### 📝 RESPONSE\n{final_content}\n")
+            
+            content = final_content # Carry forward cleaned string
+            
             if state:
                 state.last_raw_response = content
                 state.token_usage["input"] += len(str(messages)) // 4
                 state.token_usage["output"] += len(content) // 4
-
             return content
 
         except Exception as e:

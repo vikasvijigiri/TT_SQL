@@ -49,12 +49,14 @@ class GenericAgent(BaseAgent):
                 # Run the tool
                 tool_func = tools_map[tool_name]
                 try:
-                    tool_result = tool_func(state) if not params else tool_func(state, **params)
+                    tool_result = tool_func(state) if not params else tool_func(state, params=params)
                     self.log(state, f"Tool Result: {tool_result}")
+                    Logger.log_status_banner(f"Tool: {tool_name}", True)
                     # Exit loop after tool execution to avoid double-calling LLM for fixed orchestrators
                     break 
                 except Exception as e:
                     self.log(state, f"Tool Execution Failed: {e}", level="ERROR")
+                    Logger.log_status_banner(f"Tool: {tool_name}", False, str(e))
                     break
             
             # 4. Standard Response Mapping
@@ -63,9 +65,10 @@ class GenericAgent(BaseAgent):
                 
                 if val is not None:
                     setattr(state, self.state_field, val)
-                    msg_key = self.output_key if self.output_key else "FULL_OBJECT"
-                    self.log(state, f"Mapped '{msg_key}' to state field '{self.state_field}'.")
                     
+                    # Log success banner
+                    Logger.log_status_banner(f"Agent: {self.name}", True, f"Produced: {self.state_field}")
+
                     # --- [SIDE EFFECTS]: Automatic Persistance ---
                     from core.utils import write_sql_to_file, write_plan_to_file
                     if self.state_field == "chosen_query":
@@ -76,6 +79,7 @@ class GenericAgent(BaseAgent):
 
                 else:
                     self.log(state, f"Warning: Key '{self.output_key}' not found in LLM response.", level="WARN")
+                    Logger.log_status_banner(f"Agent: {self.name}", False, f"Missing key: {self.output_key}")
             
             break # Exit loop if no tool call
 

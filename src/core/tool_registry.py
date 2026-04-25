@@ -79,8 +79,8 @@ class ToolRegistry:
             # Nice Logging in markdown
             Logger.log_execution(sql, result)
             
-            # Auto-save CSV
-            from core.utils import write_csv_to_file
+            # Auto-save results and SQL
+            from core.utils import write_csv_to_file, write_sql_to_file
             write_csv_to_file(
                 state.instance_id, 
                 state.db_name, 
@@ -88,6 +88,7 @@ class ToolRegistry:
                 result.columns if not result.error_message else ["status", "error"],
                 state.model_name
             )
+            write_sql_to_file(state.instance_id, state.db_name, sql, state.model_name)
             
             return {"status": "success", "row_count": result.row_count, "error": result.error_message}
         except Exception as e:
@@ -148,7 +149,9 @@ class ToolRegistry:
 
     @staticmethod
     def sql_refinement_loop(state, params=None):
-        """Advanced ensemble SQL builder-critic loop tool."""
+        """Advanced ensemble SQL builder-critic loop tool. 
+        Respects '1-2 candidates' rule and ensures a final answer.
+        """
         from agents.generic_agent import GenericAgent
         from core.llm_service import LLMService
         from core.prompt_loader import PromptLoader
@@ -156,72 +159,79 @@ class ToolRegistry:
         
         llm = LLMService(model=state.model_name)
         # Builder now returns 'candidates' list
-        generator = GenericAgent("SQLBuilder", "sql_builder", output_key="candidates", state_field="sql_candidates", llm_service=llm, max_tokens=8192)
-        max_retries = 3 # Ensemble is more expensive, less retries needed
+        generator = GenericAgent("SQLBuilder", "sql_builder", output_key="candidates", state_field="sql_candidates", llm_service=llm, max_tokens=6000)
+        max_retries = 2 # Efficient refinement
         
         for attempt in range(1, max_retries + 1):
             state.iteration_count = attempt
             Logger.log_stage_header(f"🔄 ENSEMBLE ATTEMPT {attempt}")
             
-            # 1. Generate Candidates
+            # 1. Generate Candidates (Now 1-2 as per new prompt)
             generator.run(state)
             candidates = getattr(state, "sql_candidates", [])
-            if not candidates: break
             
-            # 2. Execute All Candidates (Sampling)
+            # CRITICAL: If no candidates generated, force a single candidate generation
+            if not candidates:
+                Logger.log("⚠️ No candidates generated. Retrying with explicit single-SQL instruction.", "WARN")
+                # Add a temporary instruction to state or just retry once more with same generator
+                generator.run(state)
+                candidates = getattr(state, "sql_candidates", [])
+                if not candidates: break # Total failure
+            
+            # 2. Execute & Prepare Context
             evaluated_candidates = []
             for item in candidates:
                 cand_sql = item.get("sql", "")
                 if not cand_sql: continue
                 
-                # Execute in isolation
                 service = SQLiteService(state.db_path)
                 res = service.execute_query(cand_sql, sampling=True)
                 
-                # Log the sampling result nicely
                 Logger.log(f"🧪 Sampling Candidate {item.get('id')}...")
                 Logger.log_execution(cand_sql, res)
                 
                 evaluated_candidates.append({
                     "id": item.get("id"),
                     "sql": cand_sql,
-                    "reasoning": item.get("reasoning"),
+                    "reasoning": item.get("reasoning", "No reasoning provided."),
                     "execution": {
                         "error": res.error_message,
-                        "rows": res.rows[:3], # Send only top 3 to LLM
+                        "rows": res.rows[:3],
                         "row_count": res.row_count
                     }
                 })
 
+            if not evaluated_candidates: continue
+
             # 3. Selection Critique
-            # We use a custom sub-prompt or just pass the whole candidate list to Critic
             state.audit_context = json.dumps(evaluated_candidates)
             messages = PromptLoader().load_prompt("sql_critic", state=state)
-            # Critic now needs to return {"winning_id": X, "is_valid": bool, "feedback": "..."}
             response = llm.get_json_completion(messages, state=state, agent_name="SQLSelector")
             
             winner_id = response.get("winning_id")
             is_valid = response.get("is_valid", False)
             
-            # Find the winning SQL
-            winner = next((c for c in evaluated_candidates if c["id"] == winner_id), evaluated_candidates[0] if evaluated_candidates else None)
-            if winner:
-                state.chosen_query = winner["sql"]
-                state.is_result_valid = is_valid
-                state.critic_feedback = response.get("feedback", "No feedback.")
+            # Find the winning SQL or fallback to first
+            winner = next((c for c in evaluated_candidates if c["id"] == winner_id), evaluated_candidates[0])
+            
+            state.chosen_query = winner["sql"]
+            state.is_result_valid = is_valid
+            state.critic_feedback = response.get("feedback", "Final selection.")
             
             if is_valid:
-                Logger.log(f"✅ Ensemble Selected Candidate {winner_id} as the winner.")
+                Logger.log(f"✅ Selection Success: Candidate {winner_id} picked.")
                 break
             else:
-                Logger.log(f"⚠️ Ensemble needs refinement. Critic rejected winner {winner_id}.", "WARN")
+                Logger.log(f"⚠️ Critic rejected all or winner {winner_id}. Retrying...", "WARN")
 
-        # Final Full Execution for the winner
+        # Final Execution Guarantee
         if state.chosen_query:
             state.sampling_enabled = False
             ToolRegistry.execute_sql(state)
+        else:
+            Logger.log("🔴 CRITICAL: No SQL query could be generated after all retries.", "ERROR")
             
-        return {"status": "success" if state.is_result_valid else "failed"}
+        return {"status": "success" if state.chosen_query else "failed"}
 
     @staticmethod
     def value_search(state, params=None):
@@ -252,11 +262,42 @@ class ToolRegistry:
         return {"status": "success", "matches": matches}
 
     @staticmethod
+    def accurate_calculate(state, params=None):
+        """Performs high-precision math calculation."""
+        from core.math_service import MathService
+        expr = params.get("expression") if params else None
+        if not expr:
+            return {"error": "No expression provided."}
+        
+        result = MathService.calculate(expr)
+        Logger.log(f"[TOOL] Accurate Calculate: {expr} = {result}")
+        return {"status": "success", "result": result}
+
+    @staticmethod
+    def python_executor(state, params=None):
+        """Executes arbitrary Python code for complex logic verification."""
+        code = params.get("code") if params else None
+        if not code:
+            return {"error": "No code provided."}
+        
+        try:
+            # Shared dictionary for execution
+            exec_globals = {"Decimal": float, "math": __import__("math")}
+            exec(code, exec_globals)
+            result = exec_globals.get("result", "No 'result' variable set in code.")
+            Logger.log(f"[TOOL] Python Executor ran successfully. Result: {result}")
+            return {"status": "success", "result": result}
+        except Exception as e:
+            return {"error": str(e)}
+
+    @staticmethod
     def get_tools_map():
         return {
             "fetch_schema": ToolRegistry.fetch_schema,
             "execute_sql": ToolRegistry.execute_sql,
             "table_pruner": ToolRegistry.table_pruner,
             "sql_refinement_loop": ToolRegistry.sql_refinement_loop,
-            "value_search": ToolRegistry.value_search
+            "value_search": ToolRegistry.value_search,
+            "accurate_calculate": ToolRegistry.accurate_calculate,
+            "python_executor": ToolRegistry.python_executor
         }
