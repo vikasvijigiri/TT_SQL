@@ -1,0 +1,32 @@
+# Text-to-SQL Analysis Pipeline Workflow
+# --------------------------------------
+# This file defines the sequence of agents executed for each query.
+# All steps are now prompt-driven, using 'GenericAgent' and ToolRegistry calls.
+
+pipeline:
+  - id: ContextEnrichment
+    prompt: schema_bootstrapper
+    max_tokens: 500
+
+  - id: ValueDiscovery
+    prompt: value_discovery
+    max_tokens: 800
+
+  - id: QueryPlanning
+    prompt: query_planner
+    state_field: strategies
+    output_key: strategies
+    max_tokens: 2000
+
+  - id: TableSelection
+    prompt: table_selector_trigger
+    max_tokens: 500
+
+  - id: SQLGeneration
+    prompt: sql_refinement_trigger
+    max_tokens: 800
+
+  - id: FinalAudit
+    prompt: output_auditor
+    state_field: output_audit_report
+    max_tokens: 800

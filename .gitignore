@@ -1,6 +1,6 @@
 # Local execution results and logs
 results/
-data/
+input_data/
 gold/
 logs/
 resources/

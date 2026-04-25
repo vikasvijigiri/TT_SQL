@@ -18,10 +18,12 @@ SRC_DIR = PROJECT_ROOT / "src"
 # Configuration
 CONFIG_DIR = SRC_DIR / "config"
 PIPELINE_CONFIG = CONFIG_DIR / "pipeline_config.yaml"
-DIALECT_RULES = CONFIG_DIR / "dialect_rules.yaml"
+
 
 # Prompts
 PROMPTS_DIR = SRC_DIR / "prompts"
+
+DIALECT_RULES = PROMPTS_DIR / "dialects.yaml"
 
 QUERY_PLANNING_PROMPT = PROMPTS_DIR / "query_planning.yaml"
 CONTEXT_ENRICHMENT_PROMPT = PROMPTS_DIR / "context_enrichment.yaml"
@@ -32,45 +34,32 @@ CRITIC_CRITIQUE_PROMPT = PROMPTS_DIR / "critic_critique.yaml"
 RESULTS_BASE_DIR = PROJECT_ROOT / "results"
 
 
-def get_model_results_dir(model_name: str) -> Path:
-    """Get the results directory for a specific model."""
-    safe_name = model_name.replace("/", "_").replace(":", "_")
-    return RESULTS_BASE_DIR / safe_name
-
-
 # Resources
 RESOURCES_DIR = PROJECT_ROOT / "resources"
 DATABASES_DIR = RESOURCES_DIR
+METADATA_DIR = RESOURCES_DIR / "metadata"
 
 # Evaluation
-DATA_DIR = PROJECT_ROOT / "data"
+DATA_DIR = PROJECT_ROOT / "input_data"
 SPIDER_DATASET = DATA_DIR / "spider2-lite-sqlite.jsonl"  # Fixed typo/naming
 
 
-# Initialize directories for a specific model
-def initialize_directories(model_name: str = None):
+# Initialize directories for a specific model/db combination
+def initialize_directories(model_name: str = None, db_name: str = None):
     """Create all required directories if they don't exist"""
 
-    # Always create base results and config
+    # Always create base results, config, and common metadata
     directories = [
-        # Results
         RESULTS_BASE_DIR,
-        # Config
         CONFIG_DIR,
+        METADATA_DIR,
     ]
 
-    # If model provided, create model-specific structure
-    if model_name:
-        model_dir = get_model_results_dir(model_name)
-        directories.extend(
-            [
-                model_dir / "sql",
-                model_dir / "csv",
-                model_dir / "log",
-                model_dir / "schema",
-                model_dir / "plan",
-            ]
-        )
+    # If DB provided, create DB-specific structure 
+    # model_name is ignored as we are flattening the directory structure
+    if db_name:
+        db_dir = RESULTS_BASE_DIR / db_name
+        directories.append(db_dir)
 
     for directory in directories:
         directory.mkdir(parents=True, exist_ok=True)
@@ -78,32 +67,37 @@ def initialize_directories(model_name: str = None):
 
 # File path generators for instance-specific files
 class InstancePaths:
-    """Generate paths for instance-specific files"""
+    """Generate paths for instance-specific files organized by Database (flattened)"""
 
     @staticmethod
-    def sql(instance_id: str, model_name: str = "default_model") -> Path:
+    def sql(instance_id: str, db_name: str, model_name: str = "default_model") -> Path:
         """Path to SQL file for an instance"""
-        return get_model_results_dir(model_name) / "sql" / f"{instance_id}.sql"
+        return RESULTS_BASE_DIR / db_name / f"{instance_id}.sql"
 
     @staticmethod
-    def csv(instance_id: str, model_name: str = "default_model") -> Path:
+    def csv(instance_id: str, db_name: str, model_name: str = "default_model") -> Path:
         """Path to CSV results file for an instance"""
-        return get_model_results_dir(model_name) / "csv" / f"{instance_id}.csv"
+        return RESULTS_BASE_DIR / db_name / f"{instance_id}.csv"
 
     @staticmethod
-    def log(instance_id: str, model_name: str = "default_model") -> Path:
+    def log(instance_id: str, db_name: str, model_name: str = "default_model") -> Path:
         """Path to markdown log file for an instance"""
-        return get_model_results_dir(model_name) / "log" / f"{instance_id}.md"
+        return RESULTS_BASE_DIR / db_name / f"{instance_id}.md"
 
     @staticmethod
-    def schema(instance_id: str, model_name: str = "default_model") -> Path:
-        """Path to schema JSON file for an instance"""
-        return get_model_results_dir(model_name) / "schema" / f"{instance_id}.json"
+    def schema(instance_id: str, db_name: str, model_name: str = "default_model") -> Path:
+        """Deprecated: Use db_metadata instead for common storage"""
+        return RESULTS_BASE_DIR / db_name / f"{instance_id}_schema.json"
 
     @staticmethod
-    def plan(instance_id: str, model_name: str = "default_model") -> Path:
-        """Path to plan markdown file for an instance"""
-        return get_model_results_dir(model_name) / "plan" / f"{instance_id}.md"
+    def db_metadata(db_name: str) -> Path:
+        """Centralized metadata (schema) path for a database"""
+        return METADATA_DIR / f"{db_name}.json"
+
+    @staticmethod
+    def plan(instance_id: str, db_name: str, model_name: str = "default_model") -> Path:
+        """Path to plan markdown file for an instance (TEMPORARY)"""
+        return RESULTS_BASE_DIR / db_name / f"{instance_id}_plan.md"
 
     @staticmethod
     def database(db_name: str) -> Path:

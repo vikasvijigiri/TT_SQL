@@ -407,7 +407,7 @@ def evaluate_spider2sql(args, temp_dir: Path):
     eval_standard_dict = load_jsonl_to_dict(os.path.join(args.gold_dir, "spider2lite_eval.jsonl"))
 
     root_dir = Path(__file__).resolve().parent.parent
-    spider2sql_metadata = load_jsonl_to_dict(str(root_dir / "spider2-lite.jsonl"))
+    spider2sql_metadata = load_jsonl_to_dict(str(root_dir / "input_data" / "spider2-lite.jsonl"))
     sqlite_base_dir = root_dir / "resources" / "spider2-localdb"
 
     result_csv_dir = None
@@ -474,6 +474,24 @@ def evaluate_spider2sql(args, temp_dir: Path):
                 output_results.append(future.result())
 
     output_results.sort(key=lambda item: item["instance_id"])
+
+    # --- ADDED: DETAILED ACCURACY REPORT LOGGING ---
+    with open("accuracy_report.log", "w", encoding="utf-8") as f:
+        f.write("Spider2-Lite Detailed Evaluation Report\n")
+        f.write("========================================\n\n")
+        f.write(f"{'Instance ID':<50} | {'Status':<10}\n")
+        f.write("-" * 65 + "\n")
+        for item in output_results:
+            status = "PASS" if item["score"] == 1 else "FAIL"
+            f.write(f"{item['instance_id']:<50} | {status:<10}\n")
+        
+        correct_examples = sum(item["score"] for item in output_results)
+        f.write("\n" + "=" * 40 + "\n")
+        f.write(f"Total Evaluated: {len(output_results)}\n")
+        f.write(f"Total Correct:   {correct_examples}\n")
+        f.write(f"Accuracy:        {(correct_examples / len(output_results) * 100):.2f}%\n")
+        f.write("=" * 40 + "\n")
+    # ---------------------------------------------
 
     print({item["instance_id"]: item["score"] for item in output_results})
     correct_examples = sum(item["score"] for item in output_results)

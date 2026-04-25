@@ -19,15 +19,11 @@ class BatchRunner:
         self,
         model_name: str,
         workers: int = 4,
-        use_rag: bool = False,
-        rag_source: str = "none",
         overwrite: bool = False,
         verbose: bool = False,
     ):
         self.model_name = model_name
         self.workers = workers
-        self.use_rag = use_rag
-        self.rag_source = rag_source
         self.overwrite = overwrite
         self.verbose = verbose
 
@@ -42,7 +38,7 @@ class BatchRunner:
 
         # Unified folder check - skip if already exists
         if not self.overwrite:
-            csv_path = InstancePaths.csv(iid, self.model_name)
+            csv_path = InstancePaths.csv(iid, db_name, self.model_name)
             if csv_path.exists():
                 return {"instance_id": iid, "status": "SKIPPED", "time": 0}
 
@@ -50,13 +46,11 @@ class BatchRunner:
             start_t = time.time()
 
             # Execute the core analysis pipeline
-            final_state, captured_transcript, is_fatal, _ = run_analysis_pipeline(
+            final_state, _, is_fatal, _ = run_analysis_pipeline(
                 question=question,
                 db_name=db_name,
                 instance_id=iid,
                 model_name=self.model_name,
-                rag_source=self.rag_source,
-                use_rag=self.use_rag,
                 verbose=self.verbose,
                 external_knowledge=ext_knowledge,
             )
@@ -64,7 +58,7 @@ class BatchRunner:
             duration = time.time() - start_t
             
             # --- High-Precision Meaningful Occupancy Check ---
-            csv_path = InstancePaths.csv(iid, self.model_name)
+            csv_path = InstancePaths.csv(iid, db_name, self.model_name)
             has_data = False
             if csv_path.exists():
                 with open(csv_path, encoding="utf-8") as f:
@@ -143,5 +137,19 @@ class BatchRunner:
             f"BATCH COMPLETE: {passed} Passed, {failed} Failed, {skipped} Skipped."
         )
         Logger.log_divider()
+
+        # --- Final Cleanup of Temporary Files ---
+        from .paths import RESULTS_BASE_DIR
+        import os
+        
+        dbs_seen = set(t.get("db") for t in tasks if t.get("db"))
+        for db in dbs_seen:
+            db_dir = RESULTS_BASE_DIR / db
+            if db_dir.exists():
+                for f in db_dir.glob("*_plan.md"):
+                    try:
+                        f.unlink()
+                    except Exception:
+                        pass
 
         return results

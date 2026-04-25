@@ -93,8 +93,11 @@ class Logger:
 
     @classmethod
     def log_stage_header(cls, stage: str):
-        """Logs a highlighted stage header."""
-        cls.log(f"\n### 🛠️ STAGE: {stage.upper()}\n")
+        """Logs a highlighted stage header with boxed demarcation."""
+        msg = stage.upper()
+        # Use a consistent width or dynamic one
+        border = "_" * 40
+        cls.log(f"\n{border}\n{msg}\n{border}\n")
 
     @classmethod
     def log_divider(cls):
@@ -128,3 +131,48 @@ class Logger:
         if params:
             msg += f" (params={params})"
         cls.log(msg)
+
+    @classmethod
+    def log_execution(cls, sql: str, result):
+        """Logs the execution result with beautiful demarcation."""
+        cls.log("\n" + "="*60)
+        cls.log("📊 SQL EXECUTION RESULT")
+        cls.log("="*60)
+        cls.log(f"SQL:\n```sql\n{sql}\n```")
+        
+        if result.error_message:
+            cls.log(f"\n❌ **ERROR**: {result.error_message}")
+        else:
+            cls.log(f"\n✅ **SUCCESS**: {result.row_count} rows returned.")
+            if result.rows:
+                # Prepare markdown table-like layout
+                cols = " | ".join([str(c) for c in result.columns])
+                cls.log(f"\n| {cols} |")
+                cls.log(f"| {'--- | ' * len(result.columns)}")
+                for row in result.rows[:5]: # Show top 5
+                    r_str = " | ".join([str(v) for v in row])
+                    cls.log(f"| {r_str} |")
+                if result.row_count > 5:
+                    cls.log(f"\n*... and {result.row_count - 5} more rows.*")
+        cls.log("="*60 + "\n")
+
+    @classmethod
+    def log_comparison(cls, is_passed: bool):
+        """Logs a large visual flag for Ground Truth comparison."""
+        if is_passed:
+            banner = [
+                "🟩" * 30,
+                "🟩" + " " * 56 + "🟩",
+                "🟩          🌟 GROUND TRUTH: PASSED 🌟          🟩",
+                "🟩" + " " * 56 + "🟩",
+                "🟩" * 30
+            ]
+        else:
+            banner = [
+                "🟥" * 30,
+                "🟥" + " " * 56 + "🟥",
+                "🟥          ❌ GROUND TRUTH: FAILED ❌          🟥",
+                "🟥" + " " * 56 + "🟥",
+                "🟥" * 30
+            ]
+        cls.log("\n" + "\n".join(banner) + "\n")

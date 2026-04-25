@@ -60,7 +60,8 @@ class LLMService:
             )
 
             # Logger context
-            formatted_agent = f"LLM REQUEST: {agent_name.upper()}"
+            agent_display = agent_name or "Agent"
+            formatted_agent = f"LLM REQUEST: {agent_display.upper()}"
             Logger.log_stage_header(formatted_agent)
 
             # Configure timeout via botocore
@@ -81,41 +82,51 @@ class LLMService:
             )
 
             # Log the prompt for auditability
-            Logger.log("--- LLM PROMPT START ---")
+            Logger.log_stage_header(f"LLM REQUEST: {agent_name}")
             for msg in messages:
                 role = msg.get("role", "unknown").upper()
                 content = msg.get("content", "")
                 Logger.log(f"**[{role}]**:\n{content}\n")
-            Logger.log("--- LLM PROMPT END ---")
+            Logger.log("_" * 40 + "\n")
 
             response = llm.invoke(messages)
             content = response.content
             
-            # Log Response Metadata for auditability (including content-length, tokens, etc.)
+            # Log Response Metadata
             if hasattr(response, "response_metadata"):
                 Logger.log(f"ResponseMetadata: {json.dumps(response.response_metadata)}")
+            
+            # Log Result for audit
+            Logger.log_stage_header(f"LLM RESPONSE: {agent_name}")
+            Logger.log(str(content))
+            Logger.log("_" * 40 + "\n")
 
             # Simple handle for multi-part content
+            text_parts = []
+            reasoning_parts = []
+            
             if isinstance(content, list):
-                text_parts = []
                 for b in content:
                     if isinstance(b, str):
                         text_parts.append(b)
                     elif isinstance(b, dict):
-                        if "text" in b:
+                        if b.get("type") == "text":
+                            text_parts.append(str(b.get("text", "")))
+                        elif b.get("type") == "reasoning_content":
+                            r_val = b.get("reasoning_content", {})
+                            if isinstance(r_val, dict):
+                                reasoning_parts.append(str(r_val.get("text", "")))
+                        elif "text" in b:
                             text_parts.append(str(b["text"]))
-                        elif "reasoning_content" in b and isinstance(
-                            b["reasoning_content"], dict
-                        ):
-                            text_parts.append(
-                                str(b["reasoning_content"].get("text", ""))
-                            )
                         elif "content" in b:
                             text_parts.append(str(b["content"]))
-                        else:
-                            # Fallback: if it's a dict but we don't know the key, just stringify it
-                            text_parts.append(str(b))
+                
                 content = "".join(text_parts)
+                reasoning = "".join(reasoning_parts)
+                if reasoning:
+                    Logger.log(f"\n> [!NOTE]\n> **THOUGHT PROCESS**:\n> {reasoning.replace('\n', '\n> ')}\n")
+            
+            # ...
 
             # Refresh state with latest response for traceability
             if state:
@@ -134,9 +145,10 @@ class LLMService:
         messages: list[dict[str, str]],
         state: Any | None = None,
         agent_name: str = "UNKNOWN",
+        max_tokens: int = 4096,
     ) -> Any:
         """Helper to get and parse JSON response."""
-        content = self.get_completion(messages, state=state, agent_name=agent_name)
+        content = self.get_completion(messages, state=state, agent_name=agent_name, max_tokens=max_tokens)
         return self._parse_json(content)
 
     def _parse_json(self, content: str) -> Any:

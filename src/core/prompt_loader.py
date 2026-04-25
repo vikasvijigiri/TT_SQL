@@ -35,10 +35,16 @@ class PromptLoader:
                 except Exception:
                     pass  # Fallback to empty if config fails
 
-    def load_prompt(self, prompt_name: str, **kwargs) -> list[dict[str, str]]:
+    def load_prompt(self, prompt_name: str, state: any = None, **kwargs) -> list[dict[str, str]]:
         """
-        Loads a prompt by name (filename without extension), formats it with kwargs,
-        and returns a list of messages.
+        Loads a prompt by name, formats it with state metadata and kwargs.
+        
+        Metadata auto-injection:
+        If 'state' is provided, it automatically populates:
+        - {SCHEMA}: Formatted column list for the current DB
+        - {DB_NAME}: The database identifier
+        - {DIALECT}: sqlite, snowflake, etc.
+        - {USER_QUERY}: The original natural language question
         """
         # 1. Get or Load template data
         if prompt_name not in PromptLoader._TEMPLATE_CACHE:
@@ -56,7 +62,114 @@ class PromptLoader:
         # 2. Merge global configuration variables
         processed_kwargs = PromptLoader._GLOBAL_CONFIG_CACHE.copy()
 
-        # 3. Process Keyword Arguments (with JSON file loading)
+        # 3. Implicit State Injection
+        if state:
+            from .paths import InstancePaths, DIALECT_RULES
+            from .utils import format_execution_results, format_schema_to_str, read_db_metadata
+            
+            # Identity & Dialect
+            val_dialect = getattr(state, "dialect", "sqlite")
+            processed_kwargs.update({
+                "DIALECT": val_dialect.capitalize(),
+                "dialect": val_dialect,
+                "DB_NAME": getattr(state, "db_name", ""),
+                "USER_QUERY": getattr(state, "user_query", "")
+            })
+            
+            # --- Conditional Metadata Blocks ---
+            def add_block(key, label, value, fallback=""):
+                if value and value != "None." and value != "No plan.":
+                    processed_kwargs[key] = f"### {label}\n{value}\n"
+                else:
+                    processed_kwargs[key] = fallback
+
+            # Action Plan
+            plan = getattr(state, "step_by_step_plan", [])
+            plan_str = "\n".join(f"  {i+1}. {s}" for i, s in enumerate(plan)) if plan else ""
+            add_block("ACTION_PLAN", "STRATEGY GUIDE", plan_str)
+            add_block("action_plan", "STRATEGY GUIDE", plan_str)
+
+            # Strategies (Advanced Tree-of-Thought)
+            strategies = getattr(state, "strategies", None)
+            strat_str = ""
+            if strategies:
+                if isinstance(strategies, dict):
+                    primary = strategies.get("primary", [])
+                    alt = strategies.get("alternative", [])
+                    risks = strategies.get("semantic_risks", [])
+                    strat_str = f"PRIMARY STRATEGY:\n" + "\n".join([f"  - {s}" for s in primary])
+                    if alt: strat_str += f"\n\nALTERNATIVE STRATEGY:\n" + "\n".join([f"  - {s}" for s in alt])
+                    if risks: strat_str += f"\n\nSEMANTIC RISKS:\n" + "\n".join([f"  - {r}" for r in risks])
+                else: strat_str = str(strategies)
+            add_block("STRATEGIES", "STRATEGIC OPTIONS", strat_str)
+
+            # Ensemble Audit Context
+            audit_ctx = getattr(state, "audit_context", "")
+            add_block("AUDIT_CONTEXT", "SQL CANDIDATES FOR EVALUATION", audit_ctx)
+
+            # Discovered Values (Semantic matching results)
+            disc_values = getattr(state, "discovered_values", [])
+            disc_str = "\n".join(f"  - {v}" for v in disc_values) if disc_values else ""
+            add_block("DISCOVERED_VALUES", "DISCOVERED DATA VALUES", disc_str)
+
+            # Execution Results
+            res = getattr(state, "execution_result", None)
+            res_str = format_execution_results(res) if res else ""
+            add_block("EXECUTION_RESULTS", "PREVIOUS EXECUTION RESULTS", res_str)
+            add_block("execution_results", "PREVIOUS EXECUTION RESULTS", res_str)
+
+            # Failure History
+            history = getattr(state, "execution_error_history", [])
+            history_str = "\n".join(f"- {e}" for e in history) if history else ""
+            add_block("FAILURE_HISTORY", "PREVIOUS FAILURES", history_str)
+
+            # SQL Context
+            prev_sql = getattr(state, "chosen_query", "")
+            add_block("sql_context", "CURRENT SQL", prev_sql)
+            processed_kwargs.setdefault("previous_sql", prev_sql) # for backward compat
+            processed_kwargs.setdefault("sql", prev_sql)
+            processed_kwargs.setdefault("chosen_query", prev_sql)
+            processed_kwargs.setdefault("previous_sql_label", "### PREVIOUS SQL" if prev_sql else "")
+            
+            # Feedback
+            add_block("previous_feedback", "CRITIC FEEDBACK", getattr(state, "critic_feedback", ""))
+
+            # Dialect Instructions
+            try:
+                with open(DIALECT_RULES) as f:
+                    all_rules = yaml.safe_load(f)
+                rules = all_rules.get(val_dialect, all_rules.get("sqlite", {}))
+                instr = rules.get("builder_instructions", rules.get("instructions", ""))
+                add_block("DIALECT_INSTRUCTIONS", f"{val_dialect.upper()} RULES", instr)
+                processed_kwargs.setdefault("dialect_instructions", instr)
+            except Exception: pass
+
+            # Schema
+            if getattr(state, "db_name", None):
+                # Full schema
+                schema_str = format_schema_to_str(state.schema_info)
+                if not schema_str or len(schema_str) < 50:
+                     metadata_path = str(InstancePaths.db_metadata(state.db_name))
+                     schema_str = self._get_cached_json_schema(metadata_path)
+                
+                # Minimal schema (Table names only)
+                table_names = list(state.schema_info.keys()) if state.schema_info else []
+                if not table_names and getattr(state, "db_name", None):
+                    full_meta = read_db_metadata(state.db_name)
+                    if full_meta: table_names = list(full_meta.keys())
+                
+                schema_min = f"TABLES: {', '.join(table_names)}" if table_names else "No tables found."
+                
+                # Discovered Values (Semantic matching results)
+                disc_values = getattr(state, "discovered_values", [])
+                disc_str = "\n".join(disc_values) if disc_values else "No specific data values discovered yet."
+                add_block("DISCOVERED_VALUES", "DISCOVERED DATA VALUES", disc_str)
+
+                add_block("SCHEMA", "DATABASE SCHEMA", schema_str)
+                add_block("SCHEMA_MINIMAL", "TABLE LIST", schema_min)
+                processed_kwargs.setdefault("schema_path", schema_str)
+
+        # 4. Process Keyword Arguments (with JSON file loading)
         for key, value in kwargs.items():
             if isinstance(value, str) and value.startswith("file://"):
                 json_path = value.replace("file://", "")
@@ -64,7 +177,7 @@ class PromptLoader:
             else:
                 processed_kwargs[key] = value
 
-        # 4. Generate Messages
+        # 5. Generate Messages
         messages = []
         if "messages" in template_data:
             for msg in template_data["messages"]:
@@ -92,24 +205,8 @@ class PromptLoader:
                 with open(abs_path, encoding="utf-8") as f:
                     data = json.load(f)
 
-                # Format as readable schema
-                result = ""
-                if isinstance(data, dict):
-                    # Assume it's a schema dict: {table_name: [columns]}
-                    schema_lines = []
-                    for table, columns in data.items():
-                        if isinstance(columns, list):
-                            col_names = [
-                                c.get("name", c) if isinstance(c, dict) else str(c)
-                                for c in columns
-                            ]
-                            schema_lines.append(f"{table}({', '.join(col_names)})")
-                        else:
-                            schema_lines.append(f"{table}: {columns}")
-                    result = "\n".join(schema_lines)
-                else:
-                    result = json.dumps(data, indent=2)
-
+                from .utils import format_schema_to_str
+                result = format_schema_to_str(data)
                 PromptLoader._JSON_FILE_CACHE[abs_path] = result
             except Exception as e:
                 return f"[Error loading file {abs_path}: {e}]"
