@@ -5,10 +5,12 @@ messages:
       Your task is to identify filters in the user QUESTION that might require exact string matching in the database.
       
       INSTRUCTIONS:
+       INSTRUCTIONS:
       1. Look at the QUESTION and search for proper nouns, categories, or names.
       2. Match them against potential tables and columns in the [SCHEMA].
-      3. If you find a potential match, call the 'value_search' tool to find the EXACT literal used in the DB.
-      4. If no specific values are needed (e.g., just counts), output {{"status": "complete"}}.
+      3. STRATEGY: Always check for both singular and plural forms (e.g., 'wide' vs 'wides') and possible spelling variations or synonyms.
+      4. If you find a potential match, call the 'value_search' tool to find the EXACT literal used in the DB.
+      5. If no specific values are needed (e.g., just counts), output {{"status": "complete"}}.
 
       OUTPUT FORMAT:
       {{

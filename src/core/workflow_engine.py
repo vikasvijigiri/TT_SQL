@@ -58,61 +58,35 @@ class WorkflowEngine:
         
         # 1. System Config
         pipeline = self.workflow.get("pipeline", [])
-        Logger.log(f"🟢 MECHANISM: Prompt-Driven Tool-Agentic")
-        Logger.log(f"🟢 ARCHITECTURE: Modular GenericAgent + Central ToolRegistry")
-        Logger.log(f"🟢 AGENT COUNT: {len(pipeline)} modules in sequence")
-        
-        pipeline_map = " -> ".join([s['id'] for s in pipeline])
-        Logger.log(f"🟢 PIPELINE: {pipeline_map}")
-        Logger.log(f"🟢 MODEL: {state.model_name}")
+        Logger.log(f"🟢 **MECHANISM**: `Prompt-Driven Tool-Agentic`")
+        Logger.log(f"🟢 **PIPELINE**: `{' -> '.join([s['id'] for s in pipeline])}`")
+        Logger.log(f"🟢 **MODEL**: `{state.model_name}`")
         
         # 2. Database & Resource Paths
         db_path = getattr(state, "db_path", "N/A")
-        from core.paths import DIALECT_RULES, InstancePaths
-        rules_path = str(DIALECT_RULES)
-        log_path = str(InstancePaths.log(state.instance_id, state.db_name, state.model_name))
+        from core.paths import InstancePaths
         meta_path = str(InstancePaths.db_metadata(state.db_name))
         
-        Logger.log(f"🟢 DB PATH: {db_path}")
-        Logger.log(f"🟢 RULES PATH: {rules_path}")
-        Logger.log(f"🟢 LOG PATH: {log_path}")
-        
+        Logger.log(f"🟢 **DB PATH**: `{db_path}`")
         if os.path.exists(meta_path):
-            Logger.log(f"🟢 METADATA PATH: {meta_path} (PRE-CACHED)")
+            Logger.log(f"🟢 **METADATA**: `Loaded ({state.db_name})`")
         else:
-            Logger.log(f"🟡 METADATA PATH: {meta_path} (TO BE CREATED)", "WARN")
-
-        db_exists = False
-        if db_path != "N/A" and os.path.exists(db_path):
-            db_exists = True
-            Logger.log(f"🟢 DATABASE: {state.db_name} (Verified Connectivity)")
-        elif getattr(state, "dialect", "") in ["snowflake", "bigquery"]:
-             db_exists = True
-             Logger.log(f"🟢 DATABASE: {state.db_name} (Cloud Account)")
-        else:
-            Logger.log(f"🔴 DATABASE: {state.db_name} (FILE MISSING OR UNREACHABLE)", "ERROR")
+            Logger.log(f"🟡 **METADATA**: `Missing - Will Generate`", "WARN")
 
         # 3. Schema Stats
         schema = state.schema_info or state.full_schema_info
         if not schema:
+            from core.utils import read_db_metadata
             schema = read_db_metadata(state.db_name)
         
         if schema:
-            table_count = len(schema)
-            col_count = sum(len(v.get("columns", [])) if isinstance(v, dict) else len(v) for v in schema.values())
-            Logger.log(f"🟢 SCHEMA: {table_count} tables, {col_count} columns total")
-            for t, data in list(schema.items())[:5]: # Show first 5 for sanity
-                cols = data.get("columns", []) if isinstance(data, dict) else (data if isinstance(data, list) else [])
-                Logger.log(f"   - {t}: {len(cols)} columns")
-            if table_count > 5:
-                Logger.log(f"   ... and {table_count - 5} more tables.")
-        else:
-            Logger.log("🟡 SCHEMA: Not yet loaded (Will be fetched in first step)", "WARN")
-
-        Logger.log("="*40 + "\n")
+            tbl_count = len(schema.get("tables", [])) if isinstance(schema, dict) else len(schema)
+            Logger.log(f"🟢 **SCHEMA**: `{tbl_count} tables detected`")
+        
+        Logger.log("\n" + "=" * 40 + "\n")
 
     def run(self, state: AgentState) -> AgentState:
-        Logger.log_stage_header("🚀 WORKFLOW EXECUTION")
+        # We start directly without heavy headers
         
         # Perform Startup Report
         self._run_sanity_check(state)
@@ -205,8 +179,20 @@ class WorkflowEngine:
                             break
 
             # Reuse official comparison logic
-            from gold.evaluate import compare_multi_pandas_table
-            score = compare_multi_pandas_table(gen_pd, gold_pds, condition_cols, ignore_order)
+            import sys
+            import os
+            root_dir = os.getcwd()
+            if root_dir not in sys.path:
+                sys.path.append(root_dir)
+            
+            try:
+                from gold.evaluate import compare_multi_pandas_table
+                score = compare_multi_pandas_table(gen_pd, gold_pds, condition_cols, ignore_order)
+            except ImportError:
+                # Try relative if in a subdirectory
+                sys.path.append(os.path.join(root_dir, "gold"))
+                from evaluate import compare_multi_pandas_table
+                score = compare_multi_pandas_table(gen_pd, gold_pds, condition_cols, ignore_order)
             
             is_correct = (score == 1)
             Logger.log_comparison(is_correct)
@@ -215,7 +201,5 @@ class WorkflowEngine:
                 Logger.log(f"Generated row count: {len(gen_pd)}")
                 Logger.log(f"Gold variant count: {len(gold_pds)}")
             
-        except ImportError:
-            Logger.log("Evaluation Error: Could not import gold.evaluate. Make sure the root directory is in PYTHONPATH.")
         except Exception as e:
             Logger.log(f"Evaluation Logic Error: {e}", "ERROR")

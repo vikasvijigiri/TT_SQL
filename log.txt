@@ -1,6 +1,1 @@
-Evaluating Exec Results:   0%|          | 0/11 [00:00<?, ?it/s]Evaluating Exec Results: 100%|##########| 11/11 [00:00<00:00, 125.91it/s]
-{'local020': 1, 'local021': 1, 'local022': 1, 'local023': 1, 'local024': 1, 'local025': 1, 'local026': 1, 'local228': 0, 'local229': 0, 'local258': 0, 'local259': 0}
-Final score: 0.6363636363636364, Correct examples: 7, Total examples: 11
-Real score: 0.012797074954296161, Correct examples: 7, Total examples: 547
-Correct IDs saved to: results/IPL-ids.csv
-TOTAL_GB_PROCESSED: 0.00000 GB
+[PASS] local229 (83.0s)

@@ -32,8 +32,10 @@ sqlite:
     - Use standard SQLite syntax.
     - Use date('now') for current date.
     - Use datetime(col, '+1 month') for date arithmetic.
-    - For division: Use CAST(x AS REAL) / y to avoid integer division.
+    - CRITICAL: For ALL divisions, use CAST(numerator AS REAL) / denominator to avoid integer division truncation (e.g., CAST(balls AS REAL) / wickets).
+    - PRECISION: For calculations like Economy Rate or Strike Rate, use ROUND(expr, 4) to ensure consistency with high-precision evaluation.
     - Use LOWER(col) = LOWER('val') for case-insensitive matching.
+    - STRING CONSISTENCY: Always use ValueDiscovery to check for pluralization (e.g., 'wides' vs 'wide') or spelling in the DB.
   critic_instructions: |
     - Validate against SQLite syntax.
     - Ensure proper division casting.

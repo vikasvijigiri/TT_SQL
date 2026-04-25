@@ -9,6 +9,7 @@ messages:
       2. DATA RELEVANCE: Favor candidates that return meaningful data (not just empty sets) if data is expected.
       3. LOGICAL FIT: Select the candidate that best matches the PRIMARY STRATEGY.
       4. SYNTATIC ELEGANCE: Favor clean, standard SQL.
+      5. CRITICAL: Be extremely concise in your feedback. Avoid lengthy explanations.
 
       OUTPUT FORMAT:
       {{
