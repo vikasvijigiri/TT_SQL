@@ -1,32 +1,61 @@
-# Text-to-SQL Analysis Pipeline Workflow
-# --------------------------------------
-# This file defines the sequence of agents executed for each query.
-# All steps are now prompt-driven, using 'GenericAgent' and ToolRegistry calls.
+# Text2SQL Unified Orchestration Workflow
+# This file defines the execution sequence, agent behaviors, and iteration limits for the pipeline.
 
-pipeline:
-  - id: ContextEnrichment
-    prompt: schema_bootstrapper
-    max_tokens: 500
+stages:
+  - id: intent_analysis
+    description: "Semantic intent extraction and grain identification"
+    steps:
+      - name: "IntentAnalyzer"
+        prompt: "intent_analyzer"
+        type: "agent"
+        state_field: "structured_intent"
+        max_tokens: 1500
 
-  - id: ValueDiscovery
-    prompt: value_discovery
-    max_tokens: 800
+  - id: planning
+    description: "Strategic expansion and query planning"
+    max_iterations: 3
+    steps:
+      - name: "QueryPlanner"
+        prompt: "query_planner"
+        type: "agent"
+        state_field: "strategies"
+        max_tokens: 4000
+        # Refinement loop continues until these criteria are met or max_iterations reached
+        stop_criteria:
+          confidence: "high"
+          no_risks: true
+      - name: "QueryCritic"
+        prompt: "query_critic"
+        type: "agent"
+        state_field: "plan_critique"
+        max_tokens: 3500
 
-  - id: QueryPlanning
-    prompt: query_planner
-    state_field: strategies
-    output_key: strategies
-    max_tokens: 2000
+  - id: generation
+    description: "Iterative SQL generation, execution, and self-correction"
+    max_iterations: 5
+    steps:
+      - name: "SQLBuilder"
+        prompt: "sql_builder"
+        type: "agent"
+        state_field: "sql_candidates"
+        max_tokens: 4000
+      - name: "ExecutionEngine"
+        type: "tool"
+        tool_name: "execute_sql"
+      - name: "SQLCritic"
+        prompt: "sql_critic"
+        type: "agent"
+        state_field: "crit_response"
+        max_tokens: 2500
 
-  - id: TableSelection
-    prompt: table_selector_trigger
-    max_tokens: 500
+features:
+  data_iq: true
+  sql_critic: true
+  query_critic: true
+  schema_expansion: true
+  semantic_risks_refinement: true
 
-  - id: SQLGeneration
-    prompt: sql_refinement_trigger
-    max_tokens: 800
+settings:
+  stop_on_blocked_schema: true
+  allow_partial_success: false
 
-  - id: FinalAudit
-    prompt: output_auditor
-    state_field: output_audit_report
-    max_tokens: 800

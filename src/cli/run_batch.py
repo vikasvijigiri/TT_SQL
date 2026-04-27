@@ -60,7 +60,7 @@ def main():
     initial_count = len(tasks)
     
     if args.db:
-        tasks = [t for t in tasks if t.get("db") == args.db]
+        tasks = [t for t in tasks if str(t.get("db", "")).upper() == str(args.db).upper()]
         print(f"Filtered by DB ({args.db}): {len(tasks)} tasks.")
         
     if args.ids:

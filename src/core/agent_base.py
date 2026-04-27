@@ -51,7 +51,10 @@ class BaseAgent(ABC):
         """
         formatted_message = f"[{self.name}]: {message}"
         state.add_log(formatted_message)
-        Logger.log(formatted_message, level=level)
+        
+        # Only write to .md file if it's an error; keep others in terminal
+        should_file = level.upper() == "ERROR"
+        Logger.log(formatted_message, level=level, to_file=should_file)
 
     def handle_error(self, state: AgentState, error: Exception) -> AgentState:
         """

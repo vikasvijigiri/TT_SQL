@@ -1,0 +1,574 @@
+{
+  "player": {
+    "columns": [
+      {
+        "column_name": "player_id",
+        "type": "INTEGER",
+        "pk": true,
+        "description": ""
+      },
+      {
+        "column_name": "player_name",
+        "type": "TEXT",
+        "pk": false,
+        "description": ""
+      },
+      {
+        "column_name": "dob",
+        "type": "DATE",
+        "pk": false,
+        "description": ""
+      },
+      {
+        "column_name": "batting_hand",
+        "type": "TEXT",
+        "pk": false,
+        "description": ""
+      },
+      {
+        "column_name": "bowling_skill",
+        "type": "TEXT",
+        "pk": false,
+        "description": ""
+      },
+      {
+        "column_name": "country_name",
+        "type": "TEXT",
+        "pk": false,
+        "description": ""
+      }
+    ],
+    "foreign_keys": [],
+    "sample": [
+      {
+        "player_id": 1,
+        "player_name": "SC Ganguly",
+        "dob": "1972-07-08",
+        "batting_hand": "Left-hand bat",
+        "bowling_skill": "Right-arm medium",
+        "country_name": "India"
+      },
+      {
+        "player_id": 2,
+        "player_name": "BB McCullum",
+        "dob": "1981-09-27",
+        "batting_hand": "Right-hand bat",
+        "bowling_skill": "Right-arm medium",
+        "country_name": "New Zealand"
+      },
+      {
+        "player_id": 3,
+        "player_name": "RT Ponting",
+        "dob": "1974-12-19",
+        "batting_hand": "Right-hand bat",
+        "bowling_skill": "Right-arm medium",
+        "country_name": "Australia"
+      }
+    ]
+  },
+  "team": {
+    "columns": [
+      {
+        "column_name": "team_id",
+        "type": "INTEGER",
+        "pk": true,
+        "description": ""
+      },
+      {
+        "column_name": "name",
+        "type": "TEXT",
+        "pk": false,
+        "description": ""
+      }
+    ],
+    "foreign_keys": [],
+    "sample": [
+      {
+        "team_id": 2,
+        "name": "Royal Challengers Bangalore"
+      },
+      {
+        "team_id": 3,
+        "name": "Chennai Super Kings"
+      },
+      {
+        "team_id": 4,
+        "name": "Kings XI Punjab"
+      }
+    ]
+  },
+  "match": {
+    "columns": [
+      {
+        "column_name": "match_id",
+        "type": "INTEGER",
+        "pk": true,
+        "description": ""
+      },
+      {
+        "column_name": "team_1",
+        "type": "INTEGER",
+        "pk": false,
+        "description": ""
+      },
+      {
+        "column_name": "team_2",
+        "type": "INTEGER",
+        "pk": false,
+        "description": ""
+      },
+      {
+        "column_name": "match_date",
+        "type": "DATE",
+        "pk": false,
+        "description": ""
+      },
+      {
+        "column_name": "season_id",
+        "type": "INTEGER",
+        "pk": false,
+        "description": ""
+      },
+      {
+        "column_name": "venue",
+        "type": "TEXT",
+        "pk": false,
+        "description": ""
+      },
+      {
+        "column_name": "toss_winner",
+        "type": "INTEGER",
+        "pk": false,
+        "description": ""
+      },
+      {
+        "column_name": "toss_decision",
+        "type": "TEXT",
+        "pk": false,
+        "description": ""
+      },
+      {
+        "column_name": "win_type",
+        "type": "TEXT",
+        "pk": false,
+        "description": ""
+      },
+      {
+        "column_name": "win_margin",
+        "type": "INTEGER",
+        "pk": false,
+        "description": ""
+      },
+      {
+        "column_name": "outcome_type",
+        "type": "TEXT",
+        "pk": false,
+        "description": ""
+      },
+      {
+        "column_name": "match_winner",
+        "type": "INTEGER",
+        "pk": false,
+        "description": ""
+      },
+      {
+        "column_name": "man_of_the_match",
+        "type": "INTEGER",
+        "pk": false,
+        "description": ""
+      }
+    ],
+    "foreign_keys": [],
+    "sample": [
+      {
+        "match_id": 335987,
+        "team_1": 2,
+        "team_2": 1,
+        "match_date": "2008-04-18",
+        "season_id": 1,
+        "venue": "M Chinnaswamy Stadium",
+        "toss_winner": 2,
+        "toss_decision": "field",
+        "win_type": "runs",
+        "win_margin": 140,
+        "outcome_type": "Result",
+        "match_winner": 1,
+        "man_of_the_match": 2
+      },
+      {
+        "match_id": 335988,
+        "team_1": 4,
+        "team_2": 3,
+        "match_date": "2008-04-19",
+        "season_id": 1,
+        "venue": "Punjab Cricket Association Stadium Mohali",
+        "toss_winner": 3,
+        "toss_decision": "bat",
+        "win_type": "runs",
+        "win_margin": 33,
+        "outcome_type": "Result",
+        "match_winner": 3,
+        "man_of_the_match": 19
+      },
+      {
+        "match_id": 335989,
+        "team_1": 6,
+        "team_2": 5,
+        "match_date": "2008-04-19",
+        "season_id": 1,
+        "venue": "Feroz Shah Kotla",
+        "toss_winner": 5,
+        "toss_decision": "bat",
+        "win_type": "wickets",
+        "win_margin": 9,
+        "outcome_type": "Result",
+        "match_winner": 6,
+        "man_of_the_match": 90
+      }
+    ]
+  },
+  "player_match": {
+    "columns": [
+      {
+        "column_name": "match_id",
+        "type": "INTEGER",
+        "pk": true,
+        "description": ""
+      },
+      {
+        "column_name": "player_id",
+        "type": "INTEGER",
+        "pk": true,
+        "description": ""
+      },
+      {
+        "column_name": "role",
+        "type": "TEXT",
+        "pk": false,
+        "description": ""
+      },
+      {
+        "column_name": "team_id",
+        "type": "INTEGER",
+        "pk": false,
+        "description": ""
+      }
+    ],
+    "foreign_keys": [],
+    "sample": [
+      {
+        "match_id": 392220,
+        "player_id": 133,
+        "role": "Captain",
+        "team_id": 7
+      },
+      {
+        "match_id": 548368,
+        "player_id": 40,
+        "role": "Captain",
+        "team_id": 1
+      },
+      {
+        "match_id": 548368,
+        "player_id": 50,
+        "role": "Captain",
+        "team_id": 7
+      }
+    ]
+  },
+  "ball_by_ball": {
+    "columns": [
+      {
+        "column_name": "match_id",
+        "type": "INTEGER",
+        "pk": true,
+        "description": ""
+      },
+      {
+        "column_name": "over_id",
+        "type": "INTEGER",
+        "pk": true,
+        "description": ""
+      },
+      {
+        "column_name": "ball_id",
+        "type": "INTEGER",
+        "pk": true,
+        "description": ""
+      },
+      {
+        "column_name": "innings_no",
+        "type": "INTEGER",
+        "pk": true,
+        "description": ""
+      },
+      {
+        "column_name": "team_batting",
+        "type": "INTEGER",
+        "pk": false,
+        "description": ""
+      },
+      {
+        "column_name": "team_bowling",
+        "type": "INTEGER",
+        "pk": false,
+        "description": ""
+      },
+      {
+        "column_name": "striker_batting_position",
+        "type": "INTEGER",
+        "pk": false,
+        "description": ""
+      },
+      {
+        "column_name": "striker",
+        "type": "INTEGER",
+        "pk": false,
+        "description": ""
+      },
+      {
+        "column_name": "non_striker",
+        "type": "INTEGER",
+        "pk": false,
+        "description": ""
+      },
+      {
+        "column_name": "bowler",
+        "type": "INTEGER",
+        "pk": false,
+        "description": ""
+      }
+    ],
+    "foreign_keys": [],
+    "sample": [
+      {
+        "match_id": 335987,
+        "over_id": 1,
+        "ball_id": 1,
+        "innings_no": 2,
+        "team_batting": 2,
+        "team_bowling": 1,
+        "striker_batting_position": 1,
+        "striker": 6,
+        "non_striker": 7,
+        "bowler": 106
+      },
+      {
+        "match_id": 335987,
+        "over_id": 1,
+        "ball_id": 2,
+        "innings_no": 1,
+        "team_batting": 1,
+        "team_bowling": 2,
+        "striker_batting_position": 2,
+        "striker": 2,
+        "non_striker": 1,
+        "bowler": 14
+      },
+      {
+        "match_id": 335987,
+        "over_id": 1,
+        "ball_id": 2,
+        "innings_no": 2,
+        "team_batting": 2,
+        "team_bowling": 1,
+        "striker_batting_position": 2,
+        "striker": 7,
+        "non_striker": 6,
+        "bowler": 106
+      }
+    ]
+  },
+  "batsman_scored": {
+    "columns": [
+      {
+        "column_name": "match_id",
+        "type": "INTEGER",
+        "pk": true,
+        "description": ""
+      },
+      {
+        "column_name": "over_id",
+        "type": "INTEGER",
+        "pk": true,
+        "description": ""
+      },
+      {
+        "column_name": "ball_id",
+        "type": "INTEGER",
+        "pk": true,
+        "description": ""
+      },
+      {
+        "column_name": "runs_scored",
+        "type": "INTEGER",
+        "pk": false,
+        "description": ""
+      },
+      {
+        "column_name": "innings_no",
+        "type": "INTEGER",
+        "pk": true,
+        "description": ""
+      }
+    ],
+    "foreign_keys": [],
+    "sample": [
+      {
+        "match_id": 335987,
+        "over_id": 1,
+        "ball_id": 1,
+        "runs_scored": 1,
+        "innings_no": 2
+      },
+      {
+        "match_id": 335987,
+        "over_id": 1,
+        "ball_id": 2,
+        "runs_scored": 0,
+        "innings_no": 1
+      },
+      {
+        "match_id": 335987,
+        "over_id": 1,
+        "ball_id": 3,
+        "runs_scored": 0,
+        "innings_no": 2
+      }
+    ]
+  },
+  "wicket_taken": {
+    "columns": [
+      {
+        "column_name": "match_id",
+        "type": "INTEGER",
+        "pk": true,
+        "description": ""
+      },
+      {
+        "column_name": "over_id",
+        "type": "INTEGER",
+        "pk": true,
+        "description": ""
+      },
+      {
+        "column_name": "ball_id",
+        "type": "INTEGER",
+        "pk": true,
+        "description": ""
+      },
+      {
+        "column_name": "player_out",
+        "type": "INTEGER",
+        "pk": false,
+        "description": ""
+      },
+      {
+        "column_name": "kind_out",
+        "type": "TEXT",
+        "pk": false,
+        "description": ""
+      },
+      {
+        "column_name": "innings_no",
+        "type": "INTEGER",
+        "pk": true,
+        "description": ""
+      }
+    ],
+    "foreign_keys": [],
+    "sample": [
+      {
+        "match_id": 419167,
+        "over_id": 10,
+        "ball_id": 3,
+        "player_out": 154,
+        "kind_out": "caught",
+        "innings_no": 1
+      },
+      {
+        "match_id": 419167,
+        "over_id": 10,
+        "ball_id": 3,
+        "player_out": 46,
+        "kind_out": "caught",
+        "innings_no": 2
+      },
+      {
+        "match_id": 419167,
+        "over_id": 12,
+        "ball_id": 4,
+        "player_out": 8,
+        "kind_out": "caught",
+        "innings_no": 2
+      }
+    ]
+  },
+  "extra_runs": {
+    "columns": [
+      {
+        "column_name": "match_id",
+        "type": "INTEGER",
+        "pk": true,
+        "description": ""
+      },
+      {
+        "column_name": "over_id",
+        "type": "INTEGER",
+        "pk": true,
+        "description": ""
+      },
+      {
+        "column_name": "ball_id",
+        "type": "INTEGER",
+        "pk": true,
+        "description": ""
+      },
+      {
+        "column_name": "extra_type",
+        "type": "TEXT",
+        "pk": false,
+        "description": ""
+      },
+      {
+        "column_name": "extra_runs",
+        "type": "INTEGER",
+        "pk": false,
+        "description": ""
+      },
+      {
+        "column_name": "innings_no",
+        "type": "INTEGER",
+        "pk": true,
+        "description": ""
+      }
+    ],
+    "foreign_keys": [],
+    "sample": [
+      {
+        "match_id": 501229,
+        "over_id": 16,
+        "ball_id": 3,
+        "extra_type": "legbyes",
+        "extra_runs": 1,
+        "innings_no": 1
+      },
+      {
+        "match_id": 501229,
+        "over_id": 18,
+        "ball_id": 1,
+        "extra_type": "legbyes",
+        "extra_runs": 1,
+        "innings_no": 2
+      },
+      {
+        "match_id": 501229,
+        "over_id": 18,
+        "ball_id": 6,
+        "extra_type": "legbyes",
+        "extra_runs": 4,
+        "innings_no": 2
+      }
+    ]
+  }
+}

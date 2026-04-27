@@ -1,0 +1,5 @@
+{
+  "success": false,
+  "error": "090105 (22000): Cannot perform SELECT. This session does not have a current database. Call 'USE DATABASE', or use a qualified name.",
+  "duration_ms": 364.3369674682617
+}

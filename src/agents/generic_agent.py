@@ -2,6 +2,7 @@ from core.agent_base import AgentState, BaseAgent
 from core.llm_service import LLMService
 from core.prompt_loader import PromptLoader
 from core.logger import Logger
+import json
 
 class GenericAgent(BaseAgent):
     """
@@ -18,69 +19,262 @@ class GenericAgent(BaseAgent):
         self.prompt_loader = PromptLoader()
 
     def run(self, state: AgentState) -> AgentState:
-        Logger.log_call(f"GenericAgent({self.name}).run", {"prompt": self.prompt_name})
-        
-        # Limit tool loops to prevent infinite cycles
-        MAX_TOOL_LOOPS = 2
-        current_loop = 0
-        
         from core.tool_registry import ToolRegistry
+        from core.utils import validate_json_response, normalize_confidence, modularize_ai_response
+        
+        MAX_RETRIES = 3
         tools_map = ToolRegistry.get_tools_map()
-
-        while current_loop < MAX_TOOL_LOOPS:
-            # 1. Load prompt with automatic meta-variable injection
-            messages = self.prompt_loader.load_prompt(self.prompt_name, state=state)
+        prev_state_str = ""
+        MAX_TOOL_TURNS = 5
+        tool_turn = 0
+        
+        while tool_turn < MAX_TOOL_TURNS:
+            tool_turn += 1
             
-            # 2. Get JSON completion
-            response = self.llm.get_json_completion(messages, state=state, agent_name=self.name, max_tokens=self.max_tokens)
-            
-            if not response or not isinstance(response, dict):
-                self.log(state, "Critical: Received malformed or empty response.", level="ERROR")
-                state.is_result_valid = False
-                break
+            # State-driven execution check
+            if self.name in ("QueryPlanner", "QueryPlanning"):
+                if not state.selected_tables and not state.schema_info:
+                    Logger.log("🛑 Planner blocked due to missing schema.", level="ERROR")
+                    state.schema_status = "FAILED"
+                    break
+            elif self.name in ("SQLBuilder", "SQLGeneration"):
+                if not state.strategies:
+                    Logger.log("🛑 Execution blocked due to invalid state (missing strategy).", level="ERROR")
+                    break
 
-            # 3. Check for Tool Execution Request
+            response = None
+            messages = []
+            
+            # --- STRICT JSON & RETRY LOOP ---
+            for attempt in range(MAX_RETRIES):
+                try:
+                    messages = self.prompt_loader.load_prompt(self.prompt_name, state=state)
+                except ValueError as e:
+                    Logger.log(f"Schema retrieval failed → pipeline stopped: {str(e)}", level="ERROR")
+                    state.schema_status = "FAILED"
+                    return state
+
+                # Get Raw Completion (Strict Mode - No markdown/noise allowed)
+                raw_content = self.llm.get_completion(messages, state=state, agent_name=self.name, max_tokens=self.max_tokens)
+                
+                # Task 2: REJECT Markdown / Headings / Text outside JSON
+                if "```" in raw_content or "###" in raw_content or (raw_content.strip() and not raw_content.strip().startswith("{")):
+                    Logger.log(f"[Validator] {self.name} → FAIL (formatting noise detected)", level="WARN")
+                    if attempt < MAX_RETRIES - 1:
+                        Logger.log(f"[{self.name}] INVALID_JSON → retrying (attempt {attempt + 2}/{MAX_RETRIES})", level="WARN")
+                    continue
+
+                # Parse JSON
+                try:
+                    response = json.loads(raw_content.strip())
+                except Exception:
+                    Logger.log(f"[Validator] {self.name} → FAIL (parse error)", level="WARN")
+                    if attempt < MAX_RETRIES - 1:
+                        Logger.log(f"[{self.name}] INVALID_JSON → retrying (attempt {attempt + 2}/{MAX_RETRIES})", level="WARN")
+                    continue
+
+                # Strict Contract Validation (Tasks 1, 2, 5, 9)
+                validation = {"status": "SUCCESS"}
+                if self.name in ("QueryPlanner", "QueryPlanning"):
+                    validation = validate_json_response(
+                        response, 
+                        required_keys=["strategies", "concept_mapping", "confidence", "missing_elements", "expansion_required", "requested_tables"],
+                        allowed_values={"confidence": ["high", "medium", "low"]}
+                    )
+                    # Normalize confidence (Task 9)
+                    if response:
+                        response["confidence"] = normalize_confidence(response.get("confidence"))
+                elif self.name == "IntentAnalyzer":
+                    validation = validate_json_response(
+                        response,
+                        required_keys=["entities", "metrics", "pre_filters", "post_filters", "filter_grain", "aggregation_steps", "aggregation_target", "answer_grain", "grouping_required", "ambiguities"]
+                    )
+                elif self.name == "QueryCritic":
+                    validation = validate_json_response(
+                        response,
+                        required_keys=["is_valid", "feedback", "missing_logical_steps", "grounding_errors", "detected_issues", "aggregation_validation", "suggested_fix"]
+                    )
+                elif self.name == "SQLCritic":
+                    validation = validate_json_response(
+                        response,
+                        required_keys=["is_valid", "feedback", "missing_logical_steps", "grounding_errors", "suggested_fix"]
+                    )
+                
+                elif self.name == "TablePruner":
+                    validation = validate_json_response(
+                        response,
+                        required_keys=["relevant_tables", "reasoning"]
+                    )
+                
+                if validation["status"] == "SUCCESS":
+                    Logger.log(f"[Validator] {self.name} → PASS")
+                    break
+                else:
+                    Logger.log(f"[Validator] {self.name} → FAIL ({validation['reason']})", level="WARN")
+                    if attempt < MAX_RETRIES - 1:
+                        Logger.log(f"[{self.name}] INVALID_JSON → retrying (attempt {attempt + 2}/{MAX_RETRIES})", level="WARN")
+                    response = None
+
+            if not response:
+                Logger.log(f"[PIPELINE] FAILED (invalid agent output: {self.name})", level="ERROR")
+                state.pipeline_failure_reason = f"Agent {self.name} failed contract validation after {MAX_RETRIES} attempts."
+                return state
+
+            # --- PROCESS RESPONSE ---
+            prompt_str = "\n".join([f"### {m['role'].upper()}\n{m['content']}" for m in messages])
+            inputs = [{"desc": f"Agent Task: {self.name}", "status": "active"}]
+            
+            # Check for tool usage
             tool_name = response.get("tool")
             if tool_name and tool_name in tools_map:
-                current_loop += 1
                 params = response.get("params", {})
-                self.log(state, f"Executing Tool: {tool_name} with params {params}")
+                t_reason = response.get("reasoning", "N/A")
+                Logger.log_agent_block(self.name, inputs, f"**Tool Requested**: `{tool_name}`", "success", prompt=prompt_str)
                 
-                # Run the tool
-                tool_func = tools_map[tool_name]
                 try:
-                    tool_result = tool_func(state) if not params else tool_func(state, params=params)
-                    self.log(state, f"Tool Result: {tool_result}")
-                    Logger.log_status_banner(f"Tool: {tool_name}", True)
-                    # Exit loop after tool execution to avoid double-calling LLM for fixed orchestrators
-                    break 
+                    tool_func = tools_map[tool_name]
+                    tool_func(state, params=params) if params else tool_func(state)
+                    continue 
                 except Exception as e:
-                    self.log(state, f"Tool Execution Failed: {e}", level="ERROR")
-                    Logger.log_status_banner(f"Tool: {tool_name}", False, str(e))
+                    Logger.log(f"Tool Execution Failed: {str(e)}", level="ERROR")
                     break
-            
-            # 4. Standard Response Mapping
+
+            # Standard State Mapping
             if self.state_field:
                 val = response.get(self.output_key) if self.output_key else response
-                
                 if val is not None:
                     setattr(state, self.state_field, val)
                     
-                    # Log success banner
-                    Logger.log_status_banner(f"Agent: {self.name}", True, f"Produced: {self.state_field}")
+                    # Normalization side-effects
+                    if self.state_field == "strategies" and isinstance(val, dict):
+                         # Ensure confidence is one of the strictly allowed values
+                         if "confidence" in val:
+                             val["confidence"] = normalize_confidence(val["confidence"])
+                    
+                    if self.state_field == "sql_candidates" and isinstance(val, dict):
+                        setattr(state, self.state_field, [val])
 
-                    # --- [SIDE EFFECTS]: Automatic Persistance ---
-                    from core.utils import write_sql_to_file, write_plan_to_file
-                    if self.state_field == "chosen_query":
-                        sql_clean = str(val).replace("```sql", "").replace("```", "").strip()
-                        write_sql_to_file(state.instance_id, state.db_name, sql_clean, state.model_name)
-                    elif self.state_field == "step_by_step_plan" and isinstance(val, list):
-                        write_plan_to_file(state.instance_id, state.db_name, val, state.model_name)
-
-                else:
-                    self.log(state, f"Warning: Key '{self.output_key}' not found in LLM response.", level="WARN")
-                    Logger.log_status_banner(f"Agent: {self.name}", False, f"Missing key: {self.output_key}")
-            
-            break # Exit loop if no tool call
+            res_summary = modularize_ai_response(response)
+            Logger.log_agent_block(self.name, inputs, res_summary, "success", prompt=prompt_str)
+            break 
 
         return state
+
+        return state
+
+    @staticmethod
+    def _validate_planner_output(response: dict, state) -> dict:
+        """
+        Tasks 1, 3, 4, 5, 6: Hard JSON enforcement for QueryPlanner output.
+        Validates structure, confidence, concept_mapping grounding, VARIANT flag,
+        and early-stop conditions. Generic — no hardcoded column/table/DB names.
+        Returns {"valid": True/False, "reason": "..."}.
+        """
+        # ── Task 1: All 6 required top-level fields must be present ──────────
+        REQUIRED_FIELDS = [
+            "strategies", "concept_mapping", "confidence",
+            "missing_elements", "expansion_required", "requested_tables",
+        ]
+        missing_fields = [f for f in REQUIRED_FIELDS if f not in response]
+        if missing_fields:
+            return {"valid": False, "reason": f"Missing required fields: {missing_fields}"}
+
+        # strategies sub-fields
+        strat = response.get("strategies", {})
+        if not isinstance(strat, dict):
+            return {"valid": False, "reason": "strategies must be a dict"}
+        for sub in ("primary", "alternative", "semantic_risks"):
+            if sub not in strat:
+                return {"valid": False, "reason": f"strategies.{sub} is missing"}
+
+        # ── Task 6: Confidence must be exactly one of the three valid values ──
+        VALID_CONFIDENCE = {"high", "medium", "low"}
+        conf = response.get("confidence", None)
+        if not conf or str(conf).lower().strip() not in VALID_CONFIDENCE:
+            return {
+                "valid": False,
+                "reason": (
+                    f"confidence='{conf}' is invalid. "
+                    "Must be exactly 'high', 'medium', or 'low'."
+                ),
+            }
+
+        # ── Task 3: Anti-hallucination — cross-reference concept_mapping ──────
+        # Every concept_mapping entry's mapped_to column must exist in
+        # state.selected_columns OR be flagged as source_type=assumption/variant_required.
+        selected_columns = getattr(state, "selected_columns", {})
+        if selected_columns:
+            known_cols = set()
+            for cols in selected_columns.values():
+                for col in cols:
+                    known_cols.add(col.strip().strip('"').upper())
+
+            hallucinated = []
+            for entry in response.get("concept_mapping", []):
+                source_type = entry.get("source_type", "relational")
+                if source_type in ("assumption",):
+                    continue  # Assumption entries don't need grounding
+                mapped_to = entry.get("mapped_to", "")
+                col_name = mapped_to.split(".")[-1].strip('"').upper()
+                # variant_required entries reference VARIANT columns — validate keys
+                if source_type == "variant_required":
+                    path = entry.get("mapped_to", "") # e.g. T.COL."key"
+                    # Simple heuristic: if it has more than 2 parts separated by dots, it might be a key
+                    parts = path.split(".")
+                    if len(parts) >= 3:
+                        # Check if the key part is in missing_elements or in schema_info
+                        is_missing = any(path in m or m in path for m in response.get("missing_elements", []))
+                        if not is_missing:
+                             # Check schema for this column's variant_keys
+                             v_keys = []
+                             for info in getattr(state, "schema_info", {}).values():
+                                 for c in info.get("columns", []):
+                                     if c.get("variant_keys"):
+                                         v_keys.extend(c["variant_keys"].keys())
+                             
+                             # Extract key part (last part)
+                             key_candidate = parts[-1].strip('"')
+                             if key_candidate not in v_keys:
+                                 hallucinated.append(f"{path} (Unknown VARIANT key)")
+                    continue
+                
+                if col_name and col_name not in known_cols:
+                    hallucinated.append(mapped_to)
+
+            if hallucinated:
+                return {
+                    "valid": False,
+                    "reason": (
+                        f"Hallucinated columns not in schema: {hallucinated}. "
+                        "Only use columns present in the provided schema."
+                    ),
+                }
+
+        # ── Task 4: VARIANT source_type → FLATTEN must appear in primary ─────
+        has_variant = any(
+            e.get("source_type") == "variant_required"
+            for e in response.get("concept_mapping", [])
+        )
+        if has_variant:
+            primary_steps = " ".join(strat.get("primary", [])).lower()
+            if "flatten" not in primary_steps and "lateral" not in primary_steps:
+                return {
+                    "valid": False,
+                    "reason": (
+                        "concept_mapping has source_type=variant_required but "
+                        "strategies.primary does not mention LATERAL FLATTEN. "
+                        "Add a FLATTEN step."
+                    ),
+                }
+
+        # ── Task 5: Low confidence → expansion_required must be true ─────────
+        if conf == "low" and not response.get("expansion_required", False):
+            return {
+                "valid": False,
+                "reason": (
+                    "confidence='low' but expansion_required=false. "
+                    "Low confidence MUST set expansion_required=true."
+                ),
+            }
+
+        return {"valid": True, "reason": "OK"}

@@ -57,65 +57,68 @@ class BigQueryService:
         return self._client
 
     def get_dataset_schema(
-        self, dataset_name: str, project_id: str = None
+        self, dataset_name: str, project_id: str = None, table_list: list[str] | None = None
     ) -> dict[str, Any]:
         """
-        Fetch schema for all tables in a dataset using a single optimized query to INFORMATION_SCHEMA.COLUMNS.
+        Fetch schema for tables in a dataset (No INFORMATION_SCHEMA).
+        Uses client.get_table() for ground truth metadata.
         """
         client = self.get_client()
         settings = get_settings()
+        
+        # Enforce Schema == Database (Dataset == Project) if possible, but allow overrides
         target_project = project_id or settings.GCP_PROJECT_ID or client.project
-
-        # Resolve dataset and project reference
-        if "." in dataset_name:
-            # Handle project.dataset format
-            parts = dataset_name.split(".")
-            target_project = parts[0]
-            target_dataset = parts[1]
-        else:
-            target_dataset = dataset_name
+        target_dataset = dataset_name.split(".")[-1] # Ensure we just get the dataset part
 
         Logger.log(
-            f"[BQ] Fetching Batch Schema for `{target_project}.{target_dataset}` via INFORMATION_SCHEMA..."
+            f"[BQ] Fetching Schema for `{target_project}.{target_dataset}` via get_table (No INFORMATION_SCHEMA)..."
         )
 
-        # Single query to get all columns for all tables in the dataset
-        query = f"""
-        SELECT 
-            table_name, 
-            column_name, 
-            data_type
-        FROM 
-            `{target_project}.{target_dataset}.INFORMATION_SCHEMA.COLUMNS`
-        ORDER BY 
-            table_name, ordinal_position
-        """
+        schema_info = {}
+        # If no table_list, list all tables first
+        tables_to_inspect = []
+        if table_list:
+            tables_to_inspect = [t.split('.')[-1].replace('"', '') for t in table_list]
+        else:
+            try:
+                tables = client.list_tables(f"{target_project}.{target_dataset}")
+                tables_to_inspect = [table.table_id for table in tables]
+            except Exception as e:
+                Logger.log(f"[BQ] list_tables failed: {e}", level="ERROR")
+                return {}
 
+        for tname in tables_to_inspect:
+            try:
+                table_ref = client.get_table(f"{target_project}.{target_dataset}.{tname}")
+                full_table_name = f"{target_project}.{target_dataset}.{tname}"
+                
+                schema_info[full_table_name] = {"columns": []}
+                for field in table_ref.schema:
+                    schema_info[full_table_name]["columns"].append(
+                        {
+                            "column_name": field.name,
+                            "type": field.field_type,
+                            "description": field.description or "",
+                            "pk": False,
+                        }
+                    )
+            except Exception as e:
+                Logger.log(f"[BQ] Failed to get table {tname}: {e}", level="DEBUG")
+
+        Logger.log(f"[BQ] Schema Discovery Complete: Found {len(schema_info)} tables.")
+        return schema_info
+
+    def get_table_names(self, dataset_name: str, project_id: str = None) -> list[str]:
+        """Fetch qualified table names via client.list_tables() (No INFORMATION_SCHEMA)."""
+        client = self.get_client()
+        settings = get_settings()
+        target_project = project_id or settings.GCP_PROJECT_ID or client.project
+        target_dataset = dataset_name.split(".")[-1]
+            
         try:
-            query_job = client.query(query)
-            results = query_job.result()
-
-            schema_info = {}
-            for row in results:
-                # Use fully qualified table names to ensure LLM generates executable SQL
-                full_table_name = f"{target_project}.{target_dataset}.{row.table_name}"
-                if full_table_name not in schema_info:
-                    schema_info[full_table_name] = {"columns": []}
-
-                schema_info[full_table_name]["columns"].append(
-                    {
-                        "column_name": row.column_name,
-                        "type": row.data_type,
-                        "description": "",
-                        "pk": False,  # BQ doesn't have traditional PKs in INFORMATION_SCHEMA
-                    }
-                )
-
-            Logger.log(
-                f"[BQ] Schema Discovery Complete: Found {len(schema_info)} tables in `{target_dataset}`."
-            )
-            return schema_info
+            tables = client.list_tables(f"{target_project}.{target_dataset}")
+            qualified_tables = [f"{target_project}.{target_dataset}.{table.table_id}" for table in tables]
+            return qualified_tables
         except Exception as e:
-            Logger.log(f"[BQ] Failed to fetch Batch Schema: {e}", level="ERROR")
-            # Fallback to empty to allow pipeline to continue or fail gracefully
-            return {}
+            Logger.log(f"[BQ] Failed to fetch table names via SDK: {e}", level="ERROR")
+            return []

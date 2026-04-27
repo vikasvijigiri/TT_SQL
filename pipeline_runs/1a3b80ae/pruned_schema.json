@@ -1,0 +1,6 @@
+{
+  "relevant_tables": [
+    "PATENTS.PATENTS.PUBLICATIONS"
+  ],
+  "reasoning": "The query requires information about patent grant dates, filing dates, and forward citation counts. The PUBLICATIONS table contains the fields GRANT_DATE, FILING_DATE, and CITATION (which holds citation data), allowing us to filter patents granted in 2010, compute the 10\u2011year window from the filing date, and count forward citations. No other tables in the schema provide these specific patent lifecycle and citation details."
+}
