@@ -264,7 +264,7 @@ class ToolRegistry:
             
             from core.utils import write_csv_to_file, write_sql_to_file
             write_csv_to_file(state.instance_id, state.db_name, result.rows if not result.error_message else [], result.columns if not result.error_message else [], state.model_name)
-            write_sql_to_file(state.instance_id, state.db_name, sql, state.model_name)
+            write_sql_to_file(state.instance_id, state.db_name, sql, state.model_name, dialect=state.dialect)
             
             Logger.log_agent_block("SQL Execution Tool", inputs=[{"desc": "Target SQL Query", "status": "active"}], result=f"{audit_logs}\n\nSummary: {'SUCCESS' if not result.error_message else 'FAILED'} ({result.row_count} rows)", status="success" if not result.error_message else "failed")
             return {"status": "success", "row_count": result.row_count, "error": result.error_message}

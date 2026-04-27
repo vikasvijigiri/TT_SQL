@@ -122,7 +122,21 @@ messages:
          adjust strategy or mark as semantic risk.
 
 
+      ------------------------------------------------------------
+      
+      12. TEMPORAL GROUNDING (CRITICAL)
+
+          For ALL time-based calculations (age, duration, recency):
+
+          → MUST use the provided reference date: {REFERENCE_DATE}
+          → DO NOT use 'now', CURRENT_DATE, or local system time.
+          → If computing age in SQL logic: Age = (julianday('{REFERENCE_DATE}') - julianday(birth_date)) / 365.25
+          → If computing recency: Recency = (julianday('{REFERENCE_DATE}') - julianday(activity_date))
+
+
+
       ============================================================
+
       OUTPUT FORMAT (STRICT PURE JSON)
       ============================================================
 

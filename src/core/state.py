@@ -115,6 +115,7 @@ class AgentState(BaseModel):
     concept_source_mismatch: bool = False                      # Task 2: concept maps to wrong table
     schema_insufficient: bool = False                          # Task 8: required concept not in schema
     pipeline_failure_reason: str | None = None                 # Task 12: structured hard-stop reason
+    reference_date: str = "2017-01-01"                         # Global dataset reference date (Task 15)
 
     # --- Adaptive Recovery Fields (Tasks 1, 2, 4, 5, 7) ---
     failed_concepts: list[str] = Field(default_factory=list)          # Task 1: concepts that could not be mapped

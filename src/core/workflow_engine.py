@@ -112,11 +112,21 @@ class WorkflowEngine:
         state.current_step = "SCHEMA_READY"
         Logger.log_state("STARTED", "SCHEMA_READY")
 
+        # ─── 1.1 Reference Date Inference (Task 15) ─────────────────────────
+        self._infer_reference_date(state)
+        Logger.log(f"Using reference_date = {state.reference_date}")
+
+
         # ─── 1.2 Table Pruner (Relevancy Filtering) ────────────────────────
         Logger.log_step("TablePruner", "START")
         pruner = GenericAgent("TablePruner", "table_pruner", state_field="structured_pruning", llm_service=self.llm)
-        # Inject all tables names for pruning selection
-        state.all_tables = ", ".join(state.all_table_names)
+        # Inject table summaries (Table + Columns + Rows) for accurate pruning
+        table_summaries = []
+        for t_name, t_info in state.schema_info.items():
+            cols = [c["column_name"] for c in t_info.get("columns", [])]
+            row_count = t_info.get("row_count", "unknown")
+            table_summaries.append(f"- {t_name}: [{', '.join(cols)}] | Rows: {row_count}")
+        state.all_tables = "\n".join(table_summaries)
         state = pruner.run(state)
         
         # Contract validation for TablePruner
@@ -242,13 +252,13 @@ class WorkflowEngine:
         # ─── 3.5 SQL Normalization (NEW: Dialect-Aware AST transformation) ──
         Logger.log_step("SQLNormalizer", "START")
         raw_sql = state.sql_candidates[0].get("sql", "")
-        normalizer = SQLNormalizer(state.dialect)
+        normalizer = SQLNormalizer(state.dialect, reference_date=state.reference_date)
         normalized_sql = normalizer.normalize(raw_sql)
         
         state.chosen_query = normalized_sql
         
         # PERSIST: SQL (Task 12)
-        write_sql_to_file(state.instance_id, state.db_name, state.chosen_query, state.model_name)
+        write_sql_to_file(state.instance_id, state.db_name, state.chosen_query, state.model_name, dialect=state.dialect)
         
         state.current_step = "SQL_READY"
         Logger.log_state("PLAN_READY", "SQL_READY")
@@ -314,3 +324,54 @@ class WorkflowEngine:
             Logger.log("[SQLCritic] Output Validated Successfully")
 
         return state
+
+    def _infer_reference_date(self, state: AgentState):
+        """
+        Infers the reference date based on the latest timestamp in the dataset.
+        """
+        from core.tool_registry import ToolRegistry
+        from core.logger import Logger
+        
+        # 1. Identify potential timestamp columns
+        time_keywords = ["stamp", "date", "time", "created_at", "registered_at", "updated_at", "year"]
+        candidates = []
+        for table, info in state.all_schema_info.items() if hasattr(state, 'all_schema_info') else state.full_schema_info.items():
+            for col in info.get("columns", []):
+                name = col.get("column_name", "").lower()
+                c_type = col.get("type", "").upper()
+                if any(k in name for k in time_keywords) or any(k in c_type for k in ["DATE", "TIME", "STAMP"]):
+                    candidates.append((table, col.get("column_name")))
+        
+        if not candidates:
+            state.reference_date = "2017-01-01" # Default fallback
+            return
+
+        # 2. Try to fetch MAX value from candidates
+        service = ToolRegistry._get_service(state)
+        latest_date = None
+        
+        # Try top 5 candidates
+        for table, col in candidates[:5]:
+            try:
+                # Sanitize table/col names
+                q_table = f'"{table}"' if "." not in table else table
+                q_col = f'"{col}"'
+                query = f"SELECT MAX({q_col}) FROM {q_table}"
+                res = service.execute_query(query)
+                if not res.error_message and res.rows and res.rows[0][0]:
+                    val = str(res.rows[0][0])
+                    # Basic date validation
+                    if len(val) >= 4:
+                        if not latest_date or val > latest_date:
+                            latest_date = val
+            except:
+                continue
+        
+        if latest_date:
+            # Clean up if it's a full timestamp
+            if " " in latest_date: latest_date = latest_date.split(" ")[0]
+            if "T" in latest_date: latest_date = latest_date.split("T")[0]
+            state.reference_date = latest_date
+        else:
+            state.reference_date = "2017-01-01"
+

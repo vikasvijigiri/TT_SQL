@@ -205,7 +205,10 @@ class PromptLoader:
                 "SELECTED_COLUMNS": getattr(state, "selected_columns", {}),
                 "SCHEMA_INFO": format_schema_to_str(state.schema_info),
                 "FULL_SCHEMA": format_schema_to_str(getattr(state, "full_schema_info", {}), detailed=False),
-                "VARIANT_SCHEMA_HINTS": getattr(state, "variant_schema_hints", "No variant structure discovered yet.")
+                "VARIANT_SCHEMA_HINTS": getattr(state, "variant_schema_hints", "No variant structure discovered yet."),
+                "all_tables": getattr(state, "all_tables", ""),
+                "structured_pruning": getattr(state, "structured_pruning", {}),
+                "REFERENCE_DATE": getattr(state, "reference_date", "2017-01-01")
             })
 
             # --- Label-based blocks for prompts ---

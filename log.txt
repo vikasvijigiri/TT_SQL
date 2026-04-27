@@ -1,6 +1,6 @@
-Evaluating Exec Results:   0%|                        | 0/5 [00:00<?, ?it/s]Evaluating Exec Results: 100%|###############| 5/5 [00:00<00:00, 137.92it/s]
-{'local329': 1, 'local330': 0, 'local331': 0, 'local358': 0, 'local360': 0}
-Final score: 0.2, Correct examples: 1, Total examples: 5
-Real score: 0.0018281535648994515, Correct examples: 1, Total examples: 547
+Evaluating Exec Results:   0%|                        | 0/5 [00:00<?, ?it/s]Evaluating Exec Results: 100%|###############| 5/5 [00:00<00:00, 304.29it/s]
+{'local329': 1, 'local330': 1, 'local331': 0, 'local358': 0, 'local360': 0}
+Final score: 0.4, Correct examples: 2, Total examples: 5
+Real score: 0.003656307129798903, Correct examples: 2, Total examples: 547
 Correct IDs saved to: results/log-ids.csv
 TOTAL_GB_PROCESSED: 0.00000 GB
