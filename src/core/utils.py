@@ -134,13 +134,28 @@ def load_jsonl(file_path: Union[str, Path]) -> list[dict[str, Any]]:
 
 # --- IO HELPERS ---
 
-def write_sql_to_file(instance_id: str, db_name: str, sql: str, model_name: str = "default_model"):
-    """Saves the generated SQL to the instance folder."""
+def write_sql_to_file(instance_id: str, db_name: str, sql: str, model_name: str = "default_model", dialect: str = None):
+    """Saves the generated SQL to the instance folder with pretty formatting."""
     from .paths import InstancePaths
+    import sqlglot
+    
+    # Map dialect for sqlglot
+    sg_dialect = dialect
+    if sg_dialect == "postgresql": sg_dialect = "postgres"
+    
+    try:
+        # Pretty print using sqlglot
+        parsed = sqlglot.parse_one(sql, read=sg_dialect)
+        # Use pretty=True to ensure line-by-line storage
+        pretty_sql = parsed.sql(dialect=sg_dialect, pretty=True)
+    except Exception:
+        # Fallback to original if sqlglot fails
+        pretty_sql = sql
+        
     path = InstancePaths.sql(instance_id, db_name, model_name)
     path.parent.mkdir(parents=True, exist_ok=True)
     with open(path, "w", encoding="utf-8") as f:
-        f.write(sql)
+        f.write(pretty_sql)
 
 def write_csv_to_file(instance_id: str, db_name: str, rows: list[list[Any]], columns: list[str], model_name: str = "default_model"):
     """Saves the query results to a CSV file."""

@@ -8,8 +8,9 @@ class SQLNormalizer:
     Builds a DIALECT-AWARE SQL NORMALIZATION layer using capability-driven logic.
     Transforms SQL structure based on dialect capabilities without string hacks.
     """
-    def __init__(self, dialect: str):
+    def __init__(self, dialect: str, reference_date: str = None):
         self.dialect = dialect
+        self.reference_date = reference_date
         self.mgr = DialectManager()
         self.capabilities = self.mgr.get_capabilities(dialect)
         self.violations = []
@@ -82,6 +83,37 @@ class SQLNormalizer:
                             self.transformations_applied.append(f"GROUP BY {col_name} -> {replacement.sql(dialect=sg_dialect)}")
                             modified = True
             
+            # --- Temporal Grounding (Task 15) ---
+            if self.reference_date:
+                # 1. Replace system date/time functions
+                # Note: sqlglot versions vary; we use a safe, inclusive list
+                temporal_types = [exp.CurrentDate, exp.CurrentTimestamp, exp.CurrentDatetime, exp.CurrentTime]
+                
+                # Check for instances of standard temporal classes
+                for temporal in expression.find_all(tuple(temporal_types)):
+                    replacement = exp.Literal.string(self.reference_date)
+                    temporal.replace(replacement)
+                    self.violations.append({"type": "temporal_grounding_violation", "target": temporal.key, "location": "ROOT"})
+                    self.transformations_applied.append(f"{temporal.key.upper()} -> '{self.reference_date}'")
+                    modified = True
+                
+                # Catch Anonymous functions like NOW() or others that might not map to classes
+                for anon in expression.find_all(exp.Anonymous):
+                    if anon.this.upper() == "NOW":
+                        replacement = exp.Literal.string(self.reference_date)
+                        anon.replace(replacement)
+                        self.violations.append({"type": "temporal_grounding_violation", "target": "NOW", "location": "ROOT"})
+                        self.transformations_applied.append(f"NOW() -> '{self.reference_date}'")
+                        modified = True
+                
+                # 2. Replace hardcoded 'now' strings (common in julianday('now'))
+                for literal in expression.find_all(exp.Literal):
+                    if literal.is_string and literal.this.lower() in ["now", "today", "current_date"]:
+                        literal.replace(exp.Literal.string(self.reference_date))
+                        self.violations.append({"type": "temporal_grounding_violation", "target": f"STRING_{literal.this}", "location": "ROOT"})
+                        self.transformations_applied.append(f"'{literal.this}' -> '{self.reference_date}'")
+                        modified = True
+            
             # TASK 9: NO STRING HACKS (STRICT) - uses AST parsing + structured transformation
             final_sql = expression.sql(dialect=sg_dialect)
             
@@ -90,7 +122,7 @@ class SQLNormalizer:
             if self.violations:
                 Logger.log(f"[SQLNormalizer] violations_detected: {len(self.violations)}")
                 for v in self.violations:
-                    Logger.log(f"  - {v['type']} at {v['location']}: {v['target']}")
+                    Logger.log(f"  - {v['type']} at {v.get('location', 'N/A')}: {v.get('target', 'unknown')}")
                 Logger.log(f"[SQLNormalizer] transformations_applied: {len(self.transformations_applied)}")
                 Logger.log(f"[SQLNormalizer] sql_modified: {modified}")
             else:

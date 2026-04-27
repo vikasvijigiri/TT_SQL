@@ -107,7 +107,65 @@ messages:
       - Strategy and intent mismatch
       - Duplication bias
 
+
+      -------------------------------------------
+
+      ORDER DETERMINISM (MANDATORY)
+
+        If ORDER BY is used (including in window functions):
+        → MUST include a deterministic tie-breaker column
+
+        If no explicit unique column exists:
+        → use ROWID (SQLite) or equivalent
+
+        Non-deterministic ordering → INVALID SQL
+
       ------------------------------------------------------------
+
+      NON-DETERMINISTIC ROW SELECTION CHECK
+
+        If strategy uses:
+        - MIN/MAX to select rows
+
+        Then verify:
+        → Does strategy guarantee SINGLE row?
+
+        If not:
+        → FAIL
+
+        Suggest:
+        → Use ROW_NUMBER() with ORDER BY
+      
+      ------------------------------------------------------------
+
+      DUPLICATION RISK CHECK
+
+        If same entity can appear multiple times:
+        → Ensure aggregation removes duplication
+
+        Example:
+        - Multiple rows per session
+        → Must regroup before counting
+
+        If not:
+        → FAIL
+
+
+
+      ------------------------------------------------------------
+      
+      TEMPORAL GROUNDING CHECK (TASK 15)
+
+        If the strategy involved age, duration, or recency:
+        → Does it use the reference date ({REFERENCE_DATE})?
+        → Does it explicitly forbid 'now' or CURRENT_DATE?
+        
+        If strategy suggests 'now' or fails to specify reference date:
+        → FAIL
+        → Suggest: "Use dataset reference date: {REFERENCE_DATE}"
+
+      ------------------------------------------------------------
+
 
       If ANY failure:
       → set is_valid = false

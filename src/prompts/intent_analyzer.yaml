@@ -127,10 +127,11 @@ messages:
         "filter_grain": "",
         "aggregation_steps": [
           {{
-            "operation": "",
-            "input": "",
-            "output": "",
-            "grain": ""
+            "operation": "row_number",
+            "input": "timestamp",
+            "output": "rn_first",
+            "grain": "session",
+            "order": "asc"
           }}
         ],
         "aggregation_target": "",

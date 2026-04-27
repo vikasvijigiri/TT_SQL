@@ -122,7 +122,43 @@ messages:
        - Apply feedback corrections
        - If result is empty → minimally relax filters
 
+    ------------------------------------------------------------
+
+    13. ROW SELECTION SAFETY (CRITICAL)
+
+      If selecting rows using MIN/MAX:
+
+      → DO NOT use equality filters like:
+        col = (SELECT MIN(col)) 
+
+      → MUST use window function:
+
+        ROW_NUMBER() OVER (PARTITION BY ... ORDER BY col ASC)
+
+      → Then filter:
+        WHERE row_number = 1
+
+      Reason:
+      Equality with MIN/MAX may return multiple rows → incorrect duplication
+
+    ------------------------------------------------------------
+    
+    14. TEMPORAL GROUNDING (CRITICAL — TASK 15)
+
+        For ALL time-based calculations (age, duration, recency):
+
+        → MUST use the dataset reference date: '{REFERENCE_DATE}'
+        → NEVER use 'now', CURRENT_DATE, GETDATE(), or any local system time function.
+        
+        Examples:
+        - Incorrect: julianday('now')
+        - Correct: julianday('{REFERENCE_DATE}')
+        
+        - Incorrect: DATEDIFF(year, birth_date, CURRENT_DATE)
+        - Correct: DATEDIFF(year, birth_date, '{REFERENCE_DATE}')
+
     ============================================================
+
     OUTPUT FORMAT (STRICT JSON)
     ============================================================
 

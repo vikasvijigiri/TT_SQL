@@ -124,7 +124,11 @@ class SQLiteService:
                         }
                     )
 
-                schema[table] = {"columns": columns, "foreign_keys": fks}
+                # Get row count
+                cursor.execute(f"SELECT COUNT(*) FROM \"{table}\"")
+                row_count = cursor.fetchone()[0]
+
+                schema[table] = {"columns": columns, "foreign_keys": fks, "row_count": row_count}
                 
                 if sample_rows:
                     try:

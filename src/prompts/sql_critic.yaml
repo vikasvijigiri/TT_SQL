@@ -61,6 +61,94 @@ messages:
     4. Domain Validity:
       * Check if categorical outputs appear valid (e.g., country codes).
 
+
+    5. ROW SELECTION SAFETY (CRITICAL)
+
+      If selecting rows using MIN/MAX:
+
+        → DO NOT use equality filters like:
+        col = (SELECT MIN(col))
+
+        → MUST use window function:
+
+        ROW_NUMBER() OVER (PARTITION BY ... ORDER BY col ASC)
+
+        → Then filter:
+        WHERE row_number = 1
+
+    Reason:
+    Equality with MIN/MAX may return multiple rows → incorrect duplication
+
+
+    6. MULTI-MATCH RISK (CRITICAL)
+
+      If query contains:
+        col = (SELECT MIN(col)) OR MAX(col)
+
+      Then:
+      → This may return multiple rows
+
+      If no tie-breaking logic exists:
+      → is_valid = false
+
+      Suggested fix:
+      → Replace with ROW_NUMBER() based selection
+
+    -----------------------------------------------------------
+
+    WINDOW FUNCTION REQUIREMENT
+
+      If query involves:
+      - ranking
+      - first/last
+      - sequence
+
+      Then:
+      → prefer ROW_NUMBER() over subquery equality
+
+      If not used:
+      → evaluate risk
+
+    -----------------------------------------------------------
+
+    EDGE CASE CHECK
+
+      Check:
+        - NULL values
+        - duplicate timestamps
+        - empty groups
+
+        If logic breaks:
+        → mark as "pass_with_risk" or "fail"
+
+    -----------------------------------------------------------
+
+    DATAIQ-DRIVEN VALIDATION
+
+      If DataIQ indicates:
+      - high duplication_ratio
+      → enforce stricter aggregation
+
+      If timestamp collisions detected:
+      → enforce tie-breaking ORDER BY
+
+    -----------------------------------------------------------
+
+    TEMPORAL GROUNDING CHECK (TASK 15)
+
+      If query involves age, duration, or recency:
+      → Does it use the reference date '{REFERENCE_DATE}'?
+      → Does it use 'now', CURRENT_DATE or local time functions?
+
+      IF 'now' or CURRENT_DATE is spotted in a time-sensitive query:
+      → is_valid = false
+      → logical_fit = "fail"
+      → feedback = "Forbidden use of 'now()/CURRENT_DATE'. Must use dataset reference date: {REFERENCE_DATE}"
+      → suggested_fix = "Replace system time functions with '{REFERENCE_DATE}'"
+
+
+    -----------------------------------------------------------
+
     If any risk is present:
 
     * Mark logical_fit as "fail" OR "pass with risk" (explain clearly in feedback).
