@@ -1,0 +1,5 @@
+{
+  "success": false,
+  "error": "002003 (42S02): SQL compilation error:\nObject 'PATENTS.PATENTS.CITATIONS' does not exist or not authorized.",
+  "duration_ms": 289.7477149963379
+}

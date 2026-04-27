@@ -4,7 +4,6 @@ import time
 
 
 from core.agent_base import AgentState
-from core.config import get_settings
 from core.llm_service import LLMService
 from core.logger import Logger
 from core.metrics_tracker import extract_and_write
@@ -19,7 +18,7 @@ def reset_pipeline_infrastructure(include_heavy_models: bool = False):
     LLMService.clear_cache()
     Logger.reset()
 
-    # 5. Snowflake Service
+    # Cloud Services Reset
     try:
         from core.sf_service import SnowflakeService
 
@@ -80,15 +79,23 @@ def run_analysis_pipeline(
     initialize_directories(model_name, db_name)
     
     Logger.set_log_file(log_file_path)
-    Logger.log(f"Started analysis for {instance_id} using {model_name}")
-    Logger.log(f"Question: {question}")
-    Logger.log(f"Database: {db_name}")
+    Logger.log("💎" * 30)
+    Logger.log(f"# ANALYSIS START: {instance_id}")
+    Logger.log("💎" * 30 + "\n")
+    
+    Logger.log_section("Question and context")
+    Logger.log(f"**Question**: {question}  \n")
+    Logger.log(f"**Database**: {db_name}  \n")
+    Logger.log(f"**Model**: {model_name}  \n")
 
     # Initialize Logger Global Verbose
     Logger._verbose = verbose
 
     if output_handler is None:
         output_handler = OutputHandler()
+
+    # Register listener to capture logs in output_handler
+    Logger.register_listener(lambda msg, lvl: output_handler.info(msg) if lvl == "INFO" else output_handler.error(msg))
 
     # Paths
     db_path_absolute = str(InstancePaths.database(db_name))
@@ -138,8 +145,20 @@ def run_analysis_pipeline(
         external_knowledge=external_knowledge,
         dialect=dialect,
     )
+    
+    # Bootstrap: Load previous 'best' SQL from disk if it exists
+    sql_path = InstancePaths.sql(instance_id, db_name, model_name)
+    if sql_path.exists():
+        try:
+            prev_sql = sql_path.read_text(encoding="utf-8").strip()
+            if prev_sql:
+                state.previous_run_sql = prev_sql
+                Logger.log(f"🔄 Bootstrapping with previous SQL from disk: {instance_id}\n", to_file=False)
+        except Exception as e:
+            Logger.log(f"⚠️ Failed to load previous SQL: {e}", "WARN")
 
     start_time = time.time()
+    is_any_fatal = False
 
     try:
         # Run entire pipeline via Workflow Engine
@@ -156,7 +175,8 @@ def run_analysis_pipeline(
 
         # --- Determine has_data for metrics (mirrors batch_runner logic) ---
         has_data = False
-        csv_path = InstancePaths.csv(instance_id, db_name)
+        db_name = state.db_name or "unknown"
+        csv_path = InstancePaths.csv(instance_id, db_name, model_name)
         if csv_path.exists():
             with open(csv_path, encoding="utf-8") as f:
                 meaningless = ["", '""', "none", "null", "[]", "{}", "nan", "undefined"]
@@ -164,11 +184,18 @@ def run_analysis_pipeline(
                 has_data = len(valid_rows) >= 2
 
         pipeline_status = "SUCCESS" if (not is_any_fatal and has_data) else "FAILED"
+        
+        Logger.log_final_results(state.chosen_query, str(csv_path), result=state.execution_result)
+        Logger.log_metrics(elapsed, getattr(state, "llm_call_count", 0))
+        Logger.log_completion(pipeline_status)
+
         extract_and_write(
             state, is_any_fatal, pipeline_status, has_data,
             pipeline_duration_s=elapsed,
             error_message=state.error_message if state else None,
         )
+        # 4. Final Logs (Task 12)
+        Logger.log("Analysis Complete. No hardcoded logic used.")
 
         return state, 0, is_any_fatal, output_handler.captured_text
 

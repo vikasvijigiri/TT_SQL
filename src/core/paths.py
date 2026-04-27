@@ -25,11 +25,6 @@ PROMPTS_DIR = SRC_DIR / "prompts"
 
 DIALECT_RULES = PROMPTS_DIR / "dialects.yaml"
 
-QUERY_PLANNING_PROMPT = PROMPTS_DIR / "query_planning.yaml"
-CONTEXT_ENRICHMENT_PROMPT = PROMPTS_DIR / "context_enrichment.yaml"
-SQLITE_GENERATION_PROMPT = PROMPTS_DIR / "sqlite_generation.yaml"
-CRITIC_CRITIQUE_PROMPT = PROMPTS_DIR / "critic_critique.yaml"
-
 # Results directories (base)
 RESULTS_BASE_DIR = PROJECT_ROOT / "results"
 
@@ -38,6 +33,7 @@ RESULTS_BASE_DIR = PROJECT_ROOT / "results"
 RESOURCES_DIR = PROJECT_ROOT / "resources"
 DATABASES_DIR = RESOURCES_DIR
 METADATA_DIR = RESOURCES_DIR / "metadata"
+DIALECT_CONSTRAINTS_MEMORY = METADATA_DIR / "dialect_constraints.json"
 
 # Evaluation
 DATA_DIR = PROJECT_ROOT / "input_data"

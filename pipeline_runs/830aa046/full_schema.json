@@ -1,0 +1,755 @@
+{
+  "PATENTS.PATENTS.CPC_DEFINITION": {
+    "columns": [
+      {
+        "column_name": "APPLICATIONREFERENCES",
+        "type": "VARIANT",
+        "description": "",
+        "pk": false
+      },
+      {
+        "column_name": "BREAKDOWNCODE",
+        "type": "BOOLEAN",
+        "description": "",
+        "pk": false
+      },
+      {
+        "column_name": "CHILDGROUPS",
+        "type": "VARIANT",
+        "description": "",
+        "pk": false
+      },
+      {
+        "column_name": "CHILDREN",
+        "type": "VARIANT",
+        "description": "",
+        "pk": false
+      },
+      {
+        "column_name": "DATEREVISED",
+        "type": "REAL",
+        "description": "",
+        "pk": false
+      },
+      {
+        "column_name": "DEFINITION",
+        "type": "VARIANT",
+        "description": "",
+        "pk": false
+      },
+      {
+        "column_name": "GLOSSARY",
+        "type": "VARIANT",
+        "description": "",
+        "pk": false
+      },
+      {
+        "column_name": "INFORMATIVEREFERENCES",
+        "type": "VARIANT",
+        "description": "",
+        "pk": false
+      },
+      {
+        "column_name": "IPCCONCORDANT",
+        "type": "TEXT",
+        "description": "",
+        "pk": false
+      },
+      {
+        "column_name": "LEVEL",
+        "type": "REAL",
+        "description": "",
+        "pk": false
+      },
+      {
+        "column_name": "LIMITINGREFERENCES",
+        "type": "VARIANT",
+        "description": "",
+        "pk": false
+      },
+      {
+        "column_name": "NOTALLOCATABLE",
+        "type": "BOOLEAN",
+        "description": "",
+        "pk": false
+      },
+      {
+        "column_name": "PARENTS",
+        "type": "VARIANT",
+        "description": "",
+        "pk": false
+      },
+      {
+        "column_name": "PRECEDENCELIMITINGREFERENCES",
+        "type": "VARIANT",
+        "description": "",
+        "pk": false
+      },
+      {
+        "column_name": "RESIDUALREFERENCES",
+        "type": "VARIANT",
+        "description": "",
+        "pk": false
+      },
+      {
+        "column_name": "RULES",
+        "type": "VARIANT",
+        "description": "",
+        "pk": false
+      },
+      {
+        "column_name": "SCOPELIMITINGREFERENCES",
+        "type": "VARIANT",
+        "description": "",
+        "pk": false
+      },
+      {
+        "column_name": "STATUS",
+        "type": "TEXT",
+        "description": "",
+        "pk": false
+      },
+      {
+        "column_name": "SYMBOL",
+        "type": "TEXT",
+        "description": "",
+        "pk": false
+      },
+      {
+        "column_name": "SYNONYMS",
+        "type": "VARIANT",
+        "description": "",
+        "pk": false
+      },
+      {
+        "column_name": "TITLEFULL",
+        "type": "TEXT",
+        "description": "",
+        "pk": false
+      },
+      {
+        "column_name": "TITLEPART",
+        "type": "VARIANT",
+        "description": "",
+        "pk": false
+      }
+    ],
+    "sample": [
+      {
+        "applicationReferences": "[]",
+        "breakdownCode": false,
+        "childGroups": "[\n  {\n    \"description\": \"SEPARATING; MIXING\",\n    \"symbols\": [\n      \"B01\",\n      \"B02\",\n      \"B03\",\n      \"B04\",\n      \"B05\",\n      \"B06\",\n      \"B07\",\n      \"B08\",\n      \"B09\"\n    ]\n  },\n  {\n    \"description\": \"SHAPING\",\n    \"symbols\": [\n      \"B21\",\n      \"B22\",\n      \"B23\",\n      \"B24\",\n      \"B25\",\n      \"B26\",\n      \"B27\",\n      \"B28\",\n      \"B29\",\n      \"B30\",\n      \"B31\",\n      \"B32\",\n      \"B33\"\n    ]\n  },\n  {\n    \"description\": \"PRINTING\",\n    \"symbols\": [\n      \"B41\",\n      \"B42\",\n      \"B43\",\n      \"B44\"\n    ]\n  },\n  {\n    \"description\": \"TRANSPORTING\",\n    \"symbols\": [\n      \"B60\",\n      \"B61\",\n      \"B62\",\n      \"B63\",\n      \"B64\",\n      \"B65\",\n      \"B66\",\n      \"B67\",\n      \"B68\"\n    ]\n  },\n  {\n    \"description\": \"MICROSTRUCTURAL TECHNOLOGY; NANOTECHNOLOGY\",\n    \"symbols\": [\n      \"B81\",\n      \"B82\"\n    ]\n  },\n  {\n    \"description\": \"\",\n    \"symbols\": [\n      \"B99\"\n    ]\n  }\n]",
+        "children": "[\n  \"B01\",\n  \"B02\",\n  \"B03\",\n  \"B04\",\n  \"B05\",\n  \"B06\",\n  \"B07\",\n  \"B08\",\n  \"B09\",\n  \"B21\",\n  \"B22\",\n  \"B23\",\n  \"B24\",\n  \"B25\",\n  \"B26\",\n  \"B27\",\n  \"B28\",\n  \"B29\",\n  \"B30\",\n  \"B31\",\n  \"B32\",\n  \"B33\",\n  \"B41\",\n  \"B42\",\n  \"B43\",\n  \"B44\",\n  \"B60\",\n  \"B61\",\n  \"B62\",\n  \"B63\",\n  \"B64\",\n  \"B65\",\n  \"B66\",\n  \"B67\",\n  \"B68\",\n  \"B81\",\n  \"B82\",\n  \"B99\"\n]",
+        "dateRevised": 20160501.0,
+        "definition": "[]",
+        "glossary": "[]",
+        "informativeReferences": "[]",
+        "ipcConcordant": "",
+        "level": 2.0,
+        "limitingReferences": "[]",
+        "notAllocatable": true,
+        "parents": "[]",
+        "precedenceLimitingReferences": "[]",
+        "residualReferences": "[]",
+        "rules": "[]",
+        "scopeLimitingReferences": "[]",
+        "status": "published",
+        "symbol": "B",
+        "synonyms": "[]",
+        "titleFull": "PERFORMING OPERATIONS; TRANSPORTING",
+        "titlePart": "[\n  \"PERFORMING OPERATIONS\",\n  \"TRANSPORTING\"\n]"
+      },
+      {
+        "applicationReferences": "[]",
+        "breakdownCode": false,
+        "childGroups": "[\n  {\n    \"description\": \"\",\n    \"symbols\": [\n      \"H01\",\n      \"H02\",\n      \"H03\",\n      \"H04\",\n      \"H05\",\n      \"H10\",\n      \"H99\"\n    ]\n  }\n]",
+        "children": "[\n  \"H01\",\n  \"H02\",\n  \"H03\",\n  \"H04\",\n  \"H05\",\n  \"H10\",\n  \"H99\"\n]",
+        "dateRevised": 20200101.0,
+        "definition": "[]",
+        "glossary": "[]",
+        "informativeReferences": "[]",
+        "ipcConcordant": "",
+        "level": 2.0,
+        "limitingReferences": "[]",
+        "notAllocatable": true,
+        "parents": "[]",
+        "precedenceLimitingReferences": "[]",
+        "residualReferences": "[]",
+        "rules": "[]",
+        "scopeLimitingReferences": "[]",
+        "status": "published",
+        "symbol": "H",
+        "synonyms": "[]",
+        "titleFull": "ELECTRICITY",
+        "titlePart": "[\n  \"ELECTRICITY\"\n]"
+      },
+      {
+        "applicationReferences": "[]",
+        "breakdownCode": false,
+        "childGroups": "[\n  {\n    \"description\": \"\",\n    \"symbols\": [\n      \"Y02\",\n      \"Y04\",\n      \"Y10\"\n    ]\n  }\n]",
+        "children": "[\n  \"Y02\",\n  \"Y04\",\n  \"Y10\"\n]",
+        "dateRevised": 20130101.0,
+        "definition": "[]",
+        "glossary": "[]",
+        "informativeReferences": "[]",
+        "ipcConcordant": "",
+        "level": 2.0,
+        "limitingReferences": "[]",
+        "notAllocatable": true,
+        "parents": "[]",
+        "precedenceLimitingReferences": "[]",
+        "residualReferences": "[]",
+        "rules": "[]",
+        "scopeLimitingReferences": "[]",
+        "status": "published",
+        "symbol": "Y",
+        "synonyms": "[]",
+        "titleFull": "GENERAL TAGGING OF NEW TECHNOLOGICAL DEVELOPMENTS; GENERAL TAGGING OF CROSS-SECTIONAL TECHNOLOGIES SPANNING OVER SEVERAL SECTIONS OF THE IPC; TECHNICAL SUBJECTS COVERED BY FORMER USPC CROSS-REFERENCE ART COLLECTIONS [XRACs] AND DIGESTS",
+        "titlePart": "[\n  \"GENERAL TAGGING OF NEW TECHNOLOGICAL DEVELOPMENTS\",\n  \"GENERAL TAGGING OF CROSS-SECTIONAL TECHNOLOGIES SPANNING OVER SEVERAL SECTIONS OF THE IPC\",\n  \"TECHNICAL SUBJECTS COVERED BY FORMER USPC CROSS-REFERENCE ART COLLECTIONS [XRACs] AND DIGESTS\"\n]"
+      }
+    ],
+    "foreign_keys": [],
+    "primary_keys": []
+  },
+  "PATENTS.PATENTS.DISCLOSURES_13": {
+    "columns": [
+      {
+        "column_name": "FAMILY_ID",
+        "type": "TEXT",
+        "description": "",
+        "pk": false
+      },
+      {
+        "column_name": "RECORD_ID",
+        "type": "TEXT",
+        "description": "",
+        "pk": false
+      },
+      {
+        "column_name": "DISCLOSURE_EVENT",
+        "type": "TEXT",
+        "description": "",
+        "pk": false
+      },
+      {
+        "column_name": "SSO",
+        "type": "TEXT",
+        "description": "",
+        "pk": false
+      },
+      {
+        "column_name": "PATENT_OWNER_HARMONIZED",
+        "type": "TEXT",
+        "description": "",
+        "pk": false
+      },
+      {
+        "column_name": "PATENT_OWNER_UNHARMONIZED",
+        "type": "TEXT",
+        "description": "",
+        "pk": false
+      },
+      {
+        "column_name": "DATE",
+        "type": "FIXED",
+        "description": "",
+        "pk": false
+      },
+      {
+        "column_name": "STANDARD",
+        "type": "TEXT",
+        "description": "",
+        "pk": false
+      },
+      {
+        "column_name": "COMMITTEE_PROJECT",
+        "type": "TEXT",
+        "description": "",
+        "pk": false
+      },
+      {
+        "column_name": "TC_NAME",
+        "type": "TEXT",
+        "description": "",
+        "pk": false
+      },
+      {
+        "column_name": "SC_NAME",
+        "type": "TEXT",
+        "description": "",
+        "pk": false
+      },
+      {
+        "column_name": "WG_NAME",
+        "type": "TEXT",
+        "description": "",
+        "pk": false
+      },
+      {
+        "column_name": "LICENSING_COMMITMENT",
+        "type": "TEXT",
+        "description": "",
+        "pk": false
+      },
+      {
+        "column_name": "COPYRIGHT",
+        "type": "TEXT",
+        "description": "",
+        "pk": false
+      },
+      {
+        "column_name": "BLANKET_TYPE",
+        "type": "TEXT",
+        "description": "",
+        "pk": false
+      },
+      {
+        "column_name": "BLANKET_SCOPE",
+        "type": "TEXT",
+        "description": "",
+        "pk": false
+      },
+      {
+        "column_name": "THIRD_PARTY",
+        "type": "TEXT",
+        "description": "",
+        "pk": false
+      },
+      {
+        "column_name": "RECIPROCITY",
+        "type": "TEXT",
+        "description": "",
+        "pk": false
+      },
+      {
+        "column_name": "SERIAL_CLEANED",
+        "type": "TEXT",
+        "description": "",
+        "pk": false
+      },
+      {
+        "column_name": "PUB_CLEANED",
+        "type": "TEXT",
+        "description": "",
+        "pk": false
+      }
+    ],
+    "sample": [
+      {
+        "family_id": "22549751",
+        "record_id": "REC00002",
+        "disclosure_event": "DE0001",
+        "sso": "ANSI",
+        "patent_owner_harmonized": "3M",
+        "patent_owner_unharmonized": "3M",
+        "date": 19751124,
+        "standard": "X3.55;X3.56",
+        "committee_project": "",
+        "tc_name": "",
+        "sc_name": "",
+        "wg_name": "",
+        "licensing_commitment": "FRAND",
+        "copyright": "",
+        "blanket_type": "0",
+        "blanket_scope": "",
+        "third_party": "0",
+        "reciprocity": "0",
+        "serial_cleaned": "",
+        "pub_cleaned": "US3692255"
+      },
+      {
+        "family_id": "23170520",
+        "record_id": "REC00001",
+        "disclosure_event": "DE0001",
+        "sso": "ANSI",
+        "patent_owner_harmonized": "3M",
+        "patent_owner_unharmonized": "3M",
+        "date": 19751124,
+        "standard": "X3.55;X3.56",
+        "committee_project": "",
+        "tc_name": "",
+        "sc_name": "",
+        "wg_name": "",
+        "licensing_commitment": "FRAND",
+        "copyright": "",
+        "blanket_type": "0",
+        "blanket_scope": "",
+        "third_party": "0",
+        "reciprocity": "0",
+        "serial_cleaned": "",
+        "pub_cleaned": "US3861619"
+      },
+      {
+        "family_id": "22549751",
+        "record_id": "REC00004",
+        "disclosure_event": "DE0002",
+        "sso": "ANSI",
+        "patent_owner_harmonized": "3M",
+        "patent_owner_unharmonized": "3M",
+        "date": 19751229,
+        "standard": "X3.55;X3.56;NCITS;INCITS",
+        "committee_project": "",
+        "tc_name": "",
+        "sc_name": "",
+        "wg_name": "",
+        "licensing_commitment": "None",
+        "copyright": "",
+        "blanket_type": "0",
+        "blanket_scope": "",
+        "third_party": "0",
+        "reciprocity": "0",
+        "serial_cleaned": "",
+        "pub_cleaned": "US3692255"
+      }
+    ],
+    "foreign_keys": [],
+    "primary_keys": []
+  },
+  "PATENTS.PATENTS.PUBLICATIONS": {
+    "columns": [
+      {
+        "column_name": "PUBLICATION_NUMBER",
+        "type": "TEXT",
+        "description": "",
+        "pk": false
+      },
+      {
+        "column_name": "APPLICATION_NUMBER",
+        "type": "TEXT",
+        "description": "",
+        "pk": false
+      },
+      {
+        "column_name": "COUNTRY_CODE",
+        "type": "TEXT",
+        "description": "",
+        "pk": false
+      },
+      {
+        "column_name": "KIND_CODE",
+        "type": "TEXT",
+        "description": "",
+        "pk": false
+      },
+      {
+        "column_name": "APPLICATION_KIND",
+        "type": "TEXT",
+        "description": "",
+        "pk": false
+      },
+      {
+        "column_name": "APPLICATION_NUMBER_FORMATTED",
+        "type": "TEXT",
+        "description": "",
+        "pk": false
+      },
+      {
+        "column_name": "PCT_NUMBER",
+        "type": "TEXT",
+        "description": "",
+        "pk": false
+      },
+      {
+        "column_name": "FAMILY_ID",
+        "type": "TEXT",
+        "description": "",
+        "pk": false
+      },
+      {
+        "column_name": "SPIF_PUBLICATION_NUMBER",
+        "type": "TEXT",
+        "description": "",
+        "pk": false
+      },
+      {
+        "column_name": "SPIF_APPLICATION_NUMBER",
+        "type": "TEXT",
+        "description": "",
+        "pk": false
+      },
+      {
+        "column_name": "TITLE_LOCALIZED",
+        "type": "VARIANT",
+        "description": "",
+        "pk": false
+      },
+      {
+        "column_name": "ABSTRACT_LOCALIZED",
+        "type": "VARIANT",
+        "description": "",
+        "pk": false
+      },
+      {
+        "column_name": "CLAIMS_LOCALIZED",
+        "type": "VARIANT",
+        "description": "",
+        "pk": false
+      },
+      {
+        "column_name": "CLAIMS_LOCALIZED_HTML",
+        "type": "VARIANT",
+        "description": "",
+        "pk": false
+      },
+      {
+        "column_name": "DESCRIPTION_LOCALIZED",
+        "type": "VARIANT",
+        "description": "",
+        "pk": false
+      },
+      {
+        "column_name": "DESCRIPTION_LOCALIZED_HTML",
+        "type": "VARIANT",
+        "description": "",
+        "pk": false
+      },
+      {
+        "column_name": "PUBLICATION_DATE",
+        "type": "FIXED",
+        "description": "",
+        "pk": false
+      },
+      {
+        "column_name": "FILING_DATE",
+        "type": "FIXED",
+        "description": "",
+        "pk": false
+      },
+      {
+        "column_name": "GRANT_DATE",
+        "type": "FIXED",
+        "description": "",
+        "pk": false
+      },
+      {
+        "column_name": "PRIORITY_DATE",
+        "type": "FIXED",
+        "description": "",
+        "pk": false
+      },
+      {
+        "column_name": "PRIORITY_CLAIM",
+        "type": "VARIANT",
+        "description": "",
+        "pk": false
+      },
+      {
+        "column_name": "INVENTOR",
+        "type": "VARIANT",
+        "description": "",
+        "pk": false
+      },
+      {
+        "column_name": "INVENTOR_HARMONIZED",
+        "type": "VARIANT",
+        "description": "",
+        "pk": false
+      },
+      {
+        "column_name": "ASSIGNEE",
+        "type": "VARIANT",
+        "description": "",
+        "pk": false
+      },
+      {
+        "column_name": "ASSIGNEE_HARMONIZED",
+        "type": "VARIANT",
+        "description": "",
+        "pk": false
+      },
+      {
+        "column_name": "EXAMINER",
+        "type": "VARIANT",
+        "description": "",
+        "pk": false
+      },
+      {
+        "column_name": "USPC",
+        "type": "VARIANT",
+        "description": "",
+        "pk": false
+      },
+      {
+        "column_name": "IPC",
+        "type": "VARIANT",
+        "description": "",
+        "pk": false
+      },
+      {
+        "column_name": "CPC",
+        "type": "VARIANT",
+        "description": "",
+        "pk": false
+      },
+      {
+        "column_name": "FI",
+        "type": "VARIANT",
+        "description": "",
+        "pk": false
+      },
+      {
+        "column_name": "FTERM",
+        "type": "VARIANT",
+        "description": "",
+        "pk": false
+      },
+      {
+        "column_name": "LOCARNO",
+        "type": "VARIANT",
+        "description": "",
+        "pk": false
+      },
+      {
+        "column_name": "CITATION",
+        "type": "VARIANT",
+        "description": "",
+        "pk": false
+      },
+      {
+        "column_name": "PARENT",
+        "type": "VARIANT",
+        "description": "",
+        "pk": false
+      },
+      {
+        "column_name": "CHILD",
+        "type": "VARIANT",
+        "description": "",
+        "pk": false
+      },
+      {
+        "column_name": "ENTITY_STATUS",
+        "type": "TEXT",
+        "description": "",
+        "pk": false
+      },
+      {
+        "column_name": "ART_UNIT",
+        "type": "TEXT",
+        "description": "",
+        "pk": false
+      }
+    ],
+    "sample": [
+      {
+        "publication_number": "CR-5634-A",
+        "application_number": "CR-5634-A",
+        "country_code": "CR",
+        "kind_code": "A",
+        "application_kind": "A",
+        "application_number_formatted": "CR5634A",
+        "pct_number": "",
+        "family_id": "44839011",
+        "spif_publication_number": "",
+        "spif_application_number": "",
+        "title_localized": "[\n  {\n    \"language\": \"es\",\n    \"text\": \"Procedimiento para el analisis de aflatoxinas por cromatografia directa\",\n    \"truncated\": false\n  }\n]",
+        "abstract_localized": "[\n  {\n    \"language\": \"es\",\n    \"text\": \"consiste en colocar una muestra solida de cereal o leguminosa en una bandeja especial desarrollada para esta metodologia (bandeja de cromatografia), la cual en su base interior (fondo) posee un substrato sensible a las aflatoxinas, que al momento de la prueba se remoja con un disolvente extractor. Las particulas contaminadas liberan aflatoxinas que eluyen hacia el substrato en una area localizada alrededor de la particula contaminada. Despues de remover la muestra la bandeja se observa bajo luz ultravioleta de 365 nm, con la cual se observan pequenas manchas azules en los sitios donde hubo particulas contaminadas. Se encontro que existe una correlacion altamente significativa entre el numero de particulas que liberan aflatoxinas hacia el substrato sensible (manchas azules) y el contenido de aflatoxinas obtenido mediante un metodo quimico cuantitativo.\",\n    \"truncated\": false\n  }\n]",
+        "claims_localized": "[]",
+        "claims_localized_html": "[]",
+        "description_localized": "[]",
+        "description_localized_html": "[]",
+        "publication_date": 19980507,
+        "filing_date": 19971015,
+        "grant_date": 0,
+        "priority_date": 19971015,
+        "priority_claim": "[\n  {\n    \"application_number\": \"CR-5634-A\",\n    \"category\": \"\",\n    \"filing_date\": 19971015,\n    \"npl_text\": \"\",\n    \"publication_number\": \"\",\n    \"type\": \"\"\n  }\n]",
+        "inventor": "[\n  \"FAUSTO CAMACHO CHACON\"\n]",
+        "inventor_harmonized": "[\n  {\n    \"country_code\": \"CR\",\n    \"name\": \"FAUSTO CAMACHO CHACON\"\n  }\n]",
+        "assignee": "[\n  \"Univ Costa Rica\"\n]",
+        "assignee_harmonized": "[\n  {\n    \"country_code\": \"CR\",\n    \"name\": \"UNIV COSTA RICA\"\n  }\n]",
+        "examiner": "[]",
+        "uspc": "[]",
+        "ipc": "[\n  {\n    \"code\": \"G01N21/01\",\n    \"first\": false,\n    \"inventive\": true,\n    \"tree\": []\n  }\n]",
+        "cpc": "[]",
+        "fi": "[]",
+        "fterm": "[]",
+        "locarno": "[]",
+        "citation": "[]",
+        "parent": "[]",
+        "child": "[]",
+        "entity_status": "",
+        "art_unit": ""
+      },
+      {
+        "publication_number": "CR-5990-A",
+        "application_number": "CR-5990-A",
+        "country_code": "CR",
+        "kind_code": "A",
+        "application_kind": "A",
+        "application_number_formatted": "CR5990A",
+        "pct_number": "",
+        "family_id": "44839034",
+        "spif_publication_number": "",
+        "spif_application_number": "",
+        "title_localized": "[\n  {\n    \"language\": \"es\",\n    \"text\": \"Derivados de acido fenil-metoxi-imino-glioxilico como plaguicidas\",\n    \"truncated\": false\n  }\n]",
+        "abstract_localized": "[\n  {\n    \"language\": \"es\",\n    \"text\": \"derivados de acido 2-imino-metil-fenil-acetico que tiene una actividad microbicida, insecticida, y acaricida, a un proceso para la preparacion de los mismos, a nuevos intermediarios para su preparacion, a composiciones agroquimicas que contienen estos ingredientes activos, asi como a su uso en el control y prevencion de hongos, acaros, e insectos patagonicos de plantas end agricultura y en el campo de higiene.\",\n    \"truncated\": false\n  }\n]",
+        "claims_localized": "[]",
+        "claims_localized_html": "[]",
+        "description_localized": "[]",
+        "description_localized_html": "[]",
+        "publication_date": 19991217,
+        "filing_date": 19990322,
+        "grant_date": 0,
+        "priority_date": 19980327,
+        "priority_claim": "[\n  {\n    \"application_number\": \"CH-7359998-A\",\n    \"category\": \"\",\n    \"filing_date\": 19980327,\n    \"npl_text\": \"\",\n    \"publication_number\": \"\",\n    \"type\": \"\"\n  }\n]",
+        "inventor": "[\n  \"HUGO ZIEGLER\",\n  \"RENE ZURFUG\"\n]",
+        "inventor_harmonized": "[\n  {\n    \"country_code\": \"CH\",\n    \"name\": \"HUGO ZIEGLER\"\n  },\n  {\n    \"country_code\": \"CH\",\n    \"name\": \"RENE ZURFUG\"\n  }\n]",
+        "assignee": "[\n  \"Bayer Ag\"\n]",
+        "assignee_harmonized": "[\n  {\n    \"country_code\": \"DE\",\n    \"name\": \"BAYER AG\"\n  }\n]",
+        "examiner": "[]",
+        "uspc": "[]",
+        "ipc": "[]",
+        "cpc": "[]",
+        "fi": "[]",
+        "fterm": "[]",
+        "locarno": "[]",
+        "citation": "[]",
+        "parent": "[]",
+        "child": "[]",
+        "entity_status": "",
+        "art_unit": ""
+      },
+      {
+        "publication_number": "FI-429-A",
+        "application_number": "FI-429D-A",
+        "country_code": "FI",
+        "kind_code": "A",
+        "application_kind": "A",
+        "application_number_formatted": "",
+        "pct_number": "",
+        "family_id": "36849362",
+        "spif_publication_number": "",
+        "spif_application_number": "",
+        "title_localized": "[\n  {\n    \"language\": \"fi\",\n    \"text\": \"F\u00f6rb\u00e4ttringar af tj\u00e4rbr\u00e4nningsugnar med r\u00f6rledning f\u00f6r tr\u00e4destillation\",\n    \"truncated\": false\n  }\n]",
+        "abstract_localized": "[]",
+        "claims_localized": "[]",
+        "claims_localized_html": "[]",
+        "description_localized": "[]",
+        "description_localized_html": "[]",
+        "publication_date": 18920810,
+        "filing_date": 0,
+        "grant_date": 0,
+        "priority_date": 0,
+        "priority_claim": "[\n  {\n    \"application_number\": \"FI-429T-A\",\n    \"category\": \"\",\n    \"filing_date\": 0,\n    \"npl_text\": \"\",\n    \"publication_number\": \"\",\n    \"type\": \"\"\n  }\n]",
+        "inventor": "[\n  \"LOEFHJELM KARL\"\n]",
+        "inventor_harmonized": "[\n  {\n    \"country_code\": \"FI\",\n    \"name\": \"KARL LOEFHJELM\"\n  }\n]",
+        "assignee": "[]",
+        "assignee_harmonized": "[]",
+        "examiner": "[]",
+        "uspc": "[]",
+        "ipc": "[\n  {\n    \"code\": \"C10C1/00\",\n    \"first\": false,\n    \"inventive\": true,\n    \"tree\": []\n  }\n]",
+        "cpc": "[]",
+        "fi": "[]",
+        "fterm": "[]",
+        "locarno": "[]",
+        "citation": "[]",
+        "parent": "[]",
+        "child": "[]",
+        "entity_status": "",
+        "art_unit": ""
+      }
+    ],
+    "foreign_keys": [],
+    "primary_keys": []
+  }
+}

@@ -302,7 +302,7 @@ def extract_and_write(
 
     # ── Question ───────────────────────────────────────────────────────────────
     question       = state.user_query or ""
-    intent_joins   = getattr(state, "intent_joins",       []) or []
+    intent_joins   = [] # intent_joins removed from state; keeping empty list for compat
     question_type  = _classify_question(question, intent_joins)
     complexity     = getattr(state, "complexity_score",   "MEDIUM") or "MEDIUM"
 
@@ -311,7 +311,7 @@ def extract_and_write(
     iter_count     = getattr(state, "iteration_count",            0)  or 0
     exec_errors    = getattr(state, "execution_error_history",    []) or []
     feedback_hist  = getattr(state, "feedback_history",           []) or []
-    candidates     = getattr(state, "candidate_queries",          []) or []
+    candidates     = getattr(state, "sql_candidates",          []) or []
     is_valid       = getattr(state, "is_result_valid",            False)
     current_step   = getattr(state, "current_step",               "") or ""
 

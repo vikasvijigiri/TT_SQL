@@ -132,7 +132,7 @@ AWS_ACCESS_KEY_ID=AKIAxxxxxxxxxxxx
 AWS_SECRET_ACCESS_KEY=xxxxxxxxxxxxxxxxxxxxxxxxxxxx
 AWS_DEFAULT_REGION=us-east-1
 LLM_MODEL=bedrock/openai.gpt-oss-safeguard-120b
-LLM_API_BASE=http://... # Optional if using proxy
+# No LLM_API_BASE needed for serverless
 ```
 
 ### 🔓 Database Path Targets

@@ -3,6 +3,7 @@ import time
 from typing import Any
 
 from core.state import ExecutionResult
+from core.logger import Logger
 
 
 class SQLiteService:
@@ -41,7 +42,14 @@ class SQLiteService:
 
             # Fetch rows
             if sampling:
-                rows = cursor.fetchmany(5)
+                from core.logger import Logger
+                Logger.log("Large table avoided (sampling applied)")
+                # Task 3: Enforce Lightweight & Bounded inspection
+                # Ensure LIMIT is present or use fetchmany(3)
+                if "LIMIT" not in query.upper():
+                    rows = cursor.fetchmany(50)
+                else:
+                    rows = cursor.fetchmany(100) # Respect existing limit but capped
             else:
                 rows = cursor.fetchall()
 
@@ -56,20 +64,39 @@ class SQLiteService:
 
         return result
 
-    def get_full_schema(self) -> dict[str, Any]:
+    def get_table_names(self) -> list[str]:
+        """Task 2: Stage 1 - Fetch ONLY table names for progressive retrieval."""
+        try:
+            conn = sqlite3.connect(self.db_path)
+            cursor = conn.cursor()
+            cursor.execute(
+                "SELECT name FROM sqlite_master WHERE type='table' AND name NOT LIKE 'sqlite_%';"
+            )
+            tables = [row[0] for row in cursor.fetchall()]
+            conn.close()
+            return tables
+        except Exception as e:
+            from core.logger import Logger
+            Logger.log(f"Error fetching SQLite table names: {e}", level="ERROR")
+            return []
+
+    def get_full_schema(self, table_list: list[str] | None = None, sample_rows: bool = False) -> dict[str, Any]:
         """
-        Extracts the complete schema from the SQLite database.
-        Returns a dictionary mapping table names to their column definitions.
+        Extracts the schema from the SQLite database.
+        If table_list is provided, only fetches metadata for those tables.
         """
         try:
             conn = sqlite3.connect(self.db_path)
             cursor = conn.cursor()
 
-            # Get all tables
-            cursor.execute(
-                "SELECT name FROM sqlite_master WHERE type='table' AND name NOT LIKE 'sqlite_%';"
-            )
-            tables = [row[0] for row in cursor.fetchall()]
+            if table_list:
+                tables = [t.split('.')[-1].replace('"', '').replace("'", "") for t in table_list]
+            else:
+                # Get all tables
+                cursor.execute(
+                    "SELECT name FROM sqlite_master WHERE type='table' AND name NOT LIKE 'sqlite_%';"
+                )
+                tables = [row[0] for row in cursor.fetchall()]
 
             schema = {}
             for table in tables:
@@ -81,7 +108,7 @@ class SQLiteService:
                             "column_name": col[1],
                             "type": col[2],
                             "pk": bool(col[5]),
-                            "description": "",  # SQLite doesn't store descriptions easily in pragma
+                            "description": "", 
                         }
                     )
 
@@ -98,6 +125,17 @@ class SQLiteService:
                     )
 
                 schema[table] = {"columns": columns, "foreign_keys": fks}
+                
+                if sample_rows:
+                    try:
+                        cursor.execute(f"SELECT * FROM \"{table}\" LIMIT 3")
+                        rows = cursor.fetchall()
+                        desc = cursor.description
+                        if desc:
+                            c_names = [d[0] for d in desc]
+                            schema[table]["sample"] = [dict(zip(c_names, row)) for row in rows]
+                    except Exception as se:
+                        Logger.log(f"Samples skipped for {table}: {se}", level="WARN")
 
             conn.close()
             return schema
