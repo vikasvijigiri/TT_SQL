@@ -300,7 +300,16 @@ class ToolRegistry:
                 resp_json = json.loads(json_match.group(1)) if json_match else json.loads(resp_text)
                 for item in resp_json.get("relevant_tables", []):
                     tname = item if isinstance(item, str) else item.get("table")
-                    if tname in state.schema_info and tname not in all_selected: all_selected.append(tname)
+                    if not tname: continue
+                    t_clean = str(tname).split(" ")[0].replace('"', '').replace("'", "").lower()
+                    matched_table = None
+                    for schema_table in state.schema_info.keys():
+                        st_clean = str(schema_table).split(" ")[0].replace('"', '').replace("'", "").lower()
+                        if t_clean == st_clean or st_clean.endswith(f".{t_clean}"):
+                            matched_table = schema_table
+                            break
+                    if matched_table and matched_table not in all_selected:
+                        all_selected.append(matched_table)
             except: continue
 
         Logger.log_agent_block("Table Pruning Tool", inputs=[{"desc": f"Filtering {len(table_names)} tables", "status": "active"}], result=f"Selected {len(all_selected)} relevant tables: {all_selected}", status="success" if all_selected else "no tables picked")

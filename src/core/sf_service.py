@@ -93,7 +93,7 @@ class SnowflakeService:
 
         return self._conn
 
-    def get_schema(self, database: str, schema: str | None = None, table_list: list[str] | None = None) -> dict[str, Any]:
+    def get_schema(self, database: str, schema: str | None = None, table_list: list[str] | None = None, sample_rows: bool = False) -> dict[str, Any]:
         """
         Fetch schema for tables in a Snowflake database/schema.
         If table_list is provided, only fetches metadata and samples for those tables.

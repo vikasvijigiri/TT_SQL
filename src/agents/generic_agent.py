@@ -230,7 +230,8 @@ class GenericAgent(BaseAgent):
                              for info in getattr(state, "schema_info", {}).values():
                                  for c in info.get("columns", []):
                                      if c.get("variant_keys"):
-                                         v_keys.extend(c["variant_keys"].keys())
+                                         v_temp = c["variant_keys"]
+                                         v_keys.extend(list(v_temp.keys()) if isinstance(v_temp, dict) else list(v_temp))
                              
                              # Extract key part (last part)
                              key_candidate = parts[-1].strip('"')

@@ -96,8 +96,7 @@ class VariantInspector:
             ) f
         )
         SELECT DISTINCT 
-            k.value::STRING AS key_name,
-            TYPEOF(lvl1_value[k.value]) AS key_type
+            k.value::STRING AS key_name
         FROM level1,
         LATERAL FLATTEN(input => OBJECT_KEYS(lvl1_value)) k
         WHERE TYPEOF(lvl1_value) = 'OBJECT'
@@ -109,8 +108,8 @@ class VariantInspector:
             cursor.execute(query)
             rows = cursor.fetchall()
             
-            # Extract keys and their types
-            keys = {row[0]: row[1] for row in rows if row[0]}
+            # Extract keys
+            keys = sorted({str(row[0]) for row in rows if row[0]})
             
             status = "known" if keys else "unknown"
             result = {

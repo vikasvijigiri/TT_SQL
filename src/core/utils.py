@@ -52,9 +52,10 @@ def format_schema_to_str(schema_info: dict[str, Any], detailed: bool = True, max
                     line = f"- {pk}{name} {ctype}"
                     
                     # Task X: Include Variant Keys in summary
-                    v_keys = c.get("variant_keys", {})
-                    if v_keys and isinstance(v_keys, dict):
-                        k_list = list(v_keys.keys())[:5]
+                    v_keys = c.get("variant_keys", [])
+                    if v_keys:
+                        # Support both legacy dicts and new lists
+                        k_list = list(v_keys.keys()) if isinstance(v_keys, dict) else list(v_keys)
                         line += f" -> keys: {k_list}"
                     
                     if desc: line += f" | {desc}"
