@@ -138,12 +138,15 @@ class WorkflowEngine:
         if prune_val["status"] == "SUCCESS":
             selected = state.structured_pruning.get("relevant_tables", [])
             if selected:
-                # Case-insensitive mapping to original table names
-                schema_keys_map = {k.lower(): k for k in state.schema_info.keys()}
                 actual_selected = []
                 for s in selected:
-                    if s.lower() in schema_keys_map:
-                        actual_selected.append(schema_keys_map[s.lower()])
+                    s_clean = str(s).split(" ")[0].replace('"', '').replace("'", "").lower()
+                    for k in state.schema_info.keys():
+                        k_clean = str(k).split(" ")[0].replace('"', '').replace("'", "").lower()
+                        if s_clean == k_clean or k_clean.endswith(f".{s_clean}"):
+                            if k not in actual_selected:
+                                actual_selected.append(k)
+                            break
                 
                 if actual_selected:
                     pruned_schema = {k: v for k, v in state.schema_info.items() if k in actual_selected}
@@ -157,6 +160,24 @@ class WorkflowEngine:
             Logger.log_step("TablePruner", "SUCCESS")
         else:
             Logger.log(f"[TablePruner] Contract violation: {prune_val['reason']}. Proceeding with full schema.", level="WARN")
+
+        # ─── 1.2.5 Discover Variant Keys ──────────────────────────────────
+        if getattr(state, "dialect", "sqlite") == "snowflake":
+            Logger.log_step("VariantDiscovery", "START")
+            from core.variant_inspector import VariantInspector
+            vi = VariantInspector(state.db_name)
+            found_variants = 0
+            for t_name, t_info in state.schema_info.items():
+                for c in t_info.get("columns", []):
+                    if "VARIANT" in str(c.get("type", "")).upper() and not c.get("variant_keys"):
+                        try:
+                            inspection = vi.inspect_column(t_name, c["column_name"])
+                            keys = inspection.get("keys", [])
+                            c["variant_keys"] = keys
+                            if keys: found_variants += 1
+                        except BaseException as e:
+                            Logger.log(f"[VariantDiscovery] Error on {t_name}.{c['column_name']}: {e}", level="WARN")
+            Logger.log(f"[VariantDiscovery] Discovered keys for {found_variants} VARIANT columns.")
 
         # ─── 1.5 IntentAnalyzer (Semantic Baseline) ─────────────────────────
         Logger.log_step("IntentAnalyzer", "START")
@@ -239,89 +260,149 @@ class WorkflowEngine:
         state.current_step = "PLAN_READY"
         Logger.log_state("SCHEMA_READY", "PLAN_READY")
 
-        # ─── 3. SQLBuilder ───────────────────────────────────────────────
-        Logger.log_step("SQLBuilder", "START")
-        builder = GenericAgent("SQLBuilder", "sql_builder", output_key="candidates", state_field="sql_candidates", llm_service=self.llm)
-        state = builder.run(state)
+        # ─── Builder <-> Critic Adaptive Loop ────────────────────────────
+        max_sql_iterations = 3
+        sql_iter = 0
+        sql_approved = False
         
-        if state.pipeline_failure_reason or not state.sql_candidates:
-            state.pipeline_failure_reason = state.pipeline_failure_reason or "SQLBuilder failed"
-            Logger.log_pipeline_status(False, reason=state.pipeline_failure_reason)
-            return state
+        while sql_iter < max_sql_iterations and not sql_approved:
+            sql_iter += 1
+            Logger.log(f"\n🔄 SQL ITERATION {sql_iter}/{max_sql_iterations}", to_file=False)
 
-        # ─── 3.5 SQL Normalization (NEW: Dialect-Aware AST transformation) ──
-        Logger.log_step("SQLNormalizer", "START")
-        raw_sql = state.sql_candidates[0].get("sql", "")
-        normalizer = SQLNormalizer(state.dialect, reference_date=state.reference_date)
-        normalized_sql = normalizer.normalize(raw_sql)
-        
-        state.chosen_query = normalized_sql
-        
-        # PERSIST: SQL (Task 12)
-        write_sql_to_file(state.instance_id, state.db_name, state.chosen_query, state.model_name, dialect=state.dialect)
-        
-        state.current_step = "SQL_READY"
-        Logger.log_state("PLAN_READY", "SQL_READY")
-
-        # ─── 4. ExecutionEngine ──────────────────────────────────────────
-        Logger.log_step("ExecutionEngine", "START")
-        service = ToolRegistry._get_service(state)
-        res = service.execute_query(state.chosen_query, sampling=False)
-        
-        state.execution_result = res
-        
-        # ─── 4.5 DataIQ (NEW: Result Validation) ──────────────────────────
-        data_iq_analysis = analyze_result(res)
-        state.output_audit_report = data_iq_analysis
-        
-        if res.error_message:
-            Logger.log_step("ExecutionEngine", "FAILED", res.error_message[:50])
-        else:
-            Logger.log_step("ExecutionEngine", "SUCCESS")
-            # PERSIST: Results (Task 12)
-            write_csv_to_file(state.instance_id, state.db_name, res.rows, res.columns, state.model_name)
-        
-        state.current_step = "EXECUTED"
-        Logger.log_state("SQL_READY", "EXECUTED")
-
-        # ─── 5. SQLCritic (Mandatory Query Validation) ────────────────────
-        if self.features.get("sql_critic", True):
-            Logger.log_step("SQLCritic", "START")
+            # ─── 3. SQLBuilder ───────────────────────────────────────────────
+            Logger.log_step("SQLBuilder", "START")
+            builder = GenericAgent("SQLBuilder", "sql_builder", output_key="candidates", state_field="sql_candidates", llm_service=self.llm)
+            state = builder.run(state)
             
-            # TASK 8: Propagate SEMANTIC RISK
-            semantic_risks = []
-            if state.strategies:
-                semantic_risks = state.strategies.get("semantic_risks", []) or state.strategies.get("risks", [])
-            
-            eval_item = {
-                "id": 1, 
-                "sql": state.chosen_query, 
-                "execution": {"error": res.error_message, "row_count": res.row_count},
-                "data_iq": state.output_audit_report,
-                "semantic_risks": semantic_risks
-            }
-            state.audit_context = json.dumps([eval_item])
-            
-            critic = GenericAgent("SQLCritic", "sql_critic", state_field="crit_response", llm_service=self.llm)
-            state = critic.run(state)
-            
-            # 1. Structural Validation (JSON contract)
-            crit_val = validate_json_response(
-                state.crit_response,
-                required_keys=["is_valid", "feedback", "missing_logical_steps", "grounding_errors", "suggested_fix"]
-            )
-            if crit_val["status"] != "SUCCESS":
-                state.pipeline_failure_reason = f"SQLCritic contract violation: {crit_val['reason']}"
+            if state.pipeline_failure_reason or not state.sql_candidates:
+                state.pipeline_failure_reason = state.pipeline_failure_reason or "SQLBuilder failed"
                 Logger.log_pipeline_status(False, reason=state.pipeline_failure_reason)
                 return state
+
+            # ─── 3.25 SemanticFixLayer (NEW) ─────────────────────────────────
+            Logger.log_step("SemanticFixLayer", "START")
+            from core.semantic_fixer import apply_semantic_fixes, get_log_stats
+            
+            plan = state.strategies if hasattr(state, "strategies") else {}
+            schema_meta = state.schema_info if hasattr(state, "schema_info") else {}
+            raw_sql = state.sql_candidates[0].get("sql", "")
+            
+            fixed_sql = apply_semantic_fixes(plan, raw_sql, state.dialect, schema_meta)
+            
+            logs = get_log_stats()
+            Logger.log(f"[SemanticFixLayer]\n"
+                       f"- dedup_applied: {str(logs.get('dedup_applied', False)).lower()}\n"
+                       f"- date_normalized: {str(logs.get('date_normalized', False)).lower()}\n"
+                       f"- variant_corrected: {str(logs.get('variant_corrected', False)).lower()}\n"
+                       f"- output_formatted: {str(logs.get('output_formatted', False)).lower()}")
+                       
+            state.sql_candidates[0]["sql"] = fixed_sql
+
+            # ─── 3.5 SQL Normalization (NEW: Dialect-Aware AST transformation) ──
+            Logger.log_step("SQLNormalizer", "START")
+            raw_sql = state.sql_candidates[0].get("sql", "")
+            normalizer = SQLNormalizer(state.dialect, reference_date=state.reference_date)
+            normalized_sql = normalizer.normalize(raw_sql)
+            
+            state.chosen_query = normalized_sql
+            
+            # PERSIST: SQL (Task 12)
+            write_sql_to_file(state.instance_id, state.db_name, state.chosen_query, state.model_name, dialect=state.dialect)
+            
+            state.current_step = "SQL_READY"
+            if sql_iter == 1:
+                Logger.log_state("PLAN_READY", "SQL_READY")
+
+            # ─── 4. ExecutionEngine ──────────────────────────────────────────
+            Logger.log_step("ExecutionEngine", "START")
+            service = ToolRegistry._get_service(state)
+            res = service.execute_query(state.chosen_query, sampling=False)
+            
+            state.execution_result = res
+            
+            # ─── 4.5 DataIQ (NEW: Result Validation) ──────────────────────────
+            data_iq_analysis = analyze_result(res)
+            state.output_audit_report = data_iq_analysis
+            
+            if res.error_message:
+                Logger.log_step("ExecutionEngine", "FAILED", res.error_message[:50])
+            else:
+                Logger.log_step("ExecutionEngine", "SUCCESS")
+                # PERSIST: Results (Task 12)
+                write_csv_to_file(state.instance_id, state.db_name, res.rows, res.columns, state.model_name)
+            
+            state.current_step = "EXECUTED"
+            if sql_iter == 1:
+                Logger.log_state("SQL_READY", "EXECUTED")
+
+            # ─── 5. SQLCritic (Mandatory Query Validation) ────────────────────
+            if self.features.get("sql_critic", True):
+                Logger.log_step("SQLCritic", "START")
                 
-            # 2. Semantic Validation (Critic's judgment)
-            if not state.crit_response.get("is_valid", False):
-                state.pipeline_failure_reason = f"SQLCritic rejected output: {state.crit_response.get('feedback')}"
-                Logger.log_pipeline_status(False, reason=state.pipeline_failure_reason)
-                return state
-            
-            Logger.log("[SQLCritic] Output Validated Successfully")
+                # TASK 8: Propagate SEMANTIC RISK
+                semantic_risks = []
+                if state.strategies:
+                    semantic_risks = state.strategies.get("semantic_risks", []) or state.strategies.get("risks", [])
+                
+                eval_item = {
+                    "id": 1, 
+                    "sql": state.chosen_query, 
+                    "execution": {"error": res.error_message, "row_count": res.row_count},
+                    "data_iq": state.output_audit_report,
+                    "semantic_risks": semantic_risks
+                }
+                state.audit_context = json.dumps([eval_item])
+                
+                critic = GenericAgent("SQLCritic", "sql_critic", state_field="crit_response", llm_service=self.llm)
+                state = critic.run(state)
+                
+                # 1. Structural Validation (JSON contract)
+                crit_val = validate_json_response(
+                    state.crit_response,
+                    required_keys=["is_valid", "feedback", "missing_logical_steps", "grounding_errors", "suggested_fix"]
+                )
+                if crit_val["status"] != "SUCCESS":
+                    state.pipeline_failure_reason = f"SQLCritic contract violation: {crit_val['reason']}"
+                    Logger.log_pipeline_status(False, reason=state.pipeline_failure_reason)
+                    return state
+                    
+                # 2. Semantic Validation (Critic's judgment)
+                if not state.crit_response.get("is_valid", False):
+                    fb = state.crit_response.get('feedback', '')
+                    Logger.log(f"⚠️ SQLCritic REJECTED query (Iteration {sql_iter}/{max_sql_iterations}): {fb}", level="WARN")
+                    
+                    if not hasattr(state, "execution_error_history"):
+                        state.execution_error_history = []
+                        
+                    # ─── AUTO-EXTEND ITERATIONS IF PROGRESSING ───
+                    if sql_iter == max_sql_iterations and max_sql_iterations < 7:
+                        last_error = ""
+                        if len(state.execution_error_history) > 0:
+                            prev_entry = state.execution_error_history[-1]
+                            if "| Error: " in prev_entry and " | Feedback:" in prev_entry:
+                                last_error = prev_entry.split("| Error: ")[1].split(" | Feedback: ")[0].strip()
+                                
+                        current_error = str(res.error_message).strip() if res.error_message else ""
+                        has_suggested_fix = bool(state.crit_response.get("suggested_fix"))
+                        error_changed = current_error != last_error
+
+                        if has_suggested_fix or (current_error and error_changed):
+                            Logger.log(f"🔄 Progress detected (new error: {error_changed}, fix suggested: {has_suggested_fix}). Auto-extending iterations from {max_sql_iterations} to {max_sql_iterations + 2}.")
+                            max_sql_iterations += 2
+                    
+                    hist_entry = f"[Iteration {sql_iter}] Query: {state.chosen_query} | Error: {res.error_message} | Feedback: {fb}"
+                    state.execution_error_history.append(hist_entry)
+                    state.combined_feedback = fb
+                    
+                    if sql_iter >= max_sql_iterations:
+                        state.pipeline_failure_reason = f"SQLCritic rejected output after {max_sql_iterations} attempts: {fb}"
+                        Logger.log_pipeline_status(False, reason=state.pipeline_failure_reason)
+                        return state
+                else:
+                    Logger.log("[SQLCritic] Output Validated Successfully")
+                    sql_approved = True
+            else:
+                sql_approved = True
 
         return state
 

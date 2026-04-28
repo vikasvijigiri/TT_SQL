@@ -44,31 +44,178 @@ sqlite:
 snowflake:
   planner_instructions: |
     - VARIANT HANDLING (CRITICAL):
-      - If VARIANT column structure (keys) is NOT provided: DO NOT assume keys, mark as missing_elements, and set expansion_required=true.
-      - ONLY map concepts to verified VARIANT keys in [SCHEMA].
-      - source_type="variant_required" MUST be used for known variant paths.
+      - If VARIANT structure (keys) is NOT provided:
+        → DO NOT assume keys
+        → add to missing_elements
+        → set expansion_required = true
+
+      - ONLY use keys explicitly defined in [SCHEMA]
+
+      - If VARIANT access is required:
+        → mark source_type = "variant_required"
+
+    ------------------------------------------------------------
+
+    - AGGREGATION SEMANTICS (MANDATORY):
+
+      Before choosing aggregation:
+
+      1. Identify:
+         - entity being counted (E)
+         - what one row represents (source grain)
+
+      2. Determine:
+         - does transformation (JOIN, FLATTEN, etc.) create multiple rows per entity?
+
+      3. Determine intent:
+         - are we counting rows or unique entities?
+
+      RULE:
+
+      - If rows represent entities directly:
+        → use COUNT(*)
+
+      - If multiple rows can represent same entity AND question requires unique entities:
+        → use COUNT(DISTINCT E)
+
+      - DISTINCT must NEVER be used by default.
+      - DISTINCT must ALWAYS be justified by aggregation intent.
+
   builder_instructions: |
     - Use Snowflake SQL syntax and semantics.
-    - STRICT MANDATORY QUOTING: EVERY SINGLE column, table, schema, and database name MUST be wrapped in double quotes (e.g., "column", "Table", "DB").
-    - PRESERVE CASE: Match the case exactly as it appears in the [SCHEMA].
-    - VARIANT SYNTAX (CRITICAL):
-      → Use: `alias.value:"key"::TYPE`
-      → ALWAYS use: `CROSS JOIN LATERAL FLATTEN(input => table.column) alias`
-      → NEVER quote the keyword `value`.
-      → Correct: `f.value:"application_number"::STRING`
-      → Incorrect: `"f"."value":"application_number"` or `f."value":"application_number"`.
-    - Use CURRENT_DATE(), DATEADD(), and DATE_TRUNC() for temporal logic.
-    - Use ILIKE for case-insensitive string matching.
-    - Use IFF() or TRY_DIVIDE() for conditional calculations.
-    - Use QUALIFY for window-based filtering.
-  critic_instructions: |
-    - MANDATORY: Verify all Snowflake identifiers (tables, columns) are double-quoted.
-    - Validate Snowflake syntax correctness.
-    - Check for correct VARIANT extraction: `value:"key"` (value MUST be unquoted).
-    - Check for idiomatic Snowflake function usage (DATEADD, TRY_DIVIDE, etc.).
-    - Detect potential runtime risks (NULLs, precise division).
-    - Verify duplication safety when using LATERAL FLATTEN (prefer COUNT DISTINCT).
 
+    ------------------------------------------------------------
+
+    - IDENTIFIER RULES (STRICT):
+
+      - ALL table, schema, and column names MUST be double-quoted
+      - EXCEPT:
+        → FLATTEN alias (e.g., f)
+        → special column `value` (must NOT be quoted)
+
+      - Preserve exact case from [SCHEMA]
+
+    ------------------------------------------------------------
+
+    - VARIANT SYNTAX (CRITICAL):
+
+      → Use:
+        alias.value:"key"::TYPE
+
+      → Example:
+        f.value:"application_number"::STRING
+
+      → NEVER use:
+        "f"."value"
+        f."value"
+
+    ------------------------------------------------------------
+
+    - FLATTEN USAGE:
+
+      → Always:
+        CROSS JOIN LATERAL FLATTEN(input => table."variant_column") alias
+
+      → DO NOT alias FLATTEN output columns manually
+      → Use default columns:
+        value, key, index, path, seq, this
+
+    ------------------------------------------------------------
+
+    - AGGREGATION RULE:
+
+      - Use COUNT(*) by default
+
+      - Use COUNT(DISTINCT entity) ONLY IF:
+        → multiple rows per entity exist
+        → AND unique entity counting is required
+
+    ------------------------------------------------------------
+
+    - Use Snowflake idioms:
+
+      - CURRENT_DATE()
+      - DATEADD()
+      - DATE_TRUNC()
+      - ILIKE
+      - IFF()
+      - TRY_DIVIDE()
+      - QUALIFY (for window filtering)
+
+  critic_instructions: |
+    - MANDATORY: All identifiers must be double-quoted
+      (except FLATTEN alias and `value` column)
+
+    ------------------------------------------------------------
+
+    - SYNTAX VALIDATION:
+      - Ensure valid Snowflake SQL
+      - Ensure proper quoting and casing
+
+    ------------------------------------------------------------
+
+    - VARIANT VALIDATION:
+
+      - Must follow:
+        alias.value:"key"
+
+      - Reject:
+        "alias"."value"
+        alias."value"
+
+    ------------------------------------------------------------
+
+    - FLATTEN & DUPLICATION ANALYSIS (CRITICAL):
+
+      1. Detect row expansion caused by:
+         - FLATTEN
+         - JOIN
+         - multi-valued fields
+
+      2. Identify aggregation target:
+         - rows vs entities
+
+      ------------------------------------------------------------
+
+      RULE:
+
+      - If aggregation counts rows:
+        → COUNT(*) required
+
+      - If aggregation counts entities after expansion:
+        → COUNT(DISTINCT entity) required
+
+      - DISTINCT must NOT be used without justification
+
+      ------------------------------------------------------------
+
+      FAIL if:
+        - DISTINCT used without aggregation need
+        - DISTINCT missing when duplication causes overcount
+
+    ------------------------------------------------------------
+
+    - AGGREGATION CONSISTENCY:
+
+      - Ensure GROUP BY matches aggregation grain
+      - Ensure no overcount or undercount
+
+    ------------------------------------------------------------
+
+    - RUNTIME SAFETY:
+
+      - Check NULL handling
+      - Ensure safe division (TRY_DIVIDE)
+      - Validate date functions
+
+    ------------------------------------------------------------
+
+    - PRIORITY:
+
+      Prefer SEMANTIC correctness over syntactic acceptance
+
+
+      
 duckdb:
   builder_instructions: |
     - Use DuckDB syntax.
