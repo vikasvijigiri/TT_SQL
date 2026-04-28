@@ -212,9 +212,12 @@ class PromptLoader:
             })
 
             # --- Label-based blocks for prompts ---
-            # Task 13: Unified Single-Source Schema (ALWAYS FULL)
+            # Task 13: Unified Single-Source Schema (Now PRUNED + COMPRESSED)
+            pruned_schema = getattr(state, "schema_info", {})
+            add_block("SCHEMA", "DATABASE SCHEMA (Pruned & Compressed)", format_schema_to_str(pruned_schema, mode="compressed"))
+            
+            # Keep full schema available if explicitly requested by a prompt under {full_schema}
             full_schema = getattr(state, "full_schema_info", {})
-            add_block("SCHEMA", "DATABASE SCHEMA (Full with Samples)", format_schema_to_str(full_schema, detailed=True, sample_rows=True))
             add_block("full_schema", "FULL DATABASE INVENTORY (Compressed)", format_schema_to_str(full_schema, detailed=False))
             
             # Minimal Schema for Bootstrapping (Table names only)

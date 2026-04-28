@@ -249,7 +249,12 @@ class WorkflowEngine:
                     Logger.log("[QueryCritic] Plan Validated Successfully")
                     plan_approved = True
                 else:
-                    Logger.log(f"⚠️ QueryCritic REJECTED plan (Iteration {plan_iter}/{max_plan_iterations}): {state.plan_critique.get('feedback')}", level="WARN")
+                    fb = state.plan_critique.get('feedback', '')
+                    s_fix = state.plan_critique.get('suggested_fix', '')
+                    if s_fix:
+                        fb += f"\nSuggested Fix: {s_fix}"
+                        state.plan_critique['feedback'] = fb
+                    Logger.log(f"⚠️ QueryCritic REJECTED plan (Iteration {plan_iter}/{max_plan_iterations}): {fb}", level="WARN")
                     if plan_iter >= max_plan_iterations:
                         state.pipeline_failure_reason = f"QueryCritic refused plan after {max_plan_iterations} attempts: {state.plan_critique.get('feedback')}"
                         Logger.log_pipeline_status(False, reason=state.pipeline_failure_reason)
@@ -369,6 +374,9 @@ class WorkflowEngine:
                 # 2. Semantic Validation (Critic's judgment)
                 if not state.crit_response.get("is_valid", False):
                     fb = state.crit_response.get('feedback', '')
+                    s_fix = state.crit_response.get('suggested_fix', '')
+                    if s_fix:
+                        fb += f"\nSuggested Fix: {s_fix}"
                     Logger.log(f"⚠️ SQLCritic REJECTED query (Iteration {sql_iter}/{max_sql_iterations}): {fb}", level="WARN")
                     
                     if not hasattr(state, "execution_error_history"):

@@ -128,6 +128,11 @@ messages:
       If DataIQ indicates:
       - high duplication_ratio
       → enforce stricter aggregation
+      
+      - single_value_column anomaly
+      → This means an entire column is duplicated with one value (e.g., all 0). 
+      → HIGH PROBABILITY of math/syntax/logic/join/filter/count problems in the SQL.
+      → STRICTLY review query logic (e.g., missed LEFT JOINs, wrong conditions, cross-joins) and flag as a failure if unaddressed.
 
       If timestamp collisions detected:
       → enforce tie-breaking ORDER BY

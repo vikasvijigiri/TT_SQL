@@ -42,7 +42,7 @@ def analyze_result(result: ExecutionResult) -> Dict[str, Any]:
                     "message": f"Suspicious duplication detected: {round(dupe_ratio*100)}% of rows are duplicates."
                 })
                 
-            # 3. Null Ratio per column
+            # 3. Null and Single-Value Ratio per column
             for col in df.columns:
                 null_count = df[col].isnull().sum()
                 null_ratio = null_count / total_rows
@@ -55,6 +55,20 @@ def analyze_result(result: ExecutionResult) -> Dict[str, Any]:
                         "ratio": round(null_ratio, 2),
                         "message": f"Column '{col}' is largely NULL ({round(null_ratio*100)}%)."
                     })
+                elif total_rows > 1:
+                    non_nulls = df[col].dropna()
+                    if not non_nulls.empty:
+                        unique_vals = non_nulls.unique()
+                        if len(unique_vals) == 1:
+                            val = unique_vals[0]
+                            confidence_score -= 0.2
+                            is_zero = (val == 0 or val == "0" or val == 0.0)
+                            msg_suffix = " (all zeros)" if is_zero else f" (all '{val}')"
+                            anomalies.append({
+                                "type": "single_value_column",
+                                "column": col,
+                                "message": f"Entire column '{col}' is duplicated with one value{msg_suffix}. Check SQL for math/syntax/logic/join/filter/count problems."
+                            })
                     
     except Exception as e:
         Logger.log(f"[DataIQ] Statistical analysis failed: {str(e)}", level="WARN")

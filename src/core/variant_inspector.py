@@ -83,6 +83,8 @@ class VariantInspector:
             SELECT {col} AS variant_col
             FROM {fqn}
             WHERE {col} IS NOT NULL
+              AND {col}::STRING != '[]'
+              AND {col}::STRING != '{{}}'
             LIMIT {sample_size}
         ),
         level1 AS (

@@ -1,6 +1,8 @@
-Evaluating Exec Results:   0%|                        | 0/5 [00:00<?, ?it/s]Evaluating Exec Results: 100%|###############| 5/5 [00:00<00:00, 304.29it/s]
-{'local329': 1, 'local330': 1, 'local331': 0, 'local358': 0, 'local360': 0}
-Final score: 0.4, Correct examples: 2, Total examples: 5
-Real score: 0.003656307129798903, Correct examples: 2, Total examples: 547
-Correct IDs saved to: results/log-ids.csv
+sf_bq221 ERROR!!!!!!!!!!!!!!!!!!!!!!!!!!!!!! No columns to parse from file
+sf_bq223 ERROR!!!!!!!!!!!!!!!!!!!!!!!!!!!!!! No columns to parse from file
+Evaluating Exec Results:   0%|                       | 0/15 [00:00<?, ?it/s]Evaluating Exec Results: 100%|##############| 15/15 [00:00<00:00, 19.93it/s]Evaluating Exec Results: 100%|##############| 15/15 [00:00<00:00, 19.92it/s]
+{'sf_bq026': 0, 'sf_bq027': 1, 'sf_bq029': 1, 'sf_bq033': 1, 'sf_bq091': 1, 'sf_bq099': 0, 'sf_bq209': 0, 'sf_bq210': 0, 'sf_bq211': 1, 'sf_bq212': 0, 'sf_bq213': 1, 'sf_bq215': 0, 'sf_bq221': 0, 'sf_bq222': 0, 'sf_bq223': 0}
+Final score: 0.4, Correct examples: 6, Total examples: 15
+Real score: 0.010968921389396709, Correct examples: 6, Total examples: 547
+Correct IDs saved to: results/PATENTS-ids.csv
 TOTAL_GB_PROCESSED: 0.00000 GB
