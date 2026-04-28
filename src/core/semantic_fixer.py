@@ -48,7 +48,7 @@ def get_primary_entity_from_schema(schema_metadata: dict) -> str:
 
     return "*" # fallback
 
-def enforce_aggregation_correctness(plan: dict, sql: str, schema_metadata: dict) -> str:
+def enforce_aggregation_correctness(plan: dict, sql: str, schema_metadata: dict, dialect: str = "sqlite") -> str:
     """
     Detect if LATERAL FLATTEN or VARIANT expanded used.
     If aggregation is COUNT(*), replace with COUNT(DISTINCT primary_entity).
@@ -61,9 +61,12 @@ def enforce_aggregation_correctness(plan: dict, sql: str, schema_metadata: dict)
     if (lateral_exists or variant_flatten_exists) and "COUNT(*)" in sql_upper:
         primary_entity = get_primary_entity_from_schema(schema_metadata)
         if primary_entity != "*":
-            # Just do a simple replace on COUNT(*) -> COUNT(DISTINCT entity)
-            sql = re.sub(r'COUNT\(\s*\*\s*\)', f'COUNT(DISTINCT {primary_entity})', sql, flags=re.IGNORECASE)
-            _log_stats["dedup_applied"] = True
+            # Avoid replacing COUNT(*) if grouping by primary_entity, as it would just return 1
+            if not re.search(rf'GROUP BY\s+([a-zA-Z0-9_]+\.)?\"?{primary_entity}\"?', sql, re.IGNORECASE):
+                # Quote it for Snowflake to preserve case sensitivity
+                replacement = f'COUNT(DISTINCT "{primary_entity}")' if dialect == "snowflake" else f'COUNT(DISTINCT {primary_entity})'
+                sql = re.sub(r'COUNT\(\s*\*\s*\)', replacement, sql, flags=re.IGNORECASE)
+                _log_stats["dedup_applied"] = True
             
     return sql
 
@@ -248,7 +251,7 @@ def apply_semantic_fixes(plan: dict, sql: str, dialect: str, schema_metadata: di
             validate_variant_usage(plan)
             
             # Task 1
-            sql = enforce_aggregation_correctness(plan, sql, schema_metadata)
+            sql = enforce_aggregation_correctness(plan, sql, schema_metadata, dialect)
             
             # Task 2
             sql = normalize_temporal_expressions(sql, schema_metadata, dialect)

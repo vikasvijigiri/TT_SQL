@@ -10,7 +10,7 @@ from typing import Any, Union
 from core.logger import Logger
 
 
-def format_schema_to_str(schema_info: dict[str, Any], detailed: bool = True, max_samples: int = 1, sample_rows: bool = False) -> str:
+def format_schema_to_str(schema_info: dict[str, Any], detailed: bool = True, max_samples: int = 1, sample_rows: bool = False, mode: str = "default") -> str:
     """Formats schema dict into a token-optimized string with capped samples and trimmed metadata."""
     if not schema_info:
         return ""
@@ -38,7 +38,20 @@ def format_schema_to_str(schema_info: dict[str, Any], detailed: bool = True, max
                                     col_samples[norm_name].append(val_str)
             except Exception: pass
 
-        if detailed:
+        if mode == "compressed":
+            lines.append(f"Table: {table}")
+            for c in cols:
+                if isinstance(c, dict):
+                    name = c.get("column_name", c.get("name", "unknown"))
+                    v_keys = c.get("variant_keys", [])
+                    if v_keys:
+                        k_list = list(v_keys.keys()) if isinstance(v_keys, dict) else list(v_keys)
+                        key_str = ", ".join(str(k) for k in k_list)
+                        lines.append(f" - {name} (keys e.g. {key_str})")
+                    else:
+                        lines.append(f" - {name}")
+            lines.append("")
+        elif detailed:
             lines.append(f"Table: {table}")
             for c in cols:
                 if isinstance(c, dict):
@@ -53,14 +66,16 @@ def format_schema_to_str(schema_info: dict[str, Any], detailed: bool = True, max
                     
                     # Task X: Include Variant Keys in summary
                     v_keys = c.get("variant_keys", [])
-                    if v_keys:
-                        # Support both legacy dicts and new lists
-                        k_list = list(v_keys.keys()) if isinstance(v_keys, dict) else list(v_keys)
-                        line += f" -> keys: {k_list}"
                     
                     if desc: line += f" | {desc}"
                     if smp: line += smp
                     lines.append(line)
+                    
+                    # Present variants correctly under their corresponding column
+                    if v_keys:
+                        k_list = list(v_keys.keys()) if isinstance(v_keys, dict) else list(v_keys)
+                        for k in k_list:
+                            lines.append(f"    - {name}.{k}")
             # Only include FKs if manageable
             fks = data.get("foreign_keys", []) if isinstance(data, dict) else []
             if len(fks) < 10:
@@ -498,13 +513,25 @@ def validate_strategy(strategy: dict, schema_info: dict) -> dict:
         if len(parts) < 2 or "(" in parts[0]:
             continue
             
-        # Table name is typically the part before the column
-        raw_table_name = parts[-2]
-        norm_table_name = normalize_identifier(raw_table_name)
+        # Find which part is the table and which is the column
+        matched_table = None
+        raw_table_name = ""
+        for part in reversed(parts[:-1]):
+            norm = normalize_identifier(part)
+            if norm in norm_schema_tables:
+                matched_table = norm_schema_tables[norm]
+                raw_table_name = part
+                break
+                
+        if matched_table:
+            idx = parts.index(raw_table_name)
+            raw_col_name = parts[idx + 1] if idx + 1 < len(parts) else parts[-1]
+        else:
+            raw_table_name = parts[-2]
+            matched_table = norm_schema_tables.get(normalize_identifier(raw_table_name))
+            raw_col_name = parts[-1]
         
         # 1. Does table exist? 
-        matched_table = norm_schema_tables.get(norm_table_name)
-        
         if not matched_table:
             # Task 6: Truly not in schema check
             warnings.append(f"Strategy Mismatch: Concept '{concept}' refers to unknown table '{raw_table_name}'. Verify schema.")
@@ -514,7 +541,6 @@ def validate_strategy(strategy: dict, schema_info: dict) -> dict:
         table_data = schema_info.get(matched_table, {})
         cols = {normalize_identifier(c.get("column_name", c.get("name", ""))): c for c in table_data.get("columns", [])}
         
-        raw_col_name = parts[-1]
         norm_col_name = normalize_identifier(raw_col_name)
 
         if norm_col_name not in cols:
