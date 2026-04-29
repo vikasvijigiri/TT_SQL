@@ -117,49 +117,8 @@ class WorkflowEngine:
         Logger.log(f"Using reference_date = {state.reference_date}")
 
 
-        # ─── 1.2 Table Pruner (Relevancy Filtering) ────────────────────────
-        Logger.log_step("TablePruner", "START")
-        pruner = GenericAgent("TablePruner", "table_pruner", state_field="structured_pruning", llm_service=self.llm)
-        # Inject table summaries (Table + Columns + Rows) for accurate pruning
-        table_summaries = []
-        for t_name, t_info in state.schema_info.items():
-            cols = [c["column_name"] for c in t_info.get("columns", [])]
-            row_count = t_info.get("row_count", "unknown")
-            table_summaries.append(f"- {t_name}: [{', '.join(cols)}] | Rows: {row_count}")
-        state.all_tables = "\n".join(table_summaries)
-        state = pruner.run(state)
-        
-        # Contract validation for TablePruner
-        prune_val = validate_json_response(
-            state.structured_pruning,
-            required_keys=["relevant_tables", "reasoning"]
-        )
-        
-        if prune_val["status"] == "SUCCESS":
-            selected = state.structured_pruning.get("relevant_tables", [])
-            if selected:
-                actual_selected = []
-                for s in selected:
-                    s_clean = str(s).split(" ")[0].replace('"', '').replace("'", "").lower()
-                    for k in state.schema_info.keys():
-                        k_clean = str(k).split(" ")[0].replace('"', '').replace("'", "").lower()
-                        if s_clean == k_clean or k_clean.endswith(f".{s_clean}"):
-                            if k not in actual_selected:
-                                actual_selected.append(k)
-                            break
-                
-                if actual_selected:
-                    pruned_schema = {k: v for k, v in state.schema_info.items() if k in actual_selected}
-                    state.schema_info = pruned_schema
-                    state.all_table_names = list(pruned_schema.keys())
-                    Logger.log(f"[TablePruner] Pruned schema to {len(actual_selected)} tables: {actual_selected}")
-                else:
-                    Logger.log(f"[TablePruner] Pruning produced empty schema. Selected by agent: {selected}. Available: {list(state.schema_info.keys())}. Reverting to full schema.", level="WARN")
-            else:
-                Logger.log("[TablePruner] No tables selected. Reverting to full schema.", level="WARN")
-            Logger.log_step("TablePruner", "SUCCESS")
-        else:
-            Logger.log(f"[TablePruner] Contract violation: {prune_val['reason']}. Proceeding with full schema.", level="WARN")
+        # ─── 1.2 Table Pruner (Relevancy Filtering) [PAUSED BY USER REQUEST] ───
+        Logger.log("[TablePruner] Paused. Passing full compressed schema to all agents.")
 
         # ─── 1.2.5 Discover Variant Keys ──────────────────────────────────
         if getattr(state, "dialect", "sqlite") == "snowflake":
@@ -187,7 +146,7 @@ class WorkflowEngine:
         # Intent Structural Validation
         intent_val = validate_json_response(
             state.structured_intent,
-            required_keys=["entities", "metrics", "pre_filters", "post_filters", "filter_grain", "aggregation_steps", "aggregation_target", "answer_grain", "grouping_required", "ambiguities"]
+            required_keys=["entities", "metrics", "pre_filters", "post_filters", "filter_grain", "aggregation_steps", "aggregation_target", "answer_grain", "grouping_required", "join_required", "edge_cases", "ambiguities"]
         )
         if intent_val["status"] != "SUCCESS":
             state.pipeline_failure_reason = f"IntentAnalyzer contract violation: {intent_val['reason']}"
@@ -196,8 +155,18 @@ class WorkflowEngine:
             
         Logger.log(f"[IntentAnalyzer] Intent mapped: {state.structured_intent.get('answer_grain')}")
 
+        # ─── 1.75 GroundingValidator (New) ───────────────────────────────
+        Logger.log_step("GroundingValidator", "START")
+        grounding_agent = GenericAgent("GroundingValidator", "grounding_validator", state_field="grounded_intent", llm_service=self.llm)
+        state = grounding_agent.run(state)
+        
+        if not state.grounded_intent:
+            state.grounded_intent = state.structured_intent
+
         # ─── 2. QueryPlanner & QueryCritic Loop (Strategy Refinement) ──────
         max_plan_iterations = 3
+        if not hasattr(state, "plan_critique_history"):
+            state.plan_critique_history = []
         plan_iter = 0
         plan_approved = False
         
@@ -237,7 +206,8 @@ class WorkflowEngine:
                 # 1. Structural Validation (JSON contract)
                 crit_val = validate_json_response(
                     state.plan_critique,
-                    required_keys=["is_valid", "feedback", "missing_logical_steps", "grounding_errors", "detected_issues", "aggregation_validation", "suggested_fix"]
+                    required_keys=["is_valid", "logical_fit", "feedback", "missing_logical_steps", "grounding_errors", "suggested_fix"],
+                    allowed_values={"logical_fit": ["pass", "pass_with_risk", "fail"]}
                 )
                 if crit_val["status"] != "SUCCESS":
                     state.pipeline_failure_reason = f"QueryCritic contract violation: {crit_val['reason']}"
@@ -254,7 +224,40 @@ class WorkflowEngine:
                     if s_fix:
                         fb += f"\nSuggested Fix: {s_fix}"
                         state.plan_critique['feedback'] = fb
+                    
                     Logger.log(f"⚠️ QueryCritic REJECTED plan (Iteration {plan_iter}/{max_plan_iterations}): {fb}", level="WARN")
+
+                    # ─── AUTO-EXTEND PLAN ITERATIONS IF PROGRESSING ───
+                    if plan_iter == max_plan_iterations and max_plan_iterations < 7:
+                        last_feedback = ""
+                        if len(state.plan_critique_history) > 0:
+                            last_feedback = str(state.plan_critique_history[-1].get("feedback", "")).strip()
+                        
+                        current_feedback = str(state.plan_critique.get("feedback", "")).strip()
+                        has_suggested_fix = bool(state.plan_critique.get("suggested_fix"))
+                        feedback_changed = current_feedback != last_feedback
+                        
+                        if has_suggested_fix or feedback_changed:
+                            Logger.log(f"🔄 Plan Progress detected (feedback changed: {feedback_changed}, fix suggested: {has_suggested_fix}). Auto-extending iterations from {max_plan_iterations} to {max_plan_iterations + 2}.")
+                            max_plan_iterations += 2
+
+                    state.plan_critique_history.append(state.plan_critique)
+
+                    # ─── NEW: MissingElementsResolver Agent ───
+                    strategies_data = getattr(state, "strategies", {})
+                    if isinstance(strategies_data, dict) and strategies_data.get("missing_elements"):
+                        Logger.log_step("MissingElementsResolver", "START")
+                        resolver = GenericAgent("MissingElementsResolver", "missing_elements_resolver", output_key=None, state_field="resolver_output", llm_service=self.llm)
+                        state = resolver.run(state)
+                        
+                        if hasattr(state, "resolver_output") and isinstance(state.resolver_output, dict):
+                            state.resolved_elements = state.resolver_output.get("resolved_elements", [])
+                            updated_missing = state.resolver_output.get("updated_missing_elements", [])
+                            state.strategies["missing_elements"] = updated_missing
+                            Logger.log(f"[MissingElementsResolver] Resolved {len(state.resolved_elements)} elements.")
+                        else:
+                            state.resolved_elements = []
+
                     if plan_iter >= max_plan_iterations:
                         state.pipeline_failure_reason = f"QueryCritic refused plan after {max_plan_iterations} attempts: {state.plan_critique.get('feedback')}"
                         Logger.log_pipeline_status(False, reason=state.pipeline_failure_reason)
@@ -364,7 +367,8 @@ class WorkflowEngine:
                 # 1. Structural Validation (JSON contract)
                 crit_val = validate_json_response(
                     state.crit_response,
-                    required_keys=["is_valid", "feedback", "missing_logical_steps", "grounding_errors", "suggested_fix"]
+                    required_keys=["is_valid", "logical_fit", "feedback", "missing_logical_steps", "grounding_errors", "suggested_fix"],
+                    allowed_values={"logical_fit": ["pass", "pass_with_risk", "fail"]}
                 )
                 if crit_val["status"] != "SUCCESS":
                     state.pipeline_failure_reason = f"SQLCritic contract violation: {crit_val['reason']}"

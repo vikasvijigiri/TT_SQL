@@ -24,27 +24,49 @@ def reset_log_stats():
 
 def get_primary_entity_from_schema(schema_metadata: dict) -> str:
     """
-    Looks for the best primary entity grain: publication_number, id, *_id.
+    Looks for the best primary entity grain dynamically using heuristics.
     """
-    candidates = []
-    
-    # Extract all column names across all tables
-    if isinstance(schema_metadata, dict):
-        for table, info in schema_metadata.items():
-            for col in info.get("columns", []):
-                col_name = col.get("column_name", "").lower()
-                candidates.append(col_name)
-
-    # Heuristic 1: Exact matches for top-level entities
-    if "publication_number" in candidates:
-        return "publication_number"
-    if "id" in candidates:
-        return "id"
+    if not isinstance(schema_metadata, dict):
+        return "*"
         
-    # Heuristic 2: Substring matches for other common ids
-    id_candidates = [c for c in candidates if c.endswith("_id")]
-    if id_candidates:
-        return id_candidates[0]
+    # Heuristic 1: Look for explicit primary keys
+    for table, info in schema_metadata.items():
+        if not isinstance(info, dict): continue
+        for col in info.get("columns", []):
+            if not isinstance(col, dict): continue
+            if col.get("pk") or col.get("primary_key"):
+                return col.get("column_name")
+
+    # Heuristic 2: Look for 'id' exact match
+    for table, info in schema_metadata.items():
+        if not isinstance(info, dict): continue
+        for col in info.get("columns", []):
+            if not isinstance(col, dict): continue
+            col_name = col.get("column_name", "").lower()
+            if col_name == "id":
+                return col.get("column_name")
+
+    # Heuristic 3: Look for table-name related IDs (e.g. publication_number for PUBLICATIONS)
+    for table_fqn, info in schema_metadata.items():
+        if not isinstance(info, dict): continue
+        clean_table = table_fqn.replace('"', '').split('.')[-1].lower()
+        singular_table = clean_table[:-1] if clean_table.endswith('s') else clean_table
+        
+        for col in info.get("columns", []):
+            if not isinstance(col, dict): continue
+            col_name = col.get("column_name", "").lower()
+            if singular_table in col_name:
+                if any(suffix in col_name for suffix in ["_id", "_number", "_key", "_code"]):
+                    return col.get("column_name")
+
+    # Heuristic 4: Substring matches for other common IDs
+    for table, info in schema_metadata.items():
+        if not isinstance(info, dict): continue
+        for col in info.get("columns", []):
+            if not isinstance(col, dict): continue
+            col_name = col.get("column_name", "").lower()
+            if col_name.endswith("_id") or col_name.endswith("_number"):
+                return col.get("column_name")
 
     return "*" # fallback
 
@@ -63,8 +85,27 @@ def enforce_aggregation_correctness(plan: dict, sql: str, schema_metadata: dict,
         if primary_entity != "*":
             # Avoid replacing COUNT(*) if grouping by primary_entity, as it would just return 1
             if not re.search(rf'GROUP BY\s+([a-zA-Z0-9_]+\.)?\"?{primary_entity}\"?', sql, re.IGNORECASE):
+                # Try to find alias for primary_entity to avoid ambiguous column errors
+                alias = None
+                if isinstance(schema_metadata, dict):
+                    for table_fqn, info in schema_metadata.items():
+                        cols = [c.get("column_name", "").lower() for c in info.get("columns", [])]
+                        if primary_entity.lower() in cols:
+                            clean_table_name = table_fqn.replace('"', '').split('.')[-1]
+                            pattern = rf'(?:"{clean_table_name}"|\b{clean_table_name}\b)(?:\s+AS)?\s+([a-zA-Z0-9_]+)'
+                            match = re.search(pattern, sql, re.IGNORECASE)
+                            if match:
+                                temp_alias = match.group(1)
+                                if temp_alias.upper() not in ["ON", "WHERE", "GROUP", "ORDER", "JOIN", "LEFT", "RIGHT", "INNER", "CROSS", "NATURAL", "USING", "LIMIT", "OFFSET", "SET"]:
+                                    alias = temp_alias
+                                    break
+                
                 # Quote it for Snowflake to preserve case sensitivity
-                replacement = f'COUNT(DISTINCT "{primary_entity}")' if dialect == "snowflake" else f'COUNT(DISTINCT {primary_entity})'
+                if alias:
+                    replacement = f'COUNT(DISTINCT {alias}."{primary_entity}")' if dialect == "snowflake" else f'COUNT(DISTINCT {alias}.{primary_entity})'
+                else:
+                    replacement = f'COUNT(DISTINCT "{primary_entity}")' if dialect == "snowflake" else f'COUNT(DISTINCT {primary_entity})'
+                    
                 sql = re.sub(r'COUNT\(\s*\*\s*\)', replacement, sql, flags=re.IGNORECASE)
                 _log_stats["dedup_applied"] = True
             
@@ -208,25 +249,30 @@ def ensure_consistent_distinct_usage(sql: str) -> str:
 
 def prefer_structured_variant_fields(schema: dict) -> dict:
     """
-    If both assignee (raw) and assignee_harmonized (structured) exist, prefer structured.
+    If both raw and structured/harmonized equivalents exist, prefer structured.
     """
     if not isinstance(schema, dict):
         return schema
         
+    structured_suffixes = ["_harmonized", "_structured", "_clean", "_normalized"]
+        
     for table, info in schema.items():
+        if not isinstance(info, dict): continue
         cols = info.get("columns", [])
         col_names = [c.get("column_name", "") for c in cols]
         
-        # Look for harmonized equivalents
         for col in list(cols):
+            if not isinstance(col, dict): continue
             name = col.get("column_name", "")
-            if not name.endswith("_harmonized"):
-                harmonized_name = f"{name}_harmonized"
-                # If both exist, we can mark the raw one as deprecated/low priority
-                if harmonized_name in col_names:
-                    col["priority"] = "low"
-                    col["description"] = col.get("description", "") + " (Prefer harmonized version instead)"
-                    
+            
+            for suffix in structured_suffixes:
+                if not name.endswith(suffix):
+                    structured_name = f"{name}{suffix}"
+                    if structured_name in col_names:
+                        col["priority"] = "low"
+                        col["description"] = col.get("description", "") + f" (Prefer {suffix[1:]} version instead)"
+                        break
+                        
     return schema
     
 def apply_semantic_fixes(plan: dict, sql: str, dialect: str, schema_metadata: dict) -> str:

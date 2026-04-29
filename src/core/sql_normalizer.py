@@ -114,6 +114,8 @@ class SQLNormalizer:
                         self.transformations_applied.append(f"'{literal.this}' -> '{self.reference_date}'")
                         modified = True
             
+
+            
             # TASK 9: NO STRING HACKS (STRICT) - uses AST parsing + structured transformation
             final_sql = expression.sql(dialect=sg_dialect)
             

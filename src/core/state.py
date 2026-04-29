@@ -46,6 +46,7 @@ class AgentState(BaseModel):
     full_schema_info: dict[str, Any] = Field(default_factory=dict) # Master copy
     query_intent: str | None = None
     structured_intent: dict[str, Any] = Field(default_factory=dict)
+    grounded_intent: dict[str, Any] = Field(default_factory=dict)
     complexity_score: str | None = None  # e.g., "LOW", "MEDIUM", "HIGH"
     relevant_tables: list[str] = Field(default_factory=list)
     structured_pruning: dict[str, Any] = Field(default_factory=dict)
@@ -88,6 +89,7 @@ class AgentState(BaseModel):
     audit_context: str = "" # Used for ensemble evaluation
     crit_response: dict[str, Any] = Field(default_factory=dict) # Newly mapped JSON output from SQLCritic
     plan_critique: dict[str, Any] = Field(default_factory=dict) # Newly mapped JSON output from QueryCritic
+    plan_critique_history: list[dict[str, Any]] = Field(default_factory=list) # Task X: History for adaptive planning
     sql_candidates: list[dict[str, Any]] = Field(default_factory=list)
     last_raw_response: str = ""  # To debug parsing issues
     error_message: str | None = None
@@ -124,6 +126,8 @@ class AgentState(BaseModel):
     strategy_source_type: str = "relational"                           # Task 7: current source type (relational|variant)
     variant_required: list[dict[str, Any]] = Field(default_factory=list) # Task X: Required variant keys
     variant_schema_hints: str = ""                                     # Formatted hints for prompt injection
+    resolver_output: dict[str, Any] = Field(default_factory=dict)      # Cache for MissingElementsResolver
+    resolved_elements: list[Any] = Field(default_factory=list)         # Output of MissingElementsResolver
 
     # Usage Tracking
     token_usage: dict[str, int] = Field(

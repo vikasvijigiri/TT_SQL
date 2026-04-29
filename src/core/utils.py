@@ -47,7 +47,7 @@ def format_schema_to_str(schema_info: dict[str, Any], detailed: bool = True, max
                     if v_keys:
                         k_list = list(v_keys.keys()) if isinstance(v_keys, dict) else list(v_keys)
                         key_str = ", ".join(str(k) for k in k_list)
-                        lines.append(f" - {name} (keys e.g. {key_str})")
+                        lines.append(f" - {name} VARIANT (keys: {key_str})")
                     else:
                         lines.append(f" - {name}")
             lines.append("")
@@ -67,12 +67,19 @@ def format_schema_to_str(schema_info: dict[str, Any], detailed: bool = True, max
                     # Task X: Include Variant Keys in summary
                     v_keys = c.get("variant_keys", [])
                     
+                    is_variant = "VARIANT" in ctype.upper()
+                    if is_variant:
+                         k_list = list(v_keys.keys()) if isinstance(v_keys, dict) else list(v_keys)
+                         key_str = ", ".join(str(k) for k in k_list)
+                         line += f" (keys: {key_str})"
+
                     if desc: line += f" | {desc}"
-                    if smp: line += smp
+                    if smp and not is_variant: 
+                        line += smp
                     lines.append(line)
                     
                     # Present variants correctly under their corresponding column
-                    if v_keys:
+                    if v_keys and not is_variant: # Keep sub-bullets ONLY for non-explicit-VARIANT types (e.g. OBJECT) if they exist
                         k_list = list(v_keys.keys()) if isinstance(v_keys, dict) else list(v_keys)
                         for k in k_list:
                             lines.append(f"    - {name}.{k}")
