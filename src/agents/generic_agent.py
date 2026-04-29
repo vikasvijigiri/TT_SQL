@@ -57,21 +57,55 @@ class GenericAgent(BaseAgent):
                 # Get Raw Completion (Strict Mode - No markdown/noise allowed)
                 raw_content = self.llm.get_completion(messages, state=state, agent_name=self.name, max_tokens=self.max_tokens)
                 
-                # Task 2: REJECT Markdown / Headings / Text outside JSON
-                if "```" in raw_content or "###" in raw_content or (raw_content.strip() and not raw_content.strip().startswith("{")):
-                    Logger.log(f"[Validator] {self.name} → FAIL (formatting noise detected)", level="WARN")
-                    if attempt < MAX_RETRIES - 1:
-                        Logger.log(f"[{self.name}] INVALID_JSON → retrying (attempt {attempt + 2}/{MAX_RETRIES})", level="WARN")
-                    continue
+                # Relaxed Formatting Check: Allow Markdown blocks as long as JSON payload is extractable
 
                 # Parse JSON
                 try:
                     response = json.loads(raw_content.strip())
-                except Exception:
-                    Logger.log(f"[Validator] {self.name} → FAIL (parse error)", level="WARN")
-                    if attempt < MAX_RETRIES - 1:
-                        Logger.log(f"[{self.name}] INVALID_JSON → retrying (attempt {attempt + 2}/{MAX_RETRIES})", level="WARN")
-                    continue
+                except Exception as e_initial:
+                    # Task: Robust JSON Repair
+                    import re
+                    parsed = False
+                    current_content = raw_content.strip()
+                    
+                    # 1. Regex Fallback for JSON block
+                    try:
+                        json_match = re.search(r"(\{.*\})", current_content, re.DOTALL)
+                        if json_match:
+                            response = json.loads(json_match.group(1))
+                            parsed = True
+                    except Exception:
+                        pass
+                        
+                    # 2. Repair Trailing Commas
+                    if not parsed:
+                        try:
+                            repaired = re.sub(r',\s*([\]}])', r'\1', current_content)
+                            json_match = re.search(r"(\{.*\})", repaired, re.DOTALL)
+                            if json_match:
+                                response = json.loads(json_match.group(1))
+                                parsed = True
+                        except Exception:
+                            pass
+                            
+                    # 3. Repair Python literals (True, False, None)
+                    if not parsed:
+                        try:
+                            repaired = re.sub(r'\bTrue\b', 'true', current_content)
+                            repaired = re.sub(r'\bFalse\b', 'false', repaired)
+                            repaired = re.sub(r'\bNone\b', 'null', repaired)
+                            json_match = re.search(r"(\{.*\})", repaired, re.DOTALL)
+                            if json_match:
+                                response = json.loads(json_match.group(1))
+                                parsed = True
+                        except Exception:
+                            pass
+                            
+                    if not parsed:
+                        Logger.log(f"[Validator] {self.name} → FAIL (parse error): {str(e_initial)}. Raw content preview: {raw_content.strip()[:200]}...", level="WARN")
+                        if attempt < MAX_RETRIES - 1:
+                            Logger.log(f"[{self.name}] INVALID_JSON → retrying (attempt {attempt + 2}/{MAX_RETRIES})", level="WARN")
+                        continue
 
                 # Strict Contract Validation (Tasks 1, 2, 5, 9)
                 validation = {"status": "SUCCESS"}
@@ -87,17 +121,25 @@ class GenericAgent(BaseAgent):
                 elif self.name == "IntentAnalyzer":
                     validation = validate_json_response(
                         response,
-                        required_keys=["entities", "metrics", "pre_filters", "post_filters", "filter_grain", "aggregation_steps", "aggregation_target", "answer_grain", "grouping_required", "ambiguities"]
+                        required_keys=["entities", "metrics", "pre_filters", "post_filters", "filter_grain", "aggregation_steps", "aggregation_target", "answer_grain", "grouping_required", "join_required", "edge_cases", "ambiguities"]
                     )
                 elif self.name == "QueryCritic":
                     validation = validate_json_response(
                         response,
-                        required_keys=["is_valid", "feedback", "missing_logical_steps", "grounding_errors", "detected_issues", "aggregation_validation", "suggested_fix"]
+                        required_keys=["is_valid", "logical_fit", "feedback", "missing_logical_steps", "grounding_errors", "suggested_fix"],
+                        allowed_values={"logical_fit": ["pass", "pass_with_risk", "fail"]}
                     )
                 elif self.name == "SQLCritic":
                     validation = validate_json_response(
                         response,
-                        required_keys=["is_valid", "feedback", "missing_logical_steps", "grounding_errors", "suggested_fix"]
+                        required_keys=["is_valid", "logical_fit", "feedback", "missing_logical_steps", "grounding_errors", "suggested_fix"],
+                        allowed_values={"logical_fit": ["pass", "pass_with_risk", "fail"]}
+                    )
+                
+                elif self.name == "MissingElementsResolver":
+                    validation = validate_json_response(
+                        response,
+                        required_keys=["resolved_elements", "updated_missing_elements", "resolution_notes"]
                     )
                 
                 elif self.name == "TablePruner":

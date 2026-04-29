@@ -92,6 +92,11 @@ class PromptLoader:
 
             # Action Plan
             plan = getattr(state, "step_by_step_plan", [])
+            if not plan and getattr(state, "strategies", None):
+                strats = getattr(state, "strategies")
+                if isinstance(strats, dict):
+                    target = strats.get("strategies", strats) if isinstance(strats.get("strategies"), dict) else strats
+                    plan = target.get("primary", [])
             plan_str = "\n".join(f"  {i+1}. {s}" for i, s in enumerate(plan)) if plan else ""
             add_block("ACTION_PLAN", "STRATEGY GUIDE", plan_str)
             add_block("action_plan", "STRATEGY GUIDE", plan_str)
@@ -126,6 +131,30 @@ class PromptLoader:
 
             # Ensemble Audit Context
             audit_ctx = getattr(state, "audit_context", "")
+            if audit_ctx:
+                try:
+                    parsed_ctx = json.loads(audit_ctx) if isinstance(audit_ctx, str) else audit_ctx
+                    if isinstance(parsed_ctx, list):
+                        formatted_items = []
+                        for idx, item in enumerate(parsed_ctx):
+                            sql = item.get("sql", "N/A")
+                            exec_info = item.get("execution", {})
+                            error = exec_info.get("error", "None") or "None"
+                            rows = exec_info.get("row_count", "Unknown")
+                            
+                            item_str = f"Candidate #{idx+1}:\n"
+                            item_str += f"```sql\n{sql}\n```\n"
+                            item_str += f"  - Execution Error: {error}\n"
+                            item_str += f"  - Rows Returned: {rows}"
+                            
+                            risks = item.get("semantic_risks", [])
+                            if risks:
+                                item_str += f"\n  - Semantic Risks:\n" + "\n".join([f"    * {r}" for r in risks])
+                                
+                            formatted_items.append(item_str)
+                        audit_ctx = "\n\n".join(formatted_items)
+                except Exception:
+                    pass
             add_block("AUDIT_CONTEXT", "SQL CANDIDATES FOR EVALUATION", audit_ctx)
 
             # Discovered Values (Semantic matching results)
@@ -140,8 +169,12 @@ class PromptLoader:
             add_block("execution_results", "PREVIOUS EXECUTION RESULTS", res_str)
 
             # Failure History
-            history = getattr(state, "execution_error_history", [])
-            history_str = "\n".join(f"- {e}" for e in history) if history else ""
+            history = getattr(state, "execution_error_history", [])[-2:]
+            history_errors = []
+            for e in history:
+                history_errors.append(str(e))
+                    
+            history_str = "\n".join(f"- {err}" for err in history_errors) if history_errors else ""
             add_block("FAILURE_HISTORY", "PREVIOUS FAILURES", history_str)
 
             # SQL Context
@@ -154,6 +187,8 @@ class PromptLoader:
                 "previous_iterated_SQL": prev_sql,
                 "previous_iterated_sql": prev_sql,
                 "previous_sql": prev_sql,
+                "PREVIOUS_SQL": prev_sql,
+                "PREVIOUS_GENERATED_SQL": prev_sql,
                 "sql": prev_sql,
                 "chosen_query": prev_sql,
                 "previous_sql_label": "### PREVIOUS SQL" if prev_sql else ""
@@ -164,7 +199,7 @@ class PromptLoader:
             add_block("combined_feedback", "COMBINED DIAGNOSTIC FEEDBACK", combined_fb)
             
             # Intent Analyzer Output
-            intent = getattr(state, "structured_intent", {})
+            intent = getattr(state, "grounded_intent", None) or getattr(state, "structured_intent", {})
             intent_str = ""
             if intent:
                 intent_items = [f"- **{k.replace('_', ' ').title()}**: {v}" for k, v in intent.items()]
@@ -182,15 +217,35 @@ class PromptLoader:
             
             # Action Plan Feedback (Task 14)
             prev_plan = json.dumps(state.strategies, indent=2) if getattr(state, "strategies", None) else "No previous plan."
+            resolved = getattr(state, "resolved_elements", [])
+            resolved_str = json.dumps(resolved, indent=2) if resolved else "No resolved elements yet."
+            
+            missing = getattr(state, "strategies", {}).get("missing_elements", []) if isinstance(getattr(state, "strategies", {}), dict) else []
+            missing_str = json.dumps(missing, indent=2) if missing else "[]"
+
             processed_kwargs.update({
                 "PREVIOUS_ACTION_PLAN": prev_plan,
-                "FEEDBACK_ON_PREVIOUS_ACTION_PLAN": plan_fb if plan_fb else "No feedback available."
+                "FEEDBACK_ON_PREVIOUS_ACTION_PLAN": plan_fb if plan_fb else "No feedback available.",
+                "RESOLVED_ELEMENTS": resolved_str,
+                "MISSING_ELEMENTS": missing_str
             })
             
             s_tables = getattr(state, "required_tables", [])
             add_block("STRATEGY_TABLES", "MANDATORY STRATEGY TABLES", "\n".join(f"- {t}" for t in s_tables) if s_tables else "")
             
-            req_actions = getattr(state, "required_actions", [])
+            req_actions = list(getattr(state, "required_actions", []))
+            
+            # Incorporate suggested fixes from SQL and Plan Critics
+            crit_res = getattr(state, "crit_response", {})
+            if isinstance(crit_res, dict) and crit_res.get("suggested_fix"):
+                if crit_res["suggested_fix"] not in req_actions:
+                    req_actions.append(crit_res["suggested_fix"])
+                    
+            plan_crit = getattr(state, "plan_critique", {})
+            if isinstance(plan_crit, dict) and plan_crit.get("suggested_fix"):
+                if plan_crit["suggested_fix"] not in req_actions:
+                    req_actions.append(plan_crit["suggested_fix"])
+
             req_str = "\n".join(f"- {a}" for a in req_actions) if req_actions else ""
             add_block("required_actions", "MANDATORY FIXES (MUST APPLY)", req_str)
             
@@ -198,12 +253,16 @@ class PromptLoader:
                 "learning_type": l_type,
                 "combined_feedback": combined_fb,
                 "required_actions": req_actions,
+                "FEEDBACK": combined_fb,
+                "PREVIOUS_SQL": prev_sql,
+                "FAILURE_HISTORY": history_str,
+                "REQUIRED_ACTIONS": req_str,
                 # Task 2: Progressive Retrieval Variables
                 "ALL_TABLE_NAMES": getattr(state, "all_table_names", []),
                 "SELECTED_TABLES": getattr(state, "selected_tables", []),
                 "ALL_COLUMNS_FETCHED": getattr(state, "all_columns_fetched", False),
                 "SELECTED_COLUMNS": getattr(state, "selected_columns", {}),
-                "SCHEMA_INFO": format_schema_to_str(state.schema_info),
+                "SCHEMA_INFO": format_schema_to_str(state.schema_info, mode="compressed"),
                 "FULL_SCHEMA": format_schema_to_str(getattr(state, "full_schema_info", {}), detailed=False),
                 "VARIANT_SCHEMA_HINTS": getattr(state, "variant_schema_hints", "No variant structure discovered yet."),
                 "all_tables": getattr(state, "all_tables", ""),
@@ -282,9 +341,13 @@ class PromptLoader:
 
             # Dialect Instructions (Modularized by agent type)
             try:
-                with open(DIALECT_RULES) as f:
+                from core.paths import PROMPTS_DIR
+                d_file = PROMPTS_DIR / f"{val_dialect.lower()}.yaml"
+                if not d_file.exists():
+                    d_file = PROMPTS_DIR / "sqlite.yaml"
+                with open(d_file) as f:
                     all_rules = yaml.safe_load(f)
-                rules = all_rules.get(val_dialect, all_rules.get("sqlite", {}))
+                rules = all_rules.get(val_dialect.lower(), all_rules.get("sqlite", {}))
                 
                 # Pick instructions based on agent role
                 if "planner" in prompt_name:
@@ -315,11 +378,12 @@ class PromptLoader:
 
             # Schema
             if getattr(state, "db_name", None):
-                # Full schema
-                schema_str = format_schema_to_str(state.schema_info)
+                # Full schema compressed
+                schema_str = format_schema_to_str(getattr(state, "full_schema_info", {}) or state.schema_info, mode="compressed")
                 if not schema_str or len(schema_str) < 50:
-                     metadata_path = str(InstancePaths.db_metadata(state.db_name))
-                     schema_str = self._get_cached_json_schema(metadata_path)
+                     full_meta = read_db_metadata(state.db_name)
+                     if full_meta:
+                         schema_str = format_schema_to_str(full_meta, mode="compressed")
                 
                 # Minimal schema (Table names only)
                 table_names = list(state.schema_info.keys()) if state.schema_info else []
@@ -334,75 +398,9 @@ class PromptLoader:
                 disc_str = "\n".join(disc_values) if disc_values else "No specific data values discovered yet."
                 add_block("DISCOVERED_VALUES", "DISCOVERED DATA VALUES", disc_str)
 
-                add_block("SCHEMA", "DATABASE SCHEMA", schema_str)
+                processed_kwargs["SCHEMA"] = schema_str
+                processed_kwargs["SCHEMA_CONTEXT"] = schema_str
                 add_block("SCHEMA_MINIMAL", "TABLE LIST", schema_min)
-                # --- TASK 2: SCHEMA CONTEXT LOGIC (PRIVACY & ENFORCEMENT) ---
-                if prompt_name == "query_planner":
-                    # Planner gets detailed relevant columns ONLY
-                    if not state.selected_columns and not state.schema_info:
-                        Logger.log("🛑 [PromptLoader] Planner blocked: No schema information available.", level="ERROR")
-                        schema_ctx = "FAILED: No columns retrieved."
-                        processed_kwargs["SCHEMA"] = "" # Trigger guard later
-                    else:
-                        # Task: Handle potential pruning mismatch or empty schema_info
-                        schema_info_to_format = state.schema_info
-                        
-                        if not schema_info_to_format and state.selected_columns:
-                            # Robust fallback: Reconstruct from full_schema_info using selected_columns
-                            Logger.log("⚠️ [PromptLoader] schema_info empty but columns selected. Attempting reconstruction from full_schema_info.", level="WARN")
-                            from core.utils import normalize_identifier
-                            norm_full = {normalize_identifier(k): v for k, v in state.full_schema_info.items()}
-                            reconstructed = {}
-                            for t, cols in state.selected_columns.items():
-                                norm_t = normalize_identifier(t)
-                                if norm_t in norm_full:
-                                    details = norm_full[norm_t].copy()
-                                    allowed = [c.upper() for c in cols]
-                                    details["columns"] = [
-                                        c for c in details.get("columns", []) 
-                                        if c.get("column_name", "").upper() in allowed
-                                    ]
-                                    reconstructed[t] = details
-                            schema_info_to_format = reconstructed
-
-                        selected_detailed = format_schema_to_str(schema_info_to_format)
-                        
-                        # Task: ONLY inject RELEVANT schema. Removed full schema summary as per user request.
-                        if not selected_detailed or len(selected_detailed.strip()) < 10:
-                            Logger.log("🛑 [PromptLoader] Formatted schema is empty or insufficient.", level="ERROR")
-                            schema_ctx = "FAILED: No detailed columns formatted."
-                            processed_kwargs["SCHEMA"] = ""
-                        else:
-                            schema_ctx = (
-                                "### RELEVANT SCHEMA (Detailed)\n"
-                                f"{selected_detailed}"
-                            )
-                else:
-                    # Final fallback for other agents (SQLBuilder, etc.)
-                    schema_ctx = format_schema_to_str(state.schema_info)
-                    
-                    # FALLBACK: If pruned schema was insufficient (detected via failure loop)
-                    # We inject the COMPLETE schema for the selected tables from full_schema_info
-                    failed_grounding = any("COLUMN_NOT_FOUND" in str(f) for f in getattr(state, "failure_history", []))
-                    if failed_grounding:
-                        full_info = getattr(state, "full_schema_info", {})
-                        if full_info:
-                            # Filter full_info to only the tables we are currently using
-                            targeted_full = {t: full_info[t] for t in state.selected_tables if t in full_info}
-                            if targeted_full:
-                                Logger.log("⚠️ Pruned schema insufficient. Injecting COMPLETE table metadata as fallback.")
-                                schema_ctx = (
-                                    "### PRUNED SCHEMA (Insufficient)\n"
-                                    f"{schema_ctx}\n\n"
-                                    "### COMPLETE METADATA FOR TARGETED TABLES (Fallback)\n"
-                                    f"{format_schema_to_str(targeted_full)}"
-                                )
-                
-                processed_kwargs["SCHEMA_CONTEXT"] = schema_ctx
-                if not schema_ctx.startswith("FAILED:"):
-                    processed_kwargs["SCHEMA"] = schema_ctx
-                else:
-                    processed_kwargs["SCHEMA"] = "" # Keep empty to trigger guard
                 processed_kwargs.setdefault("schema_path", schema_str)
 
                 # --- TASK 7: FIX FLAGS INJECTION ---

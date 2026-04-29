@@ -1,46 +1,3 @@
-bigquery:
-  builder_instructions: |
-    - Use GoogleSQL (Standard SQL) syntax.
-    - Prefer backticks `project.dataset.table` for fully qualified table names to handle project IDs correctly.
-    - Use CURRENT_DATE() and TIMESTAMP() for date/time literals.
-    - Use SAFE_DIVIDE(x, y) to avoid division by zero errors.
-    - ROUNDING: Prefer rounding numeric results to 2 decimal places using ROUND(x, 2).
-    - KEYWORDS: Avoid using inbuilt functions or reserved keywords for aliases (e.g., avoid 'year', 'date').
-  critic_instructions: |
-    - Validate against GoogleSQL syntax.
-    - Check for appropriate table qualification.
-    - Ensure date literals use standard BigQuery formats.
-    - Verify division safety with SAFE_DIVIDE.
-
-postgresql:
-  builder_instructions: |
-    - Use PostgreSQL compatible syntax.
-    - Use CURRENT_DATE for the current date.
-    - Use INTERVAL and DATE_TRUNC for date arithmetic and grouping.
-    - Use ILIKE for case-insensitive matching where appropriate.
-    - ROUNDING: Use ROUND(v::numeric, 2) for numeric results.
-    - SCHEMA QUALIFICATION: Qualify table names with the schema name ("schema"."table") to avoid ambiguity.
-    - Prefer native PostgreSQL functions (e.g., COALESCE, NULLIF) for reliability.
-  critic_instructions: |
-    - Validate against PostgreSQL syntax.
-    - Check for correct date and interval usage.
-    - Ensure results are rounded appropriately.
-    - Verify schema-qualified table references.
-
-sqlite:
-  builder_instructions: |
-    - Use standard SQLite syntax.
-    - Use date('now') for current date.
-    - Use datetime(col, '+1 month') for date arithmetic.
-    - CRITICAL: For ALL divisions, use CAST(numerator AS REAL) / denominator to avoid integer division truncation (e.g., CAST(balls AS REAL) / wickets).
-    - PRECISION: For calculations like Economy Rate or Strike Rate, use ROUND(expr, 4) to ensure consistency with high-precision evaluation.
-    - Use LOWER(col) = LOWER('val') for case-insensitive matching.
-    - STRING CONSISTENCY: Always use ValueDiscovery to check for pluralization (e.g., 'wides' vs 'wide') or spelling in the DB.
-  critic_instructions: |
-    - Validate against SQLite syntax.
-    - Ensure proper division casting.
-    - Verify date function correctness.
-
 snowflake:
   planner_instructions: |
     - VARIANT HANDLING (CRITICAL):
@@ -81,6 +38,21 @@ snowflake:
       - DISTINCT must NEVER be used by default.
       - DISTINCT must ALWAYS be justified by aggregation intent.
 
+    ------------------------------------------------------------
+
+    - CLASSIFICATION FILTER:
+      - If filtering VARIANT key "code":
+        → treat equality as prefix (hierarchical)
+        → do not assume exact match unless explicitly requested
+
+    ------------------------------------------------------------
+
+    - MULTI-FLATTEN RISK:
+      - If multiple independent VARIANT arrays are flattened:
+        → assume row multiplication risk
+        → require aggregation strategy to account for duplication
+
+
   builder_instructions: |
     - Use Snowflake SQL syntax and semantics.
 
@@ -94,6 +66,7 @@ snowflake:
         → special column `value` (must NOT be quoted)
 
       - Preserve exact case from [SCHEMA]
+      - MANDATORY: If a column name is ALREADY in lower case, it MUST ALWAYS be double-quoted (e.g., "my_column") in the entire SQL query at all places strictly and mandatorily.
 
     ------------------------------------------------------------
 
@@ -118,7 +91,10 @@ snowflake:
 
       → DO NOT alias FLATTEN output columns manually
       → Use default columns:
-        value, key, index, path, seq, this
+        VALUE, KEY, INDEX, PATH, SEQ, THIS
+      → CRITICAL: These column names are stored as UPPERCASE.
+        → Access them as unquoted (f.INDEX, f.VALUE) or quoted UPPERCASE (f."INDEX", f."VALUE").
+        → NEVER use lower-case quoted aliases like f."index" or f."value".
 
     ------------------------------------------------------------
 
@@ -142,9 +118,50 @@ snowflake:
       - TRY_DIVIDE()
       - QUALIFY (for window filtering)
 
+    ------------------------------------------------------------
+
+    - NUMERIC DATE HANDLING (YYYYMMDD):
+      - If extracting a YEAR/MONTH from a numeric column formatted as YYYYMMDD (e.g. NUMBER(38,0)):
+        → Cast it to VARCHAR and then TO_DATE before applying date logic.
+        → Example: DATE_PART('year', TO_DATE(p."filing_date"::VARCHAR, 'YYYYMMDD'))
+        → NEVER apply EXTRACT or DATE_PART directly to raw numeric dates.
+
+    ------------------------------------------------------------
+
+    - CLASSIFICATION SQL:
+      - For VARIANT key "code":
+        IF operator "="
+        → generate: alias.value:"code"::STRING LIKE '<input>%'
+        (cast to STRING; use dynamic input; no hardcoding)
+
+    ------------------------------------------------------------
+
+    - WINDOW DETERMINISM:
+      - ROW_NUMBER() must include tie-breaker:
+        ORDER BY metric DESC, stable_column ASC
+
+    ------------------------------------------------------------
+
+    - GROUPING SAFETY:
+      - Exclude NULL grouping keys unless explicitly required
+
+    ------------------------------------------------------------
+
+    - DATE SAFETY:
+      - If date is numeric/string:
+        → prefer TRY_TO_DATE
+        → avoid strict TO_DATE assumptions
+
+    ------------------------------------------------------------
+
+    - CTE ALIAS SCOPING (STRICT):
+      - When writing subqueries or CTEs, ensure aliases from parent or sibling CTEs are NOT referenced unless explicitly joined.
+      - Never reference an original table alias (e.g., `p."publication_number"`) within a derived aggregate CTE unless that alias is explicitly mapped or brought into scope.
+
   critic_instructions: |
     - MANDATORY: All identifiers must be double-quoted
       (except FLATTEN alias and `value` column)
+    - CRITICAL: If a column name is ALREADY in lower case, it MUST ALWAYS be double-quoted (e.g., "my_column") in the entire SQL query at all places strictly and mandatorily.
 
     ------------------------------------------------------------
 
@@ -213,29 +230,3 @@ snowflake:
     - PRIORITY:
 
       Prefer SEMANTIC correctness over syntactic acceptance
-
-
-      
-duckdb:
-  builder_instructions: |
-    - Use DuckDB syntax.
-    - Always use the full table name in query with schema name (e.g., `main.table_name`).
-    - Use current_date for the current date.
-    - Use INTERVAL for date arithmetic.
-    - For percentages, use `100 * (a - b) / a` to prevent rounding issues.
-  critic_instructions: |
-    - Verify full table name qualification (schema.table).
-    - Ensure arithmetic safety for percentages (multiply first).
-
-default:
-  builder_instructions: |
-    - Use standard SQL syntax.
-    - Prioritize clarity, readability, and correctness.
-    - Use explicit JOIN conditions.
-    - Prefer CTEs (WITH clause) over deep nesting for complex transformations.
-    - Handle NULL values explicitly where they might affect aggregations.
-    - When calculating percentages like (a - b) / a * 100, multiply first: `100 * (a - b) / a`.
-  critic_instructions: |
-    - Validate standard SQL syntax.
-    - Ensure logical correctness of filters and grouping.
-    - Verify "multiply before divide" for all percentage calculations.
