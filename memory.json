@@ -97,7 +97,8 @@
         },
         "score": 0.33000000000000007
       }
-    ]
+    ],
+    "Could you provide a clean, structured dataset from dicom_all table that only includes SM images marked as VOLUME from the TCGA-LUAD and TCGA-LUSC collections, excluding any slides with compression type \u201cother,\u201d where the specimen preparation step explicitly has \u201cEmbedding medium\u201d set to \u201cTissue freezing medium,\u201d and ensuring that the tissue type is only \u201cnormal\u201d or \u201ctumor\u201d and the cancer subtype is reported accordingly?": []
   },
   "paths": {}
 }

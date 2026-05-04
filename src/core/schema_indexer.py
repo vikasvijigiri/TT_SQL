@@ -61,6 +61,22 @@ class SchemaIndexer:
             score += 1
         return float(score)
 
+    def _extract_keys_recursive(self, data, prefix="", depth=0, max_depth=3):
+        """Recursively extracts keys from nested dictionaries/lists."""
+        if depth > max_depth:
+            return set()
+        
+        keys = set()
+        if isinstance(data, dict):
+            for k, v in data.items():
+                full_key = f"{prefix}.{k}" if prefix else k
+                keys.add(full_key)
+                keys.update(self._extract_keys_recursive(v, full_key, depth + 1, max_depth))
+        elif isinstance(data, list):
+            for item in data[:5]: # Only check first 5 items to avoid explosion
+                keys.update(self._extract_keys_recursive(item, prefix, depth, max_depth)) # Don't increment depth for list traversal if same level
+        return keys
+
     def discover_variant_keys(self, table_data: dict) -> dict[str, list[str]]:
         """
         Discovers keys within VARIANT/OBJECT/JSON columns by inspecting sample rows.
@@ -78,27 +94,24 @@ class SchemaIndexer:
             is_variant = any(t in col_type for t in ["VARIANT", "OBJECT", "ARRAY", "JSON"])
             
             if is_variant:
-                keys = set()
+                all_keys = set()
                 for row in samples:
                     val = row.get(col_name)
                     if not val: continue
                     
                     try:
                         # Try to parse if string
-                        if isinstance(val, str) and (val.startswith("{") or val.startswith("[")):
+                        if isinstance(val, str) and (val.strip().startswith("{") or val.strip().startswith("[")):
                             data = json.loads(val)
                         else:
                             data = val
                             
-                        if isinstance(data, dict):
-                            keys.update(data.keys())
-                        elif isinstance(data, list) and data and isinstance(data[0], dict):
-                            keys.update(data[0].keys())
+                        all_keys.update(self._extract_keys_recursive(data))
                     except:
                         pass
                 
-                if keys:
-                    variant_keys[col_name] = sorted(list(keys))
+                if all_keys:
+                    variant_keys[col_name] = sorted(list(all_keys))
         
         return variant_keys
 

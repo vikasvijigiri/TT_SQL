@@ -261,7 +261,7 @@ class Logger:
                 cls.log(f"| {cols} |")
                 cls.log(f"| {'--- | ' * len(result.columns)}")
                 for row in result.rows[:5]: 
-                    r_str = " | ".join([str(v) for v in row])
+                    r_str = " | ".join([str(v).replace('\n', ' ') for v in row])
                     cls.log(f"| {r_str} |")
         cls.log("\n" + "-" * 40 + "\n")
 

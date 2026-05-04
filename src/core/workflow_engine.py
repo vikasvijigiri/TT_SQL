@@ -127,6 +127,10 @@ class WorkflowEngine:
         full_schema_str = format_schema_to_str(state.schema_info, mode="compressed")
         state.SCHEMA = full_schema_str # Always provide full schema to agents for reasoning
         
+        # 1.5. Infer Reference Date
+        self._infer_reference_date(state)
+        Logger.log(f"Inferred Reference Date: {state.reference_date}")
+
         # Initialize Agents
         intent_agent = GenericAgent("IntentAnalyzer", "intent_analyzer", state_field="structured_intent", llm_service=self.llm)
         planner_agent = GenericAgent("QueryPlanner", "query_planner", state_field="strategies", llm_service=self.llm)
@@ -136,6 +140,7 @@ class WorkflowEngine:
 
         # 2. Intent Analysis
         state = intent_agent.run(state)
+        if getattr(state, "pipeline_failure_reason", None): return state
         
         # 3. Query Decomposition
         Logger.log_step("QueryDecomposer", "START")
@@ -164,11 +169,13 @@ class WorkflowEngine:
             for plan_attempt in range(MAX_PLAN_REFINEMENTS):
                 Logger.log(f"Planning Attempt {plan_attempt+1}...")
                 state = planner_agent.run(state)
+                if getattr(state, "pipeline_failure_reason", None): return state
                 current_plan = state.join_plan
                 
                 # Audit the plan
                 Logger.log_step("QueryCritic", "START")
                 critic_res = critic_agent.run(state)
+                if getattr(state, "pipeline_failure_reason", None): return state
                 audit = critic_res.last_agent_output # Critic returns raw JSON
                 
                 if isinstance(audit, dict) and audit.get("is_valid"):
@@ -187,12 +194,34 @@ class WorkflowEngine:
             if isinstance(state.strategies, dict):
                 mapping = state.strategies.get("concept_mapping", [])
                 strat_tables = []
+                # Normalize schema tables for matching
+                norm_schema = {t.split('.')[-1].replace('"', '').upper(): t for t in state.schema_info.keys()}
+                
                 for m in mapping:
                     mapped_to = m.get("mapped_to", "")
                     if mapped_to:
-                        t = mapped_to.split(".")[0]
-                        if t and t not in strat_tables: strat_tables.append(t)
+                        # mapped_to could be TABLE.COL or DATABASE.SCHEMA.TABLE.COL
+                        parts = mapped_to.split(".")
+                        # Try to match the last-but-one part (Table name) or any part
+                        found = False
+                        for p in parts:
+                            p_clean = p.replace('"', '').upper()
+                            if p_clean in norm_schema:
+                                fqn = norm_schema[p_clean]
+                                if fqn not in strat_tables: strat_tables.append(fqn)
+                                found = True
+                                break
+                        if not found and parts:
+                            # Fallback to first part if no match found
+                            t = parts[0].replace('"', '').upper()
+                            if t in norm_schema:
+                                fqn = norm_schema[t]
+                                if fqn not in strat_tables: strat_tables.append(fqn)
                 
+                if not strat_tables:
+                    # Fallback to all tables in schema if mapping is empty/unresolved
+                    strat_tables = list(state.schema_info.keys())
+
                 state.grounded_schema = format_schema_to_str({t: state.schema_info.get(t, {}) for t in strat_tables}, mode="compressed")
                 
                 primary_strat = state.strategies.get("strategies", {}).get("primary", [])
@@ -201,6 +230,7 @@ class WorkflowEngine:
                 state.join_plan = "\n".join([str(s) for s in primary_strat])
 
             state = generator_agent.run(state)
+            if getattr(state, "pipeline_failure_reason", None): return state
             sql = state._temp_sql
             
             # 5c. Guardrails
@@ -214,8 +244,10 @@ class WorkflowEngine:
             
             # 5d. Execution
             Logger.log_step("ExecutionEngine", "START")
-            result = service.execute_query(sql)
-            state.execution_result = result
+            # Use ToolRegistry to ensure results are saved to CSV and SQL is saved to file
+            tool_res = ToolRegistry.execute_sql(state, params={"sql": sql})
+            result = state.execution_result
+            
             state.audit_context = {
                 "sql": sql,
                 "execution": {
@@ -237,6 +269,7 @@ class WorkflowEngine:
             # 5f. SQL Criticism (Learning from Execution)
             Logger.log_step("SQLCritic", "START")
             critic_res = sql_critic_agent.run(state)
+            if getattr(state, "pipeline_failure_reason", None): return state
             sql_audit = critic_res.last_agent_output
             
             feedback = sql_audit.get("feedback", "Unknown execution error.") if isinstance(sql_audit, dict) else "Execution failed."
@@ -251,13 +284,6 @@ class WorkflowEngine:
             
         return state
 
-        if not sql_approved:
-            state.pipeline_failure_reason = "Failed to produce a valid query after max retries."
-            
-        return state
-
-
-        return state
 
     def _infer_reference_date(self, state: AgentState):
         """
