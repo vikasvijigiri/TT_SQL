@@ -147,6 +147,11 @@ class GenericAgent(BaseAgent):
                         response,
                         required_keys=["relevant_tables", "reasoning"]
                     )
+                elif self.name == "SQLGenerator":
+                    validation = validate_json_response(
+                        response,
+                        required_keys=["sql"]
+                    )
                 
                 if validation["status"] == "SUCCESS":
                     Logger.log(f"[Validator] {self.name} → PASS")
@@ -194,8 +199,10 @@ class GenericAgent(BaseAgent):
                              val["confidence"] = normalize_confidence(val["confidence"])
                     
                     if self.state_field == "sql_candidates" and isinstance(val, dict):
-                        setattr(state, self.state_field, [val])
+                         setattr(state, self.state_field, [val])
 
+            # Store last output for orchestration logic
+            state.last_agent_output = response
             res_summary = modularize_ai_response(response)
             Logger.log_agent_block(self.name, inputs, res_summary, "success", prompt=prompt_str)
             break 

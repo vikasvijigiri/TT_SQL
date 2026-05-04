@@ -251,4 +251,7 @@ messages:
 - role: user
   content: |
     QUESTION:
-    "{USER_QUERY}"
+    "{USER_QUERY}"
+
+    SCHEMA:
+    "{SCHEMA}"

@@ -6,7 +6,17 @@ class QueryDecomposer:
     def decompose(self, intent: dict) -> list[dict]:
         tasks = []
 
-        # Extract filters (pre and post)
+        # 1. Extract Dimensions/Entities
+        entities = intent.get("entities", [])
+        for ent in entities:
+            tasks.append({"type": "entity", "value": ent})
+
+        # 2. Extract Metrics
+        metrics = intent.get("metrics", [])
+        for met in metrics:
+            tasks.append({"type": "metric", "value": met})
+
+        # 3. Extract Filters (pre and post)
         filters = intent.get("filters", [])
         if not filters:
             # Fallback to pre_filters and post_filters if present
@@ -15,7 +25,7 @@ class QueryDecomposer:
         for f in filters:
             tasks.append({"type": "filter", "value": f})
 
-        # Extract aggregations
+        # 4. Extract Aggregations
         aggregations = intent.get("aggregations", [])
         if not aggregations:
             # Fallback to aggregation_steps if present

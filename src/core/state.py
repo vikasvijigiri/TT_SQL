@@ -140,6 +140,19 @@ class AgentState(BaseModel):
     seen_sqls: list[str] = Field(default_factory=list) # To prevent redundant generations
     dialect_constraints: list[str] = Field(default_factory=list) # Learned dialect rules
 
+    # --- SQL Generation Fields ---
+    grounded_schema: str = ""
+    join_plan: str = ""
+    _temp_sql: str = "" # Captured output from SQLGenerator agent
+    SCHEMA: str = "" # Full schema for FastTrack mode
+    
+    # --- Iterative Learning Fields ---
+    feedback_history: list[str] = []
+    previous_action_plan: str = ""
+    previous_sql: str = ""
+    audit_context: dict = {}
+    last_agent_output: dict | None = None
+
     def add_log(self, message: str):
         self.logs.append(message)
 
