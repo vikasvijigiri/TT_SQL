@@ -37,7 +37,7 @@ DIALECT_CONSTRAINTS_MEMORY = METADATA_DIR / "dialect_constraints.json"
 
 # Evaluation
 DATA_DIR = PROJECT_ROOT / "input_data"
-SPIDER_DATASET = DATA_DIR / "spider2-lite-sqlite.jsonl"  # Fixed typo/naming
+SPIDER_DATASET = DATA_DIR / "spider2-lite.jsonl"
 
 
 # Initialize directories for a specific model/db combination

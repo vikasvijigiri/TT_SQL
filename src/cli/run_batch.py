@@ -43,17 +43,9 @@ def main():
     os.environ["DB_TYPE"] = args.type
 
     # Determine default dataset if not provided
+    # Updated to always use spider2-lite.jsonl as per user request
     if not args.dataset:
-        if args.type == "sqlite":
-            args.dataset = str(DATA_DIR / "spider2-lite-sqlite.jsonl")
-        elif args.type == "snowflake":
-            args.dataset = str(DATA_DIR / "spider2-lite-snowflake.jsonl")
-        elif args.type == "bigquery":
-            # Search both bigquery and general jsonl
-            potential_file = DATA_DIR / "spider2-lite-bigquery.jsonl"
-            if not potential_file.exists():
-                potential_file = DATA_DIR / "spider2-lite.jsonl"
-            args.dataset = str(potential_file)
+        args.dataset = str(DATA_DIR / "spider2-lite.jsonl")
 
     if not args.dataset or not os.path.exists(args.dataset):
         print(f"Error: Dataset file not found at {args.dataset}")
