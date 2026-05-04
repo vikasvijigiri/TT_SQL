@@ -152,6 +152,10 @@ class WorkflowEngine:
         for exec_attempt in range(MAX_EXECUTION_ATTEMPTS):
             Logger.log_stage_header("Mapping & Planning", iteration=exec_attempt+1)
             
+            # Consolidate feedback for agents
+            if state.feedback_history:
+                state.combined_feedback = "\n".join([str(fb) for fb in state.feedback_history])
+            
             # 5a. Planning Refinement Loop (Internal)
             MAX_PLAN_REFINEMENTS = 2
             current_plan = None
@@ -177,6 +181,24 @@ class WorkflowEngine:
 
             # 5b. SQL Generation
             Logger.log_step("SQLGenerator", "START")
+            
+            # Populate variables for PromptLoader fallback or legacy prompts
+            if isinstance(state.strategies, dict):
+                mapping = state.strategies.get("concept_mapping", [])
+                strat_tables = []
+                for m in mapping:
+                    mapped_to = m.get("mapped_to", "")
+                    if mapped_to:
+                        t = mapped_to.split(".")[0]
+                        if t and t not in strat_tables: strat_tables.append(t)
+                
+                state.grounded_schema = format_schema_to_str({t: state.schema_info.get(t, {}) for t in strat_tables}, mode="compressed")
+                
+                primary_strat = state.strategies.get("strategies", {}).get("primary", [])
+                if not primary_strat and isinstance(state.strategies.get("primary"), list):
+                    primary_strat = state.strategies.get("primary")
+                state.join_plan = "\n".join([str(s) for s in primary_strat])
+
             state = generator_agent.run(state)
             sql = state._temp_sql
             

@@ -99,7 +99,18 @@ messages:
       source_type rules:
       - relational → direct column
       - variant_required → defined variant structure
-      - assumption → allowed ONLY for concept_mapping (NOT allowed in executable strategies.primary plans)
+      - assumption → NOT ALLOWED in executable strategies.primary plans. If a concept requires an assumption, it MUST be moved to missing_elements.
+      
+      ============================================================
+      AUXILIARY TABLE DISCOVERY (CRITICAL)
+      ============================================================
+      
+      If a concept in INTENT is NOT present in the primary tables:
+      - You MUST scan the FULL SCHEMA for auxiliary tables (e.g., BIOSPECIMEN, CLINICAL, PATIENT).
+      - If a match is found in an auxiliary table:
+        → Suggest a JOIN in the strategies.primary plan.
+        → Map the concept to the auxiliary table column.
+      - DO NOT mark as 'assumption' if it exists anywhere in the SCHEMA.
 
       ============================================================
       DERIVED FIELD ENFORCEMENT (CRITICAL)

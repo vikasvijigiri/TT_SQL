@@ -60,12 +60,15 @@ snowflake:
 
     - IDENTIFIER RULES (STRICT):
 
-      - ALL table, schema, and column names MUST be double-quoted
-      - EXCEPT:
-        → FLATTEN alias (e.g., f)
-        → special column `value` (must NOT be quoted)
-
-      - Preserve exact case from [SCHEMA]
+      - ALL table names MUST be referenced using **Fully Qualified Names (FQN)**:
+        `DATABASE.SCHEMA.TABLE`
+        (Example: `IDC.IDC_V17.DICOM_ALL`)
+      
+      - ALL identifiers (database, schema, table, column) MUST be double-quoted.
+      - Components of an FQN MUST be individually quoted:
+        `"DATABASE"."SCHEMA"."TABLE"`
+      
+      - Preserve exact case from [SCHEMA].
       - MANDATORY: If a column name is ALREADY in lower case, it MUST ALWAYS be double-quoted (e.g., "my_column") in the entire SQL query at all places strictly and mandatorily.
 
     ------------------------------------------------------------
