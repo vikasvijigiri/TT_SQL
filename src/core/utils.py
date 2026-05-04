@@ -204,10 +204,17 @@ def write_plan_to_file(instance_id: str, db_name: str, plan: list[str], model_na
 def write_db_metadata(db_name: str, schema_info: dict[str, Any]):
     """Writes core schema metadata to the common resources folder."""
     from .paths import InstancePaths
+    import datetime
+    
+    def default_serializer(obj):
+        if isinstance(obj, (datetime.datetime, datetime.date)):
+            return obj.isoformat()
+        return str(obj)
+
     path = InstancePaths.db_metadata(db_name)
     path.parent.mkdir(parents=True, exist_ok=True)
     with open(path, "w", encoding="utf-8") as f:
-        json.dump(schema_info, f, indent=2)
+        json.dump(schema_info, f, indent=2, default=default_serializer)
 
 def quote_identifier(name: str) -> str:
     """

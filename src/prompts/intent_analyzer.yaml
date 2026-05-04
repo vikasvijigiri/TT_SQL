@@ -26,7 +26,6 @@ messages:
 
     You receive:
     - QUESTION (natural language only)
-    - SCHEMA (SQL table schemas)
 
     You MUST:
     - Infer intent WITHOUT hallucination
@@ -252,9 +251,4 @@ messages:
 - role: user
   content: |
     QUESTION:
-    "{USER_QUERY}"
-
-    ------------------------------------------------------------
-
-    SCHEMA:
-    "{SCHEMA}"
+    "{USER_QUERY}"
