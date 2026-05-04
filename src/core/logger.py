@@ -211,15 +211,15 @@ class Logger:
         Enforced structured logging for pipeline steps.
         Format: [StepName] STATUS (Details)
         """
-        msg = f"[{step_name}] {status}"
+        msg = f"\n[{step_name}] {status}"
         if details:
             msg += f" ({details})"
-        cls.log(msg)
+        cls.log(msg + "\n")
 
     @classmethod
     def log_state(cls, old_state: str, new_state: str):
         """Logs explicit state transitions."""
-        cls.log(f"[STATE] {old_state} → {new_state}")
+        cls.log(f"\n[STATE] {old_state} → {new_state}\n")
 
     @classmethod
     def log_error(cls, error: str):
