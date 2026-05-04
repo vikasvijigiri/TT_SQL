@@ -1,4 +1,0 @@
-{
-  "query": "Can you calculate the number of utility patents that were granted in 2010 and have exactly one forward citation within a 10-year window following their application/filing date?",
-  "db_name": "PATENTS"
-}

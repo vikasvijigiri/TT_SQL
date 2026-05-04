@@ -1,8 +1,0 @@
-{
-  "steps": [
-    "Identify the `match` table which contains the match records and includes a date or datetime column (e.g., `match_date`, `date_played`, etc.).",
-    "Select all columns (or the desired columns) from the `match` table.",
-    "Add a WHERE clause to filter rows where the year part of the date column equals 2023 (e.g., `WHERE YEAR(match_date) = 2023` or `WHERE match_date BETWEEN '2023-01-01' AND '2023-12-31'`).",
-    "Execute the query to retrieve all matches that were played in the year 2023."
-  ]
-}
