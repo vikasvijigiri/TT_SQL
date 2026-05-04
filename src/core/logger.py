@@ -202,7 +202,13 @@ class Logger:
     def log_metrics(cls, elapsed: float, llm_calls: int, agent_metrics: dict = None):
         cls.log_section("Metrics")
         cls.log(f"Elapsed time: {elapsed:.2f}s")
-        cls.log(f"Total LLM calls: {llm_calls}")
+        
+        # Calculate total calls from breakdown if provided to ensure they match exactly
+        total_calls = llm_calls
+        if agent_metrics:
+            total_calls = sum(data.get("calls", 0) for data in agent_metrics.values())
+        
+        cls.log(f"Total LLM calls: {total_calls}")
         
         if agent_metrics:
             cls.log("\n### AGENT BREAKDOWN")
@@ -212,7 +218,7 @@ class Logger:
                 cls.log(f"\n{agent}")
                 cls.log(f" - Total LLM calls: {calls}")
                 if tokens:
-                    cls.log(f" - Tokens: {tokens}")
+                    cls.log(f" - Tokens {tokens}")
 
     @classmethod
     def log_divider(cls):
