@@ -1,7 +1,6 @@
 import os
 import time
-
-
+from typing import Callable
 
 from core.agent_base import AgentState
 from core.llm_service import LLMService
