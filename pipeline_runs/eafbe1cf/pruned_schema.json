@@ -1,6 +1,0 @@
-{
-  "relevant_tables": [
-    "match"
-  ],
-  "reasoning": "The query requests all matches played in 2023. The 'match' table contains the 'match_date' column, which stores the date of each match and can be filtered by year. No other tables are required to retrieve this information."
-}

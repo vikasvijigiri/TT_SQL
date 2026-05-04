@@ -1,4 +1,0 @@
-{
-  "sql": "SELECT *\nFROM \"match\"\nWHERE EXTRACT(YEAR FROM match_date) = 2023;",
-  "reasoning": "The query selects all columns from the `match` table and filters rows to only those where the `match_date` falls in the year 2023. Using EXTRACT(YEAR FROM ...) is Snowflake\u2011compatible for retrieving the year component of a date or timestamp."
-}

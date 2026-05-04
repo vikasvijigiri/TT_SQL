@@ -1,8 +1,12 @@
 import argparse
 import os
 import json
+import sys
 from pathlib import Path
 from dotenv import load_dotenv
+
+# Add the 'src' directory to the search path
+sys.path.append(str(Path(__file__).parent.parent))
 
 from core.batch_runner import BatchRunner
 from core.config import get_settings
