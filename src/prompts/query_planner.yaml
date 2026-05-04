@@ -147,7 +147,8 @@ messages:
         → MUST specify:
         - path/key used
         - whether array or object
-      * Direct access like table.variant.key is INVALID unless schema confirms structure
+      * Direct access like table.variant.key is VALID if the schema lists the key as a sub-bullet (e.g. - variant_col.key).
+      * If a key is listed in the schema (even as a nested sub-bullet), it is GROUNDED, NOT an assumption.
 
       ARRAY ELEMENT SELECTION RULE:
       If selecting 'first' element from array:
@@ -159,7 +160,7 @@ messages:
       → DO NOT include in plan
 
 
-      IF structure NOT defined:
+      IF structure NOT defined in schema:
       - DO NOT reference internal keys
       - DO NOT guess paths
       - Add to missing_elements

@@ -136,6 +136,7 @@ class AgentState(BaseModel):
     last_call_metrics: dict[str, Any] = Field(
         default_factory=lambda: {"input": 0, "output": 0, "max": 0, "stop": "n/a"}
     )
+    agent_metrics: dict[str, dict[str, Any]] = Field(default_factory=dict) # Per-agent breakdown
     llm_call_count: int = 0
     seen_sqls: list[str] = Field(default_factory=list) # To prevent redundant generations
     dialect_constraints: list[str] = Field(default_factory=list) # Learned dialect rules

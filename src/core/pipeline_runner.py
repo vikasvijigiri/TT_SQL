@@ -185,7 +185,7 @@ def run_analysis_pipeline(
         pipeline_status = "SUCCESS" if (not is_any_fatal and has_data) else "FAILED"
         
         Logger.log_final_results(state.chosen_query, str(csv_path), result=state.execution_result)
-        Logger.log_metrics(elapsed, getattr(state, "llm_call_count", 0))
+        Logger.log_metrics(elapsed, getattr(state, "llm_call_count", 0), agent_metrics=getattr(state, "agent_metrics", {}))
         Logger.log_completion(pipeline_status)
 
         extract_and_write(

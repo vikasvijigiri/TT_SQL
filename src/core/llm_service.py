@@ -121,6 +121,18 @@ class LLMService:
                     "stop": stop_reason.lower()
                 }
                 state.llm_call_count += 1
+                
+                # Per-agent breakdown tracking
+                if not hasattr(state, "agent_metrics") or state.agent_metrics is None:
+                    state.agent_metrics = {}
+                
+                a_name = agent_name or "Agent"
+                if a_name not in state.agent_metrics:
+                    state.agent_metrics[a_name] = {"calls": 0, "tokens": []}
+                
+                state.agent_metrics[a_name]["calls"] += 1
+                state.agent_metrics[a_name]["tokens"].append(input_tokens + output_tokens)
+                
             return final_content
 
         except Exception as e:

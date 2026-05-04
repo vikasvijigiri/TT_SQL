@@ -199,10 +199,20 @@ class Logger:
              cls.log(f"\n> [!ERROR]\n> **Execution Failed**: {result.error_message}")
 
     @classmethod
-    def log_metrics(cls, elapsed: float, llm_calls: int):
+    def log_metrics(cls, elapsed: float, llm_calls: int, agent_metrics: dict = None):
         cls.log_section("Metrics")
         cls.log(f"Elapsed time: {elapsed:.2f}s")
         cls.log(f"Total LLM calls: {llm_calls}")
+        
+        if agent_metrics:
+            cls.log("\n### AGENT BREAKDOWN")
+            for agent, data in agent_metrics.items():
+                calls = data.get("calls", 0)
+                tokens = data.get("tokens", [])
+                cls.log(f"\n{agent}")
+                cls.log(f" - Total LLM calls: {calls}")
+                if tokens:
+                    cls.log(f" - Tokens: {tokens}")
 
     @classmethod
     def log_divider(cls):
