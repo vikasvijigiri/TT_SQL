@@ -1,12 +1,7 @@
 import os
 from typing import Any
-
-from google.cloud import bigquery
-from google.oauth2 import service_account
-
 from .config import get_settings
 from .logger import Logger
-
 
 class BigQueryService:
     """
@@ -31,94 +26,69 @@ class BigQueryService:
 
     def get_client(self):
         if self._client is None:
+            try:
+                from google.cloud import bigquery
+                from google.oauth2 import service_account
+            except ImportError:
+                Logger.log("BigQuery libraries not installed.", level="ERROR")
+                raise ImportError("BigQuery libraries (google-cloud-bigquery) not installed.")
+                
             settings = get_settings()
             creds_path = settings.gcp_credentials_abs_path
             project_id = settings.GCP_PROJECT_ID
 
             if creds_path and os.path.exists(creds_path):
-                Logger.log(
-                    f"[BQ] Initializing client with credentials from: {creds_path}"
-                )
-                credentials = service_account.Credentials.from_service_account_file(
-                    creds_path
-                )
-                self._client = bigquery.Client(
-                    credentials=credentials,
-                    project=project_id or credentials.project_id,
-                )
+                Logger.log(f"[BQ] Initializing client with credentials from: {creds_path}")
+                credentials = service_account.Credentials.from_service_account_file(creds_path)
+                self._client = bigquery.Client(credentials=credentials, project=project_id or credentials.project_id)
             else:
-                Logger.log(
-                    f"[BQ] Credentials file NOT found at {creds_path}. Falling back to default credentials.",
-                    level="WARN",
-                )
+                Logger.log(f"[BQ] Credentials file NOT found at {creds_path}. Falling back to default credentials.", level="WARN")
                 self._client = bigquery.Client(project=project_id)
             
             Logger.log(f"[BQ] Using Google Project ID: {self._client.project}")
         return self._client
 
-    def get_dataset_schema(
-        self, dataset_name: str, project_id: str = None, table_list: list[str] | None = None
-    ) -> dict[str, Any]:
-        """
-        Fetch schema for tables in a dataset (No INFORMATION_SCHEMA).
-        Uses client.get_table() for ground truth metadata.
-        """
+    def get_dataset_schema(self, dataset_name: str, project_id: str = None) -> dict[str, Any]:
         client = self.get_client()
         settings = get_settings()
-        
-        # Enforce Schema == Database (Dataset == Project) if possible, but allow overrides
         target_project = project_id or settings.GCP_PROJECT_ID or client.project
-        target_dataset = dataset_name.split(".")[-1] # Ensure we just get the dataset part
 
-        Logger.log(
-            f"[BQ] Fetching Schema for `{target_project}.{target_dataset}` via get_table (No INFORMATION_SCHEMA)..."
-        )
-
-        schema_info = {}
-        # If no table_list, list all tables first
-        tables_to_inspect = []
-        if table_list:
-            tables_to_inspect = [t.split('.')[-1].replace('"', '') for t in table_list]
+        if "." in dataset_name:
+            parts = dataset_name.split(".")
+            target_project = parts[0]
+            target_dataset = parts[1]
         else:
-            try:
-                tables = client.list_tables(f"{target_project}.{target_dataset}")
-                tables_to_inspect = [table.table_id for table in tables]
-            except Exception as e:
-                Logger.log(f"[BQ] list_tables failed: {e}", level="ERROR")
-                return {}
+            target_dataset = dataset_name
 
-        for tname in tables_to_inspect:
-            try:
-                table_ref = client.get_table(f"{target_project}.{target_dataset}.{tname}")
-                full_table_name = f"{target_project}.{target_dataset}.{tname}"
-                
-                schema_info[full_table_name] = {"columns": []}
-                for field in table_ref.schema:
-                    schema_info[full_table_name]["columns"].append(
-                        {
-                            "column_name": field.name,
-                            "type": field.field_type,
-                            "description": field.description or "",
-                            "pk": False,
-                        }
-                    )
-            except Exception as e:
-                Logger.log(f"[BQ] Failed to get table {tname}: {e}", level="DEBUG")
+        Logger.log(f"[BQ] Fetching Batch Schema for `{target_project}.{target_dataset}` via INFORMATION_SCHEMA...")
 
-        Logger.log(f"[BQ] Schema Discovery Complete: Found {len(schema_info)} tables.")
-        return schema_info
+        query = f"""
+        SELECT 
+            table_name, 
+            column_name, 
+            data_type
+        FROM 
+            `{target_project}.{target_dataset}.INFORMATION_SCHEMA.COLUMNS`
+        ORDER BY 
+            table_name, ordinal_position
+        """
 
-    def get_table_names(self, dataset_name: str, project_id: str = None) -> list[str]:
-        """Fetch qualified table names via client.list_tables() (No INFORMATION_SCHEMA)."""
-        client = self.get_client()
-        settings = get_settings()
-        target_project = project_id or settings.GCP_PROJECT_ID or client.project
-        target_dataset = dataset_name.split(".")[-1]
-            
         try:
-            tables = client.list_tables(f"{target_project}.{target_dataset}")
-            qualified_tables = [f"{target_project}.{target_dataset}.{table.table_id}" for table in tables]
-            return qualified_tables
+            query_job = client.query(query)
+            results = query_job.result()
+            schema_info = {}
+            for row in results:
+                full_table_name = f"{target_project}.{target_dataset}.{row.table_name}"
+                if full_table_name not in schema_info:
+                    schema_info[full_table_name] = {"columns": []}
+                schema_info[full_table_name]["columns"].append({
+                    "column_name": row.column_name,
+                    "type": row.data_type,
+                    "description": "",
+                    "pk": False,
+                })
+            Logger.log(f"[BQ] Schema Discovery Complete: Found {len(schema_info)} tables in `{target_dataset}`.")
+            return schema_info
         except Exception as e:
-            Logger.log(f"[BQ] Failed to fetch table names via SDK: {e}", level="ERROR")
-            return []
+            Logger.log(f"[BQ] Failed to fetch Batch Schema: {e}", level="ERROR")
+            return {}
