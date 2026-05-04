@@ -306,14 +306,23 @@ class WorkflowEngine:
         from core.logger import Logger
         
         # 1. Identify potential timestamp columns
-        time_keywords = ["stamp", "date", "time", "created_at", "registered_at", "updated_at", "year"]
-        candidates = []
-        for table, info in state.all_schema_info.items() if hasattr(state, 'all_schema_info') else state.full_schema_info.items():
+        date_candidates = []
+        time_candidates = []
+        
+        for table, info in (state.all_schema_info.items() if hasattr(state, 'all_schema_info') else state.full_schema_info.items()):
             for col in info.get("columns", []):
                 name = col.get("column_name", "").lower()
                 c_type = col.get("type", "").upper()
-                if any(k in name for k in time_keywords) or any(k in c_type for k in ["DATE", "TIME", "STAMP"]):
-                    candidates.append((table, col.get("column_name")))
+                
+                # Prioritize DATE or TIMESTAMP types
+                if any(k in c_type for k in ["DATE", "STAMP"]):
+                    date_candidates.append((table, col.get("column_name")))
+                elif any(k in name for k in ["date", "stamp"]):
+                    date_candidates.append((table, col.get("column_name")))
+                elif "time" in name or "time" in c_type:
+                    time_candidates.append((table, col.get("column_name")))
+        
+        candidates = date_candidates + time_candidates
         
         if not candidates:
             state.reference_date = "2017-01-01" # Default fallback
@@ -323,8 +332,8 @@ class WorkflowEngine:
         service = ToolRegistry._get_service(state)
         latest_date = None
         
-        # Try top 5 candidates
-        for table, col in candidates[:5]:
+        # Try top candidates
+        for table, col in candidates[:10]:
             try:
                 # Sanitize table/col names
                 q_table = f'"{table}"' if "." not in table else table
@@ -333,10 +342,11 @@ class WorkflowEngine:
                 res = service.execute_query(query)
                 if not res.error_message and res.rows and res.rows[0][0]:
                     val = str(res.rows[0][0])
-                    # Basic date validation
-                    if len(val) >= 4:
-                        if not latest_date or val > latest_date:
-                            latest_date = val
+                    # VALIDATION: Must contain a date separator and look like a date
+                    if "-" in val or "/" in val:
+                        if len(val) >= 8:
+                            if not latest_date or val > latest_date:
+                                latest_date = val
             except:
                 continue
         
@@ -344,6 +354,9 @@ class WorkflowEngine:
             # Clean up if it's a full timestamp
             if " " in latest_date: latest_date = latest_date.split(" ")[0]
             if "T" in latest_date: latest_date = latest_date.split("T")[0]
+            # Further validation: ensure it's not just a time
+            if "-" not in latest_date and "/" not in latest_date:
+                latest_date = "2017-01-01"
             state.reference_date = latest_date
         else:
             state.reference_date = "2017-01-01"
