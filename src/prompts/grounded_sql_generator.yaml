@@ -34,8 +34,11 @@ messages:
     
     INTENT: {structured_intent}
     
-    SCHEMA SUBSET:
+    SCHEMA SUBSET (Directly Relevant Tables/Columns):
     {grounded_schema}
+    
+    FULL PRUNED SCHEMA (All available context):
+    {SCHEMA}
     
     JOIN PLAN:
     {join_plan}
@@ -47,5 +50,11 @@ messages:
     
     DIAGNOSTIC FEEDBACK:
     {combined_feedback}
+    
+    MANDATORY: 
+    1. Use ONLY the tables and columns provided above.
+    2. Use FULLY QUALIFIED NAMES for all tables exactly as shown (e.g. "DATABASE"."SCHEMA"."TABLE").
+    3. Use DOUBLE QUOTES for all column names to preserve case-sensitivity.
+    4. Follow the JOIN PLAN logic.
     
     Generate the SQL query.
