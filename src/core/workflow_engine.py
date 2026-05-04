@@ -155,6 +155,10 @@ class WorkflowEngine:
         MAX_EXECUTION_ATTEMPTS = 3
         sql_approved = False
         
+        # Ensure reference date is set
+        if not getattr(state, "reference_date", None):
+            state.reference_date = "2017-01-01" # Default or infer from DB context
+        
         for exec_attempt in range(MAX_EXECUTION_ATTEMPTS):
             Logger.log_stage_header("Mapping & Planning", iteration=exec_attempt+1)
             
@@ -170,6 +174,12 @@ class WorkflowEngine:
                 Logger.log(f"Planning Attempt {plan_attempt+1}...")
                 state = planner_agent.run(state)
                 if getattr(state, "pipeline_failure_reason", None): return state
+                
+                # Robust extraction of plan for PromptLoader
+                if isinstance(state.strategies, dict):
+                    plan_data = state.strategies.get("strategies", state.strategies) if isinstance(state.strategies.get("strategies"), dict) else state.strategies
+                    state.step_by_step_plan = plan_data.get("primary", [])
+                
                 current_plan = state.join_plan
                 
                 # Audit the plan
@@ -189,6 +199,9 @@ class WorkflowEngine:
 
             # 5b. SQL Generation
             Logger.log_step("SQLGenerator", "START")
+            
+            # Use higher sample count for SQL Generator to help grounding
+            full_schema_str = format_schema_to_str(state.schema_info, mode="compressed", max_samples=3)
             
             # Populate variables for PromptLoader fallback or legacy prompts
             if isinstance(state.strategies, dict):
@@ -222,7 +235,7 @@ class WorkflowEngine:
                     # Fallback to all tables in schema if mapping is empty/unresolved
                     strat_tables = list(state.schema_info.keys())
 
-                state.grounded_schema = format_schema_to_str({t: state.schema_info.get(t, {}) for t in strat_tables}, mode="compressed")
+                state.grounded_schema = format_schema_to_str({t: state.schema_info.get(t, {}) for t in strat_tables}, mode="compressed", max_samples=5)
                 
                 primary_strat = state.strategies.get("strategies", {}).get("primary", [])
                 if not primary_strat and isinstance(state.strategies.get("primary"), list):

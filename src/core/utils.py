@@ -50,11 +50,12 @@ def format_schema_to_str(schema_info: dict[str, Any], detailed: bool = True, max
                     smp = f" e.g. {', '.join(samples[:2])}" if samples else ""
                     
                     line = f" - {name} {ctype}{smp}"
+                    lines.append(line)
+                    
                     if v_keys:
                         k_list = list(v_keys.keys()) if isinstance(v_keys, dict) else list(v_keys)
-                        key_str = ", ".join(str(k) for k in k_list)
-                        line += f" (keys: {key_str})"
-                    lines.append(line)
+                        for k in k_list[:20]: # Cap to avoid token explosion
+                            lines.append(f"    - {name}.{k}")
             lines.append("")
         elif detailed:
             lines.append(f"Table: {table}")
@@ -73,20 +74,15 @@ def format_schema_to_str(schema_info: dict[str, Any], detailed: bool = True, max
                     v_keys = c.get("variant_keys", [])
                     
                     is_variant = "VARIANT" in ctype.upper()
-                    if is_variant:
-                         k_list = list(v_keys.keys()) if isinstance(v_keys, dict) else list(v_keys)
-                         key_str = ", ".join(str(k) for k in k_list)
-                         line += f" (keys: {key_str})"
-
                     if desc: line += f" | {desc}"
                     if smp and not is_variant: 
                         line += smp
                     lines.append(line)
                     
                     # Present variants correctly under their corresponding column
-                    if v_keys and not is_variant: # Keep sub-bullets ONLY for non-explicit-VARIANT types (e.g. OBJECT) if they exist
+                    if v_keys:
                         k_list = list(v_keys.keys()) if isinstance(v_keys, dict) else list(v_keys)
-                        for k in k_list:
+                        for k in k_list[:30]:
                             lines.append(f"    - {name}.{k}")
             # Only include FKs if manageable
             fks = data.get("foreign_keys", []) if isinstance(data, dict) else []

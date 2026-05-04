@@ -97,7 +97,15 @@ class PromptLoader:
                 if isinstance(strats, dict):
                     target = strats.get("strategies", strats) if isinstance(strats.get("strategies"), dict) else strats
                     plan = target.get("primary", [])
-            plan_str = "\n".join(f"  {i+1}. {s}" for i, s in enumerate(plan)) if plan else ""
+                elif isinstance(strats, str):
+                    try:
+                        # Attempt to parse if it's a JSON string
+                        data = json.loads(strats)
+                        target = data.get("strategies", data) if isinstance(data.get("strategies"), dict) else data
+                        plan = target.get("primary", [])
+                    except: pass
+            
+            plan_str = "\n".join(f"  {i+1}. {s}" for i, s in enumerate(plan)) if isinstance(plan, list) else str(plan)
             add_block("ACTION_PLAN", "STRATEGY GUIDE", plan_str)
             add_block("action_plan", "STRATEGY GUIDE", plan_str)
 
@@ -114,16 +122,16 @@ class PromptLoader:
                     risks = target.get("semantic_risks", [])
                     
                     if primary:
-                        strat_str = f"PRIMARY STRATEGY:\n" + "\n".join([f"  - {s}" for s in primary])
+                        strat_str = f"PRIMARY STRATEGY:\n" + "\n".join([f"  - {s}" for s in (primary if isinstance(primary, list) else [primary])])
                     if alt:
-                        strat_str += f"\n\nALTERNATIVE STRATEGY:\n" + "\n".join([f"  - {s}" for s in alt])
+                        strat_str += f"\n\nALTERNATIVE STRATEGY:\n" + "\n".join([f"  - {s}" for s in (alt if isinstance(alt, list) else [alt])])
                     if risks:
-                        strat_str += f"\n\nSEMANTIC RISKS:\n" + "\n".join([f"  - {r}" for r in risks])
+                        strat_str += f"\n\nSEMANTIC RISKS:\n" + "\n".join([f"  - {r}" for r in (risks if isinstance(risks, list) else [risks])])
                     
                     # Also include concept mapping if present for better context
                     mapping = strategies.get("concept_mapping", [])
                     if mapping:
-                        m_str = "\n".join([f"  - {m.get('concept')}: {m.get('mapped_to')} ({m.get('source_type')})" for m in mapping])
+                        m_str = "\n".join([f"  - {m.get('concept')}: {m.get('mapped_to')} ({m.get('source_type')})" for m in mapping if isinstance(m, dict)])
                         strat_str += f"\n\nCONCEPT MAPPING:\n{m_str}"
                 else:
                     strat_str = str(strategies)
@@ -280,13 +288,13 @@ class PromptLoader:
             # --- Label-based blocks for prompts ---
             # Task 13: Unified Single-Source Schema (Now PRUNED + COMPRESSED)
             pruned_schema = getattr(state, "schema_info", {})
-            schema_str = format_schema_to_str(pruned_schema, mode="compressed") or "No schema available."
+            schema_str = format_schema_to_str(pruned_schema, mode="compressed", max_samples=3) or "No schema available."
             add_block("SCHEMA", "DATABASE SCHEMA (Pruned & Compressed)", schema_str)
             processed_kwargs["SCHEMA"] = schema_str
             
             # Keep full schema available if explicitly requested by a prompt under {full_schema}
             full_schema = getattr(state, "full_schema_info", {}) or state.schema_info
-            full_schema_str = format_schema_to_str(full_schema, mode="compressed") or "No schema available."
+            full_schema_str = format_schema_to_str(full_schema, mode="compressed", max_samples=3) or "No schema available."
             add_block("full_schema", "FULL DATABASE INVENTORY (Compressed)", full_schema_str)
             add_block("FULL_SCHEMA", "FULL DATABASE INVENTORY (Compressed)", full_schema_str)
             processed_kwargs["FULL_SCHEMA"] = full_schema_str
