@@ -61,13 +61,66 @@ class SchemaIndexer:
             score += 1
         return float(score)
 
-    def index_schema(self, schema_info: dict) -> dict:
+    def discover_variant_keys(self, table_data: dict) -> dict[str, list[str]]:
         """
-        Enriches schema_info with statistical metadata.
+        Discovers keys within VARIANT/OBJECT/JSON columns by inspecting sample rows.
+        """
+        variant_keys = {}
+        samples = table_data.get("sample", [])
+        if not samples:
+            return variant_keys
+            
+        for col in table_data.get("columns", []):
+            col_name = col["column_name"]
+            col_type = str(col.get("type", "")).upper()
+            
+            # Heuristic: Check if column likely contains JSON
+            is_variant = any(t in col_type for t in ["VARIANT", "OBJECT", "ARRAY", "JSON"])
+            
+            if is_variant:
+                keys = set()
+                for row in samples:
+                    val = row.get(col_name)
+                    if not val: continue
+                    
+                    try:
+                        # Try to parse if string
+                        if isinstance(val, str) and (val.startswith("{") or val.startswith("[")):
+                            data = json.loads(val)
+                        else:
+                            data = val
+                            
+                        if isinstance(data, dict):
+                            keys.update(data.keys())
+                        elif isinstance(data, list) and data and isinstance(data[0], dict):
+                            keys.update(data[0].keys())
+                    except:
+                        pass
+                
+                if keys:
+                    variant_keys[col_name] = sorted(list(keys))
+        
+        return variant_keys
+
+    def index_schema(self, schema_info: dict, skip_stats: bool = False) -> dict:
+        """
+        Enriches schema_info with statistical metadata and variant keys.
         """
         for table_name, table_data in schema_info.items():
+            # 1. Discover variant keys from samples
+            v_keys = self.discover_variant_keys(table_data)
+            
             for col in table_data.get("columns", []):
-                stats = self.compute_column_stats(table_name, col["column_name"])
-                col.update(stats)
-                col["statistical_score"] = self.statistical_score(stats)
+                col_name = col["column_name"]
+                
+                # 2. Compute stats (if service is active and not skipped)
+                if self.service and not skip_stats:
+                    stats = self.compute_column_stats(table_name, col_name)
+                    col.update(stats)
+                    col["statistical_score"] = self.statistical_score(stats)
+                
+                # 3. Inject variant keys
+                if col_name in v_keys:
+                    col["variant_keys"] = v_keys[col_name]
+                    
         return schema_info

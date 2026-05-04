@@ -114,14 +114,15 @@ class WorkflowEngine:
         validator = Validator()
         guardrails = Guardrails()
         
-        # 1. Schema Indexing
+        # 1. Schema Indexing & Enrichment
         Logger.log_step("SchemaIndexer", "START")
         fetch_res = ToolRegistry.fetch_schema(state, params={"full": True, "sample_rows": True})
         
-        if fetch_res.get("status") == "success" and not fetch_res.get("is_local", False):
-            state.schema_info = indexer.index_schema(state.schema_info)
-        else:
-            Logger.log("Skipping live indexing, using local metadata.")
+        # Always run indexing to discover variant keys from samples (live or local)
+        state.schema_info = indexer.index_schema(state.schema_info, skip_stats=fetch_res.get("is_local", False))
+        
+        if fetch_res.get("is_local", False):
+            Logger.log("Enriched local metadata with discovered variant keys.")
         
         full_schema_str = format_schema_to_str(state.schema_info, mode="compressed")
         state.SCHEMA = full_schema_str # Always provide full schema to agents for reasoning
