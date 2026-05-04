@@ -267,7 +267,12 @@ class PromptLoader:
                 "VARIANT_SCHEMA_HINTS": getattr(state, "variant_schema_hints", "No variant structure discovered yet."),
                 "all_tables": getattr(state, "all_tables", ""),
                 "structured_pruning": getattr(state, "structured_pruning", {}),
-                "REFERENCE_DATE": getattr(state, "reference_date", "2017-01-01")
+                "REFERENCE_DATE": getattr(state, "reference_date", "2017-01-01"),
+                "reference_date": getattr(state, "reference_date", "2017-01-01"),
+                "user_query": getattr(state, "user_query", ""),
+                "structured_intent": getattr(state, "structured_intent", {}),
+                "grounded_schema": getattr(state, "grounded_schema", ""),
+                "join_plan": getattr(state, "join_plan", "")
             })
 
             # --- Label-based blocks for prompts ---

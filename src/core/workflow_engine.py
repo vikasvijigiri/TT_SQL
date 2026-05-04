@@ -98,9 +98,10 @@ class WorkflowEngine:
     def run(self, state: AgentState) -> AgentState:
         """
         PRODUCTION-GRADE PIPELINE (Step 16 target architecture)
+        WITH ITERATIVE LEARNING (QueryPlanner & QueryCritic)
         """
         from core.tool_registry import ToolRegistry
-        from core.utils import validate_json_response, write_sql_to_file, write_csv_to_file
+        from core.utils import validate_json_response, write_sql_to_file, write_csv_to_file, format_schema_to_str
 
         Logger.log_state("INIT", "STARTED")
         self._run_sanity_check(state)
@@ -113,83 +114,119 @@ class WorkflowEngine:
         validator = Validator()
         guardrails = Guardrails()
         
-        # 1. Schema Indexing (Step 4)
+        # 1. Schema Indexing
         Logger.log_step("SchemaIndexer", "START")
-        ToolRegistry.fetch_schema(state, params={"full": True, "sample_rows": True})
-        state.schema_info = indexer.index_schema(state.schema_info)
+        fetch_res = ToolRegistry.fetch_schema(state, params={"full": True, "sample_rows": True})
         
-        graph = SchemaGraph(state.schema_info)
-        ranker = JoinRanker(memory)
-        retriever = Retriever(state.schema_info, memory)
-        mapper = StructureAwareMapper(memory)
-        planner = QueryPlanner(graph, ranker)
-        generator = SQLGenerator()
-
-        # 2. Intent Analysis (Step 1 - NO SCHEMA)
-        Logger.log_step("IntentAnalyzer", "START")
+        if fetch_res.get("status") == "success" and not fetch_res.get("is_local", False):
+            state.schema_info = indexer.index_schema(state.schema_info)
+        else:
+            Logger.log("Skipping live indexing, using local metadata.")
+        
+        full_schema_str = format_schema_to_str(state.schema_info, mode="compressed")
+        state.SCHEMA = full_schema_str # Always provide full schema to agents for reasoning
+        
+        # Initialize Agents
         intent_agent = GenericAgent("IntentAnalyzer", "intent_analyzer", state_field="structured_intent", llm_service=self.llm)
+        planner_agent = GenericAgent("QueryPlanner", "query_planner", state_field="strategies", llm_service=self.llm)
+        critic_agent = GenericAgent("QueryCritic", "query_critic", llm_service=self.llm)
+        generator_agent = GenericAgent("SQLGenerator", "grounded_sql_generator", output_key="sql", state_field="_temp_sql", llm_service=self.llm)
+        sql_critic_agent = GenericAgent("SQLCritic", "sql_critic", llm_service=self.llm)
+
+        # 2. Intent Analysis
         state = intent_agent.run(state)
         
-        # 3. Query Decomposition (Step 2)
+        # 3. Query Decomposition
         Logger.log_step("QueryDecomposer", "START")
         tasks = decomposer.decompose(state.structured_intent)
         
-        # 4. Retrieval (Step 3)
+        # 4. Retrieval
         Logger.log_step("Retriever", "START")
-        candidates = retriever.retrieve(state.user_query)
+        retriever = Retriever(state.schema_info, memory)
+        candidates = retriever.retrieve(state.user_query, top_k=100)
         
-        # 5. Retry Loop (Step 12)
-        MAX_RETRIES = 3
+        # 5. Iterative Execution Loop
+        MAX_EXECUTION_ATTEMPTS = 3
         sql_approved = False
         
-        for attempt in range(MAX_RETRIES):
-            Logger.log_stage_header("Mapping & Generation", iteration=attempt+1)
+        for exec_attempt in range(MAX_EXECUTION_ATTEMPTS):
+            Logger.log_stage_header("Mapping & Planning", iteration=exec_attempt+1)
             
-            # 5a. Semantic Mapping (Step 7)
-            mappings = mapper.map(tasks, candidates)
-            if not mappings:
-                Logger.log("No valid mappings found. Retrying with different candidates...", level="WARN")
-                continue
+            # 5a. Planning Refinement Loop (Internal)
+            MAX_PLAN_REFINEMENTS = 2
+            current_plan = None
+            
+            for plan_attempt in range(MAX_PLAN_REFINEMENTS):
+                Logger.log(f"Planning Attempt {plan_attempt+1}...")
+                state = planner_agent.run(state)
+                current_plan = state.join_plan
                 
-            # 5b. Query Planning (Step 8)
-            plan = planner.build(mappings)
+                # Audit the plan
+                Logger.log_step("QueryCritic", "START")
+                critic_res = critic_agent.run(state)
+                audit = critic_res.last_agent_output # Critic returns raw JSON
+                
+                if isinstance(audit, dict) and audit.get("is_valid"):
+                    Logger.log("Plan validated successfully by QueryCritic.")
+                    break
+                else:
+                    feedback = audit.get("feedback", "Plan invalid.") if isinstance(audit, dict) else "Plan invalid."
+                    Logger.log(f"QueryCritic Rejected Plan: {feedback}", level="WARN")
+                    state.feedback_history.append(f"PLAN_FAILURE: {feedback}")
+                    state.previous_action_plan = str(current_plan)
+
+            # 5b. SQL Generation
+            Logger.log_step("SQLGenerator", "START")
+            state = generator_agent.run(state)
+            sql = state._temp_sql
             
-            # 5c. SQL Generation (Step 9)
-            sql = generator.generate(plan)
-            
-            # 5d. Guardrails (Step 15)
+            # 5c. Guardrails
             try:
                 sql = guardrails.apply(sql)
+                state.chosen_query = sql
             except ValueError as e:
                 Logger.log(f"Guardrail violation: {str(e)}", level="ERROR")
+                state.feedback_history.append(f"GUARDRAIL_VIOLATION: {str(e)}")
                 continue
             
-            state.chosen_query = sql
-            
-            # 5e. Execution
+            # 5d. Execution
             Logger.log_step("ExecutionEngine", "START")
             result = service.execute_query(sql)
             state.execution_result = result
+            state.audit_context = {
+                "sql": sql,
+                "execution": {
+                    "status": "error" if result.error_message else "success",
+                    "error_message": result.error_message,
+                    "row_count": result.row_count
+                }
+            }
             
-            # 5f. Validation (Step 10)
+            # 5e. Validation
             valid = validator.check(result)
             
-            # 6. Confidence Estimation (Step 11)
-            scores = [m["score"] for m in mappings]
-            confidence = compute_confidence(scores, valid)
-            Logger.log(f"Confidence: {confidence}")
-            
-            # 7. Observability (Step 14)
-            Logger.log(f"[Observability] Candidates: {len(candidates)}, Mappings: {len(mappings)}, Result Size: {result.row_count}")
-
             if valid:
+                Logger.log("Pipeline Success!")
                 sql_approved = True
-                # 8. Memory Update (Step 13)
-                memory.update(state.user_query, mappings)
+                memory.update(state.user_query, []) # Simple memory update
                 break
             
-            Logger.log(f"Attempt {attempt+1} failed validation. Penalizing mappings...", level="WARN")
-            # Penalize mappings logic here (simplified for this task)
+            # 5f. SQL Criticism (Learning from Execution)
+            Logger.log_step("SQLCritic", "START")
+            critic_res = sql_critic_agent.run(state)
+            sql_audit = critic_res.last_agent_output
+            
+            feedback = sql_audit.get("feedback", "Unknown execution error.") if isinstance(sql_audit, dict) else "Execution failed."
+            Logger.log(f"SQLCritic Feedback: {feedback}", level="WARN")
+            state.feedback_history.append(f"EXECUTION_FAILURE: {feedback}")
+            state.previous_sql = sql
+            
+            Logger.log(f"Attempt {exec_attempt+1} failed. Learning from feedback...", level="WARN")
+
+        if not sql_approved:
+            state.pipeline_failure_reason = "Failed to produce a valid query after max execution attempts."
+            
+        return state
 
         if not sql_approved:
             state.pipeline_failure_reason = "Failed to produce a valid query after max retries."

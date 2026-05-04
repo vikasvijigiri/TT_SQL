@@ -16,7 +16,13 @@ class Retriever:
         Score (Step 3): 3 * value_match + 1 * token_match + memory_boost
         """
         candidates = []
+        # Expand query tokens to include common synonyms/abbreviations
         query_tokens = set(query.lower().replace("_", " ").replace(".", " ").split())
+        
+        # Add special handling for common Text2SQL mappings
+        if "country" in query_tokens: query_tokens.add("country_code")
+        if "id" in query_tokens: query_tokens.add("pk")
+        if "name" in query_tokens: query_tokens.add("title")
 
         for table_name, table_data in self.schema_info.items():
             # Get table-level sample for column-level fallback
@@ -42,7 +48,8 @@ class Retriever:
 
                 for val in sample_values:
                     val_str = str(val).lower()
-                    if any(token in val_str for token in query_tokens if len(token) > 2):
+                    # Allow 2-letter matches for things like 'CA', 'US', etc.
+                    if any(token in val_str for token in query_tokens if len(token) >= 2):
                         value_match = 1
                         break
                 
@@ -53,9 +60,13 @@ class Retriever:
                 
                 score = 3 * value_match + 1 * token_match + memory_boost
                 
-                # Even if score is 0, we might want to include it if it's a PK or FK
+                # Boost PK/FK and columns with descriptions that match
                 if col.get("pk") or col.get("fk"):
                     score += 0.5
+                
+                desc = str(col.get("description", "")).lower()
+                if any(token in desc for token in query_tokens if len(token) > 3):
+                    score += 1.0
 
                 if score > 0:
                     candidates.append({

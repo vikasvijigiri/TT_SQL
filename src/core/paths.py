@@ -31,8 +31,8 @@ RESULTS_BASE_DIR = PROJECT_ROOT / "results"
 
 # Resources
 RESOURCES_DIR = PROJECT_ROOT / "resources"
-DATABASES_DIR = RESOURCES_DIR
-METADATA_DIR = RESOURCES_DIR / "metadata"
+DATABASES_DIR = RESOURCES_DIR / "databases"
+METADATA_DIR = RESOURCES_DIR / "metadata" # Still used for internal cache
 DIALECT_CONSTRAINTS_MEMORY = METADATA_DIR / "dialect_constraints.json"
 
 # Evaluation
@@ -49,6 +49,7 @@ def initialize_directories(model_name: str = None, db_name: str = None):
         RESULTS_BASE_DIR,
         CONFIG_DIR,
         METADATA_DIR,
+        DATABASES_DIR,
     ]
 
     # If DB provided, create DB-specific structure 
@@ -87,8 +88,18 @@ class InstancePaths:
 
     @staticmethod
     def db_metadata(db_name: str) -> Path:
-        """Centralized metadata (schema) path for a database"""
+        """Centralized metadata (schema) path for a database (internal cache)"""
         return METADATA_DIR / f"{db_name}.json"
+
+    @staticmethod
+    def database_metadata_dir(db_name: str, dialect: str = "snowflake") -> Path:
+        """Path to the directory containing per-table JSON metadata files."""
+        # The structure is usually resources/databases/{dialect}/{db_name}/{db_name}/
+        # But let's be flexible and check both levels
+        base = DATABASES_DIR / dialect / db_name
+        if (base / db_name).exists():
+            return base / db_name
+        return base
 
     @staticmethod
     def plan(instance_id: str, db_name: str, model_name: str = "default_model") -> Path:

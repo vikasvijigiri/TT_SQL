@@ -46,6 +46,16 @@ class ToolRegistry:
         table_list = params.get("tables") if params else None
         sample_rows = params.get("sample_rows", False) if params else False
         
+        # Local-First Strategy: Try to load from resources/databases or cache
+        from core.utils import read_db_metadata
+        cached_schema = read_db_metadata(db_name, dialect)
+        if cached_schema:
+            state.schema_info = cached_schema
+            state.full_schema_info = cached_schema
+            state.all_table_names = list(cached_schema.keys())
+            Logger.log(f"Schema loaded from local metadata: {len(cached_schema)} tables")
+            return {"status": "success", "table_count": len(cached_schema), "is_local": True}
+
         Logger.start_capture()
         try:
             if dialect == "sqlite":
@@ -86,7 +96,7 @@ class ToolRegistry:
                 result=f"{audit_logs}\n\nSummary: Discovered/Updated {len(schema)} tables.",
                 status="success"
             )
-            return {"status": "success", "table_count": len(schema)}
+            return {"status": "success", "table_count": len(schema), "is_local": False}
         except Exception as e:
             audit_logs = Logger.stop_capture()
             Logger.log_agent_block("Schema Extraction Tool", [], f"{audit_logs}\nError: {str(e)}", "failed")

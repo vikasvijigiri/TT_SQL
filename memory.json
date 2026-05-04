@@ -1,0 +1,103 @@
+{
+  "mappings": {
+    "Can you help me figure out the revenue for the product category that has the highest number of customers making a purchase in their first non-cancelled and non-returned order?": [
+      {
+        "task": {
+          "type": "filter",
+          "value": {
+            "entity": "ORDERS",
+            "field": "status",
+            "operator": "!=",
+            "value": "cancelled"
+          }
+        },
+        "mapping": {
+          "table": "THELOOK_ECOMMERCE.THELOOK_ECOMMERCE.ORDERS",
+          "column": "status",
+          "score": 3.0,
+          "meta": {
+            "column_name": "status",
+            "type": "TEXT",
+            "description": null,
+            "pk": false
+          }
+        },
+        "score": 0.3500000000000001
+      },
+      {
+        "task": {
+          "type": "aggregation",
+          "value": {
+            "operation": "count_distinct",
+            "input": "first_order_items_with_category.user_id",
+            "output": "customer_count_per_category",
+            "grain": "per product_category",
+            "description": "Count distinct customers who made a purchase in their first non\u2011cancelled, non\u2011returned order, grouped by product category"
+          }
+        },
+        "mapping": {
+          "table": "THELOOK_ECOMMERCE.THELOOK_ECOMMERCE.PRODUCTS",
+          "column": "category",
+          "score": 1.0,
+          "meta": {
+            "column_name": "category",
+            "type": "TEXT",
+            "description": null,
+            "pk": false
+          }
+        },
+        "score": 0.33000000000000007
+      },
+      {
+        "task": {
+          "type": "aggregation",
+          "value": {
+            "operation": "row_number",
+            "input": "customer_count_per_category",
+            "output": "category_rank",
+            "grain": "per product_category",
+            "order": "customer_count_per_category DESC",
+            "description": "Rank categories by number of distinct first\u2011order customers"
+          }
+        },
+        "mapping": {
+          "table": "THELOOK_ECOMMERCE.THELOOK_ECOMMERCE.PRODUCTS",
+          "column": "category",
+          "score": 1.0,
+          "meta": {
+            "column_name": "category",
+            "type": "TEXT",
+            "description": null,
+            "pk": false
+          }
+        },
+        "score": 0.33000000000000007
+      },
+      {
+        "task": {
+          "type": "aggregation",
+          "value": {
+            "operation": "filter",
+            "input": "revenue_per_category",
+            "output": "selected_category_revenue",
+            "grain": "global",
+            "description": "Select revenue where category_rank = 1 (category with highest customer count)"
+          }
+        },
+        "mapping": {
+          "table": "THELOOK_ECOMMERCE.THELOOK_ECOMMERCE.PRODUCTS",
+          "column": "category",
+          "score": 1.0,
+          "meta": {
+            "column_name": "category",
+            "type": "TEXT",
+            "description": null,
+            "pk": false
+          }
+        },
+        "score": 0.33000000000000007
+      }
+    ]
+  },
+  "paths": {}
+}

@@ -43,13 +43,15 @@ def format_schema_to_str(schema_info: dict[str, Any], detailed: bool = True, max
             for c in cols:
                 if isinstance(c, dict):
                     name = c.get("column_name", c.get("name", "unknown"))
+                    ctype = c.get("type", "TEXT")
                     v_keys = c.get("variant_keys", [])
+                    
+                    line = f" - {name} {ctype}"
                     if v_keys:
                         k_list = list(v_keys.keys()) if isinstance(v_keys, dict) else list(v_keys)
                         key_str = ", ".join(str(k) for k in k_list)
-                        lines.append(f" - {name} VARIANT (keys: {key_str})")
-                    else:
-                        lines.append(f" - {name}")
+                        line += f" (keys: {key_str})"
+                    lines.append(line)
             lines.append("")
         elif detailed:
             lines.append(f"Table: {table}")
@@ -237,14 +239,56 @@ def quote_identifier(name: str) -> str:
     return f'"{safe_name}"'
 
 
-def read_db_metadata(db_name: str) -> dict[str, Any] | None:
-    """Reads core schema metadata from the common resources folder."""
+def read_db_metadata(db_name: str, dialect: str = "snowflake") -> dict[str, Any] | None:
+    """Reads core schema metadata from the common resources folder or the per-table JSON files."""
     from .paths import InstancePaths
+    
+    # 1. Try internal cache first
     path = InstancePaths.db_metadata(db_name)
     if path.exists() and path.stat().st_size > 0:
         with open(path, encoding="utf-8") as f:
             return json.load(f)
+            
+    # 2. Try per-table metadata directory
+    meta_dir = InstancePaths.database_metadata_dir(db_name, dialect)
+    if meta_dir.exists():
+        return load_per_table_metadata(meta_dir)
+        
     return None
+
+def load_per_table_metadata(meta_dir: Path) -> dict[str, Any]:
+    """Loads metadata from per-table JSON files in a directory."""
+    schema_info = {}
+    for json_file in meta_dir.glob("*.json"):
+        try:
+            with open(json_file, encoding="utf-8") as f:
+                data = json.load(f)
+                table_fullname = data.get("table_fullname") or data.get("table_name")
+                if not table_fullname: continue
+                
+                cols = []
+                names = data.get("column_names", [])
+                types = data.get("column_types", [])
+                descs = data.get("description", [])
+                
+                for i in range(len(names)):
+                    cols.append({
+                        "column_name": names[i],
+                        "type": types[i] if i < len(types) else "TEXT",
+                        "description": descs[i] if i < len(descs) else "",
+                        "pk": False # Metadata usually doesn't specify PK
+                    })
+                
+                schema_info[table_fullname] = {
+                    "columns": cols,
+                    "sample": data.get("sample_rows", []),
+                    "foreign_keys": [], # Need to infer or find elsewhere
+                    "primary_keys": []
+                }
+        except Exception as e:
+            Logger.log(f"Error loading metadata from {json_file}: {e}", level="WARN")
+            
+    return schema_info
 
 
 
