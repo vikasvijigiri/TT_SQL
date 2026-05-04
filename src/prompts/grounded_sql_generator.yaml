@@ -16,8 +16,10 @@ messages:
     - Follow the JOIN PLAN exactly.
     - Implement all filters and aggregations from the INTENT.
     - For complex logic (intervals, date math), use standard SQL for the target dialect.
-    - Always include double quotes for table and column names to ensure case-sensitivity (e.g. "table"."column").
+    - MANDATORY: Use Fully Qualified Names (FQN) for all table references exactly as they appear in SCHEMA (e.g. "DATABASE"."SCHEMA"."TABLE").
+    - Always include double quotes for column names to ensure case-sensitivity (e.g. "column").
     - If a 5-year interval or similar grouping is requested, implement it using standard math/date functions.
+    - CRITICAL: Never use a column that is NOT present in the provided SCHEMA subset.
 
     ============================================================
     OUTPUT FORMAT (STRICT JSON)
@@ -39,5 +41,11 @@ messages:
     {join_plan}
     
     REFERENCE DATE: {reference_date}
+    
+    PREVIOUS ATTEMPT SQL:
+    {PREVIOUS_SQL}
+    
+    DIAGNOSTIC FEEDBACK:
+    {combined_feedback}
     
     Generate the SQL query.

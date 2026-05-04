@@ -147,10 +147,8 @@ class AgentState(BaseModel):
     SCHEMA: str = "" # Full schema for FastTrack mode
     
     # --- Iterative Learning Fields ---
-    feedback_history: list[str] = []
     previous_action_plan: str = ""
     previous_sql: str = ""
-    audit_context: dict = {}
     last_agent_output: dict | None = None
 
     def add_log(self, message: str):

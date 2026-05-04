@@ -178,25 +178,27 @@ class PromptLoader:
             add_block("FAILURE_HISTORY", "PREVIOUS FAILURES", history_str)
 
             # SQL Context
-            prev_sql = getattr(state, "chosen_query", "")
+            prev_sql = getattr(state, "previous_sql", "") or getattr(state, "chosen_query", "")
             if prev_sql and "-- CONCEPT UNAVAILABLE" in prev_sql:
                 prev_sql = ""
                 
-            add_block("previous_iterated_SQL", "PREVIOUSLY ITERATED SQL", prev_sql)
+            add_block("previous_iterated_SQL", "PREVIOUSLY ITERATED SQL", prev_sql or "None")
             processed_kwargs.update({
-                "previous_iterated_SQL": prev_sql,
-                "previous_iterated_sql": prev_sql,
-                "previous_sql": prev_sql,
-                "PREVIOUS_SQL": prev_sql,
-                "PREVIOUS_GENERATED_SQL": prev_sql,
-                "sql": prev_sql,
-                "chosen_query": prev_sql,
+                "previous_iterated_SQL": prev_sql or "None",
+                "previous_iterated_sql": prev_sql or "None",
+                "previous_sql": prev_sql or "None",
+                "PREVIOUS_SQL": prev_sql or "None",
+                "PREVIOUS_GENERATED_SQL": prev_sql or "None",
+                "sql": prev_sql or "None",
+                "chosen_query": prev_sql or "None",
                 "previous_sql_label": "### PREVIOUS SQL" if prev_sql else ""
             })
             # Feedback & Learning Signal
-            combined_fb = getattr(state, "combined_feedback", "") or getattr(state, "critic_feedback", "")
+            combined_fb = getattr(state, "combined_feedback", "") or getattr(state, "critic_feedback", "") or "None"
             add_block("previous_feedback", "CRITIC FEEDBACK", combined_fb)
             add_block("combined_feedback", "COMBINED DIAGNOSTIC FEEDBACK", combined_fb)
+            processed_kwargs["combined_feedback"] = combined_fb
+            processed_kwargs["feedback"] = combined_fb
             
             # Intent Analyzer Output
             intent = getattr(state, "grounded_intent", None) or getattr(state, "structured_intent", {})
@@ -269,20 +271,26 @@ class PromptLoader:
                 "structured_pruning": getattr(state, "structured_pruning", {}),
                 "REFERENCE_DATE": getattr(state, "reference_date", "2017-01-01"),
                 "reference_date": getattr(state, "reference_date", "2017-01-01"),
-                "user_query": getattr(state, "user_query", ""),
-                "structured_intent": getattr(state, "structured_intent", {}),
-                "grounded_schema": getattr(state, "grounded_schema", ""),
-                "join_plan": getattr(state, "join_plan", "")
+                "grounded_schema": getattr(state, "grounded_schema", "") or "No specific schema subset provided. Use the FULL SCHEMA below.",
+                "join_plan": getattr(state, "join_plan", "") or "No predefined join plan. Infer relationships from schema PK/FK.",
+                "user_query": getattr(state, "user_query", "No query provided."),
+                "structured_intent": getattr(state, "structured_intent", {}) or "No intent analyzed."
             })
 
             # --- Label-based blocks for prompts ---
             # Task 13: Unified Single-Source Schema (Now PRUNED + COMPRESSED)
             pruned_schema = getattr(state, "schema_info", {})
-            add_block("SCHEMA", "DATABASE SCHEMA (Pruned & Compressed)", format_schema_to_str(pruned_schema, mode="compressed"))
+            schema_str = format_schema_to_str(pruned_schema, mode="compressed") or "No schema available."
+            add_block("SCHEMA", "DATABASE SCHEMA (Pruned & Compressed)", schema_str)
+            processed_kwargs["SCHEMA"] = schema_str
             
             # Keep full schema available if explicitly requested by a prompt under {full_schema}
-            full_schema = getattr(state, "full_schema_info", {})
-            add_block("full_schema", "FULL DATABASE INVENTORY (Compressed)", format_schema_to_str(full_schema, detailed=False))
+            full_schema = getattr(state, "full_schema_info", {}) or state.schema_info
+            full_schema_str = format_schema_to_str(full_schema, mode="compressed") or "No schema available."
+            add_block("full_schema", "FULL DATABASE INVENTORY (Compressed)", full_schema_str)
+            add_block("FULL_SCHEMA", "FULL DATABASE INVENTORY (Compressed)", full_schema_str)
+            processed_kwargs["FULL_SCHEMA"] = full_schema_str
+            processed_kwargs["full_schema"] = full_schema_str
             
             # Minimal Schema for Bootstrapping (Table names only)
             all_tables = getattr(state, "all_table_names", [])

@@ -46,7 +46,10 @@ def format_schema_to_str(schema_info: dict[str, Any], detailed: bool = True, max
                     ctype = c.get("type", "TEXT")
                     v_keys = c.get("variant_keys", [])
                     
-                    line = f" - {name} {ctype}"
+                    samples = col_samples.get(name, [])
+                    smp = f" e.g. {', '.join(samples[:2])}" if samples else ""
+                    
+                    line = f" - {name} {ctype}{smp}"
                     if v_keys:
                         k_list = list(v_keys.keys()) if isinstance(v_keys, dict) else list(v_keys)
                         key_str = ", ".join(str(k) for k in k_list)
