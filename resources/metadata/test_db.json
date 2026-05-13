@@ -1,0 +1,11 @@
+[
+    {
+        "name": "sales",
+        "columns": [
+            {"name": "id", "type": "INTEGER", "sample_values": [1, 2, 3]},
+            {"name": "amount", "type": "FLOAT", "sample_values": [100.0, 200.0]},
+            {"name": "region", "type": "STRING", "sample_values": ["North", "South"]},
+            {"name": "metadata", "type": "VARIANT", "json_path": "customer_type", "sample_values": ["VIP", "Regular"]}
+        ]
+    }
+]

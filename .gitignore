@@ -1,9 +1,12 @@
 # Local execution results and logs
 results/
-input_data/
 gold/
 logs/
-resources/
+data/
+results_databao/
+schema_cache/
+scratch/
+tests/
 failed_ids.csv
 *.log
 
@@ -12,8 +15,7 @@ config/*.json
 
 # Environment and Virtual Env
 .env
-new_venv/
-venv/
+venv_stable/
 __pycache__/
 *.pyc
 

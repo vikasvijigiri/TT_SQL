@@ -17,6 +17,10 @@ tqdm
 openpyxl
 pydantic-settings
 snowflake-connector-python
-pytest
-ruff
 sqlglot
+faiss-cpu
+rapidfuzz
+networkx
+numpy
+tabulate
+databao-agent
