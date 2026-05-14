@@ -1,6 +1,7 @@
 import sqlglot
 from src.utils.llm import LLMClient
 from src.utils.prompt_loader import PromptLoader
+from src.utils.dialect_loader import DialectLoader
 from src.schema.models import SelfCorrectorOutput, SchemaLinkerOutput
 from src.utils.logger import logger
 
@@ -34,18 +35,24 @@ class ExecutionCorrector:
         failed_sql: str,
         error_message: str,
         linked_schema: SchemaLinkerOutput,
+        schema_context: str = ""
     ) -> SelfCorrectorOutput:
         logger.set_agent("SELF_CORRECTOR")
         logger.info("Executing Self-Correction Module")
 
+        dialect_rules = DialectLoader.load_dialect_rules(self.dialect)
+
         messages = PromptLoader.load(PROMPT_PATH, variables={
             "DIALECT":          self.dialect.upper(),
+            "DIALECT_RULES":    dialect_rules,
             "USER_QUERY":       user_query,
             "SELECTED_TABLES":  ", ".join(linked_schema.selected_tables),
             "SELECTED_COLUMNS": ", ".join(linked_schema.selected_columns),
             "VALUE_MAPPINGS":   self._format_value_mappings(linked_schema),
             "FAILED_SQL":       failed_sql,
             "ERROR_MESSAGE":    error_message,
+            "SCHEMA_CONTEXT":    schema_context,
+            "LESSONS":          "" # Corrector also gets lessons if we pass them
         })
 
         system_prompt = next(m["content"] for m in messages if m["role"] == "system")

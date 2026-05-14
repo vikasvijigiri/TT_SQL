@@ -1,0 +1,26 @@
+[
+  {
+    "user_intent_pattern": "For the assignee who has been the most active in the patent category 'A61', I'd like to know the fiv",
+    "error_encountered": "100097 (22007): Can't parse '0' as date with format 'YYYYMMDD'",
+    "fix_reasoning": "1. Identify that \"filing_date\" is a NUMBER and may contain invalid dates (e.g., 0). 2. Replace TO_DATE with TRY_TO_DATE to safely handle bad values. 3. Add a filter to exclude rows where the date conversion fails. 4. Keep the rest of the logic unchanged, ensuring all identifiers are fully qualified and double\u2011quoted per Snowflake best practices.",
+    "successful_pattern": "..."
+  },
+  {
+    "user_intent_pattern": "For the assignee who has been the most active in the patent category 'A61', I'd like to know the fiv",
+    "error_encountered": "100097 (22007): Can't parse '0' as date with format 'YYYYMMDD'",
+    "fix_reasoning": "Replace the direct TO_DATE conversion with TRY_TO_DATE on the string representation of filing_date, and filter out rows where the conversion fails (i.e., returns NULL). This prevents the parsing error while preserving valid dates. All identifiers are fully qualified and quoted per Snowflake best practices.",
+    "successful_pattern": "..."
+  },
+  {
+    "user_intent_pattern": "For the assignee who has been the most active in the patent category 'A61', I'd like to know the fiv",
+    "error_encountered": "000904 (42000): SQL compilation error: error line 43 at position 67\ninvalid identifier 'JURIS_CNT'",
+    "fix_reasoning": "Added 'juris_cnt' to the inner subquery of top_jurisdictions so LISTAGG can order by it. Also used fully qualified table name, quoted identifiers, and CROSS JOINs for clarity.",
+    "successful_pattern": "..."
+  },
+  {
+    "user_intent_pattern": "For the assignee who has been the most active in the patent category 'A61', I'd like to know the fiv",
+    "error_encountered": "000904 (42000): SQL compilation error: error line 6 at position 8\ninvalid identifier 'AH.\"value\"'",
+    "fix_reasoning": "1. Identify the invalid identifier \u2013 the flatten alias column should be `VALUE`, not quoted lower\u2011case `\"value\"`.\n2. Replace both JSON extractions with the proper Snowflake JSON path syntax: `ah.\"VALUE\":\"name\"::TEXT` for the assignee name and `cpc_item.\"VALUE\":\"code\"::TEXT` for the CPC code.\n3. Keep all other logic unchanged, ensuring all identifiers are double\u2011quoted per Snowflake best\u2011practice.\n4. Verify that the query still follows the requested business logic: find the most active assignee in CPC class A61, determine their busiest filing year, and list the top five jurisdiction codes for that year.\n5. Produce the corrected, fully\u2011qualified, double\u2011quoted SQL.",
+    "successful_pattern": "..."
+  }
+]
