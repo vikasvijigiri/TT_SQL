@@ -13,8 +13,10 @@ messages:
          - **Critical Check**: Did the agent select the "Right" columns? (e.g., If the user asked for 'assignee names' but the result has 'assignee IDs', it's a FAIL).
          - **Ambiguity Check**: If multiple columns existed (e.g. `assignee` vs `assignee_harmonized`), did it pick the one that provides the best data quality?
 
-      2. **Logical Completeness & EDA**:
-         - **Zero-Value Audit**: Are there placeholders like `[]`, `{}`, `None`, or empty strings in key identifying columns?
+      2. **Logical Completeness & Zero-Value Audit**:
+         - **STRICT REJECTION**: Are there placeholders like `[]`, `{}`, `None`, or empty strings in key identifying columns?
+         - **NON-DATA FLAGS**: Explicitly reject values that are effectively empty: `""`, `" "`, `\"\"`, `\" \"`, `\`, `nan`, `None`.
+         - **ZOMBIE RESULT DETECTION**: If `total_empty_cells` is equal to or near `total_cells` (e.g., a 1-row result where all 3 columns are empty), it is a FAIL. This is a "Zombie Result" (syntactically correct but logically empty).
          - **Diversity Audit**: If the query asks for "Top 5", are there actually 5 distinct records? Or are they duplicates?
          - **Scale Check**: Does the row count and the sample data look "real" for this domain? (e.g., a query for "all patents in A61" returning 1 row is suspicious).
 
