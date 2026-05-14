@@ -22,5 +22,11 @@
     "error_encountered": "000904 (42000): SQL compilation error: error line 6 at position 8\ninvalid identifier 'AH.\"value\"'",
     "fix_reasoning": "1. Identify the invalid identifier \u2013 the flatten alias column should be `VALUE`, not quoted lower\u2011case `\"value\"`.\n2. Replace both JSON extractions with the proper Snowflake JSON path syntax: `ah.\"VALUE\":\"name\"::TEXT` for the assignee name and `cpc_item.\"VALUE\":\"code\"::TEXT` for the CPC code.\n3. Keep all other logic unchanged, ensuring all identifiers are double\u2011quoted per Snowflake best\u2011practice.\n4. Verify that the query still follows the requested business logic: find the most active assignee in CPC class A61, determine their busiest filing year, and list the top five jurisdiction codes for that year.\n5. Produce the corrected, fully\u2011qualified, double\u2011quoted SQL.",
     "successful_pattern": "..."
+  },
+  {
+    "user_intent_pattern": "For the assignee who has been the most active in the patent category 'A61', I'd like to know the fiv",
+    "error_encountered": "Query executed successfully but returned 0 rows. A logic error, case-sensitivity issue (use ILIKE), or NULL filtering (use COALESCE) is likely dropping all rows. Please relax or fix the WHERE conditions.",
+    "fix_reasoning": "1. Identify the source of the empty result \u2013 the assignee extraction. 2. Replace `a.value:\"name\"::TEXT` with `a.value::TEXT` (or use `assignee_harmonized` if a structured object is needed). 3. Keep the CPC filter (`ILIKE 'A61%'`) unchanged. 4. Ensure the filing date conversion is safe with `TRY_TO_DATE`. 5. Add a non\u2011NULL guard on the assignee name. 6. Re\u2011write the CTEs with clear aliases and fully qualified table names, preserving the original logic: find the top assignee in CPC A61, determine their busiest filing year, then list the top five jurisdiction codes for that year. 7. Use `LISTAGG` to concatenate the jurisdiction codes. 8. Verify that all column references are fully qualified and quoted per Snowflake best practices.",
+    "successful_pattern": "..."
   }
 ]

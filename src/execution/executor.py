@@ -40,21 +40,32 @@ class DatabaseExecutor:
 
     def execute(self, sql: str, instance_id: str) -> Tuple[bool, str, int]:
         """Execute SQL and persist results to results/{db_name}/{instance_id}.csv"""
+        save_dir = os.path.join("results", self.db_name)
+        os.makedirs(save_dir, exist_ok=True)
+        csv_path = os.path.join(save_dir, f"{instance_id}.csv")
+
+        # Clear stale results immediately
+        if os.path.exists(csv_path):
+            try:
+                os.remove(csv_path)
+            except Exception as e:
+                logger.warning(f"Could not remove stale CSV {csv_path}: {e}")
+
         # Prefer SQLite if a local file is available
         sqlite_path = self._get_sqlite_path()
         if sqlite_path:
-            rows, error = self._execute_sqlite(sql, sqlite_path)
+            rows, columns, error = self._execute_sqlite(sql, sqlite_path)
         else:
-            rows, error = self._execute_snowflake(sql)
+            rows, columns, error = self._execute_snowflake(sql)
 
         if error:
             return False, error, 0
 
         # Persist to CSV
-        save_dir = os.path.join("results", self.db_name)
-        os.makedirs(save_dir, exist_ok=True)
-        csv_path = os.path.join(save_dir, f"{instance_id}.csv")
         df = pd.DataFrame(rows)
+        if df.empty and columns:
+            df = pd.DataFrame(columns=columns)
+            
         df.to_csv(csv_path, index=False, encoding="utf-8-sig")
         logger.success(f"Results saved -> {csv_path} ({len(df)} rows)")
 
@@ -64,7 +75,7 @@ class DatabaseExecutor:
     # Backends
     # ------------------------------------------------------------------
 
-    def _execute_sqlite(self, sql: str, path: str) -> Tuple[List[Dict], Optional[str]]:
+    def _execute_sqlite(self, sql: str, path: str) -> Tuple[List[Dict], List[str], Optional[str]]:
         import sqlite3
         logger.info(f"Executing on SQLite ({path})")
         try:
@@ -72,16 +83,17 @@ class DatabaseExecutor:
             conn.row_factory = sqlite3.Row
             cur = conn.cursor()
             cur.execute(sql)
+            columns = [col[0] for col in cur.description] if cur.description else []
             rows = [dict(r) for r in cur.fetchall()]
             conn.close()
-            return rows, None
+            return rows, columns, None
         except Exception as e:
             logger.error(f"SQLite error: {e}")
-            return [], str(e)
+            return [], [], str(e)
 
-    def _execute_snowflake(self, sql: str) -> Tuple[List[Dict], Optional[str]]:
+    def _execute_snowflake(self, sql: str) -> Tuple[List[Dict], List[str], Optional[str]]:
         if not self.sf_config:
-            return [], "Snowflake configuration missing (config/sf_credentials.json)"
+            return [], [], "Snowflake configuration missing (config/sf_credentials.json)"
 
         logger.info(f"Executing on Snowflake | db={self.db_name}")
         try:
@@ -91,12 +103,12 @@ class DatabaseExecutor:
             cs = ctx.cursor()
             try:
                 cs.execute(sql)
-                columns = [col[0] for col in cs.description]
+                columns = [col[0] for col in cs.description] if cs.description else []
                 rows = [dict(zip(columns, row)) for row in cs.fetchall()]
-                return rows, None
+                return rows, columns, None
             finally:
                 cs.close()
                 ctx.close()
         except Exception as e:
             logger.error(f"Snowflake error: {e}")
-            return [], str(e)
+            return [], [], str(e)

@@ -1,5 +1,11 @@
 # Local execution results and logs
 results/
+resources/interface/
+resources/logs/
+resources/memory/
+resources/metadata/
+
+
 gold/
 logs/
 data/
@@ -12,7 +18,7 @@ failed_ids.csv
 
 # Sensitive configs
 config/*.json
-
+log.txt
 # Environment and Virtual Env
 .env
 venv_stable/

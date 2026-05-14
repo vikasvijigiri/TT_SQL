@@ -24,6 +24,8 @@ import argparse
 import traceback
 import time
 from multiprocessing import Pool, cpu_count
+from src.agents.prompt_evolver import PromptEvolver
+from src.utils.llm import LLMClient
 
 BASE_DB_DIR = "resources/databases/snowflake"
 INPUT_FILE  = "input_data/spider2-lite-snowflake.jsonl"
@@ -52,10 +54,15 @@ def run_single_example(example: dict) -> dict:
     db_name     = example['db']
     question    = example['question']
 
-    save_dir = os.path.join("results", db_name)
+    save_dir = os.path.join("results", db_name.upper())
     os.makedirs(save_dir, exist_ok=True)
     md_path  = os.path.join(save_dir, f"{instance_id}.md")
     sql_path = os.path.join(save_dir, f"{instance_id}.sql")
+    csv_path = os.path.join(save_dir, f"{instance_id}.csv")
+
+    # Clear stale results
+    if os.path.exists(csv_path):
+        os.remove(csv_path)
 
     logger.start_live_task_log(md_path)
     start = time.time()
@@ -194,6 +201,16 @@ def main():
             results = pool.map(run_single_example, examples)
 
     print_summary(results)
+    
+    # Autonomous Evolution Step
+    try:
+        print("Starting Autonomous Prompt Evolution...")
+        llm = LLMClient()
+        evolver = PromptEvolver(llm)
+        evolver.evolve_prompts(log_file="resources/logs/major_failures.log") # Learn from major failures
+        print("✅ Evolution complete.")
+    except Exception as e:
+        print(f"⚠️ Evolution skipped: {e}")
 
 
 if __name__ == "__main__":

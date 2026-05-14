@@ -2,6 +2,7 @@ from src.utils.llm import LLMClient
 from src.utils.prompt_loader import PromptLoader
 from src.schema.models import SchemaLinkerOutput
 from src.utils.logger import logger
+from src.utils.dialect_loader import DialectLoader
 from src.indexing.semantic_engine import SemanticContextEngine
 from src.mapping.pruner import TablePruner, ColumnPruner
 
@@ -15,7 +16,7 @@ class SchemaLinker:
         self.table_pruner = TablePruner(llm_client, semantic_engine)
         self.column_pruner = ColumnPruner(llm_client, semantic_engine)
 
-    def link_schema(self, user_query: str, lessons: str = "") -> SchemaLinkerOutput:
+    def link_schema(self, user_query: str, dialect: str = "snowflake", lessons: str = "") -> SchemaLinkerOutput:
         logger.set_agent("SCHEMA_LINKER")
         logger.info(f"Linking schema for query: '{user_query}'")
 
@@ -32,10 +33,12 @@ class SchemaLinker:
             include_samples=True
         )
 
+        dialect_rules = DialectLoader.load_dialect_rules(dialect)
         messages = PromptLoader.load(PROMPT_PATH, variables={
             "SEMANTIC_CONTEXT": semantic_context_str,
             "USER_QUERY": user_query,
-            "LESSONS": lessons
+            "LESSONS": lessons,
+            "DIALECT_RULES": dialect_rules
         })
 
         system_prompt = next(m["content"] for m in messages if m["role"] == "system")
