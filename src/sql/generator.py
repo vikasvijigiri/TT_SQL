@@ -8,38 +8,7 @@ from src.indexing.semantic_engine import SemanticContextEngine
 
 PROMPT_PATH = "src/prompts/sql_generator.yaml"
 
-# Dialect-specific notes injected into the prompt
-_DIALECT_NOTES = {
-    "snowflake": "Follow all Snowflake rules in the system prompt.",
-    "bigquery": "Follow BigQuery syntax rules.",
-    "sqlite": "Follow SQLite syntax rules.",
-}
 
-# Complexity-specific guidance blocks injected into the prompt
-_COMPLEXITY_GUIDANCE = {
-    "easy": (
-        "This is a SIMPLE query.\n"
-        "Write a direct SELECT statement. No CTEs, no JOINs, no aggregations unless trivially required.\n"
-        "Keep it concise and readable."
-    ),
-    "non_nested_complex": (
-        "This query requires JOINs and/or aggregations.\n"
-        "Guidelines:\n"
-        "  - Identify the correct JOIN keys from the schema foreign key hints.\n"
-        "  - Apply all filters in WHERE (pre-aggregation) or HAVING (post-aggregation).\n"
-        "  - Ensure GROUP BY exactly matches the SELECT non-aggregate columns.\n"
-        "  - Use window functions (RANK, ROW_NUMBER) for ranked/top-N results."
-    ),
-    "nested_complex": (
-        "This is a COMPLEX multi-step query.\n"
-        "You MUST use Common Table Expressions (CTEs) using the WITH clause to decompose the logic.\n"
-        "Guidelines:\n"
-        "  - Break the problem into named steps (e.g., step1_candidates, step2_ranked, etc.).\n"
-        "  - Each CTE should do ONE logical thing.\n"
-        "  - NEVER use correlated subqueries in WHERE if a CTE + JOIN can achieve the same result.\n"
-        "  - Avoid deeply nested subqueries — Snowflake may not support all subquery types."
-    ),
-}
 
 
 class AdaptiveSQLGenerator:
