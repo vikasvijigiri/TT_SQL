@@ -1,30 +1,45 @@
-# Local execution results and logs
-results/
-resources/interface/
-resources/logs/
-resources/memory/
-resources/metadata/
+# Backend structure
+backend/results/
+backend/resources/logs/
+backend/resources/memory/
+backend/resources/metadata/
+backend/resources/gold/
+backend/resources/input_data/
+backend/resources/databases/
+backend/resources/documents/
+backend/resources/interface/
+backend/resources/syntax/
+backend/scratch/
+backend/config/*.json
 
-
-gold/
-logs/
-data/
-results_databao/
-schema_cache/
-scratch/
-tests/
+# Root artifacts
+log.txt
+benchmark_report.md
 failed_ids.csv
 *.log
 
-# Sensitive configs
-config/*.json
-log.txt
 # Environment and Virtual Env
 .env
 venv_stable/
 __pycache__/
 *.pyc
 
-
+# IDE and Cache
+.vscode/
+.idea/
 .pytest_cache/
 .ruff_cache/
+
+# Legacy/Backup (safety)
+old_src/
+old_resources/
+src_backup/
+src_backup1/
+src/
+resources/
+gold/
+input_data/
+config/
+results/
+tests/
+schema_cache/
