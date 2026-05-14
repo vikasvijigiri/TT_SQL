@@ -6,6 +6,10 @@ from src.intent.classifier import QueryClassifier
 from src.sql.generator import AdaptiveSQLGenerator
 from src.feedback.corrector import ExecutionCorrector
 from src.execution.executor import DatabaseExecutor
+from src.feedback.validator import ResultValidator
+from src.feedback.memory import MemoryManager
+import pandas as pd
+import os
 
 class SemanticDINOrchestrator:
     def __init__(self, db_directory: str, db_name: str, dialect: str = "snowflake", max_retries: int = 3):
@@ -19,7 +23,10 @@ class SemanticDINOrchestrator:
         self.classifier = QueryClassifier(self.llm)
         self.sql_generator = AdaptiveSQLGenerator(self.llm, self.semantic_engine, dialect)
         self.corrector = ExecutionCorrector(self.llm, dialect)
+        self.validator = ResultValidator(self.llm)
+        self.memory = MemoryManager()
         self.executor = DatabaseExecutor(db_name=db_name, dialect=dialect)
+        self.db_name = db_name
         
         # Build context immediately
         self.semantic_engine.build_context()
@@ -28,25 +35,58 @@ class SemanticDINOrchestrator:
         logger.log_section(f"Processing Query", color=logger.BLUE)
         logger.info(f"Query: '{user_query}'")
         
-        # Module 1: Schema Linking
-        linked_schema = self.schema_linker.link_schema(user_query)
+        # Module 1: Schema Linking (with Memory)
+        lessons_context = self.memory.get_context_string()
+        linked_schema = self.schema_linker.link_schema(user_query, lessons=lessons_context)
         
         # Module 2: Classification
         classification = self.classifier.classify(user_query, linked_schema)
         
-        # Module 3: Initial SQL Generation
-        generation_result = self.sql_generator.generate(user_query, linked_schema, classification)
+        # Module 3: Initial SQL Generation (with Memory)
+        generation_result = self.sql_generator.generate(user_query, linked_schema, classification, lessons=lessons_context)
         current_sql = generation_result.sql
         
         # Module 4: Execution & Self-Correction Loop
         attempts = 0
+        last_correction_thought = ""
         while attempts <= self.max_retries:
             logger.info(f"Execution Attempt {attempts + 1}/{self.max_retries + 1}")
             success, result_msg, row_count = self.executor.execute(current_sql, instance_id)
             
-            if success and (row_count > 0 or attempts == self.max_retries):
-                logger.log_final_results(sql=current_sql, row_count=row_count)
-                return current_sql
+            if success and row_count > 0:
+                # Module 5: Data IQ Layer (Validation)
+                csv_path = os.path.join("results", self.db_name, f"{instance_id}.csv")
+                preview_str = "No preview available."
+                stats = {}
+                if os.path.exists(csv_path):
+                    try:
+                        df = pd.read_csv(csv_path)
+                        preview_str = df.head(5).to_string()
+                        # Compute basic EDA stats
+                        stats = {
+                            "total_rows": len(df),
+                            "duplicate_rows": int(df.duplicated().sum()),
+                            "null_counts": df.isnull().sum().to_dict(),
+                            "empty_string_counts": (df == "").sum().to_dict()
+                        }
+                    except: pass
+                
+                validation = self.validator.validate_result(user_query, current_sql, preview_str, stats=stats)
+                
+                if validation.is_plausible or attempts == self.max_retries:
+                    # If we succeeded via correction, learn the lesson
+                    if attempts > 0:
+                        self.memory.add_lesson(
+                            user_query=user_query,
+                            error=error_context,
+                            correction_thought=last_correction_thought,
+                            successful_sql=current_sql
+                        )
+                    logger.log_final_results(sql=current_sql, row_count=row_count)
+                    return current_sql
+                else:
+                    error_context = f"DATA QUALITY FAIL: {validation.feedback}\nSuggestion: {validation.improvement_suggestion}"
+                    logger.warning("Data IQ check failed. Re-routing to Self-Corrector...")
             else:
                 error_context = result_msg
                 if success and row_count == 0:
@@ -57,13 +97,22 @@ class SemanticDINOrchestrator:
 
                 if attempts < self.max_retries:
                     logger.info("Generating corrected SQL...")
+                    # Get schema context for relevant tables. Only include samples if the result was 0-rows (logic fix).
+                    # For compilation errors, keep it slim to prevent JSON parsing failures.
+                    is_zero_row = (success and row_count == 0)
+                    correction_context = self.semantic_engine.format_for_prompt(
+                        relevant_tables=linked_schema.selected_tables,
+                        include_samples=is_zero_row
+                    )
                     correction = self.corrector.correct_sql(
                         user_query=user_query,
                         failed_sql=current_sql,
                         error_message=error_context,
-                        linked_schema=linked_schema
+                        linked_schema=linked_schema,
+                        schema_context=correction_context
                     )
                     current_sql = correction.sql
+                    last_correction_thought = correction.thought_process
                 attempts += 1
                 
         # If we exhausted retries

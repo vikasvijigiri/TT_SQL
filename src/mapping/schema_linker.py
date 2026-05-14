@@ -15,7 +15,7 @@ class SchemaLinker:
         self.table_pruner = TablePruner(llm_client, semantic_engine)
         self.column_pruner = ColumnPruner(llm_client, semantic_engine)
 
-    def link_schema(self, user_query: str) -> SchemaLinkerOutput:
+    def link_schema(self, user_query: str, lessons: str = "") -> SchemaLinkerOutput:
         logger.set_agent("SCHEMA_LINKER")
         logger.info(f"Linking schema for query: '{user_query}'")
 
@@ -35,6 +35,7 @@ class SchemaLinker:
         messages = PromptLoader.load(PROMPT_PATH, variables={
             "SEMANTIC_CONTEXT": semantic_context_str,
             "USER_QUERY": user_query,
+            "LESSONS": lessons
         })
 
         system_prompt = next(m["content"] for m in messages if m["role"] == "system")

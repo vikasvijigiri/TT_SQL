@@ -1,0 +1,16 @@
+dialect: snowflake
+rules:
+  - name: FQN Compliance
+    rule: "Always use Fully Qualified Names (FQN) in the format `DATABASE.SCHEMA.TABLE`."
+  - name: Identifier Quoting
+    rule: "Always double-quote all identifiers (tables, columns, aliases) to handle case-sensitivity and special characters: `\"ColumnName\"`."
+  - name: JSON/Variant Handling
+    rule: "Use `LATERAL FLATTEN(input => \"ColumnName\")` for processing VARIANT/JSON arrays. For simple text extraction from JSON, use `\"ColumnName\"::TEXT`."
+  - name: String Search
+    rule: "Prefer `ILIKE` over `LIKE` for case-insensitive categorical filtering on string columns."
+  - name: Safe Date Parsing
+    rule: "Use `TRY_TO_DATE(\"ColumnName\")` or `TRY_TO_TIMESTAMP(\"ColumnName\")` to prevent execution errors on malformed date strings."
+  - name: Null Handling
+    rule: "Use `COALESCE(\"ColumnName\", 'default')` when performing negative filters (e.g., `!= 'value'`) to avoid dropping NULL records."
+  - name: List Aggregation
+    rule: "Use `LISTAGG(\"ColumnName\", ', ') WITHIN GROUP (ORDER BY ...)` for comma-separated outputs."

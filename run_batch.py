@@ -120,9 +120,9 @@ def load_examples(instance_filter: str | None, db_filter: str | None, n: int) ->
                 all_examples.append(json.loads(line))
 
     if instance_filter:
-        matched = [e for e in all_examples if e['instance_id'] == instance_filter]
+        matched = [e for e in all_examples if e['instance_id'] in instance_filter]
         if not matched:
-            print(f"ERROR: instance_id '{instance_filter}' not found in {INPUT_FILE}")
+            print(f"ERROR: No matched instance_ids found in {INPUT_FILE}")
             sys.exit(1)
         return matched
 
@@ -165,8 +165,8 @@ def main():
         formatter_class=argparse.RawDescriptionHelpFormatter,
         epilog=__doc__,
     )
-    parser.add_argument("--instance", type=str, default=None,
-                        help="Run a single specific instance_id (e.g., sf_bq070)")
+    parser.add_argument("--instance", type=str, action='append', default=None,
+                        help="Run specific instance_id(s) (can be used multiple times)")
     parser.add_argument("--db", type=str, default=None,
                         help="Run ALL instances for a specific database name (e.g., IDC, PATENTS)")
     parser.add_argument("--n", type=int, default=3,
