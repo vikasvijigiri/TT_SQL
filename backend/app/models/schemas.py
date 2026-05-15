@@ -1,5 +1,5 @@
 from pydantic import BaseModel, Field
-from typing import List, Optional, Dict, Literal, Any
+from typing import List, Optional, Dict, Literal, Any, Union
 
 # ---------------------------------------------------------
 # Semantic Context Models (Offline Engine)
@@ -10,12 +10,14 @@ class SemanticColumn(BaseModel):
     type: str = Field(description="Data type of the column.")
     description: Optional[str] = Field(None, description="Semantic description of the column.")
     sample_values: List[str] = Field(default_factory=list, description="Categorical sample values available.")
+    nested_keys: List[str] = Field(default_factory=list, description="Internal keys found in JSON/VARIANT structures.")
 
 class SemanticTable(BaseModel):
     name: str = Field(description="The fully qualified table name.")
     description: Optional[str] = Field(None, description="Semantic description of the table.")
     columns: List[SemanticColumn] = Field(default_factory=list, description="List of columns in this table.")
     foreign_keys: List[str] = Field(default_factory=list, description="Known foreign key relationships.")
+    sample_rows: List[Dict[str, Any]] = Field(default_factory=list, description="A few actual rows from the table.")
 
 class SemanticContext(BaseModel):
     tables: List[SemanticTable] = Field(default_factory=list, description="The governed semantic layer definitions.")
@@ -37,15 +39,18 @@ class SchemaLinkerOutput(BaseModel):
 
 class QueryClassifierOutput(BaseModel):
     reasoning: Optional[str] = Field(None, description="Reasoning behind the chosen complexity class.")
-    complexity: Literal["easy", "non_nested_complex", "nested_complex"] = Field(
-        description="The classified complexity of the query. 'easy' for simple select/where. 'non_nested_complex' for joins/group by. 'nested_complex' for subqueries/CTEs."
+    complexity: Literal["linear_logic", "relational_complexity", "forensic_depth"] = Field(
+        description="The classified complexity of the query. 'linear_logic' for simple select/where. 'relational_complexity' for joins/group by. 'forensic_depth' for subqueries/CTEs."
     )
+    atomic_steps: List[str] = Field(default_factory=list, description="Sequence of atomic operations/CTEs required to fulfill the request.")
+    grain_audit: str = Field(description="Strict definition of what each row in the final result represents and how it was arrived at.")
 
 class SQLGeneratorOutput(BaseModel):
-    thought_process: Optional[str] = Field(None, description="Detailed step-by-step logic on how the SQL is constructed using the mapped schema.")
+    hierarchy_audit: Optional[str] = Field(None, description="Detailed audit of hierarchical string lengths and prefix selection for the requested grain.")
+    thought_process: Union[str, List[str]] = Field(description="Detailed step-by-step logic on how the SQL is constructed using the mapped schema.")
     sql: str = Field(description="The final executable SQL query.")
 
 class SelfCorrectorOutput(BaseModel):
-    error_analysis: Optional[str] = Field(None, description="Analysis of why the previous SQL threw a database execution error.")
-    thought_process: Optional[str] = Field(None, description="Step-by-step logic to resolve the error.")
+    error_analysis: Union[str, List[str]] = Field(None, description="Analysis of why the previous SQL threw a database execution error.")
+    thought_process: Union[str, List[str]] = Field(description="Step-by-step logic to resolve the error.")
     sql: str = Field(description="The corrected, final executable SQL query.")

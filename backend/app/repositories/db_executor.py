@@ -41,27 +41,44 @@ class DatabaseExecutor:
         return None
 
     def execute(self, sql: str, instance_id: str) -> Tuple[bool, str, int]:
-        """Execute SQL and persist results to results/{db_name}/{instance_id}.csv"""
+        """Execute SQL (handles multi-statements) and persist results."""
         save_dir = os.path.join(str(RESULTS_DIR), self.db_name)
         os.makedirs(save_dir, exist_ok=True)
         csv_path = os.path.join(save_dir, f"{instance_id}.csv")
 
-        # Clear stale results immediately
+        # Clear stale results
         if os.path.exists(csv_path):
-            try:
-                os.remove(csv_path)
-            except Exception as e:
-                logger.warning(f"Could not remove stale CSV {csv_path}: {e}")
+            try: os.remove(csv_path)
+            except: pass
 
-        # Prefer SQLite if a local file is available
+        # Multi-statement support
+        statements = [s.strip() for s in sql.split(";") if s.strip()]
+        if not statements:
+            return False, "No SQL statements provided.", 0
+
+        last_rows, last_cols, last_error = [], [], None
+        
+        # Prefer SQLite if available
         sqlite_path = self._get_sqlite_path()
-        if sqlite_path:
-            rows, columns, error = self._execute_sqlite(sql, sqlite_path)
-        else:
-            rows, columns, error = self._execute_snowflake(sql)
+        
+        for stmt in statements:
+            if sqlite_path:
+                rows, columns, error = self._execute_sqlite(stmt, sqlite_path)
+            else:
+                rows, columns, error = self._execute_snowflake(stmt)
+            
+            if error:
+                return False, error, 0
+            
+            last_rows, last_cols = rows, columns
 
-        if error:
-            return False, error, 0
+        # Persist final statement results
+        df = pd.DataFrame(last_rows)
+        if df.empty and last_cols:
+            df = pd.DataFrame(columns=last_cols)
+            
+        df.to_csv(csv_path, index=False, encoding="utf-8-sig")
+        return True, "Execution successful.", len(df)
 
         # Persist to CSV
         df = pd.DataFrame(rows)
@@ -111,6 +128,8 @@ class DatabaseExecutor:
             ctx = snowflake.connector.connect(**conn_params)
             cs = ctx.cursor()
             try:
+                # Set session timeout to 300s (5 minutes) for heavy spatial/analytical queries
+                cs.execute("ALTER SESSION SET STATEMENT_TIMEOUT_IN_SECONDS = 300")
                 cs.execute(sql)
                 columns = [col[0] for col in cs.description] if cs.description else []
                 rows = [dict(zip(columns, row)) for row in cs.fetchall()]

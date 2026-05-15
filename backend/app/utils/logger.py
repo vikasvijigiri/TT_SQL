@@ -40,7 +40,9 @@ class CustomLogger:
             self.logger.addHandler(self.ch)
             
             # Global file handler for detailed logs (keeps clean of ANSI)
-            self.fh = logging.FileHandler("log.txt", mode='a', encoding='utf-8')
+            from backend.app.core.config import LOGS_DIR
+            main_log_path = LOGS_DIR / "main.log"
+            self.fh = logging.FileHandler(str(main_log_path), mode='a', encoding='utf-8')
             self.fh.setLevel(logging.DEBUG)
             self.fh.setFormatter(logging.Formatter('%(asctime)s - %(name)s - %(levelname)s - %(message)s'))
             self.logger.addHandler(self.fh)
@@ -57,7 +59,7 @@ class CustomLogger:
         """Starts real-time logging to a specific file for the current thread."""
         try:
             os.makedirs(os.path.dirname(file_path), exist_ok=True)
-            task_local.live_file = open(file_path, 'a', encoding='utf-8', buffering=1)
+            task_local.live_file = open(file_path, 'w', encoding='utf-8', buffering=1)
             task_local.live_file.write(f"\n{'='*80}\n--- EXECUTION STARTED AT {datetime.now().strftime('%Y-%m-%d %H:%M:%S')} ---\n{'='*80}\n\n")
         except Exception as e:
             self.logger.error(f"Failed to start live task log at {file_path}: {e}")
@@ -153,8 +155,11 @@ class CustomLogger:
         }
         self.debug(f"STEP_DATA: {json.dumps(log_entry)}")
 
-    def log_final_results(self, sql: str, row_count: int, error: str = None):
+    def log_final_results(self, sql: str, row_count: int, error: str = None, latency: str = None):
         self.log_section("Final Pipeline Results", color=self.GREEN if not error else self.RED)
+        if latency:
+            self.info(f"Latency: {latency}")
+        
         if error:
             self.error(f"Execution Error: {error}")
         else:
@@ -162,8 +167,7 @@ class CustomLogger:
             self.info(f"{self.BLUE}{self.BOLD}v SQL{self.RESET}\n{sql}\n")
 
     def _sanitize(self, message: str) -> str:
-        """Cleans up emojis for pure ASCII representation if needed, but modern terminals support emojis well."""
-        # Optional: We can keep emojis if the terminal supports them, but for safety in files we strip/replace.
-        return str(message)
+        """Sanitizes the message to ASCII for console compatibility."""
+        return "".join(c if ord(c) < 128 else ' ' for c in str(message))
 
 logger = CustomLogger()

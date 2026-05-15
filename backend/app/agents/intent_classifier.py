@@ -11,14 +11,20 @@ class QueryClassifier:
     def __init__(self, llm_client: LLMClient):
         self.llm = llm_client
 
-    def classify(self, user_query: str, linked_schema: SchemaLinkerOutput) -> QueryClassifierOutput:
+    def classify(self, user_query: str, linked_schema: SchemaLinkerOutput, lessons: str = "") -> QueryClassifierOutput:
         logger.set_agent("CLASSIFIER")
         logger.info("Classifying query complexity...")
+
+        # Flatten selected_columns (FQNs) into a readable list for the prompt
+        flat_cols = []
+        for fqn in (linked_schema.selected_columns or []):
+            flat_cols.append(fqn)
 
         messages = PromptLoader.load(PROMPT_PATH, variables={
             "USER_QUERY":       user_query,
             "REQUIRED_TABLES":  ", ".join(linked_schema.selected_tables),
-            "REQUIRED_COLUMNS": ", ".join(linked_schema.selected_columns),
+            "REQUIRED_COLUMNS": ", ".join(flat_cols),
+            "LESSONS":          lessons
         })
 
         system_prompt = next(m["content"] for m in messages if m["role"] == "system")

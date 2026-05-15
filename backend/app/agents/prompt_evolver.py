@@ -28,15 +28,16 @@ class PromptEvolver:
             log_content = f.read()[-5000:] # Take last 5k chars for context
 
         # 1. Distill Generic Rules from Logs
-        system_prompt = "You are a Meta-Optimization Agent for a Text2SQL pipeline. Your goal is to extract generic reasoning rules from failure logs."
+        system_prompt = "You are a Lead Database Architect and Meta-Optimization Agent. Your goal is to extract high-level, generic reasoning rules from failure logs to harden the Text2SQL pipeline."
         user_prompt = f"""
         Analyze the following execution logs and extract GENERIC reasoning rules to prevent recurring failures.
         
         ### CONSTRAINTS:
-        - NEVER hardcode specific table names, column names, or values.
-        - NEVER include model-specific technical details.
-        - Focus on STRUCTURAL, LOGICAL, and DIALECT patterns (e.g., "Always use X to avoid Y").
-        - Rules must be purely reasoning-based.
+        - NEVER hardcode specific database entities (table names, column names, or literal values).
+        - ALLOWED: Dialect names (Snowflake, BigQuery, SQLite) and their specific technical functions (e.g., LATERAL FLATTEN, ILIKE).
+        - ABSOLUTELY FORBIDDEN: Entity names like "PATENTS", "assignee", "SF_BQ...", or specific country codes.
+        - ABSTRACTION: If a failure happened on a specific table, extract the STRUCTURAL REASON (e.g., "When handling JSON arrays, use the dialect-specific unnesting function") rather than naming the table.
+        - Rules must be purely reasoning-based, architectural, and dialect-aware.
         
         ### LOGS:
         {log_content}
@@ -58,21 +59,34 @@ class PromptEvolver:
                 for item in distilled["rules"]:
                     rule = item["rule_description"]
                     
-                    # 1. Hardcode-Detector Audit
+                    # 1. Hardcode-Detector Audit (Reasoning-aware)
                     audit_prompt = f"""
-                    Does the following rule contain ANY specific table names, column names, database schemas, or hardcoded data values?
-                    Respond with "HARDCODED" if it does, or "GENERIC" if it is purely reasoning-based.
+                    Determine if the following rule is DATA-AGNOSTIC or HARDCODED.
+                    Respond in JSON format:
+                    {{
+                      "reasoning": "Why is this rule generic or hardcoded?",
+                      "status": "GENERIC" or "HARDCODED"
+                    }}
                     
                     RULE: {rule}
-                    
-                    Answer (HARDCODED/GENERIC):
                     """
-                    audit_result = self.llm.generate("", audit_prompt).strip().upper()
+                    audit_raw = self.llm.generate("", audit_prompt).strip()
+                    try:
+                        import json
+                        # Handle potential markdown wrapping
+                        clean_json = audit_raw.replace("```json", "").replace("```", "").strip()
+                        audit_data = json.loads(clean_json)
+                        audit_status = audit_data.get("status", "HARDCODED")
+                        audit_reason = audit_data.get("reasoning", "No reason provided.")
+                    except:
+                        audit_status = "GENERIC" if "GENERIC" in audit_raw.upper() else "HARDCODED"
+                        audit_reason = "Fallback parsing used."
                     
-                    if "HARDCODED" in audit_result:
-                        logger.warning(f"PromptEvolver: Rejected hardcoded rule: {rule}")
+                    if audit_status == "HARDCODED":
+                        logger.warning(f"PromptEvolver: Rejected rule: {rule[:50]}... | Reason: {audit_reason}")
                         continue
                         
+                    logger.success(f"PromptEvolver: Accepted rule: {rule[:50]}...")
                     self._apply_rule(item["target_agent"], rule)
         except Exception as e:
             logger.error(f"PromptEvolver failed to distill rules: {e}")
@@ -98,8 +112,8 @@ class PromptEvolver:
         Does the following EXISTING SYSTEM PROMPT already contain or cover the meaning of the NEW RULE?
         Answer with "YES" if it is covered, or "NO" if it is a truly new addition.
         
-        ### EXISTING PROMPT SNIPPET:
-        {system_msg[-2000:]} 
+        ### EXISTING PROMPT:
+        {system_msg} 
         
         ### NEW RULE:
         {rule}
