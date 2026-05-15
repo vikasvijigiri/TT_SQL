@@ -5,6 +5,11 @@ import pandas as pd
 import math
 from pathlib import Path
 import sys
+import warnings
+
+# Suppress Python 3.14 / Pydantic compatibility warnings
+warnings.filterwarnings("ignore", category=UserWarning)
+warnings.filterwarnings("ignore", message=".*urllib3.*")
 
 # Add project root to sys.path
 ROOT_DIR = Path(__file__).resolve().parent.parent.parent

@@ -4,8 +4,13 @@ import sys
 import argparse
 import traceback
 import time
+import warnings
 from multiprocessing import Pool, cpu_count
 from pathlib import Path
+
+# Suppress Python 3.14 / Pydantic compatibility warnings
+warnings.filterwarnings("ignore", category=UserWarning)
+warnings.filterwarnings("ignore", message=".*urllib3.*")
 
 # Add project root to sys.path
 ROOT_DIR = Path(__file__).resolve().parent.parent.parent
@@ -161,14 +166,14 @@ def main():
 
     print_summary(results)
     
-    try:
-        print("Starting Autonomous Prompt Evolution...")
-        llm = LLMClient()
-        evolver = PromptEvolver(llm)
-        evolver.evolve_prompts(log_file=str(LOGS_DIR / "major_failures.log"))
-        print("Evolution complete.")
-    except Exception as e:
-        print(f"Evolution skipped: {e}")
+    # try:
+    #     print("Starting Autonomous Prompt Evolution...")
+    #     llm = LLMClient()
+    #     evolver = PromptEvolver(llm)
+    #     evolver.evolve_prompts(log_file=str(LOGS_DIR / "major_failures.log"))
+    #     print("Evolution complete.")
+    # except Exception as e:
+    #     print(f"Evolution skipped: {e}")
 
 if __name__ == "__main__":
     main()

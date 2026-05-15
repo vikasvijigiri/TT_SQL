@@ -37,7 +37,7 @@ def get_sqlite_db_path(db_name: str) -> str:
     return str(DATABASES_DIR / "sqlite" / f"{db_name.lower()}.sqlite")
 
 def get_db_path(db_name: str, dialect: str = "snowflake") -> str:
-    """Finds the deepest directory containing JSON metadata files for a given DB."""
+    """Returns the base root directory for a given DB."""
     db_root = DATABASES_DIR / dialect.lower() / db_name.upper()
     if not db_root.exists():
         # Try case-insensitive or mixed case if exact upper fails
@@ -45,10 +45,7 @@ def get_db_path(db_name: str, dialect: str = "snowflake") -> str:
         if not db_root.exists():
             raise ValueError(f"Database directory not found: {db_root}")
             
-    for root, dirs, files in os.walk(str(db_root)):
-        if any(f.endswith('.json') for f in files):
-            return root
-    raise ValueError(f"No JSON metadata files found in {db_root}")
+    return str(db_root)
 
 def ensure_dirs():
     """Ensure all required directories exist."""

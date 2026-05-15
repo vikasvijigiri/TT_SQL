@@ -8,107 +8,286 @@ from backend.app.agents.sql_corrector import ExecutionCorrector
 from backend.app.repositories.db_executor import DatabaseExecutor
 from backend.app.services.result_validator import ResultValidator
 from backend.app.services.lesson_learner import DynamicRuleLearner
-from backend.app.core.config import RESULTS_DIR
+from backend.app.services.knowledge_service import WebKnowledgeService
+from backend.app.services.sql_manager import SQLManager
+from backend.app.utils.stabilizer import ExecutionStabilizer
 import pandas as pd
 import os
+import time
+import re
+import yaml
+from backend.app.core.config import RESULTS_DIR, CONFIG_DIR
+from backend.app.utils.dialect_loader import DialectLoader
 
 class SemanticDINOrchestrator:
     def __init__(self, db_directory: str, db_name: str, dialect: str = "snowflake", max_retries: int = 3):
-        self.max_retries = max_retries
+        self.max_retries = 4
+        self.db_name = db_name
         
         logger.log_section("Initializing Semantic DIN-SQL Pipeline", color=logger.CYAN)
         
         self.llm = LLMClient()
+        self.executor = DatabaseExecutor(db_name=db_name, dialect=dialect)
+        self.stabilizer = ExecutionStabilizer(self.executor)
         self.semantic_engine = SemanticContextEngine(db_directory=db_directory)
         self.schema_linker = SchemaLinker(self.llm, self.semantic_engine)
         self.classifier = QueryClassifier(self.llm)
         self.sql_generator = AdaptiveSQLGenerator(self.llm, self.semantic_engine, dialect)
         self.corrector = ExecutionCorrector(self.llm, dialect)
         self.validator = ResultValidator(self.llm)
-        self.learner = DynamicRuleLearner(dialect=dialect)
-        self.executor = DatabaseExecutor(db_name=db_name, dialect=dialect)
-        self.db_name = db_name.upper()
+        self.stabilizer = ExecutionStabilizer(self.executor)
+        self.learner = DynamicRuleLearner(self.executor.dialect)
+        self.sql_manager = SQLManager()
+        self.knowledge_tool = WebKnowledgeService()
+        self.dialect_loader = DialectLoader()
+        
+        # Load System Parameters
+        params_path = CONFIG_DIR / "system_params.yaml"
+        with open(params_path, 'r', encoding='utf-8') as f:
+            self.params = yaml.safe_load(f)
+            
+        self.max_retries = self.params['orchestrator']['max_retries']
         
         # Build context immediately
         self.semantic_engine.build_context()
 
     def execute_query(self, user_query: str, instance_id: str = "test_instance") -> str:
+        start_time = time.time()
         logger.log_section(f"Processing Query", color=logger.BLUE)
         logger.info(f"Query: '{user_query}'")
         
-        # Module 1: Schema Linking (with Dynamic Rules)
+        # Module 1: Schema Linking (Adaptive Pruning based on Token Density)
         lessons_context = self.learner.get_dynamic_context()
-        linked_schema = self.schema_linker.link_schema(user_query, dialect=self.executor.dialect, lessons=lessons_context)
         
-        # Module 2: Classification
-        classification = self.classifier.classify(user_query, linked_schema)
+        # Estimate full schema size to decide on pruning
+        full_schema_str = self.semantic_engine.format_for_prompt()
+        h = self.params['orchestrator']['token_heuristic']
+        estimated_tokens = len(full_schema_str) // h
         
-        # Module 3: Initial SQL Generation (with Dynamic Rules)
-        generation_result = self.sql_generator.generate(user_query, linked_schema, classification, lessons=lessons_context)
+        threshold = self.params['orchestrator']['pruning_threshold_tokens']
+        if estimated_tokens <= threshold:
+            logger.info(f"Small context detected (~{estimated_tokens} tokens). Using FULL context.")
+            linked_schema = self.schema_linker.link_schema(user_query, dialect=self.executor.dialect, lessons=lessons_context, force_full=True)
+        else:
+            logger.info(f"Large schema detected (~{estimated_tokens} tokens). Using PRECISION pruning.")
+            linked_schema = self.schema_linker.link_schema(user_query, dialect=self.executor.dialect, lessons=lessons_context)
+        
+        # Module 2: Classification (Forensic Planning)
+        classification = self.classifier.classify(user_query, linked_schema, lessons=lessons_context)
+        
+        # Retrieve Reference SQL for Convergence
+        reference_context = self.sql_manager.get_reference_context(instance_id)
+        
+        # Module 3: Initial SQL Generation (with Dynamic Rules and Best SQL Anchor)
+        generation_result = self.sql_generator.generate(user_query, linked_schema, classification, lessons=f"{lessons_context}\n{reference_context}")
+        
+        if not generation_result or not generation_result.sql:
+            logger.error(f"FATAL: SQL Generator failed to produce initial SQL for {instance_id}")
+            return "ERROR: SQL Generation Failed"
+            
         current_sql = generation_result.sql
+        
+        # Module 3.5: Knowledge Acquisition (Web Search if needed)
+        # If the linker identified unclear terms, fetch them now
+        unclear_terms = [m.user_term for m in (linked_schema.value_mappings or []) if not m.db_value]
+        if unclear_terms:
+            logger.info(f"Unclear terms detected: {unclear_terms}. Triggering Web Research...")
+            limit = self.params['orchestrator']['research_term_limit']
+            for term in unclear_terms[:limit]:
+                external_info = self.knowledge_tool.search_term(term, context=f"Database: {self.db_name}")
+                logger.info(f"Research Result for '{term}': {external_info[:200]}...")
+                # Inject this knowledge into the context for THIS run
+                lessons_context += f"\nEXTERNAL KNOWLEDGE ACQUIRED:\n{external_info}\n"
+                # Also log for long-term memory
+                self.learner.major_logger.info(f"WEB_KNOWLEDGE: {external_info}")
+            
+            # Since we got new knowledge, re-run generation with the new context!
+            logger.info("Re-generating SQL with acquired web knowledge...")
+            generation_result = self.sql_generator.generate(user_query, linked_schema, classification, lessons=lessons_context)
+            current_sql = generation_result.sql
+        
+        # Pre-flight Schema Verification (Catch hallucinations before execution)
+        is_valid, schema_err = self.stabilizer.verify_schema_reference(current_sql, self.semantic_engine.context)
+        if not is_valid:
+            logger.warning(f"[SCHEMA HALLUCINATION] {schema_err}")
+            error_context = f"SCHEMA ERROR: {schema_err}"
+            # Force a correction before the first execution attempt
+            attempts = 0 # Ensure we run the loop but skip first execution
         
         # Module 4: Execution & Self-Correction Loop
         attempts = 0
         last_correction_thought = ""
         while attempts <= self.max_retries:
             logger.info(f"Execution Attempt {attempts + 1}/{self.max_retries + 1}")
-            success, result_msg, row_count = self.executor.execute(current_sql, instance_id)
             
-            if success and row_count > 0:
-                # Module 5: Data IQ Layer (Validation)
+            # RE-FETCH lessons every attempt to ensure newly learned rules are applied
+            lessons_context = self.learner.get_dynamic_context()
+
+            # Check if we already have an error (e.g. from pre-flight or repetition)
+            if 'error_context' in locals() and error_context and attempts == 0:
+                success = False
+                logger.info(f"Skipping execution due to pre-flight error: {error_context}")
+            else:
+                # Check for semantic loops
+                sql_hash = self.stabilizer.get_sql_hash(current_sql)
+                if sql_hash in self.stabilizer.retry_history:
+                    logger.warning(f"[RETRY MEMORY] Semantically identical SQL. Forcing pivot.")
+                    table_to_probe = linked_schema.selected_tables[0] if linked_schema.selected_tables else "dual"
+                    evidence = self.stabilizer.get_sample_evidence(table_to_probe, instance_id)
+                    error_context = f"REPETITION ERROR: Do not repeat previous SQL. Evidence from {table_to_probe}:\n{evidence}"
+                    success = False
+                else:
+                    self.stabilizer.retry_history.add(sql_hash)
+                    success, result_msg, row_count = self.executor.execute(current_sql, instance_id)
+            
+            if success:
+                diag_info = ""
+                if row_count == 0:
+                    logger.warning("Query returned 0 rows. Invoking Data IQ for discovery/probing.")
+                    # Trigger filter diagnostics for empty results
+                    diag_info = self.stabilizer.diagnose_filter_collapse(current_sql, instance_id)
+                    logger.info(f"[EMPTY RESULT DIAGNOSTIC] {diag_info}")
+                else:
+                    logger.success(f"Query returned {row_count} rows. Invoking Data IQ for quality audit.")
+
+                # Module 5: Data IQ Layer (Audit only on successful execution)
                 csv_path = os.path.join(str(RESULTS_DIR), self.db_name, f"{instance_id}.csv")
-                preview_str = "No preview available."
-                stats = {}
+                preview_str = "No preview available (0 rows)."
+                stats = {"total_rows": 0, "total_columns": 0}
+                
                 if os.path.exists(csv_path):
                     try:
                         df = pd.read_csv(csv_path)
-                        preview_str = df.head(5).to_string()
-                        # Compute aggressive EDA stats for placeholder detection
-                        placeholders = ["", " ", "\"\"", "\" \"", "\\", "''", "nan", "None", "NULL"]
+                        if not df.empty:
+                            preview_str = df.head(10).to_markdown(index=False)
+                        
+                        # Compute statistics (Safe for empty DFs)
+                        placeholders = self.params['data_iq']['placeholders']
                         placeholder_counts = {}
-                        for p in placeholders:
-                            count = int((df.astype(str).map(lambda x: x.strip() if isinstance(x, str) else x) == p).sum().sum())
-                            if count > 0:
-                                placeholder_counts[f"count_of_{p}"] = count
+                        if not df.empty:
+                            for p in placeholders:
+                                c = int((df.astype(str).map(lambda x: x.strip() if isinstance(x, str) else x) == p).sum().sum())
+                                if c > 0: placeholder_counts[f"count_of_{p}"] = c
+
+                        # Basic Numeric EDA
+                        numeric_stats = {}
+                        for col in df.select_dtypes(include=['number']).columns:
+                            numeric_stats[col] = {
+                                "min": float(df[col].min()) if not df[col].empty else 0,
+                                "max": float(df[col].max()) if not df[col].empty else 0,
+                                "mean": float(df[col].mean()) if not df[col].empty else 0
+                            }
 
                         stats = {
                             "total_rows": len(df),
-                            "total_cells": len(df) * len(df.columns),
-                            "duplicate_rows": int(df.duplicated().sum()),
+                            "total_columns": len(df.columns),
+                            "column_names": df.columns.tolist(),
+                            "numeric_distribution": numeric_stats,
+                            "duplicate_rows": int(df.duplicated().sum()) if not df.empty else 0,
                             "null_counts": df.isnull().sum().to_dict(),
                             "placeholder_counts": placeholder_counts,
-                            "total_empty_cells": sum(placeholder_counts.values()) + int(df.isnull().sum().sum())
                         }
-                    except: pass
+                    except Exception as e:
+                        logger.warning(f"Failed to generate stats for Data IQ: {e}")
                 
-                validation = self.validator.validate_result(user_query, current_sql, preview_str, stats=stats)
+                # Use pruned context for validator too
+                is_zero_row = row_count == 0
+                validation_context = self.semantic_engine.format_for_prompt(
+                    relevant_tables=linked_schema.selected_tables,
+                    include_samples=is_zero_row
+                )
                 
-                if validation.is_plausible or attempts == self.max_retries:
-                    # If we succeeded via correction, analyze and learn
+                validation = self.validator.validate_result(user_query, current_sql, preview_str, schema_context=validation_context, stats=stats, dialect=self.executor.dialect, lessons=lessons_context, empty_result_diagnostic=diag_info)
+                
+                # Active Exploration Loop: If the auditor wants to probe the DB
+                if validation.exploration_sql:
+                    logger.info(f"Data IQ requesting exploration probe: {validation.exploration_sql}")
+                    probe_success, probe_msg, probe_rows = self.executor.execute(validation.exploration_sql, f"{instance_id}_probe")
+                    probe_data = f"Probe failed: {probe_msg}"
+                    if probe_success:
+                        probe_path = os.path.join(str(RESULTS_DIR), self.db_name, f"{instance_id}_probe.csv")
+                        try:
+                            probe_df = pd.read_csv(probe_path)
+                            probe_data = probe_df.head(10).to_markdown(index=False)
+                        except: probe_data = "Probe returned no readable data."
+                    else:
+                        # Learn from failed probes
+                        self.learner.analyze_and_learn(instance_id, probe_msg, "Probe SQL syntax correction", attempts)
+                        # Re-fetch context after learning from probe
+                        lessons_context = self.learner.get_dynamic_context()
+                    
+                    logger.info(f"Probe Result:\n{probe_data}")
+                    # Re-validate with probe data
+                    validation = self.validator.validate_result(user_query, current_sql, preview_str, schema_context=validation_context, stats=stats, exploration_results=probe_data, dialect=self.executor.dialect, lessons=lessons_context, empty_result_diagnostic=diag_info)
+
+                # Log the reasoning so we know WHY it passed/failed
+                logger.log_parsed_data("Data IQ Audit Reasoning", validation.audit_reasoning)
+                
+                if validation.is_valid or attempts == self.max_retries:
+                    # Distill the "Best SQL" pattern and CACHE it for future convergence
+                    self.sql_manager.cache_success(instance_id, current_sql, validation.audit_reasoning)
+                    self.learner.analyze_success(
+                        instance_id=instance_id,
+                        sql=current_sql,
+                        thought=validation.audit_reasoning
+                    )
+
+                    # If we succeeded via correction, also log the learning
                     if attempts > 0:
                         self.learner.analyze_and_learn(
                             instance_id=instance_id,
-                            error=error_context,
+                            error=error_context if 'error_context' in locals() else "Unknown",
                             correction_thought=last_correction_thought,
                             attempts=attempts
                         )
                     logger.info(f"RESULT PREVIEW:\n{preview_str}")
-                    logger.log_final_results(sql=current_sql, row_count=row_count)
+                    total_time = time.time() - start_time
+                    logger.log_final_results(sql=current_sql, row_count=row_count, latency=f"{total_time:.2f}s")
                     return current_sql
                 else:
-                    error_context = f"DATA QUALITY FAIL: {validation.feedback}\nSuggestion: {validation.improvement_suggestion}"
-                    logger.warning("Data IQ check failed. Re-routing to Self-Corrector...")
+                    error_context = f"DATA QUALITY FAIL: {validation.feedback}"
+                    logger.warning(f"Data IQ Check Failed! {validation.feedback}")
+                    # Learn from quality failure
+                    self.learner.analyze_and_learn(instance_id, error_context, validation.audit_reasoning, attempts)
             else:
-                error_context = result_msg
-                if success and row_count == 0:
-                    error_context = "Query executed successfully but returned 0 rows. A logic error, case-sensitivity issue (use ILIKE), or NULL filtering (use COALESCE) is likely dropping all rows. Please relax or fix the WHERE conditions."
-                    logger.warning("Query returned 0 rows. Routing to Self-Corrector...")
-                else:
-                    logger.warning(f"Execution failed: {result_msg}")
+                # Direct Execution Error (e.g. Snowflake syntax error)
+                logger.error(f"Execution failed: {result_msg}")
+                logger.info("Bypassing Data IQ audit due to execution error.")
+                
+                # Forensic Probe: Get evidence for failure
+                failed_table = None
+                # Match alias.column in error: e.g., "invalid identifier 'P.PUBLICATION_NUMBER'"
+                patterns = self.dialect_loader.get_error_patterns(self.executor.dialect)
+                pattern = patterns.get('invalid_identifier')
+                
+                table_match = re.search(pattern, result_msg, re.IGNORECASE) if pattern else None
+                if table_match:
+                    alias = table_match.group(1).upper()
+                    join_pattern = rf'(?:FROM|JOIN)\s+((?:\"[^\"]+\"\.)*(?:\"[^\"]+\"|[A-Z0-9_]+))\s+(?:AS\s+)?\"?{alias}\"?\b'
+                    alias_map = re.findall(join_pattern, current_sql, re.IGNORECASE)
+                    if alias_map:
+                        raw = alias_map[0].replace('"', '')
+                        failed_table = raw.split('.')[-1]
+                
+                if not failed_table and linked_schema.selected_tables:
+                    for tbl in linked_schema.selected_tables:
+                        short = tbl.split('.')[-1]
+                        if re.search(rf'\b{re.escape(short)}\b', current_sql, re.IGNORECASE):
+                            failed_table = tbl
+                            break
+
+                table_to_probe = failed_table if failed_table else (linked_schema.selected_tables[0] if linked_schema.selected_tables else "dual")
+                evidence = self.stabilizer.get_sample_evidence(table_to_probe, instance_id)
+                error_context = f"EXECUTION ERROR: {result_msg}\nEVIDENCE from {table_to_probe}:\n{evidence}"
+                
+                # Learn from execution failure IMMEDIATELY
+                self.learner.analyze_and_learn(instance_id, result_msg, "Execution syntax correction", attempts)
 
             # Always increment attempts and call corrector if not finished
             if attempts < self.max_retries:
                 logger.info("Generating corrected SQL...")
+                # RE-FETCH lessons before correction
+                lessons_context = self.learner.get_dynamic_context()
                 is_zero_row = (success and row_count == 0) or ("DATA QUALITY FAIL" in error_context)
                 correction_context = self.semantic_engine.format_for_prompt(
                     relevant_tables=linked_schema.selected_tables,
@@ -119,20 +298,36 @@ class SemanticDINOrchestrator:
                     failed_sql=current_sql,
                     error_message=error_context,
                     linked_schema=linked_schema,
-                    schema_context=correction_context
+                    classification=classification,
+                    schema_context=correction_context,
+                    lessons=lessons_context
                 )
                 current_sql = correction.sql
                 last_correction_thought = correction.thought_process
             attempts += 1
                 
-        # If we exhausted retries, log as a major failure
+        # If we exhausted retries, log the ACTUAL database error to the learner
         self.learner.analyze_and_learn(
             instance_id=instance_id,
-            error="Max retries exceeded",
+            error=error_context if 'error_context' in locals() else "Max retries exceeded",
             correction_thought=last_correction_thought,
             attempts=attempts
         )
-        logger.log_final_results(sql=current_sql, row_count=0, error="Max correction attempts exceeded.")
+
+        # Fallback Mechanism: If all retries fail, check for a previously successful SQL
+        best_sql = self.sql_manager.get_best_sql(instance_id)
+        if best_sql and best_sql != current_sql:
+            logger.warning(f"FALLBACK: Max retries exceeded. Reverting to cached best_sql for {instance_id}")
+            # Execute one last time to save the results of the best SQL
+            fb_success, fb_msg, fb_row_count = self.executor.execute(best_sql, instance_id)
+            if fb_success:
+                logger.success(f"FALLBACK SUCCESS: Restored best_sql result ({fb_row_count} rows)")
+                total_time = time.time() - start_time
+                logger.log_final_results(sql=best_sql, row_count=fb_row_count, latency=f"{total_time:.2f}s (FALLBACK)")
+                return best_sql
+
+        total_time = time.time() - start_time
+        logger.log_final_results(sql=current_sql, row_count=row_count if success else 0, error=error_context if 'error_context' in locals() else "Max retries exceeded", latency=f"{total_time:.2f}s")
         return current_sql
 
 if __name__ == "__main__":

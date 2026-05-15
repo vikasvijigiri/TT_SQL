@@ -7,11 +7,11 @@ from backend.app.utils.logger import logger
 from backend.app.core.config import get_prompt_path
 
 class TablePruningResult(BaseModel):
-    relevant_tables: List[str]
+    selected_tables: List[str]
     reasoning: str
 
 class ColumnPruningResult(BaseModel):
-    table_columns: Dict[str, List[str]]
+    selected_columns: List[str]
     reasoning: str
 
 class TablePruner:
@@ -20,7 +20,7 @@ class TablePruner:
         self.semantic_engine = semantic_engine
         self.prompt_path = get_prompt_path("table_pruner.yaml")
 
-    def prune(self, user_query: str) -> List[str]:
+    def prune(self, user_query: str, lessons: str = "") -> List[str]:
         logger.set_agent("TABLE_PRUNER")
         logger.info(f"Pruning tables for query: '{user_query}'")
 
@@ -29,7 +29,8 @@ class TablePruner:
         
         messages = PromptLoader.load(self.prompt_path, variables={
             "USER_QUERY": user_query,
-            "SEMANTIC_CONTEXT": full_context
+            "SEMANTIC_CONTEXT": full_context,
+            "DYNAMIC_REASONING_PROTOCOL": lessons
         })
 
         system_prompt = next(m["content"] for m in messages if m["role"] == "system")
@@ -41,8 +42,8 @@ class TablePruner:
                 user_prompt=user_prompt,
                 response_model=TablePruningResult,
             )
-            logger.info(f"Selected {len(result.relevant_tables)} tables: {result.relevant_tables}")
-            return result.relevant_tables
+            logger.info(f"Selected {len(result.selected_tables)} tables: {result.selected_tables}")
+            return result.selected_tables
         except Exception as e:
             logger.error(f"Table pruning failed: {e}")
             return []
@@ -55,19 +56,20 @@ class ColumnPruner:
         self.semantic_engine = semantic_engine
         self.prompt_path = get_prompt_path("column_pruner.yaml")
 
-    def prune(self, user_query: str, relevant_tables: List[str]) -> Dict[str, List[str]]:
+    def prune(self, user_query: str, relevant_tables: List[str], lessons: str = "") -> Dict[str, List[str]]:
         logger.set_agent("COLUMN_PRUNER")
         logger.info(f"Pruning columns for {len(relevant_tables)} tables.")
 
-        # Get context for selected tables (columns included but no samples to save tokens)
+        # Get context for selected tables (including samples for high-precision column matching)
         context = self.semantic_engine.format_for_prompt(
             relevant_tables=relevant_tables,
-            include_samples=False
+            include_samples=True
         )
         
         messages = PromptLoader.load(self.prompt_path, variables={
             "USER_QUERY": user_query,
-            "SEMANTIC_CONTEXT": context
+            "SEMANTIC_CONTEXT": context,
+            "DYNAMIC_REASONING_PROTOCOL": lessons
         })
 
         system_prompt = next(m["content"] for m in messages if m["role"] == "system")
@@ -79,8 +81,20 @@ class ColumnPruner:
                 user_prompt=user_prompt,
                 response_model=ColumnPruningResult,
             )
-            logger.info(f"Selected columns across {len(result.table_columns)} tables.")
-            return result.table_columns
+            
+            # Convert flat list "table.column" to Dict[table, List[column]]
+            table_columns = {}
+            for fqn in result.selected_columns:
+                if "." in fqn:
+                    parts = fqn.split(".")
+                    col = parts[-1]
+                    tbl = ".".join(parts[:-1])
+                    if tbl not in table_columns:
+                        table_columns[tbl] = []
+                    table_columns[tbl].append(col)
+            
+            logger.info(f"Selected columns across {len(table_columns)} tables.")
+            return table_columns
         except Exception as e:
             logger.error(f"Column pruning failed: {e}")
             return {}
