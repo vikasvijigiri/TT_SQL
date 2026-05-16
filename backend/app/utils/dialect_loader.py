@@ -26,15 +26,15 @@ class DialectLoader:
             logger.warning(f"Failed to load dialect config for {dialect}: {e}")
             return {}
 
-    def load_dialect_rules(self, dialect: str) -> str:
-        # 1. Load Static Rules from YAML
+    def load_dialect_reasoning(self, dialect: str) -> str:
+        # 1. Load Static Reasoning from YAML
         config = self._get_config(dialect)
-        static_rules = config.get('rules', []) if config else []
+        static_reasoning = (config.get('reasoning') or config.get('rules')) if config else []
         
-        formatted = f"DIALECT KNOWLEDGE FOR {dialect.upper()}:\n"
-        for r in static_rules:
+        formatted = f"DIALECT REASONING FOR {dialect.upper()}:\n"
+        for r in static_reasoning:
             if isinstance(r, dict):
-                name = r.get('name', 'Rule')
+                name = r.get('name', 'Reasoning')
                 rule = r.get('rule', '')
                 formatted += f"- [Core] {name}: {rule}\n"
             elif isinstance(r, str):

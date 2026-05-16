@@ -143,6 +143,7 @@ class SemanticContextEngine:
         lines = ["# GOVERNED SEMANTIC CONTEXT\n"]
         if self.fqn_prefix:
             lines.append(f"# NOTE: All table names are FULLY QUALIFIED as {self.fqn_prefix}<TABLE>. Use them exactly as shown.\n")
+        lines.append("# SNOWFLAKE CASE-SENSITIVITY WARNING: If any identifier (table/column) below contains LOWERCASE letters, you MUST wrap it in double quotes in your SQL. Unquoted identifiers are treated as UPPERCASE by Snowflake.\n")
         
         logger.debug(f"Formatting prompt | Relevant Tables: {relevant_tables} | Samples: {include_samples}")
         included_count = 0

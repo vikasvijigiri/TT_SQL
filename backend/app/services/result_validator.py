@@ -25,7 +25,7 @@ class ResultValidator:
         logger.set_agent("DATA_IQ")
         logger.info("Evaluating result quality (Data IQ Layer)...")
 
-        dialect_rules = self.dialect_loader.load_dialect_rules(dialect)
+        dialect_reasoning = self.dialect_loader.load_dialect_reasoning(dialect)
 
         variables = {
             "USER_QUERY": user_query,
@@ -36,7 +36,7 @@ class ResultValidator:
             "EXPLORATION_RESULTS": f"\nEXPLORATION RESULTS (PROBES):\n{exploration_results}" if exploration_results else "",
             "EMPTY_RESULT_DIAGNOSTIC": f"\nEMPTY RESULT DIAGNOSTIC (FILTER COLLAPSE):\n{empty_result_diagnostic}" if empty_result_diagnostic else "",
             "DIALECT": dialect.upper(),
-            "DIALECT_RULES": dialect_rules,
+            "DIALECT_RULES": dialect_reasoning,
             "DYNAMIC_REASONING_PROTOCOL": lessons
         }
 

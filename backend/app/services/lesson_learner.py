@@ -140,10 +140,10 @@ class DynamicRuleLearner:
         reasoning_rules = self._load_from_file(self.reasoning_memory_dir / "generic.yaml")
         context = ""
         if dialect_rules:
-            context += "DYNAMIC DIALECT RULES:\n" + "\n".join([f"- {r}" for r in dialect_rules]) + "\n"
+            context += "DYNAMIC DIALECT REASONING:\n" + "\n".join([f"- {r}" for r in dialect_rules]) + "\n"
         if reasoning_rules:
-            context += "DYNAMIC REASONING PATTERNS:\n" + "\n".join([f"- {r}" for r in reasoning_rules]) + "\n"
-        return context if context else "No dynamic context yet."
+            context += "DYNAMIC REASONING PRINCIPLES:\n" + "\n".join([f"- {r}" for r in reasoning_rules]) + "\n"
+        return context if context else "No dynamic reasoning context yet."
 
     def _load_from_file(self, path: Path) -> List[str]:
         if not path.exists(): return []

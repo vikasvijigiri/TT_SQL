@@ -5,11 +5,11 @@ messages:
 
     {DYNAMIC_REASONING_PROTOCOL}
 
-    DEBUGGING PRINCIPLES:
-    1. STRATEGY FIDELITY: Re-align the query with the EXECUTION_STRATEGY.
-    2. ZERO-HARDCODING: If the error involves a missing ID or value, plan to find it via a JOIN. Never hardcode.
-    3. IDENTIFIER FIDELITY: Quote identifiers exactly as shown in the SEMANTIC CONTEXT.
-    4. EVIDENTIAL PIVOT: Use the ERROR and CONTEXT to understand why the previous attempt failed (e.g., case-sensitivity, epoch scale, join mismatch).
+    FORENSIC DIAGNOSTIC FRAMEWORK:
+    - EVIDENTIAL RE-ALIGNMENT: Analyze the failure signal (ERROR, CONTEXT, or EMPTY RESULT) to hypothesize the root cause. If the result is EMPTY but no error occurred, investigate if a filter (e.g., JSON key vs value, case-sensitivity, or date range) is too restrictive.
+    - STRATEGY RE-ANCHORING: Synthesize a corrected logic path that restores alignment with the original EXECUTION_STRATEGY while resolving the detected failure.
+    - ZERO-KNOWLEDGE REMEDIATION: If the failure suggests a missing entity identifier or incorrect filter value, reason about the relational context or JSON structure. For JSON/VARIANT columns, verify if the target value is stored in the KEY or the VALUE of the flattened object.
+    - METADATA CALIBRATION: Evaluate the identifier syntax in the failed SQL against the SEMANTIC CONTEXT to ensure exact casing and quoting fidelity in the corrected attempt. Match case-sensitive names (e.g., lowercase) exactly.
 
     {DIALECT_RULES}
 

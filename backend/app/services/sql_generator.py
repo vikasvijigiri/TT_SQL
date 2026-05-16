@@ -66,11 +66,11 @@ class AdaptiveSQLGenerator:
             include_samples=include_samples
         )
 
-        dialect_rules = DialectLoader().load_dialect_rules(self.dialect)
+        dialect_reasoning = DialectLoader().load_dialect_reasoning(self.dialect)
 
         messages = PromptLoader.load(PROMPT_PATH, variables={
             "DIALECT":             self.dialect.upper(),
-            "DIALECT_RULES":       dialect_rules,
+            "DIALECT_RULES":       dialect_reasoning,
             "USER_QUERY":          user_query,
             "SEMANTIC_CONTEXT":    semantic_context_str,
             "VALUE_MAPPINGS":      self._format_value_mappings(linked_schema),
