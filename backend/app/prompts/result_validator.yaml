@@ -5,18 +5,23 @@ messages:
 
     {DYNAMIC_REASONING_PROTOCOL}
 
-    ANALYTICAL FRAMEWORK
-    1 FORENSIC GRAIN AUDIT: Reason about the relationship between result column levels and the user's conceptual intent.
-    2 COLLAPSE HYPOTHESIS: If the result is empty, hypothesize which specific filter or join condition triggered the logical collapse.
-    3 PROBE INTEGRITY: Maintain schema boundaries; reason about probe safety by using ONLY tables listed in SEMANTIC_CONTEXT.
-    4 STRUCTURAL SKEPTICISM: Audit the use of VARIANT columns; reason about whether a scalar filter is sufficient or if an exploration probe is required to verify grain.
-    5 ADVERSARIAL REASONING: Treat the generated SQL as a vulnerable hypothesis. Identify potential logical pitfalls and synthesize an `exploration_sql` probe to aggressively falsify the attempt.
-    6 DETERMINISM AUDIT: Analyze the ranking logic for potential ties and reason about whether the ordering is truly unique.
-    7 COMPARATIVE COMPETITION: If parallel systems exist, reason about their relative coverage and synthesize comparative probes to determine the authoritative source.
-    8 ANOMALY DETECTION: If counts are suspicious, reason about coverage gaps by probing alternative vs harmonized columns.
-    9 DIAGNOSTIC PRIORITIZATION: Prioritize resolving any `EMPTY RESULT DIAGNOSTIC` signals through targeted logical adjustment.
-    10 PROBE AUTONOMY: Ensure `exploration_sql` is a complete, standalone intellectual query with fully defined aliases and logic. NEVER use reserved words (e.g. SAMPLE, GROUP) as CTE names or aliases.
-    11 EPOCH VERIFICATION: If probing for epoch scale, count the digits in the result. 16 digits = scale 6.
+    FORENSIC DATA AUDIT FRAMEWORK:
+    - GRAIN VALIDATION: Reason about the conceptual relationship between the result set granularity and the user's intent.
+    - UNIT & DIMENSION SANITY: Proactively analyze the magnitude of numeric results. If values are astronomical (e.g., Wei scale 10^18), reason whether a unit conversion (e.g., to ETH) is required for reporting.
+    - TEMPORAL PRECISION: Cross-reference result timestamps with schema definitions. If results show 16-digit integers, ensure the SQL logic handles them as MICROSECONDS.
+    - COLLAPSE HYPOTHESIS: In the event of empty results, hypothesize which specific logical filter or join constraint triggered a data set collapse.
+    - STRUCTURAL SKEPTICISM: Evaluate the use of complex types or VARIANT columns and reason about whether scalar filters require an exploration probe to verify attribute grain.
+    - ADVERSARIAL FALSIFICATION: Treat the generated SQL as a hypothesis and synthesize an `exploration_sql` probe to aggressively test potential logical pitfalls.
+    - DETERMINISM EVALUATION: Analyze ranking and sorting logic for potential ties and reason about whether the ordering is uniquely deterministic.
+    - PROBE FIDELITY: Meticulously analyze all `EXPLORATION_RESULTS`. If a probe falsifies your hypothesis, you MUST pivot your reasoning.
+    - DIALECT COMPLIANCE AUDIT: Verify that the SQL follows the `{DIALECT}` rules exactly. For Snowflake, ensure lowercase identifiers are quoted and function outputs (like FLATTEN) are NOT quoted.
+    - MATHEMATICAL CONTINUITY AUDIT: Aggressively audit the arithmetic logic. If a calculation involves fractional components but the result is a "Perfect Integer" or "NaN", you MUST reason that a component has likely been zeroed out or lost.
+    - UNIT REPORTING FIDELITY: Verify if the output formatting and units align with the question's domain standards. If the question asks for anything in a professional context, reason about whether raw unscaled values are appropriate.
+    - FILTER SKEPTICISM: Aggressively question the necessity of restrictive filters in CTEs (e.g., `IN` subqueries or inner joins). Reason about whether these filters cause "Silent Data Loss" by excluding records that are valid for one component but not another.
+    - COMPONENT AUTONOMY: For complex derived metrics, reason about whether each independent component should be sourced autonomously from its authoritative table before being unified, to prevent cross-filter contamination.
+    - ANOMALY INFERENCE: Reason about coverage gaps or count anomalies by probing alternative vs harmonized attribute paths.
+    - DIAGNOSTIC PRIORITY: Focus reasoning on resolving any `EMPTY RESULT DIAGNOSTIC` signals through targeted logical adjustment.
+    - PROBE AUTONOMY: Ensure any `exploration_sql` is synthesized as a complete, standalone intellectual query with distinct aliases, avoiding reserved keywords in the dialect grammar.
 
     {DIALECT_RULES}
     OUTPUT FORMAT JSON

@@ -5,12 +5,12 @@ messages:
 
     {DYNAMIC_REASONING_PROTOCOL}
 
-    FORENSIC PRINCIPLES:
-    1. STRATEGY FIDELITY: Follow the EXECUTION_STRATEGY strictly. If it calls for atomic steps, use CTEs.
-    2. ZERO-HARDCODING: Never use hardcoded IDs for entities (e.g., station IDs, codes) if the name is available in a table. JOIN to find the ID.
-    3. IDENTIFIER FIDELITY: Quote identifiers (tables/columns) exactly as shown in the SEMANTIC CONTEXT. If they are lower-case, use double quotes.
-    4. GRAIN STABILITY: Ensure that joins do not cause row proliferation unless intended.
-    5. DETERMINISM: Use tie-breakers in window functions (ROW_NUMBER, RANK).
+    FORENSIC CONSTRUCTION FRAMEWORK:
+    - STRATEGY ALIGNMENT: Synthesize SQL logic that directly maps to the provided EXECUTION_STRATEGY, utilizing Common Table Expressions (CTEs) to maintain atomic reasoning layers.
+    - ZERO-KNOWLEDGE RESOLUTION: Reason about the necessity of relational joins to resolve entity identifiers from names provided in the query, ensuring no hardcoded IDs are injected into the final SQL.
+    - IDENTIFIER INTEGRITY: Analyze the semantic metadata to determine the exact casing and quoting requirements for all identifiers, preserving fidelity to the database catalog.
+    - GRAIN CONVERGENCE: Evaluate the join cardinality and aggregation levels at each step to ensure the final result accurately reflects the intended reporting grain without unintended row proliferation.
+    - DETERMINISTIC ORDERING: Hypothesize potential ties in analytical window functions and proactively inject unique tie-breakers to ensure repeatable results.
 
     {DIALECT_RULES}
 

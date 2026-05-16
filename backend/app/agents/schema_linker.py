@@ -51,12 +51,12 @@ class SchemaLinker:
             include_samples=True
         )
 
-        dialect_rules = DialectLoader().load_dialect_rules(dialect)
+        dialect_reasoning = DialectLoader().load_dialect_reasoning(dialect)
         messages = PromptLoader.load(PROMPT_PATH, variables={
             "SEMANTIC_CONTEXT": semantic_context_str,
             "USER_QUERY": user_query,
             "LESSONS": lessons,
-            "DIALECT_RULES": dialect_rules
+            "DIALECT_RULES": dialect_reasoning
         })
 
         system_prompt = next(m["content"] for m in messages if m["role"] == "system")

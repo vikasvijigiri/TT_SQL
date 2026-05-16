@@ -45,11 +45,11 @@ class ExecutionCorrector:
         logger.set_agent("SELF_CORRECTOR")
         logger.info("Executing Self-Correction Module")
 
-        dialect_rules = self.dialect_loader.load_dialect_rules(self.dialect)
+        dialect_reasoning = self.dialect_loader.load_dialect_reasoning(self.dialect)
 
         messages = PromptLoader.load(PROMPT_PATH, variables={
             "DIALECT":          self.dialect.upper(),
-            "DIALECT_RULES":    dialect_rules,
+            "DIALECT_RULES":    dialect_reasoning,
             "USER_QUERY":       user_query,
             "FAILED_SQL":       failed_sql,
             "ERROR_CONTEXT":    error_message,
