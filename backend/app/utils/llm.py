@@ -64,23 +64,40 @@ class LLMClient:
         if not content:
             return None
             
-        def try_parse(s: str) -> Optional[Dict[str, Any]]:
-            try:
-                s = re.sub(r',\s*([\]\}])', r'\1', s.strip())
-                return json.loads(s, strict=False)
-            except:
-                return None
-
         # Strip <think>...</think> blocks if present
         content_clean = re.sub(r'<think>.*?</think>', '', content, flags=re.DOTALL | re.IGNORECASE)
 
+        def try_parse(s: str) -> Optional[Dict[str, Any]]:
+            try:
+                # Remove JS/SQL style inline comments inside JSON
+                s_clean = re.sub(r'^\s*//.*$', '', s, flags=re.MULTILINE)
+                s_clean = re.sub(r'/\*.*?\*/', '', s_clean, flags=re.DOTALL)
+                # Remove trailing commas
+                s_clean = re.sub(r',\s*([\]\}])', r'\1', s_clean.strip())
+                res = json.loads(s_clean, strict=False)
+                if isinstance(res, dict):
+                    return res
+                return None
+            except:
+                return None
+
+        # 1. Check markdown code blocks
         json_match = re.search(r'```(?:json)?\s*(.*?)\s*```', content_clean, re.DOTALL | re.IGNORECASE)
         if json_match:
             p = try_parse(json_match.group(1))
             if p is not None:
                 return p
 
-        # Scan ALL opening braces in content_clean
+        # 2. Industry standard: find outermost { and }
+        start_idx = content_clean.find('{')
+        end_idx = content_clean.rfind('}')
+        if start_idx != -1 and end_idx != -1 and end_idx > start_idx:
+            outer_cand = content_clean[start_idx:end_idx+1]
+            p = try_parse(outer_cand)
+            if p is not None:
+                return p
+
+        # 3. Fallback scan ALL opening braces
         idx = 0
         while idx < len(content_clean):
             start_idx = content_clean.find('{', idx)
@@ -99,7 +116,7 @@ class LLMClient:
                     break
             idx = start_idx + 1
 
-        # If cut off mid-string or mid-object at token limits
+        # 4. Truncation recovery at token limits
         start_idx = content_clean.find('{')
         if start_idx != -1:
             cut_off = content_clean[start_idx:].strip()
