@@ -12,6 +12,7 @@ messages:
     6. PRE-FLIGHT VALIDATION: Self-audit the execution plan. Confirm: grain matches request, joins are minimal and safe, dialect syntax is exact, all business logic is applied at the correct aggregation level, and no implicit cartesian products exist.
 
     CRITICAL OUTPUT RULES:
+    - CRITICAL INSTRUCTION: You MUST start your response directly and immediately with the opening JSON '{' character. Do NOT output any introductory text, conversational preamble, thinking process, or markdown formatting outside the JSON block. All step-by-step reasoning MUST be placed strictly inside the JSON string fields.
     - Return ONLY a valid JSON object. Do NOT include markdown, code fences, explanations, or conversational text.
     - Properly escape all internal quotes, newlines, and special characters within JSON string values.
     - If critical schema or grain information is missing, state explicit assumptions in hierarchy_audit and proceed with the safest deterministic defaults. Do NOT hallucinate columns or relationships.
