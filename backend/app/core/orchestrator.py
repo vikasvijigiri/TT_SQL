@@ -270,7 +270,12 @@ class SemanticDINOrchestrator:
                 unpruned_tables = linked_schema.selected_tables
                 if "invalid identifier" in error_context.lower() or "does not exist" in error_context.lower() or "unknown table" in error_context.lower() or attempts >= 1:
                     logger.info("Dynamic Schema Unpruning: Expanding schema context to full database view for recovery discovery.")
-                    unpruned_tables = None  # None means include ALL tables in format_for_prompt!
+                    all_db_tables = [t.name for t in self.semantic_engine.context.tables] if self.semantic_engine.context else []
+                    if len(all_db_tables) > 40:
+                        logger.warning("Database schema exceeds 40 tables. Restricting unpruned recovery context to top 40 tables to prevent 131K Bedrock token overflow.")
+                        unpruned_tables = all_db_tables[:40]
+                    else:
+                        unpruned_tables = None
                 
                 correction_context = self.semantic_engine.format_for_prompt(
                     relevant_tables=unpruned_tables,

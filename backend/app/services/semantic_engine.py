@@ -166,12 +166,20 @@ class SemanticContextEngine:
         included_count = 0
         for table in self.context.tables:
             # Table-level filtering
-            if relevant_tables:
-                table_name_lower = table.name.lower()
-                relevant_tables_lower = [t.lower() for t in relevant_tables]
-                if table_name_lower not in relevant_tables_lower:
-                    if not any(t.lower() in table_name_lower for t in relevant_tables_lower):
-                        continue
+            if relevant_tables is not None:
+                if len(relevant_tables) == 0:
+                    continue
+                table_name_clean = table.name.lower().replace('"', '').split('.')[-1]
+                table_name_full_clean = table.name.lower().replace('"', '')
+                
+                match_found = False
+                for rt in relevant_tables:
+                    rt_clean = rt.lower().replace('"', '')
+                    if rt_clean == table_name_full_clean or rt_clean.endswith("." + table_name_clean) or table_name_full_clean.endswith("." + rt_clean.split('.')[-1]):
+                        match_found = True
+                        break
+                if not match_found:
+                    continue
 
             lines.append(f"Table: {quote_sf(table.name)}")
             included_count += 1

@@ -36,7 +36,8 @@ class SchemaLinker:
             logger.info(f"Extensive database schema detected (~{full_tokens} tokens, {len(all_tables)} tables). Running Table Pruner.")
             relevant_tables = self.table_pruner.prune(user_query, lessons=lessons)
             if not relevant_tables:
-                relevant_tables = all_tables
+                logger.warning(f"Table pruning returned empty or failed. Fallback to top 45 tables to prevent exceeding 131K token limits.")
+                relevant_tables = all_tables[:45]
 
         # 2. Multi-Tier Column Pruning Check
         pruned_context = self.semantic_engine.format_for_prompt(
@@ -44,6 +45,16 @@ class SchemaLinker:
             include_samples=True
         )
         pruned_tokens = len(pruned_context) // 4
+        
+        # Absolute Token Safety Guard for Bedrock 131K limit
+        if pruned_tokens > 95000:
+            logger.warning(f"Pruned context (~{pruned_tokens} tokens) exceeds safe Bedrock limits. Restricting table subset.")
+            relevant_tables = relevant_tables[:35]
+            pruned_context = self.semantic_engine.format_for_prompt(
+                relevant_tables=relevant_tables,
+                include_samples=True
+            )
+            pruned_tokens = len(pruned_context) // 4
         
         if pruned_tokens <= 2500:
             logger.info(f"Pruned table context is compact (~{pruned_tokens} tokens). Skipping Column Pruner.")
