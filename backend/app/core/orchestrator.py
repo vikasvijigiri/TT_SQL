@@ -2,12 +2,11 @@ from backend.app.utils.logger import logger
 from backend.app.utils.llm import LLMClient
 from backend.app.services.semantic_engine import SemanticContextEngine
 from backend.app.agents.schema_linker import SchemaLinker
-from backend.app.agents.intent_classifier import QueryClassifier
 from backend.app.services.sql_generator import AdaptiveSQLGenerator
 from backend.app.agents.sql_corrector import ExecutionCorrector
 from backend.app.repositories.db_executor import DatabaseExecutor
 from backend.app.services.result_validator import ResultValidator
-from backend.app.services.lesson_learner import DynamicRuleLearner
+
 from backend.app.services.knowledge_service import WebKnowledgeService
 from backend.app.services.sql_manager import SQLManager
 from backend.app.utils.stabilizer import ExecutionStabilizer
@@ -21,7 +20,6 @@ from backend.app.utils.dialect_loader import DialectLoader
 
 class SemanticDINOrchestrator:
     def __init__(self, db_directory: str, db_name: str, dialect: str = "snowflake", max_retries: int = 3):
-        self.max_retries = 4
         self.db_name = db_name
         
         logger.log_section("Initializing Semantic DIN-SQL Pipeline", color=logger.CYAN)
@@ -31,12 +29,9 @@ class SemanticDINOrchestrator:
         self.stabilizer = ExecutionStabilizer(self.executor)
         self.semantic_engine = SemanticContextEngine(db_directory=db_directory)
         self.schema_linker = SchemaLinker(self.llm, self.semantic_engine)
-        self.classifier = QueryClassifier(self.llm)
         self.sql_generator = AdaptiveSQLGenerator(self.llm, self.semantic_engine, dialect)
         self.corrector = ExecutionCorrector(self.llm, dialect)
         self.validator = ResultValidator(self.llm)
-        self.stabilizer = ExecutionStabilizer(self.executor)
-        self.learner = DynamicRuleLearner(self.executor.dialect)
         self.sql_manager = SQLManager()
         self.knowledge_tool = WebKnowledgeService()
         self.dialect_loader = DialectLoader()
@@ -46,7 +41,7 @@ class SemanticDINOrchestrator:
         with open(params_path, 'r', encoding='utf-8') as f:
             self.params = yaml.safe_load(f)
             
-        self.max_retries = self.params['orchestrator']['max_retries']
+        self.max_retries = self.params['orchestrator'].get('max_retries', max_retries)
         
         # Build context immediately
         self.semantic_engine.build_context()
@@ -57,29 +52,22 @@ class SemanticDINOrchestrator:
         logger.info(f"Query: '{user_query}'")
         
         # Module 1: Schema Linking (Adaptive Pruning based on Token Density)
-        lessons_context = self.learner.get_dynamic_context()
+        lessons_context = self.dialect_loader.load_dialect_reasoning(self.executor.dialect)
         
         # Estimate full schema size to decide on pruning
         full_schema_str = self.semantic_engine.format_for_prompt()
         h = self.params['orchestrator']['token_heuristic']
         estimated_tokens = len(full_schema_str) // h
-        
         threshold = self.params['orchestrator']['pruning_threshold_tokens']
-        if estimated_tokens <= threshold:
-            logger.info(f"Small context detected (~{estimated_tokens} tokens). Using FULL context.")
-            linked_schema = self.schema_linker.link_schema(user_query, dialect=self.executor.dialect, lessons=lessons_context, force_full=True)
-        else:
-            logger.info(f"Large schema detected (~{estimated_tokens} tokens). Using PRECISION pruning.")
-            linked_schema = self.schema_linker.link_schema(user_query, dialect=self.executor.dialect, lessons=lessons_context)
         
-        # Module 2: Classification (Forensic Planning)
-        classification = self.classifier.classify(user_query, linked_schema, lessons=lessons_context)
+        logger.info(f"Schema density evaluated (~{estimated_tokens} tokens vs threshold {threshold}).")
+        linked_schema = self.schema_linker.link_schema(user_query, dialect=self.executor.dialect, lessons=lessons_context, force_full=(estimated_tokens <= threshold))
         
         # Retrieve Reference SQL for Convergence
         reference_context = self.sql_manager.get_reference_context(instance_id)
         
         # Module 3: Initial SQL Generation (with Dynamic Rules and Best SQL Anchor)
-        generation_result = self.sql_generator.generate(user_query, linked_schema, classification, lessons=f"{lessons_context}\n{reference_context}")
+        generation_result = self.sql_generator.generate(user_query, linked_schema, lessons=f"{lessons_context}\n{reference_context}")
         
         if not generation_result or not generation_result.sql:
             logger.error(f"FATAL: SQL Generator failed to produce initial SQL for {instance_id}")
@@ -98,13 +86,15 @@ class SemanticDINOrchestrator:
                 logger.info(f"Research Result for '{term}': {external_info[:200]}...")
                 # Inject this knowledge into the context for THIS run
                 lessons_context += f"\nEXTERNAL KNOWLEDGE ACQUIRED:\n{external_info}\n"
-                # Also log for long-term memory
-                self.learner.major_logger.info(f"WEB_KNOWLEDGE: {external_info}")
+                # Web knowledge acquired
+                logger.info(f"WEB_KNOWLEDGE: {external_info}")
             
             # Since we got new knowledge, re-run generation with the new context!
             logger.info("Re-generating SQL with acquired web knowledge...")
-            generation_result = self.sql_generator.generate(user_query, linked_schema, classification, lessons=lessons_context)
+            generation_result = self.sql_generator.generate(user_query, linked_schema, lessons=f"{lessons_context}\n{reference_context}")
             current_sql = generation_result.sql
+        
+
         
         # Pre-flight Schema Verification (Catch hallucinations before execution)
         is_valid, schema_err = self.stabilizer.verify_schema_reference(current_sql, self.semantic_engine.context)
@@ -116,12 +106,14 @@ class SemanticDINOrchestrator:
         
         # Module 4: Execution & Self-Correction Loop
         attempts = 0
+        success = False
+        row_count = 0
         last_correction_thought = ""
         while attempts <= self.max_retries:
             logger.info(f"Execution Attempt {attempts + 1}/{self.max_retries + 1}")
             
-            # RE-FETCH lessons every attempt to ensure newly learned rules are applied
-            lessons_context = self.learner.get_dynamic_context()
+            # RE-FETCH lessons every attempt
+            lessons_context = self.dialect_loader.load_dialect_reasoning(self.executor.dialect)
 
             # Check if we already have an error (e.g. from pre-flight or repetition)
             if 'error_context' in locals() and error_context and attempts == 0:
@@ -211,10 +203,8 @@ class SemanticDINOrchestrator:
                             probe_data = probe_df.head(10).to_markdown(index=False)
                         except: probe_data = "Probe returned no readable data."
                     else:
-                        # Learn from failed probes
-                        self.learner.analyze_and_learn(instance_id, probe_msg, "Probe SQL syntax correction", attempts)
-                        # Re-fetch context after learning from probe
-                        lessons_context = self.learner.get_dynamic_context()
+                        # Re-fetch context
+                        lessons_context = self.dialect_loader.load_dialect_reasoning(self.executor.dialect)
                     
                     logger.info(f"Probe Result:\n{probe_data}")
                     # Re-validate with probe data
@@ -226,20 +216,7 @@ class SemanticDINOrchestrator:
                 if validation.is_valid or attempts == self.max_retries:
                     # Distill the "Best SQL" pattern and CACHE it for future convergence
                     self.sql_manager.cache_success(instance_id, current_sql, validation.audit_reasoning)
-                    self.learner.analyze_success(
-                        instance_id=instance_id,
-                        sql=current_sql,
-                        thought=validation.audit_reasoning
-                    )
 
-                    # If we succeeded via correction, also log the learning
-                    if attempts > 0:
-                        self.learner.analyze_and_learn(
-                            instance_id=instance_id,
-                            error=error_context if 'error_context' in locals() else "Unknown",
-                            correction_thought=last_correction_thought,
-                            attempts=attempts
-                        )
                     logger.info(f"RESULT PREVIEW:\n{preview_str}")
                     total_time = time.time() - start_time
                     logger.log_final_results(sql=current_sql, row_count=row_count, latency=f"{total_time:.2f}s")
@@ -247,8 +224,6 @@ class SemanticDINOrchestrator:
                 else:
                     error_context = f"DATA QUALITY FAIL: {validation.feedback}"
                     logger.warning(f"Data IQ Check Failed! {validation.feedback}")
-                    # Learn from quality failure
-                    self.learner.analyze_and_learn(instance_id, error_context, validation.audit_reasoning, attempts)
             else:
                 # Direct Execution Error (e.g. Snowflake syntax error)
                 logger.error(f"Execution failed: {result_msg}")
@@ -258,9 +233,11 @@ class SemanticDINOrchestrator:
                 failed_table = None
                 # Match alias.column in error: e.g., "invalid identifier 'P.PUBLICATION_NUMBER'"
                 patterns = self.dialect_loader.get_error_patterns(self.executor.dialect)
-                pattern = patterns.get('invalid_identifier')
+                pattern = r"invalid identifier '\"?([A-Z0-9_]+)\"?\.\"?([A-Z0-9_]+)\"?'"
+                if isinstance(patterns, dict):
+                    pattern = patterns.get('invalid_identifier', pattern)
                 
-                table_match = re.search(pattern, result_msg, re.IGNORECASE) if pattern else None
+                table_match = re.search(pattern, result_msg, re.IGNORECASE)
                 if table_match:
                     alias = table_match.group(1).upper()
                     join_pattern = rf'(?:FROM|JOIN)\s+((?:\"[^\"]+\"\.)*(?:\"[^\"]+\"|[A-Z0-9_]+))\s+(?:AS\s+)?\"?{alias}\"?\b'
@@ -269,28 +246,34 @@ class SemanticDINOrchestrator:
                         raw = alias_map[0].replace('"', '')
                         failed_table = raw.split('.')[-1]
                 
-                if not failed_table and linked_schema.selected_tables:
-                    for tbl in linked_schema.selected_tables:
-                        short = tbl.split('.')[-1]
-                        if re.search(rf'\b{re.escape(short)}\b', current_sql, re.IGNORECASE):
-                            failed_table = tbl
+                valid_table = None
+                if failed_table:
+                    for t_fqn in linked_schema.selected_tables:
+                        if t_fqn.upper().endswith(f".{failed_table.upper()}") or t_fqn.upper() == failed_table.upper():
+                            valid_table = t_fqn
                             break
-
-                table_to_probe = failed_table if failed_table else (linked_schema.selected_tables[0] if linked_schema.selected_tables else "dual")
+                if not valid_table and linked_schema.selected_tables:
+                    valid_table = linked_schema.selected_tables[0]
+                
+                table_to_probe = valid_table if valid_table else "dual"
                 evidence = self.stabilizer.get_sample_evidence(table_to_probe, instance_id)
                 error_context = f"EXECUTION ERROR: {result_msg}\nEVIDENCE from {table_to_probe}:\n{evidence}"
-                
-                # Learn from execution failure IMMEDIATELY
-                self.learner.analyze_and_learn(instance_id, result_msg, "Execution syntax correction", attempts)
 
             # Always increment attempts and call corrector if not finished
             if attempts < self.max_retries:
                 logger.info("Generating corrected SQL...")
                 # RE-FETCH lessons before correction
-                lessons_context = self.learner.get_dynamic_context()
+                lessons_context = self.dialect_loader.load_dialect_reasoning(self.executor.dialect)
                 is_zero_row = (success and row_count == 0) or ("DATA QUALITY FAIL" in error_context)
+                
+                # Dynamic Schema Unpruning & Expansion on Recovery
+                unpruned_tables = linked_schema.selected_tables
+                if "invalid identifier" in error_context.lower() or "does not exist" in error_context.lower() or "unknown table" in error_context.lower() or attempts >= 1:
+                    logger.info("Dynamic Schema Unpruning: Expanding schema context to full database view for recovery discovery.")
+                    unpruned_tables = None  # None means include ALL tables in format_for_prompt!
+                
                 correction_context = self.semantic_engine.format_for_prompt(
-                    relevant_tables=linked_schema.selected_tables,
+                    relevant_tables=unpruned_tables,
                     include_samples=is_zero_row
                 )
                 correction = self.corrector.correct_sql(
@@ -298,7 +281,6 @@ class SemanticDINOrchestrator:
                     failed_sql=current_sql,
                     error_message=error_context,
                     linked_schema=linked_schema,
-                    classification=classification,
                     schema_context=correction_context,
                     lessons=lessons_context
                 )
@@ -306,13 +288,7 @@ class SemanticDINOrchestrator:
                 last_correction_thought = correction.thought_process
             attempts += 1
                 
-        # If we exhausted retries, log the ACTUAL database error to the learner
-        self.learner.analyze_and_learn(
-            instance_id=instance_id,
-            error=error_context if 'error_context' in locals() else "Max retries exceeded",
-            correction_thought=last_correction_thought,
-            attempts=attempts
-        )
+
 
         # Fallback Mechanism: If all retries fail, check for a previously successful SQL
         best_sql = self.sql_manager.get_best_sql(instance_id)

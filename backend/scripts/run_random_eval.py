@@ -1,136 +1,168 @@
 import json
 import os
 import random
+import shutil
+import argparse
 import pandas as pd
-import math
 from pathlib import Path
 import sys
 import warnings
+from concurrent.futures import ProcessPoolExecutor, as_completed
 
-# Suppress Python 3.14 / Pydantic compatibility warnings
+# Suppress warnings
 warnings.filterwarnings("ignore", category=UserWarning)
 warnings.filterwarnings("ignore", message=".*urllib3.*")
 
-# Add project root to sys.path
 ROOT_DIR = Path(__file__).resolve().parent.parent.parent
 sys.path.append(str(ROOT_DIR))
 
-from backend.app.core.config import INPUT_DIR, GOLD_DIR, get_db_path
+from backend.app.core.config import INPUT_DIR, GOLD_DIR, RESULTS_DIR, get_db_path
 
-def normalize(value):
-    if pd.isna(value):
-        return 0
-    return value
+# Preserve stdout/stderr before importing evaluate.py which redirects to TeeOutput
+old_stdout = sys.stdout
+old_stderr = sys.stderr
+# sys.path.append(str(GOLD_DIR)) # no longer needed
+from backend.resources.gold.evaluate import load_jsonl_to_dict, evaluate_single_exec_result_instance
+sys.stdout = old_stdout
+sys.stderr = old_stderr
 
-def vectors_match(v1, v2, tol=1e-2, ignore_order_=False):
-    v1 = [normalize(x) for x in v1]
-    v2 = [normalize(x) for x in v2]
-    if ignore_order_:
-        v1 = sorted(v1, key=lambda x: (x is None, str(x), isinstance(x, (int, float))))
-        v2 = sorted(v2, key=lambda x: (x is None, str(x), isinstance(x, (int, float))))
-    if len(v1) != len(v2):
-        return False
-    for a, b in zip(v1, v2):
-        if pd.isna(a) and pd.isna(b):
-            continue
-        if isinstance(a, (int, float)) and isinstance(b, (int, float)):
-            if not math.isclose(float(a), float(b), abs_tol=tol):
-                return False
-        elif str(a).strip().lower() != str(b).strip().lower():
-            return False
-    return True
-
-def compare_pandas_table(pred: pd.DataFrame, gold: pd.DataFrame, condition_cols=None, ignore_order: bool = False) -> int:
-    if condition_cols:
-        gold_cols = gold.iloc[:, condition_cols]
-    else:
-        gold_cols = gold
+def _worker_run_instance(inst_data):
+    """Top-level worker function for parallel execution."""
+    # Re-import inside worker process
+    from backend.app.core.orchestrator import SemanticDINOrchestrator
+    from backend.app.utils.logger import logger
     
-    if len(pred) != len(gold):
-        return 0
+    instance_id = inst_data['instance_id']
+    db_name = inst_data['db']
+    question = inst_data['question']
+    
+    try:
+        db_path = get_db_path(db_name)
+        orchestrator = SemanticDINOrchestrator(db_directory=db_path, db_name=db_name)
+        
+        save_dir = os.path.join(str(RESULTS_DIR), db_name.upper())
+        os.makedirs(save_dir, exist_ok=True)
+        md_path = os.path.join(save_dir, f"{instance_id}.md")
+        logger.start_live_task_log(md_path)
+        
+        success_msg = orchestrator.execute_query(user_query=question, instance_id=instance_id)
+        logger.stop_live_task_log()
+        
+        csv_path = Path(save_dir) / f"{instance_id}.csv"
+        sql_path = Path(save_dir) / f"{instance_id}.sql"
+        
+        if not csv_path.exists() or os.path.getsize(csv_path) <= 1:
+            return {"instance_id": instance_id, "db": db_name, "status": "EMPTY", "csv_path": None, "sql": ""}
+            
+        sql_content = sql_path.read_text(encoding='utf-8') if sql_path.exists() else ""
+        return {"instance_id": instance_id, "db": db_name, "status": "SUCCESS", "csv_path": str(csv_path), "sql": sql_content}
+    except Exception as e:
+        return {"instance_id": instance_id, "db": db_name, "status": f"ERROR: {e}", "csv_path": None, "sql": ""}
 
-    for i in range(len(gold)):
-        found = False
-        for j in range(len(pred)):
-            if vectors_match(pred.iloc[j].tolist(), gold.iloc[i].tolist(), ignore_order_=ignore_order):
-                found = True
-                break
-        if not found:
-            return 0
-    return 1
+def main():
+    parser = argparse.ArgumentParser(description="Run parallel random evaluation against Spider2-Lite Gold.")
+    parser.add_argument("--n", type=int, default=5, help="Number of random instances to run")
+    parser.add_argument("--workers", type=int, default=5, help="Number of parallel worker processes")
+    parser.add_argument("--seed", type=int, default=None, help="Random seed for reproducibility")
+    args = parser.parse_args()
 
-def run_random_eval(n=5):
-    input_file = str(INPUT_DIR / "spider2-lite-snowflake.jsonl")
+    if args.seed is not None:
+        random.seed(args.seed)
+
+    input_file = INPUT_DIR / "spider2-lite-snowflake.jsonl"
     all_instances = []
     with open(input_file, 'r', encoding='utf-8') as f:
         for line in f:
             all_instances.append(json.loads(line))
-    
+            
     all_ids = [inst['instance_id'] for inst in all_instances]
-    selected_ids = random.sample(all_ids, n)
+    selected_instances = random.sample(all_instances, min(args.n, len(all_instances)))
     
-    results = []
+    print(f"\n{'='*80}")
+    print(f">>> STARTING PARALLEL RANDOM EVALUATION: {len(selected_instances)} INSTANCES ({args.workers} WORKERS)")
+    print(f"Selected IDs: {[inst['instance_id'] for inst in selected_instances]}")
+    print(f"{'='*80}\n")
     
-    gold_jsonl = str(GOLD_DIR / "spider2lite_eval.jsonl")
-    eval_standards = {}
-    with open(gold_jsonl, 'r', encoding='utf-8') as f:
-        for line in f:
-            item = json.loads(line)
-            eval_standards[item['instance_id']] = item
-
-    from backend.app.core.orchestrator import SemanticDINOrchestrator
-    from backend.app.utils.logger import logger
-
-    for instance_id in selected_ids:
-        print(f"\n>>> RUNNING {instance_id}")
-        inst_data = next(inst for inst in all_instances if inst['instance_id'] == instance_id)
-        
-        try:
-            db_path = get_db_path(inst_data['db'])
-            orchestrator = SemanticDINOrchestrator(db_directory=db_path, db_name=inst_data['db'])
-            
-            save_dir = os.path.join("results", inst_data['db'])
-            os.makedirs(save_dir, exist_ok=True)
-            md_path = os.path.join(save_dir, f"{instance_id}.md")
-            logger.start_live_task_log(md_path)
-            
-            success_msg = orchestrator.execute_query(user_query=inst_data['question'], instance_id=instance_id)
-            
-            logger.stop_live_task_log()
-            
-            csv_path = Path(f"results/{inst_data['db']}/{instance_id}.csv")
-            if not csv_path.exists() or os.path.getsize(csv_path) <= 1:
-                results.append({"id": instance_id, "status": "EMPTY", "score": 0})
-                continue
-            
-            pred_df = pd.read_csv(csv_path)
-            gold_data = eval_standards.get(instance_id)
-            if not gold_data:
-                results.append({"id": instance_id, "status": "NO_GOLD", "score": 0})
-                continue
-            
-            # This part needs the actual gold CSV to compare, which is usually in gold/results/
-            gold_csv_path = GOLD_DIR / "results" / f"{instance_id}.csv"
-            if not gold_csv_path.exists():
-                results.append({"id": instance_id, "status": "GOLD_CSV_MISSING", "score": 0})
-                continue
+    # Execution Phase
+    completed_runs = []
+    with ProcessPoolExecutor(max_workers=args.workers) as executor:
+        future_to_inst = {executor.submit(_worker_run_instance, inst): inst for inst in selected_instances}
+        for future in as_completed(future_to_inst):
+            inst = future_to_inst[future]
+            try:
+                result = future.result()
+                completed_runs.append(result)
+                print(f"[WORKER DONE] {result['instance_id']} ({result['db']}) -> {result['status']}")
+            except Exception as exc:
+                print(f"[WORKER CRASH] {inst['instance_id']} generated an exception: {exc}")
+                completed_runs.append({"instance_id": inst['instance_id'], "db": inst['db'], "status": f"CRASH: {exc}", "csv_path": None, "sql": ""})
                 
-            gold_df = pd.read_csv(gold_csv_path)
-            score = compare_pandas_table(pred_df, gold_df)
-            results.append({"id": instance_id, "status": "DONE", "score": score})
-            
-        except Exception as e:
-            print(f"Error on {instance_id}: {e}")
-            results.append({"id": instance_id, "status": "ERROR", "score": 0})
-
-    print("\n" + "="*30)
-    print("  RANDOM EVAL SUMMARY")
-    print("="*30)
-    for r in results:
-        print(f" {r['id']}: {r['status']} | Score: {r['score']}")
+    # Evaluation Phase against Gold
+    print(f"\n{'='*80}")
+    print(">>> GATHERING SUBMISSIONS & EVALUATING AGAINST GOLD STANDARD")
+    print(f"{'='*80}\n")
     
-    total_score = sum(r['score'] for r in results)
-    print(f"\nAverage Score: {total_score/n:.2f}")
+    eval_submission_dir = RESULTS_DIR / "eval_submission"
+    if eval_submission_dir.exists():
+        shutil.rmtree(eval_submission_dir)
+    eval_submission_dir.mkdir(parents=True, exist_ok=True)
+    
+    for r in completed_runs:
+        if r['csv_path'] and os.path.exists(r['csv_path']):
+            dest = eval_submission_dir / f"{r['instance_id']}.csv"
+            shutil.copy2(r['csv_path'], dest)
+            
+    eval_standards = load_jsonl_to_dict(str(GOLD_DIR / "spider2lite_eval.jsonl"))
+    gold_exec_dir = str(GOLD_DIR / "exec_result")
+    
+    eval_reports = []
+    correct_count = 0
+    
+    for r in completed_runs:
+        iid = r['instance_id']
+        db_name = r['db']
+        status = r['status']
+        sql = r['sql']
+        
+        if status != "SUCCESS" or not r['csv_path']:
+            eval_reports.append({
+                "id": iid, "db": db_name, "score": 0, "status": status, "diagnostic": "Execution failed or empty result."
+            })
+            continue
+            
+        eval_res = evaluate_single_exec_result_instance(
+            instance_id=iid,
+            eval_standard_dict=eval_standards,
+            pred_result_dir=str(eval_submission_dir),
+            gold_result_dir=gold_exec_dir
+        )
+        
+        score = eval_res.get("score", 0)
+        err_info = eval_res.get("error_info")
+        if score == 1:
+            correct_count += 1
+            diag = "PASS (Bit-for-Bit match with Gold Standard)"
+        else:
+            diag = f"FAIL (Mismatch with Gold Standard: {err_info})"
+            
+        eval_reports.append({
+            "id": iid, "db": db_name, "score": score, "status": "EVALUATED", "diagnostic": diag, "sql": sql
+        })
+
+    print(f"\n{'='*80}")
+    print(f"              FINAL BENCHMARK EVALUATION SUMMARY ({len(eval_reports)} INSTANCES)")
+    print(f"{'='*80}")
+    
+    for rep in sorted(eval_reports, key=lambda x: x['id']):
+        sc_str = "PASS [1.0]" if rep['score'] == 1 else "FAIL [0.0]"
+        print(f"-> {rep['id']:<10} | DB: {rep['db']:<18} | Result: {sc_str:<10} | Notes: {rep['diagnostic']}")
+        if rep['score'] == 0 and rep.get('sql'):
+            print(f"   [Failed Query Preview]: {rep['sql'][:150]}...")
+            
+    acc = (correct_count / len(eval_reports)) * 100 if eval_reports else 0.0
+    print(f"\nTotal Evaluated: {len(eval_reports)}")
+    print(f"Total Correct:   {correct_count}")
+    print(f"Final Accuracy:  {acc:.2f}%\n")
 
 if __name__ == "__main__":
-    run_random_eval(3)
+    main()

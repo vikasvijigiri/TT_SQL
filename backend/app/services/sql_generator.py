@@ -3,7 +3,7 @@ import re
 from backend.app.utils.llm import LLMClient
 from backend.app.utils.prompt_loader import PromptLoader
 from backend.app.utils.dialect_loader import DialectLoader
-from backend.app.models.schemas import SQLGeneratorOutput, SchemaLinkerOutput, QueryClassifierOutput
+from backend.app.models.schemas import SQLGeneratorOutput, SchemaLinkerOutput
 from backend.app.utils.logger import logger
 from backend.app.services.semantic_engine import SemanticContextEngine
 
@@ -36,7 +36,7 @@ class AdaptiveSQLGenerator:
             lines.append(f"  - User said '{m.user_term}' -> use '{m.db_value}' in column {m.column}")
         return "\n".join(lines)
 
-    def generate(self, user_query: str, linked_schema: SchemaLinkerOutput, classification: QueryClassifierOutput, lessons: str = "") -> SQLGeneratorOutput:
+    def generate(self, user_query: str, linked_schema: SchemaLinkerOutput, lessons: str = "") -> SQLGeneratorOutput:
         logger.set_agent("SQL_GENERATOR")
         
         # Re-map the FQN columns back to their tables for precise context pruning
@@ -74,11 +74,7 @@ class AdaptiveSQLGenerator:
             "USER_QUERY":          user_query,
             "SEMANTIC_CONTEXT":    semantic_context_str,
             "VALUE_MAPPINGS":      self._format_value_mappings(linked_schema),
-            "COMPLEXITY":          classification.complexity,
-            "ATOMIC_STEPS":        "\n".join([f"- {s}" for s in classification.atomic_steps]),
-            "GRAIN_AUDIT":         classification.grain_audit,
-            "REFERENCE_SQL":       lessons,
-            "DYNAMIC_REASONING_PROTOCOL": "" # Lessons already in REFERENCE_SQL context
+            "DYNAMIC_REASONING_PROTOCOL": lessons
         })
         system_prompt = next(m["content"] for m in messages if m["role"] == "system")
         user_prompt   = next(m["content"] for m in messages if m["role"] == "user")

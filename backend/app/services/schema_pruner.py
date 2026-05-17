@@ -42,6 +42,7 @@ class TablePruner:
                 user_prompt=user_prompt,
                 response_model=TablePruningResult,
             )
+            logger.info(f"PRUNING REASONING: {result.reasoning}")
             logger.info(f"Selected {len(result.selected_tables)} tables: {result.selected_tables}")
             return result.selected_tables
         except Exception as e:

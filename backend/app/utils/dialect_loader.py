@@ -39,35 +39,14 @@ class DialectLoader:
                 formatted += f"- [Core] {name}: {rule}\n"
             elif isinstance(r, str):
                 formatted += f"- [Core] {r}\n"
-        
-        # 2. Load Global Reasoning Patterns (.yaml)
-        from backend.app.core.config import MEMORY_DIR
-        generic_file = MEMORY_DIR / "reasoning" / "generic.yaml"
-        if generic_file.exists():
-            try:
-                with open(generic_file, 'r', encoding='utf-8') as f:
-                    generic_rules = yaml.safe_load(f)
-                    if generic_rules:
-                        formatted += "\nGLOBAL REASONING PATTERNS:\n"
-                        for r in generic_rules:
-                            formatted += f"- {r}\n"
-            except Exception as e:
-                logger.warning(f"Failed to load generic rules (.yaml): {e}")
-
-        # 3. Load Dynamic Dialect Patterns from Memory (.yaml)
-        dynamic_file = MEMORY_DIR / "dialects" / f"{dialect.lower()}.yaml"
-        if dynamic_file.exists():
-            try:
-                with open(dynamic_file, 'r', encoding='utf-8') as f:
-                    dynamic_rules = yaml.safe_load(f)
-                    if dynamic_rules:
-                        formatted += f"\nLEARNED {dialect.upper()} PATTERNS:\n"
-                        for r in dynamic_rules:
-                            # Strip any legacy tags to maintain pure reasoning format
-                            rule_text = r.replace('[Dialect Rule]', '').replace('[Learned]', '').strip()
-                            formatted += f"- {rule_text}\n"
-            except Exception as e:
-                logger.warning(f"Failed to load dynamic rules (.yaml) in loader: {e}")
+                
+        examples = config.get('examples', []) if config else []
+        if examples:
+            formatted += "\nPRISTINE SYNTAX TEMPLATES (EXACT STRUCTURAL EXAMPLES):\n"
+            for ex in examples:
+                name = ex.get('name', 'Template')
+                sql = ex.get('sql', '').strip()
+                formatted += f"\n=== [Template] {name} ===\n```sql\n{sql}\n```\n"
                 
         return formatted
 

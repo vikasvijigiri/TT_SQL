@@ -6,9 +6,10 @@ from backend.app.models.schemas import SemanticContext, SemanticTable, SemanticC
 from backend.app.utils.logger import logger
 
 class SemanticContextEngine:
-    def __init__(self, db_directory: str, max_sample_values: int = 15):
+    def __init__(self, db_directory: str, max_sample_values: int = 15, silent: bool = False):
         self.db_directory = os.path.normpath(db_directory)
         self.max_sample_values = max_sample_values
+        self.silent = silent
         self.context: SemanticContext = None
         # Derive DB.SCHEMA prefix from directory path:
         # Expected layout: resources/databases/{dialect}/{DB}/{SCHEMA}/
@@ -29,7 +30,8 @@ class SemanticContextEngine:
           Format A (IDC-style):   {columns: [{column_name, type, sample_values}], foreign_keys}
           Format B (Spider-style): {table_fullname, column_names, column_types, description, sample_rows}
         """
-        logger.info(f"Building Governed Semantic Context from: {self.db_directory}")
+        if not self.silent:
+            logger.info(f"Building Governed Semantic Context from: {self.db_directory}")
         tables: List[SemanticTable] = []
         
         if not os.path.exists(self.db_directory):
@@ -49,10 +51,14 @@ class SemanticContextEngine:
                         data = json.load(f)
 
                     columns: List[SemanticColumn] = []
+                    sample_rows: List[dict] = []
 
                     # ── Format A: IDC-style ──────────────────────────────────
                     if "columns" in data and isinstance(data["columns"], list) and \
                             data["columns"] and isinstance(data["columns"][0], dict):
+                        samples = data.get("sample", []) or data.get("all_samples", []) or data.get("sample_rows", [])
+                        if isinstance(samples, list):
+                            sample_rows = [s for s in samples if isinstance(s, dict)]
                         for col_data in data["columns"]:
                             raw_samples = col_data.get("sample_values", [])
                             str_samples = [str(v) for v in raw_samples if v is not None]
@@ -110,10 +116,14 @@ class SemanticContextEngine:
                     foreign_keys = data.get("foreign_keys", [])
                     fk_strings = [str(fk) for fk in foreign_keys] if isinstance(foreign_keys, list) else []
 
-                    # Prefer table_fullname if available (Format B provides it authoratively)
-                    fqn = data.get("table_fullname") or (
-                        f"{self.fqn_prefix}{table_name}" if self.fqn_prefix else table_name
-                    )
+                    schema_part = self.schema_name
+                    if not schema_part:
+                        rel_dir = os.path.relpath(root, self.db_directory).replace("\\", "/")
+                        if rel_dir != "." and "/" not in rel_dir:
+                            schema_part = rel_dir
+                    prefix = f"{self.db_name}.{schema_part}." if self.db_name and schema_part else self.fqn_prefix
+
+                    fqn = data.get("table_fullname") or (f"{prefix}{table_name}" if prefix else table_name)
                     table = SemanticTable(
                         name=fqn,
                         description=data.get("description", f"Table containing {table_name} data")
@@ -129,7 +139,8 @@ class SemanticContextEngine:
                     logger.warning(f"Failed to parse {filename}: {str(e)}")
 
         self.context = SemanticContext(tables=tables)
-        logger.success(f"Built Semantic Context with {len(tables)} tables.")
+        if not self.silent:
+            logger.success(f"Built Semantic Context with {len(tables)} tables.")
         return self.context
 
     def format_for_prompt(self, relevant_tables: List[str] = None, table_columns: Dict[str, List[str]] = None, slim: bool = False, include_samples: bool = False) -> str:
@@ -143,8 +154,14 @@ class SemanticContextEngine:
         lines = ["# GOVERNED SEMANTIC CONTEXT\n"]
         if self.fqn_prefix:
             lines.append(f"# NOTE: All table names are FULLY QUALIFIED as {self.fqn_prefix}<TABLE>. Use them exactly as shown.\n")
-        lines.append("# SNOWFLAKE CASE-SENSITIVITY WARNING: If any identifier (table/column) below contains LOWERCASE letters, you MUST wrap it in double quotes in your SQL. Unquoted identifiers are treated as UPPERCASE by Snowflake.\n")
+        lines.append("# SNOWFLAKE CONCEPTUAL GRAMMAR: Reason about the case-folding behavior. If metadata below reveals lowercase characters, hypothesize that double-quoting is required for resolution. Unquoted identifiers are automatically folded to UPPERCASE.\n")
+        lines.append("# EVIDENCE-BASED REASONING: Use the provided sample rows to hypothesize the authoritative reporting grain (Primary Keys) and unit scale. Treat samples as empirical evidence for your logical construction.\n")
         
+        is_sf = "snowflake" in self.db_directory.lower()
+        def quote_sf(s: str) -> str:
+            if not is_sf or not s or s.startswith('"'): return s
+            return ".".join(f'"{p}"' if not p.startswith('"') else p for p in s.split("."))
+
         logger.debug(f"Formatting prompt | Relevant Tables: {relevant_tables} | Samples: {include_samples}")
         included_count = 0
         for table in self.context.tables:
@@ -156,7 +173,7 @@ class SemanticContextEngine:
                     if not any(t.lower() in table_name_lower for t in relevant_tables_lower):
                         continue
 
-            lines.append(f"Table: {table.name}")
+            lines.append(f"Table: {quote_sf(table.name)}")
             included_count += 1
             if table.description:
                 lines.append(f"  Description: {table.description}")
@@ -165,6 +182,8 @@ class SemanticContextEngine:
                 lines.append(f"  Foreign Keys: {', '.join(table.foreign_keys)}")
 
             if slim:
+                col_list = ", ".join([f'"{c.name}"' if is_sf and not c.name.startswith('"') else c.name for c in table.columns])
+                lines.append(f"  Columns: {col_list}")
                 lines.append("") # Empty line between tables
                 continue
             lines.append("  Columns:")
@@ -176,7 +195,8 @@ class SemanticContextEngine:
                     continue
 
                 desc = f" - {col.description}" if col.description else ""
-                lines.append(f"    - {col.name} ({col.type}){desc}")
+                col_disp = f'"{col.name}"' if is_sf and not col.name.startswith('"') else col.name
+                lines.append(f"    - {col_disp} ({col.type}){desc}")
                 if col.nested_keys:
                     lines.append(f"      Nested Keys: {', '.join(col.nested_keys)}")
                 if include_samples and col.sample_values:
