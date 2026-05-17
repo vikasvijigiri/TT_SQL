@@ -179,13 +179,11 @@ class LLMClient:
                             parts.append(block["text"])
                         elif "reasoning_content" in block:
                             rc = block["reasoning_content"]
-                            if isinstance(rc, dict) and "text" in rc:
-                                parts.append(rc["text"])
-                            else:
-                                parts.append(str(rc))
+                            rc_text = rc["text"] if isinstance(rc, dict) and "text" in rc else str(rc)
+                            parts.append(f"<think>\n{rc_text}\n</think>\n")
                     else:
                         parts.append(str(block))
-                final_str = "".join(parts).strip()
+                final_str = "\n".join(parts).strip()
             else:
                 final_str = str(content).strip()
             
