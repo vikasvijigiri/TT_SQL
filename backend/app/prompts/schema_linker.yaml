@@ -12,6 +12,7 @@ messages:
     6. PRE-FLIGHT MINIMALITY & TRACEABILITY AUDIT: Verify that every selected table and column is strictly necessary for the query intent. Confirm join paths are fully traversable, grain boundaries are preserved, and all predicates are resolvable. Log explicit assumptions where context is incomplete; never invent columns, relationships, or sample values.
 
     OUTPUT CONSTRAINTS:
+    - CRITICAL INSTRUCTION: You MUST start your response directly and immediately with the opening JSON '{' character. Do NOT output any introductory text, conversational preamble, thinking process, or markdown formatting outside the JSON block. All step-by-step reasoning MUST be placed strictly inside the "reasoning" JSON string field.
     - Return ONLY a valid JSON object. Zero markdown, zero conversational text, zero code fences.
     - Properly escape all internal quotes, newlines, and special characters within JSON string values.
     - The reasoning field must contain a structured, step-by-step deduction trace that directly justifies every selected table, column, and value mapping.
@@ -34,6 +35,8 @@ messages:
 
 - role: user
   content: |
+    STRICT GROUNDING PROTOCOL: You must ONLY select tables and columns explicitly defined in SEMANTIC_CONTEXT. Use exact Fully Qualified Names exactly as shown in SEMANTIC_CONTEXT. NEVER invent, infer, or hallucinate tables or columns (such as generic "WEATHER_DB"."STORM_EVENTS") that do not exist in the provided SEMANTIC_CONTEXT.
+
     QUERY: {USER_QUERY}
     SEMANTIC_CONTEXT: {SEMANTIC_CONTEXT}
     DIALECT_RULES: {DIALECT_RULES}

@@ -71,34 +71,38 @@ class LLMClient:
             except:
                 return None
 
-        json_match = re.search(r'```(?:json)?\s*(.*?)\s*```', content, re.DOTALL | re.IGNORECASE)
+        # Strip <think>...</think> blocks if present
+        content_clean = re.sub(r'<think>.*?</think>', '', content, flags=re.DOTALL | re.IGNORECASE)
+
+        json_match = re.search(r'```(?:json)?\s*(.*?)\s*```', content_clean, re.DOTALL | re.IGNORECASE)
         if json_match:
             p = try_parse(json_match.group(1))
             if p is not None:
                 return p
 
-        # Scan for opening brace
-        start_idx = content.find('{')
-        if start_idx != -1:
-            brace_count = 0
-            best_json = None
-            max_len = -1
-            for j in range(start_idx, len(content)):
-                if content[j] == '{': brace_count += 1
-                elif content[j] == '}': brace_count -= 1
-                if brace_count == 0:
-                    cand = content[start_idx:j+1]
-                    if len(cand) > max_len:
-                        p = try_parse(cand)
-                        if p is not None:
-                            best_json = p
-                            max_len = len(cand)
-                    break
-            if best_json is not None:
-                return best_json
+        # Scan ALL opening braces in content_clean
+        idx = 0
+        while idx < len(content_clean):
+            start_idx = content_clean.find('{', idx)
+            if start_idx == -1:
+                break
                 
-            # If brace_count never reached 0 (cut off mid-string or mid-object at token limits)
-            cut_off = content[start_idx:].strip()
+            brace_count = 0
+            for j in range(start_idx, len(content_clean)):
+                if content_clean[j] == '{': brace_count += 1
+                elif content_clean[j] == '}': brace_count -= 1
+                if brace_count == 0:
+                    cand = content_clean[start_idx:j+1]
+                    p = try_parse(cand)
+                    if p is not None:
+                        return p
+                    break
+            idx = start_idx + 1
+
+        # If cut off mid-string or mid-object at token limits
+        start_idx = content_clean.find('{')
+        if start_idx != -1:
+            cut_off = content_clean[start_idx:].strip()
             for suffix in ('}', '"}', '""}', ']\n}', '"]\n}', '"""]\n}'):
                 p = try_parse(cut_off + suffix)
                 if p is not None:
