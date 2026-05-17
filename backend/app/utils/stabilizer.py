@@ -3,6 +3,7 @@ import re
 from typing import List, Dict, Any, Tuple, Optional
 import pandas as pd
 from backend.app.utils.logger import logger
+from backend.app.core.config import RESULTS_DIR
 
 class ExecutionStabilizer:
     def __init__(self, executor):
@@ -61,7 +62,7 @@ class ExecutionStabilizer:
             success, msg, count = self.executor.execute(probe_sql, f"{instance_id}_diag_step")
             if success:
                 try:
-                    df = pd.read_csv(f"backend/results/{self.executor.db_name}/{instance_id}_diag_step.csv")
+                    df = pd.read_csv(RESULTS_DIR / self.executor.db_name / f"{instance_id}_diag_step.csv")
                     if len(df) == 0: return f"Filter '{f}' caused the result set to collapse to 0 rows."
                     current_where = test_where
                 except: pass
@@ -74,7 +75,7 @@ class ExecutionStabilizer:
         success, msg, count = self.executor.execute(probe_sql, f"{instance_id}_evidence")
         if success:
             try:
-                df = pd.read_csv(f"backend/results/{self.executor.db_name}/{instance_id}_evidence.csv")
+                df = pd.read_csv(RESULTS_DIR / self.executor.db_name / f"{instance_id}_evidence.csv")
                 return df.to_markdown(index=False)
             except: return "No sample rows found."
         return f"Probe failed: {msg}"

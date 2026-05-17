@@ -16,7 +16,6 @@ warnings.filterwarnings("ignore", message=".*urllib3.*")
 ROOT_DIR = Path(__file__).resolve().parent.parent.parent
 sys.path.append(str(ROOT_DIR))
 
-from backend.app.agents.prompt_evolver import PromptEvolver
 from backend.app.utils.llm import LLMClient
 from backend.app.core.config import DATABASES_DIR, INPUT_DIR, LOGS_DIR, RESULTS_DIR, get_db_path
 
@@ -166,14 +165,7 @@ def main():
 
     print_summary(results)
     
-    # try:
-    #     print("Starting Autonomous Prompt Evolution...")
-    #     llm = LLMClient()
-    #     evolver = PromptEvolver(llm)
-    #     evolver.evolve_prompts(log_file=str(LOGS_DIR / "major_failures.log"))
-    #     print("Evolution complete.")
-    # except Exception as e:
-    #     print(f"Evolution skipped: {e}")
+
 
 if __name__ == "__main__":
     main()

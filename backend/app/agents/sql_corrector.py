@@ -3,7 +3,7 @@ import re
 from backend.app.utils.llm import LLMClient
 from backend.app.utils.prompt_loader import PromptLoader
 from backend.app.utils.dialect_loader import DialectLoader
-from backend.app.models.schemas import SelfCorrectorOutput, SchemaLinkerOutput, QueryClassifierOutput
+from backend.app.models.schemas import SelfCorrectorOutput, SchemaLinkerOutput
 from backend.app.utils.logger import logger
 
 from backend.app.core.config import get_prompt_path
@@ -38,7 +38,6 @@ class ExecutionCorrector:
         failed_sql: str,
         error_message: str,
         linked_schema: SchemaLinkerOutput,
-        classification: QueryClassifierOutput,
         schema_context: str = "",
         lessons: str = ""
     ) -> SelfCorrectorOutput:
@@ -55,8 +54,6 @@ class ExecutionCorrector:
             "ERROR_CONTEXT":    error_message,
             "SEMANTIC_CONTEXT":  schema_context,
             "VALUE_MAPPINGS":   self._format_value_mappings(linked_schema),
-            "ATOMIC_STEPS":     "\n".join([f"- {s}" for s in classification.atomic_steps]),
-            "GRAIN_AUDIT":      classification.grain_audit,
             "DYNAMIC_REASONING_PROTOCOL": lessons
         })
 

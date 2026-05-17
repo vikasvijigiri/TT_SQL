@@ -78,14 +78,6 @@ class DatabaseExecutor:
             df = pd.DataFrame(columns=last_cols)
             
         df.to_csv(csv_path, index=False, encoding="utf-8-sig")
-        return True, "Execution successful.", len(df)
-
-        # Persist to CSV
-        df = pd.DataFrame(rows)
-        if df.empty and columns:
-            df = pd.DataFrame(columns=columns)
-            
-        df.to_csv(csv_path, index=False, encoding="utf-8-sig")
         logger.success(f"Results saved -> {csv_path} ({len(df)} rows)")
 
         # Log final result preview (top 5 rows)

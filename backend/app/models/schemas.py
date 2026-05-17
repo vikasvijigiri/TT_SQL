@@ -37,14 +37,6 @@ class SchemaLinkerOutput(BaseModel):
     selected_columns: List[str] = Field(description="List of required column names across all selected tables.")
     value_mappings: List[ValueMapping] = Field(default_factory=list, description="Explicit mappings from user terms to database values.")
 
-class QueryClassifierOutput(BaseModel):
-    reasoning: Optional[str] = Field(None, description="Reasoning behind the chosen complexity class.")
-    complexity: Literal["linear_logic", "relational_complexity", "forensic_depth"] = Field(
-        description="The classified complexity of the query. 'linear_logic' for simple select/where. 'relational_complexity' for joins/group by. 'forensic_depth' for subqueries/CTEs."
-    )
-    atomic_steps: List[str] = Field(default_factory=list, description="Sequence of atomic operations/CTEs required to fulfill the request.")
-    grain_audit: str = Field(description="Strict definition of what each row in the final result represents and how it was arrived at.")
-
 class SQLGeneratorOutput(BaseModel):
     hierarchy_audit: Optional[str] = Field(None, description="Detailed audit of hierarchical string lengths and prefix selection for the requested grain.")
     thought_process: Union[str, List[str]] = Field(description="Detailed step-by-step logic on how the SQL is constructed using the mapped schema.")
@@ -54,3 +46,6 @@ class SelfCorrectorOutput(BaseModel):
     error_analysis: Union[str, List[str]] = Field(None, description="Analysis of why the previous SQL threw a database execution error.")
     thought_process: Union[str, List[str]] = Field(description="Step-by-step logic to resolve the error.")
     sql: str = Field(description="The corrected, final executable SQL query.")
+
+
+

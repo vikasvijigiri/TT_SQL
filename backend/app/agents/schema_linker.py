@@ -19,32 +19,40 @@ class SchemaLinker:
 
     def link_schema(self, user_query: str, dialect: str = "snowflake", lessons: str = "", force_full: bool = False) -> SchemaLinkerOutput:
         logger.set_agent("SCHEMA_LINKER")
-        
-        if force_full:
-            logger.info("Small schema detected. Forcing full context.")
-            all_tables = [t.name for t in self.semantic_engine.context.tables]
-            # Flatten all columns into FQNs for deterministic mapping
-            all_columns_fqn = []
-            for t in self.semantic_engine.context.tables:
-                for c in t.columns:
-                    all_columns_fqn.append(f"{t.name}.{c.name}")
-                
-            return SchemaLinkerOutput(
-                reasoning="Small schema; using full context for 100% precision.",
-                selected_tables=all_tables,
-                selected_columns=all_columns_fqn,
-                value_mappings=[]
-            )
-
         logger.info(f"Linking schema for query: '{user_query}'")
+        
+        if not self.semantic_engine.context:
+            self.semantic_engine.build_context()
 
-        # 1. Prune Tables First (Slim)
-        relevant_tables = self.table_pruner.prune(user_query, lessons=lessons)
+        all_tables = [t.name for t in self.semantic_engine.context.tables]
+        full_slim = self.semantic_engine.format_for_prompt(slim=True)
+        full_tokens = len(full_slim) // 4
+
+        # 1. Multi-Tier Table Pruning Check
+        if force_full or full_tokens <= 2000 or len(all_tables) <= 5:
+            logger.info(f"Compact database schema detected (~{full_tokens} tokens, {len(all_tables)} tables). Skipping Table Pruner.")
+            relevant_tables = all_tables
+        else:
+            logger.info(f"Extensive database schema detected (~{full_tokens} tokens, {len(all_tables)} tables). Running Table Pruner.")
+            relevant_tables = self.table_pruner.prune(user_query, lessons=lessons)
+            if not relevant_tables:
+                relevant_tables = all_tables
+
+        # 2. Multi-Tier Column Pruning Check
+        pruned_context = self.semantic_engine.format_for_prompt(
+            relevant_tables=relevant_tables,
+            include_samples=True
+        )
+        pruned_tokens = len(pruned_context) // 4
         
-        # 2. Prune Columns for those tables
-        table_columns = self.column_pruner.prune(user_query, relevant_tables, lessons=lessons)
-        
-        # 3. Get reduced context with full column info AND SAMPLES for the relevant columns only
+        if pruned_tokens <= 2500:
+            logger.info(f"Pruned table context is compact (~{pruned_tokens} tokens). Skipping Column Pruner.")
+            table_columns = None
+        else:
+            logger.info(f"Pruned table context is extensive (~{pruned_tokens} tokens). Running Column Pruner.")
+            table_columns = self.column_pruner.prune(user_query, relevant_tables, lessons=lessons)
+
+        # 3. Format final context for SCHEMA_LINKER
         semantic_context_str = self.semantic_engine.format_for_prompt(
             relevant_tables=relevant_tables,
             table_columns=table_columns,
