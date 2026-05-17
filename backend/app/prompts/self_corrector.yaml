@@ -11,6 +11,7 @@ messages:
     5. PRE-FLIGHT VALIDATION: Mentally simulate the corrected query. Verify join cardinality remains 1:1 or safely guarded, confirm aggregation boundaries match the requested grain, ensure deterministic ordering for windows/rankings, and validate that all identifiers comply with {DIALECT} quoting/casing conventions.
 
     OUTPUT CONSTRAINTS:
+    - CRITICAL INSTRUCTION: You MUST start your response directly and immediately with the opening JSON '{' character. Do NOT output any introductory text, conversational preamble, thinking process, or markdown formatting outside the JSON block. All step-by-step reasoning MUST be placed strictly inside the JSON string fields.
     - Return ONLY a valid JSON object. Zero markdown, zero conversational text, zero code fences.
     - Escape all internal quotes, newlines, and special characters within JSON string values.
     - The sql field must contain strictly raw, executable {DIALECT} SQL. No comments, no placeholders.

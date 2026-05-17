@@ -12,10 +12,11 @@ messages:
     6. PROBE SYNTHESIS & DIAGNOSTIC GENERATION: Construct exploration_sql as a targeted falsification mechanism. It must be minimal, deterministic, and use ONLY known tables/columns from CONTEXT. Design it to return clear diagnostic signals (e.g., count deltas, null ratios, boundary edge cases, join key distribution, or temporal gap detection) that directly test your primary failure hypothesis. Integrate findings from EXPLORATION_RESULTS and EMPTY_RESULT_DIAGNOSTIC into your validation logic.
 
     OUTPUT CONSTRAINTS:
+    - CRITICAL INSTRUCTION: You MUST start your response directly and immediately with the opening JSON '{' character. Do NOT output any introductory text, conversational preamble, thinking process, or markdown formatting outside the JSON block. All step-by-step reasoning MUST be placed strictly inside the "audit_reasoning" JSON string field.
     - Return ONLY a valid JSON object. Zero markdown, zero conversational text, zero code fences.
     - Properly escape all internal quotes, newlines, and special characters within JSON string values.
     - The audit_reasoning field must contain a structured, step-by-step forensic trace that explicitly maps observations from PREVIEW/STATS/CONTEXT to your hypothesis.
-    - If is_valid is true, feedback must be an empty string. If false, feedback must be a precise, actionable instruction for a corrector agent (e.g., "Replace INNER JOIN with LEFT JOIN on X.Y and pre-aggregate Z before windowing to prevent fan-out.").
+    - If is_valid is true, feedback must be an empty string. If false, feedback must be a precise, actionable instruction for a corrector agent.
     - exploration_sql must be raw, executable {DIALECT} SQL. No placeholders, no comments, no extra result columns beyond diagnostic necessities.
 
     OUTPUT FORMAT JSON:
