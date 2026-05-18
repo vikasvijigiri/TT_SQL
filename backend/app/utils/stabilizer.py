@@ -14,13 +14,39 @@ class ExecutionStabilizer:
         normalized = " ".join(sql.lower().split())
         return hashlib.md5(normalized.encode()).hexdigest()
 
-    def verify_schema_reference(self, sql: str, semantic_context: Any) -> Tuple[bool, str]:
+    def verify_schema_reference(self, sql: str, semantic_engine: Any) -> Tuple[bool, str]:
+        if not semantic_engine.context:
+            semantic_engine.build_context()
+
+        # 1. Proactively discover and load any neighboring tables referenced in FROM/JOIN
+        raw_tables = re.findall(r'(?:FROM|JOIN)\s+([a-zA-Z0-9_"\.`]+)', sql, re.IGNORECASE)
+        for raw in raw_tables:
+            clean = raw.replace('"', '').replace('`', '').strip()
+            # If it's a multi-part FQN, get the base table name
+            base_name = clean.split('.')[-1]
+            # Ignore CTE definitions and standard SQL keywords
+            if base_name.upper() in ("SELECT", "VALUES", "DUAL", "LATERAL", "UNNEST"):
+                continue
+            # Try to discover if not already loaded under its base name or FQN
+            all_current_names = [t.name.upper() for t in semantic_engine.context.tables]
+            is_loaded = any(clean.upper() == n or n.endswith("." + base_name.upper()) for n in all_current_names)
+            if not is_loaded:
+                # Attempt dynamic cross-database table discovery
+                semantic_engine.discover_and_load_table(base_name)
+
+        # 2. Verify column-level references
+        semantic_context = semantic_engine.context
         found_identifiers = re.findall(r'([a-zA-Z0-9_]+)\.([a-zA-Z0-9_]+)', sql)
-        all_table_names = [t.name.upper() for t in semantic_context.tables]
-        table_col_map = {t.name.upper(): [c.name.upper() for c in t.columns] for t in semantic_context.tables}
+        table_col_map = {}
+        for t in semantic_context.tables:
+            table_col_map[t.name.upper()] = [c.name.upper() for c in t.columns]
+            # Also register by simple name to support unquoted/aliased column lookup
+            simple_name = t.name.split('.')[-1].upper()
+            table_col_map[simple_name] = [c.name.upper() for c in t.columns]
+
         for table, col in found_identifiers:
             t_up, c_up = table.upper(), col.upper()
-            if t_up in all_table_names:
+            if t_up in table_col_map:
                 if c_up not in table_col_map[t_up]:
                     return False, f"Column '{col}' does not exist in table '{table}'."
         return True, ""
@@ -76,6 +102,13 @@ class ExecutionStabilizer:
         if success:
             try:
                 df = pd.read_csv(RESULTS_DIR / self.executor.db_name / f"{instance_id}_evidence.csv")
-                return df.to_markdown(index=False)
+                if df.empty: return "No sample rows found."
+                for col in df.columns:
+                    df[col] = df[col].astype(str).apply(lambda x: x[:100] + "..." if len(x) > 100 else x)
+                md = df.to_markdown(index=False)
+                if len(md) > 3000:
+                    md = md[:3000] + "\n...[TRUNCATED]"
+                return md
             except: return "No sample rows found."
         return f"Probe failed: {msg}"
+

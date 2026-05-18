@@ -2,9 +2,11 @@ from backend.app.utils.llm import LLMClient
 from backend.app.utils.prompt_loader import PromptLoader
 from backend.app.models.schemas import SchemaLinkerOutput
 from backend.app.utils.logger import logger
-from backend.app.utils.dialect_loader import DialectLoader
+from backend.app.core.dialects.rule_retriever import DialectRuleRetriever
 from backend.app.services.semantic_engine import SemanticContextEngine
 from backend.app.services.schema_pruner import TablePruner, ColumnPruner
+from backend.app.core.retrieval.hierarchical_retriever import HierarchicalRetriever
+from backend.app.core.retrieval.fallback_strategy import ProgressiveExpansionStrategy
 
 from backend.app.core.config import get_prompt_path
 PROMPT_PATH = get_prompt_path("schema_linker.yaml")
@@ -28,16 +30,21 @@ class SchemaLinker:
         full_slim = self.semantic_engine.format_for_prompt(slim=True)
         full_tokens = len(full_slim) // 4
 
-        # 1. Multi-Tier Table Pruning Check
+        retriever = HierarchicalRetriever()
+        intent = retriever.analyze_intent(user_query)
+
+        # 1. Multi-Tier Table Pruning Check with Progressive Fallback
         if force_full or full_tokens <= 2000 or len(all_tables) <= 5:
             logger.info(f"Compact database schema detected (~{full_tokens} tokens, {len(all_tables)} tables). Skipping Table Pruner.")
             relevant_tables = all_tables
         else:
             logger.info(f"Extensive database schema detected (~{full_tokens} tokens, {len(all_tables)} tables). Running Table Pruner.")
-            relevant_tables = self.table_pruner.prune(user_query, lessons=lessons)
+            relevant_tables = self.table_pruner.prune(user_query, lessons=lessons, dialect=dialect)
             if not relevant_tables:
-                logger.warning(f"Table pruning returned empty or failed. Fallback to top 45 tables to prevent exceeding 131K token limits.")
-                relevant_tables = all_tables[:45]
+                logger.warning(f"Table pruning returned empty. Utilizing Progressive Expansion Fallback.")
+                fallback = ProgressiveExpansionStrategy(retriever)
+                narrowed_ctx, _, _ = fallback.execute_with_fallback(user_query, self.semantic_engine.context)
+                relevant_tables = [t.name for t in narrowed_ctx.tables]
 
         # 2. Multi-Tier Column Pruning Check
         pruned_context = self.semantic_engine.format_for_prompt(
@@ -61,25 +68,23 @@ class SchemaLinker:
             table_columns = None
         else:
             logger.info(f"Pruned table context is extensive (~{pruned_tokens} tokens). Running Column Pruner.")
-            table_columns = self.column_pruner.prune(user_query, relevant_tables, lessons=lessons)
+            table_columns = self.column_pruner.prune(user_query, relevant_tables, lessons=lessons, dialect=dialect)
 
-        # 3. Format final context for SCHEMA_LINKER
-        semantic_context_str = self.semantic_engine.format_for_prompt(
+        # 3. Assemble surgical prompt using PromptAssembler
+        from backend.app.core.prompts.prompt_assembler import PromptAssembler
+        assembler = PromptAssembler(dialect=dialect, stage="SCHEMA_LINKER")
+        assembled = assembler.assemble(
+            user_query=user_query,
+            agent_type="SCHEMA_LINKER",
+            context=self.semantic_engine.context,
+            intent=intent,
             relevant_tables=relevant_tables,
             table_columns=table_columns,
-            include_samples=True
+            lessons=lessons
         )
 
-        dialect_reasoning = DialectLoader().load_dialect_reasoning(dialect)
-        messages = PromptLoader.load(PROMPT_PATH, variables={
-            "SEMANTIC_CONTEXT": semantic_context_str,
-            "USER_QUERY": user_query,
-            "LESSONS": lessons,
-            "DIALECT_RULES": dialect_reasoning
-        })
-
-        system_prompt = next(m["content"] for m in messages if m["role"] == "system")
-        user_prompt   = next(m["content"] for m in messages if m["role"] == "user")
+        system_prompt = assembled.system_prompt
+        user_prompt   = assembled.user_prompt
 
         try:
             result = self.llm.generate_structured(

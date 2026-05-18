@@ -89,6 +89,17 @@ class DatabaseExecutor:
 
         return True, "Execution successful.", len(df)
 
+    def execute_direct(self, sql: str) -> Tuple[bool, str, List[Dict[str, Any]]]:
+        """Executes a query directly and returns the raw rows without persisting to CSV."""
+        sqlite_path = self._get_sqlite_path()
+        if sqlite_path:
+            rows, columns, error = self._execute_sqlite(sql, sqlite_path)
+        else:
+            rows, columns, error = self._execute_snowflake(sql)
+        if error:
+            return False, error, []
+        return True, "Success", rows
+
     # ------------------------------------------------------------------
     # Backends
     # ------------------------------------------------------------------

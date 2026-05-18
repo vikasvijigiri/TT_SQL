@@ -1,8 +1,11 @@
 import sqlglot
 import re
+from typing import List, Dict, Optional
 from backend.app.utils.llm import LLMClient
 from backend.app.utils.prompt_loader import PromptLoader
 from backend.app.utils.dialect_loader import DialectLoader
+from backend.app.core.dialects.rule_retriever import DialectRuleRetriever
+from backend.app.core.retrieval.hierarchical_retriever import HierarchicalRetriever
 from backend.app.models.schemas import SelfCorrectorOutput, SchemaLinkerOutput
 from backend.app.utils.logger import logger
 
@@ -11,8 +14,9 @@ PROMPT_PATH = get_prompt_path("self_corrector.yaml")
 
 
 class ExecutionCorrector:
-    def __init__(self, llm_client: LLMClient, dialect: str = "snowflake"):
+    def __init__(self, llm_client: LLMClient, semantic_engine, dialect: str = "snowflake"):
         self.llm = llm_client
+        self.semantic_engine = semantic_engine
         self.dialect = dialect.lower()
         self.dialect_loader = DialectLoader()
 
@@ -39,26 +43,47 @@ class ExecutionCorrector:
         error_message: str,
         linked_schema: SchemaLinkerOutput,
         schema_context: str = "",
-        lessons: str = ""
+        lessons: str = "",
+        relevant_tables: Optional[List[str]] = None,
+        table_columns: Optional[Dict[str, List[str]]] = None
     ) -> SelfCorrectorOutput:
         logger.set_agent("SELF_CORRECTOR")
         logger.info("Executing Self-Correction Module")
 
-        dialect_reasoning = self.dialect_loader.load_dialect_reasoning(self.dialect)
+        intent = HierarchicalRetriever().analyze_intent(user_query)
+        val_mappings_str = f"VALUE MAPPINGS FROM SCHEMA LINKER:\n{self._format_value_mappings(linked_schema)}"
+        combined_lessons = f"FAILED SQL:\n```sql\n{failed_sql}\n```\n\nERROR CONTEXT:\n{error_message}\n\n{val_mappings_str}\n\n{lessons}"
 
-        messages = PromptLoader.load(PROMPT_PATH, variables={
-            "DIALECT":          self.dialect.upper(),
-            "DIALECT_RULES":    dialect_reasoning,
-            "USER_QUERY":       user_query,
-            "FAILED_SQL":       failed_sql,
-            "ERROR_CONTEXT":    error_message,
-            "SEMANTIC_CONTEXT":  schema_context,
-            "VALUE_MAPPINGS":   self._format_value_mappings(linked_schema),
-            "DYNAMIC_REASONING_PROTOCOL": lessons
-        })
+        if table_columns is None:
+            table_columns = {}
+            if linked_schema and linked_schema.selected_columns:
+                for fqn in linked_schema.selected_columns:
+                    if "." in fqn:
+                        parts = fqn.split(".")
+                        t_name = ".".join(parts[:-1])
+                        c_name = parts[-1]
+                        if t_name not in table_columns:
+                            table_columns[t_name] = []
+                        table_columns[t_name].append(c_name)
 
-        system_prompt = next(m["content"] for m in messages if m["role"] == "system")
-        user_prompt   = next(m["content"] for m in messages if m["role"] == "user")
+        if relevant_tables is None:
+            relevant_tables = linked_schema.selected_tables if linked_schema else None
+
+        from backend.app.core.prompts.prompt_assembler import PromptAssembler
+        assembler = PromptAssembler(dialect=self.dialect, stage="SELF_CORRECTOR")
+        assembled = assembler.assemble(
+            user_query=user_query,
+            agent_type="SELF_CORRECTOR",
+            context=self.semantic_engine.context,
+            intent=intent,
+            relevant_tables=relevant_tables,
+            table_columns=table_columns,
+            lessons=combined_lessons,
+            error_history=error_message
+        )
+
+        system_prompt = assembled.system_prompt
+        user_prompt   = assembled.user_prompt
 
         try:
             result = self.llm.generate_structured(

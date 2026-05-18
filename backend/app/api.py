@@ -5,6 +5,7 @@ import re
 import math
 import warnings
 import pandas as pd
+import numpy as np
 from fastapi import FastAPI, BackgroundTasks
 from fastapi.middleware.cors import CORSMiddleware
 from pathlib import Path
@@ -508,11 +509,24 @@ async def get_instance_details(db_name: str, instance_id: str):
         try:
             df = pd.read_csv(csv_file)
             csv_headers = df.columns.tolist()
-            # Replace NaNs with None for valid JSON serialization
-            df = df.where(pd.notnull(df), None)
             # Limit to 100 rows for UI safety
             df = df.head(100)
-            csv_data = df.to_dict(orient="records")
+            raw_data = df.to_dict(orient="records")
+            clean_data = []
+            for row in raw_data:
+                clean_row = {}
+                for k, v in row.items():
+                    if isinstance(v, (float, np.floating)):
+                        if np.isnan(v) or np.isinf(v):
+                            clean_row[k] = None
+                        else:
+                            clean_row[k] = float(v)
+                    elif pd.isna(v):
+                        clean_row[k] = None
+                    else:
+                        clean_row[k] = v
+                clean_data.append(clean_row)
+            csv_data = clean_data
         except Exception as e:
             csv_data = [{"Error": f"Could not parse CSV: {e}"}]
             csv_headers = ["Error"]

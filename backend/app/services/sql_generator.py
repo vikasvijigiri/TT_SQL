@@ -3,14 +3,14 @@ import re
 from backend.app.utils.llm import LLMClient
 from backend.app.utils.prompt_loader import PromptLoader
 from backend.app.utils.dialect_loader import DialectLoader
+from backend.app.core.dialects.rule_retriever import DialectRuleRetriever
+from backend.app.core.retrieval.hierarchical_retriever import HierarchicalRetriever
 from backend.app.models.schemas import SQLGeneratorOutput, SchemaLinkerOutput
 from backend.app.utils.logger import logger
 from backend.app.services.semantic_engine import SemanticContextEngine
 
 from backend.app.core.config import get_prompt_path
 PROMPT_PATH = get_prompt_path("sql_generator.yaml")
-
-
 
 
 class AdaptiveSQLGenerator:
@@ -51,33 +51,23 @@ class AdaptiveSQLGenerator:
                     table_columns_map[table_name] = []
                 table_columns_map[table_name].append(col_name)
 
-        # Decide whether to include samples based on total context size
-        # We want "Complete Schema" (with samples) for small databases
-        temp_context = self.semantic_engine.format_for_prompt(
+        intent = HierarchicalRetriever().analyze_intent(user_query)
+        val_mappings_str = f"VALUE MAPPINGS FROM SCHEMA LINKER:\n{self._format_value_mappings(linked_schema)}"
+        combined_lessons = f"{val_mappings_str}\n\n{lessons}" if lessons else val_mappings_str
+
+        from backend.app.core.prompts.prompt_assembler import PromptAssembler
+        assembler = PromptAssembler(dialect=self.dialect, stage="SQL_GENERATOR")
+        assembled = assembler.assemble(
+            user_query=user_query,
+            agent_type="SQL_GENERATOR",
+            context=self.semantic_engine.context,
+            intent=intent,
             relevant_tables=linked_schema.selected_tables,
             table_columns=table_columns_map,
-            include_samples=False
+            lessons=combined_lessons
         )
-        include_samples = (len(temp_context) // 4) < 2500 # If base context is small, add samples
-
-        semantic_context_str = self.semantic_engine.format_for_prompt(
-            relevant_tables=linked_schema.selected_tables,
-            table_columns=table_columns_map,
-            include_samples=include_samples
-        )
-
-        dialect_reasoning = DialectLoader().load_dialect_reasoning(self.dialect)
-
-        messages = PromptLoader.load(PROMPT_PATH, variables={
-            "DIALECT":             self.dialect.upper(),
-            "DIALECT_RULES":       dialect_reasoning,
-            "USER_QUERY":          user_query,
-            "SEMANTIC_CONTEXT":    semantic_context_str,
-            "VALUE_MAPPINGS":      self._format_value_mappings(linked_schema),
-            "DYNAMIC_REASONING_PROTOCOL": lessons
-        })
-        system_prompt = next(m["content"] for m in messages if m["role"] == "system")
-        user_prompt   = next(m["content"] for m in messages if m["role"] == "user")
+        system_prompt = assembled.system_prompt
+        user_prompt   = assembled.user_prompt
 
         try:
             result = self.llm.generate_structured(

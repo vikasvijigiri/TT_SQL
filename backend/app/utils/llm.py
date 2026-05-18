@@ -11,6 +11,7 @@ from dotenv import load_dotenv
 
 from backend.app.utils.logger import logger
 from backend.app.core.config import CONFIG_DIR
+from backend.app.core.prompts.schema_compactor import SchemaCompactor
 
 # Load environment variables from .env
 load_dotenv()
@@ -66,6 +67,13 @@ class LLMClient:
             
         # Strip <think>...</think> blocks if present
         content_clean = re.sub(r'<think>.*?</think>', '', content, flags=re.DOTALL | re.IGNORECASE)
+        # If <think> was unclosed due to truncation, strip from <think> to the first '{'
+        if '<think>' in content_clean:
+            first_brace = content_clean.find('{')
+            if first_brace != -1 and first_brace > content_clean.find('<think>'):
+                content_clean = content_clean[:content_clean.find('<think>')] + content_clean[first_brace:]
+            else:
+                content_clean = re.sub(r'<think>.*$', '', content_clean, flags=re.DOTALL | re.IGNORECASE)
 
         def try_parse(s: str) -> Optional[Dict[str, Any]]:
             try:
@@ -147,7 +155,19 @@ class LLMClient:
         Sends a prompt and forces the output to match the provided Pydantic schema.
         Includes an automated self-repair retry if JSON parsing or Pydantic validation fails.
         """
-        json_enforcer = "\n\nCRITICAL MANDATORY INSTRUCTION: You MUST format your entire output EXACTLY as pure valid JSON enclosed in ```json ... ``` matching the expected schema. You MUST start your response directly with ```json\n{\n... without any introductory text, conversational preamble, thinking out loud, or concluding remarks outside the JSON block. All step-by-step reasoning MUST be placed strictly inside the JSON string fields."
+        try:
+            schema_str = SchemaCompactor.compact_json_schema(response_model)
+        except Exception:
+            schema_str = "Required fields and types matching " + response_model.__name__
+
+        json_enforcer = (
+            f"\n\nCRITICAL MANDATORY INSTRUCTION: You MUST format your entire output EXACTLY as pure valid JSON enclosed in ```json ... ``` adhering to this minimal JSON skeleton structure:\n```json\n{schema_str}\n```\n\n"
+            "You MUST start your JSON response directly with ```json\n{\n... without any introductory text outside the JSON block. "
+            "IMPORTANT FOR REASONING MODELS: If you use a <think> scratchpad, you MUST keep your internal thinking concise and summarized under 500 tokens. "
+            "Do NOT engage in repetitive item-by-item loops (such as repeating 'Potential issues: ... Good.' over and over). "
+            "Exhaustive repetitive loops will cause token truncation before the JSON is generated, resulting in system failure."
+        )
+
         sys_enforced = system_prompt + json_enforcer if "CRITICAL MANDATORY INSTRUCTION" not in system_prompt else system_prompt
         
         raw_content = self.generate(sys_enforced, user_prompt)
@@ -155,7 +175,11 @@ class LLMClient:
         
         if not data:
             logger.warning(f"Initial JSON generation failed for {response_model.__name__}. Executing self-repair retry...")
-            repair_prompt = user_prompt + f"\n\n[SYSTEM REPAIR NOTICE]: Your previous response failed to parse as valid JSON because you output conversational text or markdown before the JSON object. You MUST return ONLY pristine JSON matching the schema requirements starting directly with ```json\n{{\n... without any commentary outside the JSON block."
+            repair_prompt = user_prompt + (
+                "\n\n[SYSTEM REPAIR NOTICE]: Your previous response failed to parse as valid JSON. "
+                "This usually happens when your internal <think> scratchpad gets stuck in repetitive item-by-item verification loops, causing token truncation before the JSON object can be output. "
+                "On this retry, you MUST keep your <think> reasoning extremely brief (under 300 tokens) and focus entirely on generating the complete valid JSON object inside ```json ... ``` before running out of tokens."
+            )
             raw_content2 = self.generate(sys_enforced, repair_prompt)
             data = self._extract_json_from_text(raw_content2)
             if not data:

@@ -35,6 +35,7 @@ def _worker_run_instance(inst_data):
     instance_id = inst_data['instance_id']
     db_name = inst_data['db']
     question = inst_data['question']
+    external_knowledge = inst_data.get('external_knowledge')
     
     try:
         db_path = get_db_path(db_name)
@@ -45,7 +46,7 @@ def _worker_run_instance(inst_data):
         md_path = os.path.join(save_dir, f"{instance_id}.md")
         logger.start_live_task_log(md_path)
         
-        success_msg = orchestrator.execute_query(user_query=question, instance_id=instance_id)
+        success_msg = orchestrator.execute_query(user_query=question, instance_id=instance_id, external_knowledge=external_knowledge)
         logger.stop_live_task_log()
         
         csv_path = Path(save_dir) / f"{instance_id}.csv"

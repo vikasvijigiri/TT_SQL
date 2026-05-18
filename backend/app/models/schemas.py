@@ -1,4 +1,4 @@
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, AliasChoices
 from typing import List, Optional, Dict, Literal, Any, Union
 
 # ---------------------------------------------------------
@@ -39,13 +39,19 @@ class SchemaLinkerOutput(BaseModel):
 
 class SQLGeneratorOutput(BaseModel):
     hierarchy_audit: Optional[str] = Field(None, description="Detailed audit of hierarchical string lengths and prefix selection for the requested grain.")
-    thought_process: Union[str, List[str]] = Field(description="Detailed step-by-step logic on how the SQL is constructed using the mapped schema.")
+    thought_process: Union[str, List[str]] = Field(default="", validation_alias=AliasChoices("thought_process", "reasoning", "analysis", "thought"), description="Detailed step-by-step logic on how the SQL is constructed using the mapped schema.")
     sql: str = Field(description="The final executable SQL query.")
 
 class SelfCorrectorOutput(BaseModel):
-    error_analysis: Union[str, List[str]] = Field(None, description="Analysis of why the previous SQL threw a database execution error.")
-    thought_process: Union[str, List[str]] = Field(description="Step-by-step logic to resolve the error.")
+    error_analysis: Optional[Union[str, List[str]]] = Field(None, validation_alias=AliasChoices("error_analysis", "analysis"), description="Analysis of why the previous SQL threw a database execution error.")
+    thought_process: Union[str, List[str]] = Field(default="", validation_alias=AliasChoices("thought_process", "reasoning", "analysis", "thought"), description="Step-by-step logic to resolve the error.")
     sql: str = Field(description="The corrected, final executable SQL query.")
+
+class CriticOutput(BaseModel):
+    is_valid: bool = Field(description="True if the proposed SQL query is logically and syntactically correct based on the query instructions, False otherwise.")
+    criticism: Optional[str] = Field(None, description="Detailed criticism of the proposed SQL, highlighting exact errors, ambiguities, type cast issues, or semantic deviations.")
+    proposed_fix: Optional[str] = Field(None, description="A clear, abstract recipe or pseudo-SQL explaining exactly how to fix the identified issue.")
+
 
 
 

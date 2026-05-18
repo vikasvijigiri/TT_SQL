@@ -29,6 +29,7 @@ def run_single_example(example: dict) -> dict:
     instance_id = example['instance_id']
     db_name     = example['db']
     question    = example['question']
+    external_knowledge = example.get('external_knowledge')
 
     # Use centralized RESULTS_DIR
     save_dir = os.path.join(str(RESULTS_DIR), db_name.upper())
@@ -55,7 +56,7 @@ def run_single_example(example: dict) -> dict:
             max_retries=3,
         )
 
-        final_sql = orchestrator.execute_query(question, instance_id)
+        final_sql = orchestrator.execute_query(question, instance_id, external_knowledge=external_knowledge)
 
         with open(sql_path, "w", encoding="utf-8") as f:
             f.write(final_sql)
