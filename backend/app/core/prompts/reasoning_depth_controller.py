@@ -15,7 +15,7 @@ class ReasoningDepthController:
 
     DIRECTIVES_BALANCED = [
         "1. Deconstruct query intent into discrete logical steps.",
-        "2. Verify data types and apply explicit double-colon casts (::TYPE).",
+        "2. Verify data types and apply dialect-safe casts.",
         "3. Ensure exact identifier quoting matching SCHEMA casing.",
         "4. Validate aggregation grain and ensure non-aggregated columns appear in GROUP BY."
     ]
@@ -33,7 +33,8 @@ class ReasoningDepthController:
         cls,
         query: str,
         profile: QueryCapabilityProfile,
-        domain: str = "General Enterprise"
+        domain: str = "General Enterprise",
+        dialect: str = "snowflake"
     ) -> List[str]:
         # Determine mode
         if profile.requires_variants or (profile.requires_windows and profile.requires_joins) or len(query.split()) > 25:
@@ -45,6 +46,32 @@ class ReasoningDepthController:
         else:
             mode = "balanced"
             directives = cls.DIRECTIVES_BALANCED
+
+        d = dialect.lower()
+        if d == "sqlite" and (profile.requires_windows or profile.requires_timestamps or profile.requires_aggregation):
+            directives = directives + [
+                "5. For SQLite time-series queries, compute aggregates before recursion and use WITH RECURSIVE only once at the top.",
+                "6. Use CAST(expr AS INTEGER/REAL/TEXT) syntax in SQLite; never use PostgreSQL-style ::TYPE casts.",
+                "7. Validate recursive CTE base rows first, then advance row-by-row with a stable ordering column.",
+            ]
+        elif d in ("duckdb",):
+            directives = directives + [
+                "5. DuckDB supports STRUCT, LIST, and MAP types — use list_contains() / list_filter() for array predicates.",
+                "6. Prefer epoch_ms() / strftime() for timestamp arithmetic; avoid EXTRACT(EPOCH) which is PostgreSQL syntax.",
+                "7. Use COLUMNS(*) glob expansion only when all projected columns share the same type.",
+            ]
+        elif d in ("postgres", "postgresql", "redshift"):
+            directives = directives + [
+                "5. Use ::TYPE double-colon casts consistently; avoid CAST() in window function OVER clauses.",
+                "6. For date arithmetic use INTERVAL '1 day' syntax; avoid DATE_ADD() which is MySQL-only.",
+                "7. Use FILTER (WHERE ...) on aggregate functions instead of CASE WHEN inside SUM/COUNT.",
+            ]
+        elif d in ("mysql",):
+            directives = directives + [
+                "5. MySQL GROUP BY must include all non-aggregated SELECT columns (ONLY_FULL_GROUP_BY mode).",
+                "6. Use CAST(expr AS CHAR) for string coercion; ::TYPE and TO_CHAR() are not valid in MySQL.",
+                "7. Use LIMIT n OFFSET m for pagination; FETCH FIRST / ROWS ONLY is not supported.",
+            ]
 
         logger.info(f"[ReasoningDepthController] Selected reasoning depth mode: '{mode}' ({len(directives)} directives).")
         return directives

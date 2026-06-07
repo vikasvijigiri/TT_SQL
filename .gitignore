@@ -43,3 +43,4 @@ config/
 results/
 tests/
 schema_cache/
+media/

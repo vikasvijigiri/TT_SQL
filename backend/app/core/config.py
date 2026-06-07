@@ -27,6 +27,13 @@ CONFIG_DIR = BACKEND_DIR / "config"
 # Result Directory
 RESULTS_DIR = BACKEND_DIR / "results"
 
+# DataAgentBench repository path — single source of truth for the entire codebase.
+# Set $DAB_REPO in your environment (or .env) to point to the cloned repo on any machine.
+# Default: sibling directory of the project root (e.g. Documents/DataAgentBench next to TT_SQL_V2).
+DAB_REPO = Path(
+    os.environ.get("DAB_REPO", str(BACKEND_DIR.parent.parent / "DataAgentBench"))
+)
+
 def get_prompt_path(filename: str) -> str:
     return str(PROMPTS_DIR / filename)
 
@@ -44,13 +51,13 @@ def get_db_path(db_name: str, dialect: str = "snowflake") -> str:
         db_root = DATABASES_DIR / dialect.lower() / db_name
         if not db_root.exists():
             raise ValueError(f"Database directory not found: {db_root}")
-            
+
     return str(db_root)
 
 def ensure_dirs():
     """Ensure all required directories exist."""
     dirs = [
-        RESOURCES_DIR, DATABASES_DIR, DIALECTS_DIR, 
+        RESOURCES_DIR, DATABASES_DIR, DIALECTS_DIR,
         MEMORY_DIR, MEMORY_DIR / "dialects", MEMORY_DIR / "reasoning",
         LOGS_DIR, PROMPTS_DIR, RESULTS_DIR, GOLD_DIR, INPUT_DIR
     ]

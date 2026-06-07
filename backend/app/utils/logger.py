@@ -6,9 +6,25 @@ import re
 import threading
 from datetime import datetime
 from typing import Any, Dict, List, Optional
+from logging.handlers import RotatingFileHandler
+
+class WindowsSafeRotatingFileHandler(RotatingFileHandler):
+    """
+    Subclass of RotatingFileHandler that catches PermissionError on Windows.
+    If the log file is locked by another process (e.g. uvicorn web server),
+    rollover will fail. We catch the exception and keep writing to the same file
+    to prevent flooding stderr/console with tracebacks.
+    """
+    def doRollover(self):
+        try:
+            super().doRollover()
+        except PermissionError:
+            if self.stream is None:
+                self.stream = self._open()
 
 # Thread-local storage for task-specific logs
 task_local = threading.local()
+
 
 class CustomLogger:
     def __init__(self, name: str = "SemanticDIN"):
@@ -41,8 +57,27 @@ class CustomLogger:
             
             # Global file handler for detailed logs (keeps clean of ANSI)
             from backend.app.core.config import LOGS_DIR
-            main_log_path = LOGS_DIR / "main.log"
-            self.fh = logging.FileHandler(str(main_log_path), mode='a', encoding='utf-8')
+            
+            # Determine entry point suffix to avoid multi-process lock contention on Windows
+            entrypoint = "main"
+            if len(sys.argv) > 0 and sys.argv[0]:
+                base_script = os.path.basename(sys.argv[0]).lower()
+                if "uvicorn" in base_script or "gunicorn" in base_script or "api" in base_script:
+                    entrypoint = "api"
+                elif "run_batch" in base_script:
+                    entrypoint = "batch"
+                elif "evolver" in base_script:
+                    entrypoint = "evolver"
+                elif "pytest" in base_script or "test" in base_script:
+                    entrypoint = "test"
+                else:
+                    name_part = os.path.splitext(base_script)[0]
+                    if name_part:
+                        entrypoint = name_part
+                        
+            log_filename = f"{entrypoint}.log"
+            main_log_path = LOGS_DIR / log_filename
+            self.fh = WindowsSafeRotatingFileHandler(str(main_log_path), mode='a', maxBytes=10 * 1024 * 1024, backupCount=3, encoding='utf-8')
             self.fh.setLevel(logging.DEBUG)
             self.fh.setFormatter(logging.Formatter('%(asctime)s - %(name)s - %(levelname)s - %(message)s'))
             self.logger.addHandler(self.fh)
@@ -139,9 +174,9 @@ class CustomLogger:
             out_t = metrics.get("output_tokens", 0)
             self.info(f"{self.YELLOW}Tokens: {inp_t} In / {out_t} Out{self.RESET}")
         
-        self.info(f"{self.BLUE}{self.BOLD}v PROMPT{self.RESET}")
+        self.debug(f"{self.BLUE}{self.BOLD}v PROMPT{self.RESET}")
         indented_prompt = "\n".join([f"  {self.GRAY}|{self.RESET} {line}" for line in prompt.strip().split("\n")])
-        self.info(f"{indented_prompt}\n")
+        self.debug(f"{indented_prompt}\n")
         
         self.info(f"{self.GREEN}{self.BOLD}v RESPONSE{self.RESET}")
         indented_result = "\n".join([f"  {self.GRAY}|{self.RESET} {line}" for line in result.strip().split("\n")])

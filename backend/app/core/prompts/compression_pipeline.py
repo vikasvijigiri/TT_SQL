@@ -76,7 +76,7 @@ class CompressionPipeline:
         tables_to_format = [t for t in raw_schema_context.tables if not relevant_table_names or any(rt.lower().replace('"', '') in t.name.lower().replace('"', '') for rt in relevant_table_names)]
         
         for t in tables_to_format:
-            raw_schema_chars += len(t.name) + sum(len(c.name) + len(str(c.sample_values)) for c in t.columns)
+            raw_schema_chars += len(t.name) + sum(len(c.name) + sum(len(str(v)) for v in c.sample_values) for c in t.columns)
             schema_lines.append(f"Table: {t.name}")
             if t.description:
                 desc = t.description[:policy.max_schema_description_len]
@@ -106,6 +106,20 @@ class CompressionPipeline:
                         
                 schema_lines.append(c_str)
             schema_lines.append("") # Table separator
+
+        evidence_notes = []
+        if profile.requires_timestamps or profile.requires_aggregation or profile.requires_windows:
+            interesting_tokens = ("date", "year", "month", "time", "cpc", "symbol", "level")
+            for t in tables_to_format:
+                for c in t.columns:
+                    col_name = c.name.lower()
+                    if any(token in col_name for token in interesting_tokens) and c.sample_values:
+                        sample_preview = ", ".join(str(v) for v in c.sample_values[:3])
+                        evidence_notes.append(f"{t.name}.{c.name}: samples -> {sample_preview}")
+
+        if evidence_notes:
+            evidence_block = "=== SAMPLE EVIDENCE HINTS ===\n" + "\n".join(f"- {line}" for line in evidence_notes[:20])
+            past_lessons = f"{past_lessons}\n\n{evidence_block}".strip() if past_lessons else evidence_block
             
         compressed_schema_text = "\n".join(schema_lines).strip()
         raw_schema_tokens = max(1, raw_schema_chars // 4)
@@ -113,7 +127,10 @@ class CompressionPipeline:
         compression_ratio = round(max(1.0, raw_schema_tokens / max(1, comp_schema_tokens)), 2)
 
         compiler = FinalPromptCompiler(stage=self.stage, dialect=self.dialect, mode=self.config.mode)
-        raw_directives = ReasoningDirectives.get_all_directives()
+        raw_directives = ReasoningDirectives.get_all_directives(
+            dialect=self.dialect,
+            include_sqlite_time_series=(self.dialect == "sqlite" and (profile.requires_windows or profile.requires_timestamps or profile.requires_aggregation))
+        )
         
         final_out = compiler.compile(
             user_query=user_query,

@@ -1,6 +1,6 @@
 import sqlglot
 import re
-from typing import List, Dict, Optional
+from typing import List, Dict, Optional, Tuple
 from backend.app.utils.llm import LLMClient
 from backend.app.utils.prompt_loader import PromptLoader
 from backend.app.utils.dialect_loader import DialectLoader
@@ -13,7 +13,64 @@ from backend.app.core.config import get_prompt_path
 PROMPT_PATH = get_prompt_path("self_corrector.yaml")
 
 
-class ExecutionCorrector:
+# ---------------------------------------------------------------------------
+# Error-pattern → correction-hint mapping.
+# Each entry is (compiled_regex, hint_text).  Matched at runtime from the
+# actual execution error — no dialect or dataset values are hard-coded here.
+# ---------------------------------------------------------------------------
+_ERROR_PATTERNS: List[Tuple[re.Pattern, str]] = [
+    (
+        re.compile(r"could not parse string .+ according to format specifier", re.I),
+        "ROOT CAUSE DETECTED: STRPTIME raised an error because the date string did not "
+        "match the format pattern.  STRPTIME is strict — it throws on any mismatch.  "
+        "MANDATORY FIX: replace every STRPTIME(...) call with TRY_STRPTIME(...) and wrap "
+        "multiple patterns in COALESCE so rows with different formats are all handled.  "
+        "Example: COALESCE(TRY_STRPTIME(col, fmt1), TRY_STRPTIME(col, fmt2), ...).",
+    ),
+    (
+        re.compile(r"no function matches.*to_timestamp.*varchar.*string_literal", re.I),
+        "ROOT CAUSE DETECTED: TO_TIMESTAMP(string, format) is not a valid DuckDB signature.  "
+        "MANDATORY FIX: use TRY_STRPTIME(col, format) for custom formats, or "
+        "TRY_CAST(col AS TIMESTAMP) for ISO-format strings.",
+    ),
+    (
+        re.compile(r"no function matches.*to_timestamp", re.I),
+        "ROOT CAUSE DETECTED: TO_TIMESTAMP with a format argument is not supported in this "
+        "dialect.  MANDATORY FIX: use TRY_STRPTIME(col, format) instead.",
+    ),
+    (
+        re.compile(r"binder error.*column.*does not exist", re.I),
+        "ROOT CAUSE DETECTED: A referenced column does not exist in the schema.  "
+        "MANDATORY FIX: check the exact column names from the schema and correct the reference.",
+    ),
+    (
+        re.compile(r"repetition error", re.I),
+        "ROOT CAUSE DETECTED: The corrected SQL was identical to a previously failed attempt.  "
+        "MANDATORY FIX: write structurally different SQL — change the join strategy, "
+        "aggregation approach, or CTE decomposition.",
+    ),
+    (
+        re.compile(r"no expression was parsed from ''", re.I),
+        "ROOT CAUSE DETECTED: The SQL generator produced an empty string.  "
+        "MANDATORY FIX: ensure the sql field in your JSON output contains a complete, "
+        "non-empty SELECT statement.",
+    ),
+]
+
+
+def _enrich_error_context(error_message: str) -> str:
+    """
+    Detect known execution-error patterns and prepend a targeted correction hint.
+    The hint is derived solely from the error text — no dataset or dialect values
+    are hard-coded.  Returns the (possibly enriched) error string.
+    """
+    for pattern, hint in _ERROR_PATTERNS:
+        if pattern.search(error_message):
+            return f"[AUTO-DIAGNOSED CORRECTION REQUIRED]\n{hint}\n\n{error_message}"
+    return error_message
+
+
+class SQLCorrectorAgent:
     def __init__(self, llm_client: LLMClient, semantic_engine, dialect: str = "snowflake"):
         self.llm = llm_client
         self.semantic_engine = semantic_engine
@@ -45,14 +102,18 @@ class ExecutionCorrector:
         schema_context: str = "",
         lessons: str = "",
         relevant_tables: Optional[List[str]] = None,
-        table_columns: Optional[Dict[str, List[str]]] = None
+        table_columns: Optional[Dict[str, List[str]]] = None,
+        intent=None
     ) -> SelfCorrectorOutput:
         logger.set_agent("SELF_CORRECTOR")
         logger.info("Executing Self-Correction Module")
 
-        intent = HierarchicalRetriever().analyze_intent(user_query)
+        # Reuse pre-computed intent from orchestrator to avoid redundant analysis
+        if intent is None:
+            intent = HierarchicalRetriever().analyze_intent(user_query)
         val_mappings_str = f"VALUE MAPPINGS FROM SCHEMA LINKER:\n{self._format_value_mappings(linked_schema)}"
-        combined_lessons = f"FAILED SQL:\n```sql\n{failed_sql}\n```\n\nERROR CONTEXT:\n{error_message}\n\n{val_mappings_str}\n\n{lessons}"
+        enriched_error = _enrich_error_context(error_message)
+        combined_lessons = f"FAILED SQL:\n```sql\n{failed_sql}\n```\n\nERROR CONTEXT:\n{enriched_error}\n\n{val_mappings_str}\n\n{lessons}"
 
         if table_columns is None:
             table_columns = {}

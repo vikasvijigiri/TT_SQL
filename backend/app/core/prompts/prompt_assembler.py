@@ -11,6 +11,8 @@ from backend.app.core.prompting.adaptive_budgeting import AdaptiveBudgetManager
 from backend.app.models.schemas import SemanticContext
 from backend.app.core.retrieval.hierarchical_retriever import QueryIntentAnalysis
 from backend.app.utils.logger import logger
+from backend.app.utils.prompt_loader import PromptLoader
+from backend.app.core.config import PROMPTS_DIR
 
 class AssembledPrompt(BaseModel):
     system_prompt: str
@@ -36,24 +38,24 @@ class PromptAssembler:
 
     def _load_compact_system_prompt(self, agent_type: str) -> str:
         mapping = {
-            "SCHEMA_LINKER": "schema_linker_compact.txt",
-            "SQL_GENERATOR": "sql_generator_compact.txt",
-            "SELF_CORRECTOR": "corrector_compact.txt",
-            "TABLE_PRUNER": "table_pruner_compact.txt",
-            "COLUMN_PRUNER": "column_pruner_compact.txt",
-            "DATA_IQ": "verifier_compact.txt",
-            "RESULT_VALIDATOR": "verifier_compact.txt",
-            "CRITIC": "critic_compact.txt"
+            "SCHEMA_LINKER": "schema_linker.yaml",
+            "SQL_GENERATOR": "sql_generator.yaml",
+            "SELF_CORRECTOR": "self_corrector.yaml",
+            "TABLE_PRUNER": "table_pruner.yaml",
+            "COLUMN_PRUNER": "column_pruner.yaml",
+            "DATA_IQ": "result_validator.yaml",
+            "RESULT_VALIDATOR": "result_validator.yaml",
+            "CRITIC": "critic.yaml"
         }
         
-        filename = mapping.get(agent_type.upper(), "sql_generator_compact.txt")
-        base_dir = os.path.dirname(os.path.abspath(__file__))
-        filepath = os.path.join(base_dir, "system_prompts", filename)
+        filename = mapping.get(agent_type.upper(), "sql_generator.yaml")
+        filepath = os.path.join(PROMPTS_DIR, filename)
         
         if os.path.exists(filepath):
             try:
-                with open(filepath, 'r', encoding='utf-8') as f:
-                    return f.read().strip()
+                content = PromptLoader.system(filepath)
+                if content:
+                    return content.strip()
             except Exception as e:
                 logger.warning(f"[PromptAssembler] Failed to read {filepath}: {e}")
                 

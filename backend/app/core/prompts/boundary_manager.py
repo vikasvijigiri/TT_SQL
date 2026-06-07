@@ -22,7 +22,7 @@ class PromptBoundaryManager:
         clean_sys = SystemPromptCompactor.compact(raw_system_prompt, dialect=dialect)
 
         # Assemble clean user prompt
-        clean_user = f"{user_sections_text.strip()}\n\n=== USER QUERY ===\n{user_query.strip()}"
+        clean_user = f"{user_sections_text.strip()}\n\n=== USER QUERY ===\n<user_query>\n{user_query.strip()}\n</user_query>"
 
-        logger.debug("[PromptBoundaryManager] Enforced strict System vs User boundaries.")
+        logger.debug("[PromptBoundaryManager] Enforced strict System vs User boundaries with XML isolation tags.")
         return clean_sys, clean_user

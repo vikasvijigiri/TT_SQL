@@ -1,0 +1,146 @@
+[
+  {
+    "filename": "promptql_gemini31pro_wiki4_pp2_n5.json",
+    "overall_pass_at_1": 0.5296296296296297,
+    "dataset_accuracies": {
+      "DEPS_DEV_V1": 0.2,
+      "GITHUB_REPOS": 0.25,
+      "PANCANCER_ATLAS": 0.06666666666666667,
+      "PATENTS": 0.0,
+      "agnews": 0.4,
+      "bookreview": 1.0,
+      "crmarenapro": 0.5692307692307692,
+      "googlelocal": 0.7,
+      "music_brainz_20k": 0.7333333333333334,
+      "stockindex": 0.8666666666666667,
+      "stockmarket": 0.2,
+      "yelp": 0.9142857142857144
+    }
+  },
+  {
+    "filename": "promptql_gpt52_wiki4_pp2_n5.json",
+    "overall_pass_at_1": 0.4777777777777778,
+    "dataset_accuracies": {
+      "DEPS_DEV_V1": 0.0,
+      "GITHUB_REPOS": 0.2,
+      "PANCANCER_ATLAS": 0.0,
+      "PATENTS": 0.0,
+      "agnews": 0.25,
+      "bookreview": 0.7999999999999999,
+      "crmarenapro": 0.7230769230769231,
+      "googlelocal": 0.5,
+      "music_brainz_20k": 0.3333333333333333,
+      "stockindex": 0.8666666666666667,
+      "stockmarket": 0.2,
+      "yelp": 0.7999999999999999
+    }
+  },
+  {
+    "filename": "promptql_opus46_wiki4_pp2_n5.json",
+    "overall_pass_at_1": 0.5666666666666667,
+    "dataset_accuracies": {
+      "DEPS_DEV_V1": 0.0,
+      "GITHUB_REPOS": 0.25,
+      "PANCANCER_ATLAS": 0.26666666666666666,
+      "PATENTS": 0.0,
+      "agnews": 0.65,
+      "bookreview": 1.0,
+      "crmarenapro": 0.8,
+      "googlelocal": 0.7,
+      "music_brainz_20k": 0.13333333333333333,
+      "stockindex": 1.0,
+      "stockmarket": 0.2,
+      "yelp": 0.7999999999999999
+    }
+  },
+  {
+    "filename": "react_gemini-2.5-flash.json",
+    "overall_pass_at_1": 0.12037037037037036,
+    "dataset_accuracies": {
+      "DEPS_DEV_V1": 0.0,
+      "GITHUB_REPOS": 0.0,
+      "PANCANCER_ATLAS": 0.02666666666666667,
+      "PATENTS": 0.0,
+      "agnews": 0.0,
+      "bookreview": 0.02,
+      "crmarenapro": 0.2169230769230769,
+      "googlelocal": 0.19499999999999998,
+      "music_brainz_20k": 0.3333333333333333,
+      "stockindex": 0.15333333333333335,
+      "stockmarket": 0.188,
+      "yelp": 0.05142857142857143
+    }
+  },
+  {
+    "filename": "react_gemini-3-pro.json",
+    "overall_pass_at_1": 0.41555555555555557,
+    "dataset_accuracies": {
+      "DEPS_DEV_V1": 0.02,
+      "GITHUB_REPOS": 0.25,
+      "PANCANCER_ATLAS": 0.2333333333333333,
+      "PATENTS": 0.0,
+      "agnews": 0.2,
+      "bookreview": 0.8933333333333332,
+      "crmarenapro": 0.6307692307692307,
+      "googlelocal": 0.5700000000000001,
+      "music_brainz_20k": 0.5066666666666667,
+      "stockindex": 0.8466666666666667,
+      "stockmarket": 0.2,
+      "yelp": 0.24
+    }
+  },
+  {
+    "filename": "react_gpt-5-mini.json",
+    "overall_pass_at_1": 0.36888888888888893,
+    "dataset_accuracies": {
+      "DEPS_DEV_V1": 0.06,
+      "GITHUB_REPOS": 0.17,
+      "PANCANCER_ATLAS": 0.22666666666666668,
+      "PATENTS": 0.0,
+      "agnews": 0.05,
+      "bookreview": 0.5333333333333333,
+      "crmarenapro": 0.643076923076923,
+      "googlelocal": 0.315,
+      "music_brainz_20k": 0.27999999999999997,
+      "stockindex": 0.9466666666666667,
+      "stockmarket": 0.2,
+      "yelp": 0.33428571428571424
+    }
+  },
+  {
+    "filename": "react_gpt-5.2.json",
+    "overall_pass_at_1": 0.29666666666666663,
+    "dataset_accuracies": {
+      "DEPS_DEV_V1": 0.0,
+      "GITHUB_REPOS": 0.02,
+      "PANCANCER_ATLAS": 0.21333333333333335,
+      "PATENTS": 0.0,
+      "agnews": 0.0,
+      "bookreview": 0.5266666666666667,
+      "crmarenapro": 0.5338461538461539,
+      "googlelocal": 0.28,
+      "music_brainz_20k": 0.13999999999999999,
+      "stockindex": 0.8666666666666667,
+      "stockmarket": 0.2,
+      "yelp": 0.23428571428571426
+    }
+  },
+  {
+    "filename": "react_kimi-k2-thinking.json",
+    "overall_pass_at_1": 0.3323076923076923,
+    "dataset_accuracies": {
+      "DEPS_DEV_V1": 0.0,
+      "GITHUB_REPOS": 0.11,
+      "PANCANCER_ATLAS": 0.0,
+      "PATENTS": 0.0,
+      "agnews": 0.13,
+      "bookreview": 0.6733333333333333,
+      "crmarenapro": 0.5415384615384615,
+      "googlelocal": 0.40499999999999997,
+      "music_brainz_20k": 0.32,
+      "stockindex": 0.7799999999999999,
+      "stockmarket": 0.2,
+      "yelp": 0.19142857142857145
+    }
+  }
+]

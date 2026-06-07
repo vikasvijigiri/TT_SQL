@@ -27,11 +27,11 @@ class RuleFamilyRetriever:
     """
 
     @classmethod
-    def get_rules_for_profile(cls, profile: QueryCapabilityProfile) -> List[str]:
+    def get_rules_for_profile(cls, profile: QueryCapabilityProfile, dialect: str = "snowflake") -> List[str]:
         rules = []
         # Mandatory core rules
         rules.extend(get_identifier_rules())
-        rules.extend(get_casting_rules())
+        rules.extend(get_casting_rules(dialect=dialect))
 
         if profile.requires_variants:
             rules.extend(get_variant_rules())
@@ -82,7 +82,7 @@ class DialectRuleRetriever:
         Executes Task 1 (Rule Families), Task 9 (Prioritization), and Task 11 (Summarization).
         """
         logger.debug("[DialectRuleRetriever] Retrieving adaptive rule families...")
-        active_rules = RuleFamilyRetriever.get_rules_for_profile(profile)
+        active_rules = RuleFamilyRetriever.get_rules_for_profile(profile, dialect=self.dialect)
 
         # Rank by priority
         ranked = RulePriorityRanker.rank_rules(active_rules)

@@ -18,17 +18,19 @@ class ResultValidatorOutput(BaseModel):
 from backend.app.core.config import get_prompt_path
 PROMPT_PATH = get_prompt_path("result_validator.yaml")
 
-class ResultValidator:
+class ResultValidatorAgent:
     def __init__(self, llm_client: LLMClient, semantic_engine):
         self.llm = llm_client
         self.semantic_engine = semantic_engine
         self.dialect_loader = DialectLoader()
 
-    def validate_result(self, user_query: str, sql: str, result_preview: str, schema_context: str = "", stats: Dict = None, exploration_results: str = None, dialect: str = "snowflake", lessons: str = "", empty_result_diagnostic: str = "", relevant_tables: Optional[List[str]] = None, table_columns: Optional[Dict[str, List[str]]] = None) -> ResultValidatorOutput:
+    def validate_result(self, user_query: str, sql: str, result_preview: str, schema_context: str = "", stats: Dict = None, exploration_results: str = None, dialect: str = "snowflake", lessons: str = "", empty_result_diagnostic: str = "", relevant_tables: Optional[List[str]] = None, table_columns: Optional[Dict[str, List[str]]] = None, intent=None) -> ResultValidatorOutput:
         logger.set_agent("DATA_IQ")
         logger.info("Evaluating result quality (Data IQ Layer)...")
 
-        intent = HierarchicalRetriever().analyze_intent(user_query)
+        # Reuse pre-computed intent from orchestrator to avoid redundant analysis
+        if intent is None:
+            intent = HierarchicalRetriever().analyze_intent(user_query)
         
         stats_str = json.dumps(stats, indent=2) if stats else "No statistics available."
         exp_str = f"\nEXPLORATION RESULTS (PROBES):\n{exploration_results}" if exploration_results else ""

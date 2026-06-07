@@ -8,7 +8,7 @@ class RulePriorityRanker:
     When token pressure is high, lower priority rules are trimmed first.
     """
 
-    CRITICAL_KWS = ("double-quote", "identifier", "schema casing", "variant", ":", "lateral flatten", "group by", "inner", "left", "on", "genotype")
+    CRITICAL_KWS = ("double-quote", "identifier", "schema casing", "variant", ":", "lateral flatten", "group by", "inner", "left", "on")
     LOW_KWS = ("srid", "st_geographyfromwkb", "st_geographyfromwkt", "approx_count_distinct", "hll")
 
     @classmethod

@@ -1,6 +1,6 @@
 import hashlib
 import re
-from typing import List, Dict, Any, Tuple, Optional
+from typing import Any, Tuple
 import pandas as pd
 from backend.app.utils.logger import logger
 from backend.app.core.config import RESULTS_DIR
@@ -18,8 +18,11 @@ class ExecutionStabilizer:
         if not semantic_engine.context:
             semantic_engine.build_context()
 
+        # Remove single-quoted string literals to avoid parsing file paths/extensions (like tracks.db) as identifiers
+        clean_sql = re.sub(r"'(?:[^']|'')*'", "", sql)
+
         # 1. Proactively discover and load any neighboring tables referenced in FROM/JOIN
-        raw_tables = re.findall(r'(?:FROM|JOIN)\s+([a-zA-Z0-9_"\.`]+)', sql, re.IGNORECASE)
+        raw_tables = re.findall(r'(?:FROM|JOIN)\s+([a-zA-Z0-9_"\.`]+)', clean_sql, re.IGNORECASE)
         for raw in raw_tables:
             clean = raw.replace('"', '').replace('`', '').strip()
             # If it's a multi-part FQN, get the base table name
@@ -36,7 +39,12 @@ class ExecutionStabilizer:
 
         # 2. Verify column-level references
         semantic_context = semantic_engine.context
-        found_identifiers = re.findall(r'([a-zA-Z0-9_]+)\.([a-zA-Z0-9_]+)', sql)
+        # Match both quoted ("Table"."Column") and unquoted (table.column) dotted identifiers.
+        # Capture each part with or without surrounding double-quotes.
+        found_identifiers = re.findall(
+            r'"?([a-zA-Z0-9_]+)"?\."?([a-zA-Z0-9_]+)"?',
+            clean_sql,
+        )
         table_col_map = {}
         for t in semantic_context.tables:
             table_col_map[t.name.upper()] = [c.name.upper() for c in t.columns]

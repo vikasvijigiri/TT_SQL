@@ -1,0 +1,108 @@
+{
+  "title": "TT-SQL API Health",
+  "uid": "tt_sql_api",
+  "schemaVersion": 38,
+  "version": 1,
+  "refresh": "10s",
+  "time": { "from": "now-1h", "to": "now" },
+  "panels": [
+    {
+      "id": 1,
+      "title": "Request Rate (req/s)",
+      "type": "timeseries",
+      "gridPos": { "x": 0, "y": 0, "w": 12, "h": 8 },
+      "targets": [{
+        "expr": "rate(http_requests_total{job=\"tt_sql_backend\"}[1m])",
+        "legendFormat": "{{method}} {{handler}} {{status_code}}"
+      }],
+      "fieldConfig": { "defaults": { "unit": "reqps" } }
+    },
+    {
+      "id": 2,
+      "title": "Latency p50 / p95 / p99 (s)",
+      "type": "timeseries",
+      "gridPos": { "x": 12, "y": 0, "w": 12, "h": 8 },
+      "targets": [
+        {
+          "expr": "histogram_quantile(0.50, rate(http_request_duration_seconds_bucket{job=\"tt_sql_backend\"}[2m]))",
+          "legendFormat": "p50"
+        },
+        {
+          "expr": "histogram_quantile(0.95, rate(http_request_duration_seconds_bucket{job=\"tt_sql_backend\"}[2m]))",
+          "legendFormat": "p95"
+        },
+        {
+          "expr": "histogram_quantile(0.99, rate(http_request_duration_seconds_bucket{job=\"tt_sql_backend\"}[2m]))",
+          "legendFormat": "p99"
+        }
+      ],
+      "fieldConfig": { "defaults": { "unit": "s" } }
+    },
+    {
+      "id": 3,
+      "title": "Error Rate (5xx)",
+      "type": "stat",
+      "gridPos": { "x": 0, "y": 8, "w": 6, "h": 4 },
+      "targets": [{
+        "expr": "sum(rate(http_requests_total{job=\"tt_sql_backend\",status_code=~\"5..\"}[5m]))",
+        "legendFormat": "5xx/s"
+      }],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "reqps",
+          "thresholds": {
+            "steps": [
+              { "color": "green", "value": null },
+              { "color": "red", "value": 0.01 }
+            ]
+          }
+        }
+      }
+    },
+    {
+      "id": 4,
+      "title": "Total Requests",
+      "type": "stat",
+      "gridPos": { "x": 6, "y": 8, "w": 6, "h": 4 },
+      "targets": [{
+        "expr": "sum(http_requests_total{job=\"tt_sql_backend\"})",
+        "legendFormat": "total"
+      }],
+      "fieldConfig": { "defaults": { "unit": "short" } }
+    },
+    {
+      "id": 5,
+      "title": "In-Progress Requests",
+      "type": "stat",
+      "gridPos": { "x": 12, "y": 8, "w": 6, "h": 4 },
+      "targets": [{
+        "expr": "sum(http_requests_inprogress{job=\"tt_sql_backend\"})",
+        "legendFormat": "in-progress"
+      }],
+      "fieldConfig": { "defaults": { "unit": "short" } }
+    },
+    {
+      "id": 6,
+      "title": "Latency by Endpoint (avg)",
+      "type": "bargauge",
+      "gridPos": { "x": 0, "y": 12, "w": 24, "h": 8 },
+      "targets": [{
+        "expr": "sort_desc(avg by (handler) (rate(http_request_duration_seconds_sum{job=\"tt_sql_backend\"}[5m]) / rate(http_request_duration_seconds_count{job=\"tt_sql_backend\"}[5m])))",
+        "legendFormat": "{{handler}}"
+      }],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "s",
+          "thresholds": {
+            "steps": [
+              { "color": "green", "value": null },
+              { "color": "yellow", "value": 1 },
+              { "color": "red", "value": 10 }
+            ]
+          }
+        }
+      },
+      "options": { "orientation": "horizontal", "displayMode": "gradient" }
+    }
+  ]
+}

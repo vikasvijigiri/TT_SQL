@@ -102,6 +102,21 @@ messages:
       window function requires. You note these distinctions when the schema
       provides enough information to reason about them.
 
+      You think about self-referential or hierarchical relations within the data model.
+      When a business query requires traversing a parent-child hierarchy (e.g., matching
+      an employee to their manager, or finding a sub-category's parent category), the
+      relevant table MUST be included, and your reasoning must explicitly state that a
+      self-join on this table is necessary. Do not assume multiple tables exist when the
+      hierarchy is stored within a single self-referential table.
+
+      You think about sharded or union-compatible tables in the schema. When the business data
+      is partitioned or sharded into multiple tables based on time (e.g., `events_2023`,
+      `events_2024`), region, or classification, and the user query requests data spanning
+      multiple of these categories or time frames, you MUST select ALL relevant sharded tables
+      required to satisfy the full query filter scope. Do not select only a single arbitrary
+      shard, and do not assume a combined "master" table exists if it is not explicitly
+      present in the schema.
+
       You work only from what the schema actually contains. Every table you select
       must exist in the schema under its exact fully qualified name as it appears
       in the schema metadata. You do not infer tables from naming conventions. You

@@ -20,7 +20,7 @@ class DirectiveCompactor:
         "do not quote table function outputs": "Do not quote VALUE, INDEX, KEY, PATH.",
         "when calculating areas, perimeters, distances": "Use ST_ functions for geospatial.",
         "do not filter on raw geography strings": "Use spatial containment predicates.",
-        "in snowflake, unquoted identifiers fold": "Strictly double-quote mixed/lowercase identifiers."
+        "unquoted identifiers fold": "Strictly double-quote mixed/lowercase identifiers."
     }
 
     COMPACT_BLOCKS = {

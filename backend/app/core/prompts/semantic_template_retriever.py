@@ -12,24 +12,24 @@ class SemanticTemplateRetriever:
 
     GENOMICS_TEMPLATES = [
         {
-            "name": "Genotype Array Extraction and Variant Classification",
+            "name": "Nested Array Extraction and Element Classification",
             "tags": ["genomics", "variant", "flatten"],
-            "sql": """WITH "sample_variants" AS (
-  SELECT 
-    v."reference_name",
-    v."start",
-    g.VALUE:"call_set_name"::STRING AS "sample_id",
-    g.VALUE:"genotype"[0]::INTEGER AS "gt0",
-    g.VALUE:"genotype"[1]::INTEGER AS "gt1"
-  FROM "TARGET_DB"."TARGET_SCHEMA"."VARIANTS" AS v,
-    LATERAL FLATTEN(input => v."call") AS g
-  WHERE v."VT" = 'SNP' AND ARRAY_SIZE(g.VALUE:"genotype") >= 1
+            "sql": """WITH "expanded" AS (
+  SELECT
+    r."row_id",
+    r."category",
+    elem.VALUE:"sample_key"::STRING AS "sample_id",
+    elem.VALUE:"values"[0]::INTEGER AS "val0",
+    elem.VALUE:"values"[1]::INTEGER AS "val1"
+  FROM "TARGET_DB"."TARGET_SCHEMA"."TARGET_TABLE" AS r,
+    LATERAL FLATTEN(input => r."nested_array_col") AS elem
+  WHERE ARRAY_SIZE(elem.VALUE:"values") >= 1
 )
-SELECT "sample_id", COUNT(*) AS "total_snps"
-FROM "sample_variants"
-WHERE "gt0" = 1 OR "gt1" = 1
+SELECT "sample_id", COUNT(*) AS "match_count"
+FROM "expanded"
+WHERE "val0" = 1 OR "val1" = 1
 GROUP BY "sample_id"
-ORDER BY "total_snps" DESC;"""
+ORDER BY "match_count" DESC;"""
         }
     ]
 

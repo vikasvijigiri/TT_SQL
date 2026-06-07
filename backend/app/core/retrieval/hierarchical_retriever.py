@@ -31,7 +31,7 @@ class HierarchicalRetriever:
         q_lower = query.lower()
         
         # Domain classification
-        if any(w in q_lower for w in ("gene", "variant", "chromosome", "allele", "genotype", "mutation", "tcga", "cnv", "cytoband")):
+        if any(w in q_lower for w in ("gene", "variant", "chromosome", "allele", "genotype", "mutation", "cnv", "cytoband")):
             domain = "Genomics & Healthcare"
         elif any(w in q_lower for w in ("revenue", "profit", "sales", "customer", "invoice", "payment", "tax")):
             domain = "E-commerce & Financial"

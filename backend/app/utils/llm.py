@@ -1,7 +1,8 @@
+import asyncio
 import os
 import json
 import re
-import traceback
+import time
 import yaml
 from typing import Type, TypeVar, List, Dict, Any, Optional
 from pydantic import BaseModel
@@ -16,6 +17,36 @@ from backend.app.core.prompts.schema_compactor import SchemaCompactor
 # Load environment variables from .env
 load_dotenv()
 
+import threading
+
+# Bedrock transient errors that are safe to retry
+_RETRYABLE_ERRORS = (
+    "ThrottlingException",
+    "ModelTimeoutException",
+    "ServiceUnavailableException",
+    "InternalServerException",
+    "RequestTimeoutException",
+)
+
+thread_local = threading.local()
+
+def reset_token_counters():
+    thread_local.input_tokens = 0
+    thread_local.output_tokens = 0
+
+def add_tokens(input_tokens: int, output_tokens: int):
+    if not hasattr(thread_local, "input_tokens"):
+        thread_local.input_tokens = 0
+    if not hasattr(thread_local, "output_tokens"):
+        thread_local.output_tokens = 0
+    thread_local.input_tokens += input_tokens
+    thread_local.output_tokens += output_tokens
+
+def get_tokens() -> tuple:
+    in_t = getattr(thread_local, "input_tokens", 0)
+    out_t = getattr(thread_local, "output_tokens", 0)
+    return in_t, out_t
+
 T = TypeVar('T', bound=BaseModel)
 
 class LLMClient:
@@ -27,12 +58,19 @@ class LLMClient:
         try:
             with open(CONFIG_DIR / "system_params.yaml", "r", encoding="utf-8") as f:
                 params = yaml.safe_load(f)
-                sys_temp = float(params.get("llm", {}).get("temperature", 0.0))
-                sys_model = params.get("llm", {}).get("model", "bedrock/openai.gpt-oss-safeguard-120b")
-        except:
+                llm_cfg = params.get("llm", {})
+                sys_temp = float(llm_cfg.get("temperature", 0.0))
+                sys_model = llm_cfg.get("model", "bedrock/openai.gpt-oss-safeguard-120b")
+                self._max_tokens = int(llm_cfg.get("max_tokens", 8000))
+                self._max_retries = int(llm_cfg.get("max_retries", 3))
+                self._retry_base_delay = float(llm_cfg.get("retry_base_delay_s", 1.0))
+        except Exception:
             sys_temp = 0.0
             sys_model = "bedrock/openai.gpt-oss-safeguard-120b"
-            
+            self._max_tokens = 8000
+            self._max_retries = 3
+            self._retry_base_delay = 1.0
+
         temp = temperature if temperature is not None else sys_temp
         self.full_model_name = model or os.getenv("LLM_MODEL", sys_model)
         
@@ -49,12 +87,12 @@ class LLMClient:
         headers = {"Authorization": f"Bearer {api_key}"} if api_key else {}
 
         try:
-            logger.info(f"Initializing ChatBedrockConverse | Model: {self.model_id} | Region: {self.region}")
+            logger.info(f"Initializing ChatBedrockConverse | Model: {self.model_id} | Region: {self.region} | max_tokens: {self._max_tokens}")
             self.llm = ChatBedrockConverse(
-                model_id=self.model_id,
+                model=self.model_id,
                 region_name=self.region,
                 default_headers=headers,
-                max_tokens=8000,
+                max_tokens=self._max_tokens,
                 temperature=temp,
             )
         except Exception as e:
@@ -201,39 +239,74 @@ class LLMClient:
                 logger.error(f"Pydantic Validation Failed on retry for {response_model.__name__}: {str(e2)}")
                 raise e2
 
+    def _is_retryable(self, exc: Exception) -> bool:
+        err_str = type(exc).__name__ + " " + str(exc)
+        return any(tag in err_str for tag in _RETRYABLE_ERRORS)
+
+    def _parse_response(self, response) -> tuple:
+        """Return (final_str, in_t, out_t) from a Bedrock response."""
+        content = response.content
+        if isinstance(content, list):
+            parts = []
+            for block in content:
+                if isinstance(block, dict):
+                    if "text" in block:
+                        parts.append(block["text"])
+                    elif "reasoning_content" in block:
+                        rc = block["reasoning_content"]
+                        rc_text = rc["text"] if isinstance(rc, dict) and "text" in rc else str(rc)
+                        parts.append(f"<think>\n{rc_text}\n</think>\n")
+                else:
+                    parts.append(str(block))
+            final_str = "\n".join(parts).strip()
+        else:
+            final_str = str(content).strip()
+
+        in_t, out_t = 0, 0
+        if hasattr(response, "usage_metadata") and response.usage_metadata:
+            in_t = response.usage_metadata.get("input_tokens", 0)
+            out_t = response.usage_metadata.get("output_tokens", 0)
+        elif hasattr(response, "response_metadata") and "usage" in response.response_metadata:
+            u = response.response_metadata["usage"]
+            in_t = u.get("inputTokens", u.get("input_tokens", 0))
+            out_t = u.get("outputTokens", u.get("output_tokens", 0))
+        return final_str, in_t, out_t
+
     def generate(self, system_prompt: str, user_prompt: str) -> str:
-        """Simple text completion."""
+        """Simple text completion with exponential-backoff retry on transient Bedrock errors."""
         logger.debug(f"LLM Prompt lengths | System: {len(system_prompt)} | User: {len(user_prompt)}")
         messages = [
             SystemMessage(content=system_prompt),
-            HumanMessage(content=user_prompt)
+            HumanMessage(content=user_prompt),
         ]
-        try:
-            response = self.llm.invoke(messages)
-            content = response.content
-            if isinstance(content, list):
-                # Join all blocks (text or reasoning) to ensure we capture the output
-                parts = []
-                for block in content:
-                    if isinstance(block, dict):
-                        if "text" in block:
-                            parts.append(block["text"])
-                        elif "reasoning_content" in block:
-                            rc = block["reasoning_content"]
-                            rc_text = rc["text"] if isinstance(rc, dict) and "text" in rc else str(rc)
-                            parts.append(f"<think>\n{rc_text}\n</think>\n")
-                    else:
-                        parts.append(str(block))
-                final_str = "\n".join(parts).strip()
-            else:
-                final_str = str(content).strip()
-            
-            # Log the complete prompt and response for auditing
-            full_prompt = f"=== SYSTEM PROMPT ===\n{system_prompt}\n\n=== USER PROMPT ===\n{user_prompt}"
-            agent_name = getattr(logger.logger, 'name', 'AGENT')
-            logger.log_agent_call(agent_name, full_prompt, final_str)
-            
-            return final_str
-        except Exception as e:
-            logger.error(f"LLM Generation Failed: {str(e)}")
-            raise
+
+        last_exc: Optional[Exception] = None
+        for attempt in range(self._max_retries + 1):
+            try:
+                response = self.llm.invoke(messages)
+                final_str, in_t, out_t = self._parse_response(response)
+                add_tokens(in_t, out_t)
+                metrics = {"input_tokens": in_t, "output_tokens": out_t}
+                full_prompt = f"=== SYSTEM PROMPT ===\n{system_prompt}\n\n=== USER PROMPT ===\n{user_prompt}"
+                agent_name = getattr(logger.logger, 'name', 'AGENT')
+                logger.log_agent_call(agent_name, full_prompt, final_str, metrics)
+                return final_str
+            except Exception as e:
+                last_exc = e
+                if self._is_retryable(e) and attempt < self._max_retries:
+                    delay = self._retry_base_delay * (2 ** attempt)
+                    logger.warning(f"Transient Bedrock error (attempt {attempt + 1}/{self._max_retries}): {e}. Retrying in {delay:.1f}s…")
+                    time.sleep(delay)
+                else:
+                    break
+
+        logger.error(f"LLM Generation Failed after {self._max_retries + 1} attempts: {last_exc}")
+        raise last_exc
+
+    async def async_generate(self, system_prompt: str, user_prompt: str) -> str:
+        """Non-blocking wrapper around generate() for use in async FastAPI handlers."""
+        return await asyncio.to_thread(self.generate, system_prompt, user_prompt)
+
+    async def async_generate_structured(self, system_prompt: str, user_prompt: str, response_model: Type[T]) -> T:
+        """Non-blocking wrapper around generate_structured() for use in async FastAPI handlers."""
+        return await asyncio.to_thread(self.generate_structured, system_prompt, user_prompt, response_model)

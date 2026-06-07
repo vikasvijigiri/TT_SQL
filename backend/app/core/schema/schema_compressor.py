@@ -15,7 +15,7 @@ class SchemaCompressor:
     def compress_variant_column(self, col: SemanticColumn) -> str:
         """
         Transforms raw variant/json columns or nested keys into a concise typed object signature.
-        Example: VARIANT<OBJECT{genotype: ARRAY<INTEGER>, call_set_name: STRING, DS: FLOAT}>
+        Example: VARIANT<OBJECT{values: ARRAY<INTEGER>, sample_key: STRING, score: FLOAT}>
         """
         if not col.nested_keys:
             return "VARIANT<JSON>"
@@ -25,7 +25,7 @@ class SchemaCompressor:
             key_clean = key.strip().replace('"', '').replace("'", "")
             k_lower = key_clean.lower()
             # Infer basic type if naming hint exists (check arrays & numbers first)
-            if any(h in k_lower for h in ("arr", "list", "genotype", "items", "calls")):
+            if any(h in k_lower for h in ("arr", "list", "items", "elements", "entries")):
                 k_type = "ARRAY"
             elif any(h in k_lower for h in ("count", "num", "idx", "len", "seq")):
                 k_type = "INTEGER"
@@ -65,6 +65,13 @@ class SchemaCompressor:
             max_s = min(3, self.config.max_sample_values_per_col)
         else:
             max_s = 0
+
+        # Low-cardinality override: when a column has ≤ 10 distinct sample values it is
+        # almost certainly an enumerated/categorical field (status, category, tier, …).
+        # Always show the full value set so the SQL generator uses equality filters
+        # (WHERE category = 'World') instead of guessing with LIKE searches.
+        if col.sample_values and len(col.sample_values) <= 10 and self.level != "aggressive":
+            max_s = max(max_s, len(col.sample_values))
 
         if max_s > 0 and col.sample_values:
             clean_samples = []

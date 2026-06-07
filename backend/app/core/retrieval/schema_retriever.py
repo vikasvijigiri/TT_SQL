@@ -4,6 +4,51 @@ from typing import List, Dict, Any, Tuple, Optional
 from backend.app.models.schemas import SemanticContext, SemanticTable, SemanticColumn
 from backend.app.core.pipeline_config import PipelineModeConfig, BALANCED_CONFIG
 
+# Business-term synonym map: query word -> canonical schema tokens it maps to.
+# Expands query vocabulary so difflib / Jaccard can bridge surface-form gaps.
+_SYNONYM_MAP: Dict[str, List[str]] = {
+    # sales / revenue
+    "revenue":      ["sales", "amount", "total", "income", "price", "receipt"],
+    "sales":        ["revenue", "amount", "total", "order"],
+    "profit":       ["margin", "income", "earnings", "net"],
+    "price":        ["cost", "rate", "fee", "amount", "charge"],
+    "discount":     ["reduction", "rebate", "promo"],
+    # user / customer
+    "customer":     ["user", "client", "buyer", "member", "account", "person"],
+    "user":         ["customer", "client", "member", "account"],
+    "author":       ["writer", "creator", "user"],
+    "employee":     ["staff", "worker", "person"],
+    # location
+    "country":      ["nation", "region", "territory", "geo"],
+    "city":         ["town", "location", "place", "municipality"],
+    "address":      ["location", "street", "city", "zip"],
+    # time
+    "date":         ["time", "timestamp", "created", "updated", "day", "year", "month"],
+    "year":         ["date", "time", "period", "fiscal"],
+    "recent":       ["latest", "last", "current", "new"],
+    # count / quantity
+    "count":        ["number", "total", "qty", "quantity", "num"],
+    "total":        ["sum", "count", "aggregate", "all"],
+    "average":      ["mean", "avg"],
+    # status / type
+    "status":       ["state", "flag", "type", "category"],
+    "type":         ["kind", "category", "class", "status"],
+    "category":     ["type", "class", "group", "segment"],
+    # product / item
+    "product":      ["item", "sku", "article", "goods"],
+    "order":        ["purchase", "transaction", "sale", "invoice"],
+    "rating":       ["score", "review", "rank", "grade"],
+    "review":       ["rating", "comment", "feedback"],
+    # genomics / scientific
+    "gene":         ["variant", "mutation", "allele", "locus"],
+    "sample":       ["specimen", "case", "patient", "subject"],
+    # software / github
+    "repo":         ["repository", "project", "package"],
+    "dependency":   ["package", "library", "module", "requirement"],
+    "version":      ["release", "tag", "revision"],
+}
+
+
 class SchemaRetriever:
     """
     Hybrid semantic and lexical schema retrieval engine. Ranks candidate tables,
@@ -12,6 +57,14 @@ class SchemaRetriever:
     def __init__(self, config: PipelineModeConfig = BALANCED_CONFIG):
         self.config = config
         self.similarity_threshold = config.retrieval_similarity_threshold
+
+    def _expand_with_synonyms(self, tokens: set) -> set:
+        """Augment a token set with domain synonyms to improve recall."""
+        extra: set = set()
+        for t in tokens:
+            for syn in _SYNONYM_MAP.get(t, []):
+                extra.add(syn)
+        return tokens | extra
 
     def _tokenize(self, text: str) -> set:
         clean = re.sub(r'[^a-zA-Z0-9_]', ' ', text.lower())
@@ -66,9 +119,9 @@ class SchemaRetriever:
     def retrieve_tables(self, query: str, context: SemanticContext, top_k: int = None) -> List[SemanticTable]:
         if not context or not context.tables:
             return []
-            
+
         k = top_k or self.config.max_tables_per_query
-        query_tokens = self._tokenize(query)
+        query_tokens = self._expand_with_synonyms(self._tokenize(query))
         
         scored_tables: List[Tuple[float, SemanticTable]] = []
         for table in context.tables:
@@ -94,7 +147,7 @@ class SchemaRetriever:
 
     def retrieve_columns(self, query: str, table: SemanticTable, top_k: int = None) -> List[SemanticColumn]:
         k = top_k or self.config.max_columns_per_table
-        query_tokens = self._tokenize(query)
+        query_tokens = self._expand_with_synonyms(self._tokenize(query))
         
         scored_cols: List[Tuple[float, SemanticColumn]] = []
         for col in table.columns:

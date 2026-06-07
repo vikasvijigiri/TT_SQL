@@ -66,7 +66,7 @@ class FinalPromptCompiler:
 
     def compile_user_prompt(self, ast: PromptAST, user_query: str) -> str:
         sections_text = ast.render_all(separator="\n\n")
-        final_user_prompt = f"{sections_text}\n\n=== USER QUERY ===\n{user_query}"
+        final_user_prompt = f"{sections_text}\n\n=== USER QUERY ===\n<user_query>\n{user_query.strip()}\n</user_query>"
         return final_user_prompt.strip()
 
     def compile(
@@ -105,7 +105,7 @@ class FinalPromptCompiler:
         templates_text = TemplateCanonicalizer.format_canonical_templates(clean_templates)
 
         # Dynamic Reasoning Depth
-        active_directives = ReasoningDepthController.get_directives(user_query, profile, domain=domain)
+        active_directives = ReasoningDepthController.get_directives(user_query, profile, domain=domain, dialect=self.dialect)
         clean_directives, dir_sav = DirectiveCompactor.compact_directives("\n".join(active_directives))
 
         clean_lessons, less_sav = LessonRuleOverlapResolver.resolve_overlap(past_lessons, clean_rules, clean_directives)
@@ -141,7 +141,7 @@ class FinalPromptCompiler:
 
         # 6. Enforce Hard Token Budgets & Quality Guard
         trimmed_ast, dropped_names = self.enforce_final_budget(ast, sys_tokens, custom_cap=custom_cap)
-        trimmed_ast.root_nodes = PromptQualityGuard.audit_and_safeguard(trimmed_ast.root_nodes, profile, dropped_names)
+        trimmed_ast.root_nodes = PromptQualityGuard.audit_and_safeguard(trimmed_ast.root_nodes, profile, dropped_names, dialect=self.dialect)
 
         # 7. Render Final User Prompt
         final_user_prompt = self.compile_user_prompt(trimmed_ast, user_query)
