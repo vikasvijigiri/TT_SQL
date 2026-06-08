@@ -2,7 +2,7 @@ import os
 import re
 import json
 import pandas as pd
-from typing import List, Dict
+from typing import List, Dict, Any
 from backend.app.models.schemas import SemanticContext, SemanticTable, SemanticColumn
 from backend.app.utils.logger import logger
 
@@ -552,32 +552,116 @@ class SemanticContextEngine:
                 # Get tables
                 cursor = conn.execute("SHOW TABLES;")
                 table_names = [r[0] for r in cursor.fetchall()]
-                
+
+                # ── Detect homogeneous table groups ──────────────────────────────
+                # When many tables share the same column schema (e.g., one table per
+                # stock symbol or per entity), represent them as a single unified
+                # virtual table so the LLM can reason about the combined data.
+                HOMOGENEOUS_THRESHOLD = 8  # group size that triggers unification
+                schema_groups: Dict[str, List[str]] = {}  # col_sig -> [table_names]
+                table_col_info: Dict[str, List[Any]] = {}  # table_name -> col rows
+
                 for t_name in table_names:
-                    # Get columns
-                    cursor = conn.execute(f"PRAGMA table_info('{t_name}');")
-                    cols = cursor.fetchall()
-                    
+                    try:
+                        cols = conn.execute(f"PRAGMA table_info('{t_name}');").fetchall()
+                        sig = "|".join(f"{c[1]}:{c[2]}" for c in cols)
+                        schema_groups.setdefault(sig, []).append(t_name)
+                        table_col_info[t_name] = cols
+                    except Exception:
+                        pass
+
+                # Build set of tables that are absorbed into a unified group
+                absorbed_tables: set = set()
+                for sig, group in schema_groups.items():
+                    if len(group) < HOMOGENEOUS_THRESHOLD:
+                        continue
+                    # Create a unified SemanticTable for this group
+                    rep_table = group[0]
+                    cols = table_col_info.get(rep_table, [])
+                    sample_data = []
+                    try:
+                        cursor = conn.execute(f"SELECT * FROM \"{rep_table}\" LIMIT 3;")
+                        desc = cursor.description
+                        col_names_rep = [d[0] for d in desc] if desc else []
+                        sample_data = [dict(zip(col_names_rep, row)) for row in cursor.fetchall()]
+                    except Exception:
+                        pass
+
+                    db_basename = os.path.splitext(os.path.basename(db_file))[0]
+                    unified_name = f"all_{db_basename}"
+
+                    # Build unified columns: first add _entity_name, then the shared cols
+                    unified_cols = [
+                        SemanticColumn(
+                            name="_entity_name",
+                            type="VARCHAR",
+                            description=(
+                                f"The original table name (entity identifier, e.g., ticker symbol). "
+                                f"This column is added by the executor when it creates the unified view. "
+                                f"Sample values: {group[:10]}"
+                            ),
+                            sample_values=[str(g) for g in group[:10]]
+                        )
+                    ]
+                    for col in cols:
+                        col_name = col[1]
+                        col_type = col[2]
+                        raw_samples = [row.get(col_name) for row in sample_data if row.get(col_name) is not None]
+                        sample_vals = self._sanitize_sample_values(raw_samples)
+                        hint = self._infer_column_hint(col_name, sample_vals)
+                        unified_cols.append(SemanticColumn(
+                            name=col_name,
+                            type=str(col_type),
+                            description=f"Column '{col_name}' (shared across all entity tables){hint}",
+                            sample_values=sample_vals
+                        ))
+
+                    preview = group[:5]
+                    rest = len(group) - 5
+                    preview_str = ", ".join(preview) + (f" … (+{rest} more)" if rest > 0 else "")
+                    tables.append(SemanticTable(
+                        name=unified_name,
+                        description=(
+                            f"Unified view across {len(group)} homogeneous tables from '{os.path.basename(db_file)}'. "
+                            f"Each original table represents one entity (e.g., a stock ticker). "
+                            f"Tables: {preview_str}. "
+                            f"The executor AUTO-CREATES this view at query time as a UNION ALL of all entity tables with '_entity_name' added. "
+                            f"JOIN with other tables using: JOIN {unified_name} ON {unified_name}._entity_name = other_table.symbol_column"
+                        ),
+                        columns=unified_cols,
+                        foreign_keys=[],
+                        sample_rows=sample_data[:2]
+                    ))
+                    for t in group:
+                        absorbed_tables.add(t)
+                    logger.info(f"Unified {len(group)} homogeneous tables from '{db_basename}' → '{unified_name}'")
+
+                # ── Process non-absorbed tables normally ─────────────────────────
+                for t_name in table_names:
+                    if t_name in absorbed_tables:
+                        continue
+                    cols = table_col_info.get(t_name)
+                    if cols is None:
+                        try:
+                            cols = conn.execute(f"PRAGMA table_info('{t_name}');").fetchall()
+                        except Exception as e:
+                            logger.warning(f"PRAGMA table_info failed for '{t_name}': {e}")
+                            continue
+
                     columns = []
-                    # Get sample rows
+                    sample_data = []
                     try:
                         cursor = conn.execute(f"SELECT * FROM \"{t_name}\" LIMIT 100;")
                         desc = cursor.description
                         col_names = [d[0] for d in desc] if desc else []
                         sample_data = [dict(zip(col_names, row)) for row in cursor.fetchall()]
-                    except Exception as e:
+                    except Exception:
                         sample_data = []
-                        
+
                     for col in cols:
                         col_name = col[1]
                         col_type = col[2]
-
-                        raw_samples = []
-                        for row in sample_data:
-                            val = row.get(col_name)
-                            if val is not None:
-                                raw_samples.append(val)
-
+                        raw_samples = [row.get(col_name) for row in sample_data if row.get(col_name) is not None]
                         sample_vals = self._sanitize_sample_values(raw_samples)
                         hint = self._infer_column_hint(col_name, sample_vals)
                         columns.append(SemanticColumn(
@@ -587,7 +671,6 @@ class SemanticContextEngine:
                             sample_values=sample_vals
                         ))
 
-                    # Use bare table name — DuckDB ATTACH temp views have no schema prefix.
                     empty_note = " (WARNING: table has 0 rows — data may require an external service)" \
                                  if not sample_data else ""
                     tables.append(SemanticTable(

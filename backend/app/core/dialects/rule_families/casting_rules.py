@@ -18,6 +18,19 @@ def get_casting_rules(dialect: str = "snowflake") -> List[str]:
             "Map BOOLEAN → INTEGER (1/0), DATETIME → TEXT (ISO-8601 strings).",
             "String → number: CAST(col AS REAL), CAST(col AS INTEGER). "
             "NULL-safe: CAST(col AS INTEGER) returns NULL when col is non-numeric text.",
+            # Critical: the pipeline registers regexp_extract as a Python UDF
+            "[CRITICAL] This SQLite environment has regexp_extract(string, pattern, group) "
+            "pre-registered as a Python UDF — it IS available and works exactly like DuckDB's "
+            "regexp_extract. USE IT for any regex extraction from TEXT columns. "
+            "Correct usage: CAST(regexp_extract(col, '(19[0-9]{2}|20[0-9]{2})', 1) AS INTEGER). "
+            "NEVER use INSTR+SUBSTR or LIKE+SUBSTR patterns to extract substrings — "
+            "they match partial fragments (e.g. 'January 19,' extracts 19 instead of 1923).",
+            "Decade from 4-digit year: (CAST(year_col AS INTEGER) / 10) * 10 — gives 2020 for "
+            "2020-2029, 2010 for 2010-2019. NEVER use modulo or 2-digit results.",
+            "Prefix-normalized joins: when two ID columns share a numeric suffix but different "
+            "prefixes (e.g. purchase_id='purchaseid_42', book_id='bookid_42'), join via: "
+            "REPLACE(a.purchase_id, 'purchaseid_', '') = REPLACE(b.book_id, 'bookid_', ''). "
+            "Always check sample values of BOTH columns to discover the prefix pattern.",
         ]
 
     # ── DuckDB ────────────────────────────────────────────────────────────────
@@ -28,6 +41,22 @@ def get_casting_rules(dialect: str = "snowflake") -> List[str]:
             "TRY_CAST(expr AS TYPE) returns NULL instead of raising on failure — use when input is untrusted.",
             "JSON extraction: col->'$.key' or json_extract_string(col, '$.key'). "
             "Unpack arrays with UNNEST().",
+            "regexp_extract(string, pattern, group) is a built-in DuckDB function. "
+            "Use it for regex extraction: regexp_extract(col, '(19[0-9]{2}|20[0-9]{2})', 1). "
+            "When a TEXT column embeds an ID or code (e.g. 'Patient TCGA-RY-A83X has...'), "
+            "use regexp_extract to extract it before joining: "
+            "regexp_extract(col, '(TCGA-[A-Z0-9]+-[A-Z0-9]+)', 1) = other_table.barcode_col.",
+            "Decade from year: (CAST(year_col AS INTEGER) / 10) * 10 — gives 2020 for 2020-2029.",
+            "DuckDB date/time: use INTERVAL arithmetic (date_col - INTERVAL '4 months'), NOT DATE_ADD(). "
+            "Unix epoch from timestamp: epoch(col) or EXTRACT(EPOCH FROM col), NOT UNIX_SECONDS(). "
+            "TIMESTAMP from text: CAST(col AS TIMESTAMP) or TRY_CAST(col AS TIMESTAMP). "
+            "Avoid NOW() / CURRENT_DATE — use the reference date from query context if available.",
+            "[UNIFIED VIEW] When the DuckDB schema has many tables with identical columns "
+            "(e.g. one table per stock symbol), the executor auto-creates a TEMP VIEW called "
+            "all_{db_name} (e.g. all_stocktrade_query) with columns (_entity_name, ...original cols...). "
+            "Use this view for cross-entity queries: "
+            "SELECT s.Symbol, AVG(t.Close) FROM stockinfo s "
+            "JOIN all_stocktrade_query t ON t._entity_name = s.Symbol WHERE ...",
         ]
 
     # ── PostgreSQL ────────────────────────────────────────────────────────────

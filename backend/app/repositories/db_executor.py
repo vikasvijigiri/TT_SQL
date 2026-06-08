@@ -222,7 +222,13 @@ class DatabaseExecutor:
         # Log final result preview (top 5 rows)
         if not df.empty:
             logger.info("### Final Result Preview (Top 5 Rows):")
-            logger.info(f"\n{df.head(5).to_markdown(index=False)}")
+            preview_df = df.head(5).copy()
+            for col in preview_df.columns:
+                if preview_df[col].dtype == object:
+                    preview_df[col] = preview_df[col].apply(
+                        lambda x: str(x)[:100] + "..." if isinstance(x, str) and len(x) > 100 else x
+                    )
+            logger.info(f"\n{preview_df.to_markdown(index=False)}")
         else:
             logger.warning("### Final Result: [EMPTY SET]")
 
@@ -424,6 +430,7 @@ class DatabaseExecutor:
 
             # ── Create temp views for all attached databases ──────────────────
             all_attached = attached_sqlite_names + attached_duckdb_names
+            attached_view_names: set = set()
             if all_attached:
                 try:
                     all_tables = conn.execute("SHOW ALL TABLES;").fetchall()
@@ -439,11 +446,50 @@ class DatabaseExecutor:
                                 f"CREATE OR REPLACE TEMPORARY VIEW \"{t_name}\" AS "
                                 f"SELECT * FROM \"{db_alias}\".\"{t_name}\";"
                             )
+                            attached_view_names.add(t_name)
                             logger.info(f"Auto-created temp view '{t_name}' from attached DB '{db_alias}'")
                         except Exception as ve:
                             logger.warning(f"Failed to create view for '{t_name}' from '{db_alias}': {ve}")
                 except Exception as e:
                     logger.warning(f"Failed to enumerate attached tables: {e}")
+
+            # ── Auto-create unified TEMP VIEWs for homogeneous table groups ──────
+            # When many tables share the same schema (e.g., one per stock symbol),
+            # create a single view `all_{db_basename}` with _entity_name added so
+            # the LLM can join across all entities without listing each table.
+            HOMOGENEOUS_THRESHOLD = 8
+            try:
+                cursor = conn.execute("SHOW TABLES;")
+                # Exclude views created for attached DBs — they are pass-through proxies,
+                # not the original base tables, and must not pollute homogeneity grouping.
+                all_table_names = [r[0] for r in cursor.fetchall() if r[0] not in attached_view_names]
+                schema_groups: dict = {}
+                table_col_sigs: dict = {}
+                for t_name in all_table_names:
+                    try:
+                        cols = conn.execute(f"PRAGMA table_info('{t_name}');").fetchall()
+                        sig = "|".join(f"{c[1]}:{c[2]}" for c in cols)
+                        schema_groups.setdefault(sig, []).append(t_name)
+                        table_col_sigs[t_name] = (sig, cols)
+                    except Exception:
+                        pass
+                db_basename = os.path.splitext(os.path.basename(path))[0]
+                for sig, group in schema_groups.items():
+                    if len(group) < HOMOGENEOUS_THRESHOLD:
+                        continue
+                    unified_view = f"all_{db_basename}"
+                    try:
+                        union_parts = [
+                            f"SELECT '{t}' AS _entity_name, * FROM \"{t}\""
+                            for t in group
+                        ]
+                        union_sql = " UNION ALL ".join(union_parts)
+                        conn.execute(f"CREATE OR REPLACE TEMPORARY VIEW \"{unified_view}\" AS {union_sql};")
+                        logger.info(f"Auto-created unified view '{unified_view}' for {len(group)} homogeneous tables")
+                    except Exception as ve:
+                        logger.warning(f"Failed to create unified view '{unified_view}': {ve}")
+            except Exception as e:
+                logger.warning(f"Homogeneous table detection failed: {e}")
 
             rel = conn.execute(sql)
             columns = [desc[0] for desc in rel.description] if rel.description else []
