@@ -1863,6 +1863,87 @@ def check_dab_repo():
     }
 
 
+@app.get("/api/improvement/status")
+def get_improvement_status():
+    """Return self-improvement pipeline history and current rule counts."""
+    log_path = MEMORY_DIR / "improvement_log.json"
+    lessons_path = MEMORY_DIR / "dynamic_lessons.json"
+
+    log: Dict[str, Any] = {}
+    if log_path.exists():
+        try:
+            with open(log_path, "r", encoding="utf-8") as f:
+                log = json.load(f)
+        except Exception:
+            log = {}
+
+    rule_counts: Dict[str, int] = {"ACTIVE": 0, "CANDIDATE": 0, "REJECTED": 0, "INACTIVE": 0}
+    if lessons_path.exists():
+        try:
+            with open(lessons_path, "r", encoding="utf-8") as f:
+                rules = json.load(f)
+            for r in rules:
+                s = r.get("status", "UNKNOWN")
+                rule_counts[s] = rule_counts.get(s, 0) + 1
+        except Exception:
+            pass
+
+    # Build accuracy trend: one point per daily run entry
+    accuracy_trend = []
+    for run in log.get("runs", []):
+        accuracy_trend.append({
+            "date": run.get("date", ""),
+            "pass_rate": run.get("pass_rate", 0),
+            "final_passes": run.get("final_passes", 0),
+            "total": run.get("total", 0),
+        })
+
+    # Flatten all rounds across all runs for recent_runs table
+    recent_rounds = []
+    for run in log.get("runs", []):
+        for r in run.get("rounds", []):
+            recent_rounds.append({
+                "date": r.get("date", run.get("date", "")),
+                "round": r.get("round", 1),
+                "status": r.get("status", ""),
+                "delta": r.get("delta", 0),
+                "passes_before": r.get("passes_before", 0),
+                "passes_after": r.get("passes_after", 0),
+                "pass_rate": r.get("pass_rate", 0),
+                "new_rules_added": r.get("new_rules_added", 0),
+                "elapsed_s": r.get("elapsed_s", 0),
+                "total": r.get("total", 0),
+            })
+
+    return {
+        "saturated": log.get("saturated", False),
+        "last_run": log.get("last_run"),
+        "total_rounds": log.get("total_rounds", 0),
+        "baseline_pass_rate": log.get("baseline_pass_rate"),
+        "rule_counts": rule_counts,
+        "accuracy_trend": accuracy_trend[-30:],
+        "recent_runs": recent_rounds[-15:],
+    }
+
+
+@app.post("/api/improvement/run")
+async def trigger_improvement_run(background_tasks: BackgroundTasks):
+    """Trigger a self-improvement run in the background (respects daily cap)."""
+    from backend.app.core.config import DAB_REPO as DAB_REPO_PATH
+
+    def _run():
+        try:
+            from backend.app.core.rules.self_improving_loop import SelfImprovingLoop
+            loop = SelfImprovingLoop(dab_repo=str(DAB_REPO_PATH))
+            loop.run_daily()
+        except Exception as e:
+            import traceback as tb
+            logger.error(f"Improvement run failed: {e}\n{tb.format_exc()}")
+
+    background_tasks.add_task(_run)
+    return {"message": "Self-improvement run started in background. Check /api/improvement/status for results."}
+
+
 if __name__ == "__main__":
     import uvicorn
     uvicorn.run(app, host="0.0.0.0", port=8001)

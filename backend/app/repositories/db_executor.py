@@ -37,6 +37,7 @@ class DatabaseExecutor:
         self.db_name = (db_name or "UNKNOWN").upper()
         self.sf_config = self._load_sf_config(sf_config_path)
         self._conn = None
+        self._conn_type = None
         # Optional: explicit path to a DB file (used by DAB multi-DB datasets)
         self.explicit_db_path: Optional[str] = (
             explicit_db_path or (self._conn_cfg.path if self._conn_cfg else None)
@@ -288,7 +289,75 @@ class DatabaseExecutor:
         import time
         logger.info(f"Executing on SQLite ({path})")
         try:
-            conn = sqlite3.connect(path)
+            if self._conn is None or self._conn_type != "sqlite":
+                self.close()
+                self._conn = sqlite3.connect(path)
+                self._conn_type = "sqlite"
+                
+                # Setup custom functions
+                import re
+                
+                def regexp(expr, item):
+                    if not expr or not item:
+                        return False
+                    try:
+                        return re.search(expr, str(item)) is not None
+                    except Exception:
+                        return False
+                        
+                def regexp_extract(item, pattern, group=0):
+                    if not item or not pattern:
+                        return None
+                    try:
+                        m = re.search(pattern, str(item))
+                        if m:
+                            return m.group(group)
+                    except Exception:
+                        pass
+                    return None
+
+                self._conn.create_function("REGEXP", 2, regexp)
+                self._conn.create_function("regexp_extract", 2, lambda item, pattern: regexp_extract(item, pattern, 0))
+                self._conn.create_function("regexp_extract", 3, regexp_extract)
+                
+                self._conn.row_factory = sqlite3.Row
+                cur = self._conn.cursor()
+                
+                # Auto-attach other SQLite databases in the same directory
+                db_dir = os.path.dirname(path)
+                sqlite_files = []
+                for ext in ("*.sqlite", "*.db", "*.sqlite3"):
+                    sqlite_files.extend(glob.glob(os.path.join(db_dir, ext)))
+                sqlite_files = list(set(sqlite_files))
+                
+                current_abs_path = os.path.abspath(path)
+                attached_db_names = []
+                for sqlite_file in sqlite_files:
+                    if os.path.abspath(sqlite_file) == current_abs_path:
+                        continue
+                    if not is_sqlite_file(sqlite_file):
+                        continue
+                    alias = os.path.splitext(os.path.basename(sqlite_file))[0] + "_db"
+                    try:
+                        cur.execute(f"ATTACH DATABASE '{sqlite_file}' AS \"{alias}\";")
+                        attached_db_names.append((alias, sqlite_file))
+                    except Exception as e:
+                        logger.warning(f"Failed to auto-attach SQLite DB {sqlite_file}: {e}")
+                        
+                # Create temporary views for tables in attached databases
+                for alias, filepath in attached_db_names:
+                    try:
+                        cur.execute(f"SELECT name FROM {alias}.sqlite_master WHERE type='table';")
+                        table_names = [r[0] for r in cur.fetchall() if r[0] not in ("sqlite_sequence", "sqlite_stat1")]
+                        for t_name in table_names:
+                            cur.execute(f"CREATE TEMP VIEW \"{t_name}\" AS SELECT * FROM \"{alias}\".\"{t_name}\";")
+                            logger.info(f"Auto-created temporary view for SQLite table: {t_name}")
+                    except Exception as e:
+                        logger.warning(f"Failed to create views for attached SQLite DB {alias}: {e}")
+                    cur.close()
+
+            # Execute statement
+            conn = self._conn
             timeout_seconds = 120
             start_time = time.time()
 
@@ -297,72 +366,12 @@ class DatabaseExecutor:
                     return 1
                 return 0
 
-            # Register custom regex functions for SQLite to match DuckDB functionality
-            import re
-            
-            def regexp(expr, item):
-                if not expr or not item:
-                    return False
-                try:
-                    return re.search(expr, str(item)) is not None
-                except Exception:
-                    return False
-                    
-            def regexp_extract(item, pattern, group=0):
-                if not item or not pattern:
-                    return None
-                try:
-                    m = re.search(pattern, str(item))
-                    if m:
-                        return m.group(group)
-                except Exception:
-                    pass
-                return None
-
-            conn.create_function("REGEXP", 2, regexp)
-            conn.create_function("regexp_extract", 2, lambda item, pattern: regexp_extract(item, pattern, 0))
-            conn.create_function("regexp_extract", 3, regexp_extract)
             conn.set_progress_handler(progress_handler, 10000)
-            
-            conn.row_factory = sqlite3.Row
             cur = conn.cursor()
-            
-            # Auto-attach other SQLite databases in the same directory to support cross-db queries
-            db_dir = os.path.dirname(path)
-            sqlite_files = []
-            for ext in ("*.sqlite", "*.db", "*.sqlite3"):
-                sqlite_files.extend(glob.glob(os.path.join(db_dir, ext)))
-            sqlite_files = list(set(sqlite_files))
-            
-            current_abs_path = os.path.abspath(path)
-            attached_db_names = []
-            for sqlite_file in sqlite_files:
-                if os.path.abspath(sqlite_file) == current_abs_path:
-                    continue
-                if not is_sqlite_file(sqlite_file):
-                    continue
-                alias = os.path.splitext(os.path.basename(sqlite_file))[0] + "_db"
-                try:
-                    cur.execute(f"ATTACH DATABASE '{sqlite_file}' AS \"{alias}\";")
-                    attached_db_names.append((alias, sqlite_file))
-                except Exception as e:
-                    logger.warning(f"Failed to auto-attach SQLite DB {sqlite_file}: {e}")
-                    
-            # Create temporary views for tables in attached databases
-            for alias, filepath in attached_db_names:
-                try:
-                    cur.execute(f"SELECT name FROM {alias}.sqlite_master WHERE type='table';")
-                    table_names = [r[0] for r in cur.fetchall() if r[0] not in ("sqlite_sequence", "sqlite_stat1")]
-                    for t_name in table_names:
-                        cur.execute(f"CREATE TEMP VIEW \"{t_name}\" AS SELECT * FROM \"{alias}\".\"{t_name}\";")
-                        logger.info(f"Auto-created temporary view for SQLite table: {t_name}")
-                except Exception as e:
-                    logger.warning(f"Failed to create views for attached SQLite DB {alias}: {e}")
-            
             cur.execute(sql)
             columns = [col[0] for col in cur.description] if cur.description else []
             rows = [dict(r) for r in cur.fetchall()]
-            conn.close()
+            cur.close()
             return rows, columns, None
         except sqlite3.OperationalError as e:
             if "interrupted" in str(e).lower():
@@ -380,121 +389,125 @@ class DatabaseExecutor:
         try:
             import duckdb
             import glob
-            conn = duckdb.connect(path, read_only=True)
 
-            db_dir = os.path.dirname(path)
-            current_abs_path = os.path.abspath(path)
+            if self._conn is None or self._conn_type != "duckdb":
+                self.close()
+                conn = duckdb.connect(path, read_only=True)
 
-            # ── Attach sibling SQLite files ──────────────────────────────────
-            sqlite_files = []
-            for ext in ("*.sqlite", "*.db", "*.sqlite3"):
-                sqlite_files.extend(glob.glob(os.path.join(db_dir, ext)))
-            sqlite_files = list(set(sqlite_files))
+                db_dir = os.path.dirname(path)
+                current_abs_path = os.path.abspath(path)
 
-            attached_sqlite_names = []
-            sqlite_ext_loaded = False
-            for sqlite_file in sqlite_files:
-                if os.path.abspath(sqlite_file) == current_abs_path:
-                    continue
-                if not is_sqlite_file(sqlite_file):
-                    continue
-                alias = os.path.splitext(os.path.basename(sqlite_file))[0] + "_db"
-                try:
-                    if not sqlite_ext_loaded:
-                        conn.execute("INSTALL sqlite;")
-                        conn.execute("LOAD sqlite;")
-                        sqlite_ext_loaded = True
-                    sqlite_file_fs = sqlite_file.replace("\\", "/")
-                    conn.execute(f"ATTACH '{sqlite_file_fs}' AS \"{alias}\" (TYPE sqlite);")
-                    attached_sqlite_names.append((alias, sqlite_file))
-                except Exception as e:
-                    logger.warning(f"Failed to auto-attach SQLite DB {os.path.basename(sqlite_file)}: {e}")
+                # ── Attach sibling SQLite files ──────────────────────────────────
+                sqlite_files = []
+                for ext in ("*.sqlite", "*.db", "*.sqlite3"):
+                    sqlite_files.extend(glob.glob(os.path.join(db_dir, ext)))
+                sqlite_files = list(set(sqlite_files))
 
-            # ── Attach sibling DuckDB files ───────────────────────────────────
-            duckdb_files = []
-            for ext in ("*.duckdb", "*.ddb"):
-                duckdb_files.extend(glob.glob(os.path.join(db_dir, ext)))
-            duckdb_files = list(set(duckdb_files))
-
-            attached_duckdb_names = []
-            for ddb_file in duckdb_files:
-                if os.path.abspath(ddb_file) == current_abs_path:
-                    continue
-                alias = os.path.splitext(os.path.basename(ddb_file))[0] + "_db"
-                try:
-                    ddb_file_fs = ddb_file.replace("\\", "/")
-                    conn.execute(f"ATTACH '{ddb_file_fs}' AS \"{alias}\" (READ_ONLY);")
-                    attached_duckdb_names.append((alias, ddb_file))
-                except Exception as e:
-                    logger.warning(f"Failed to auto-attach DuckDB file {os.path.basename(ddb_file)}: {e}")
-
-            # ── Create temp views for all attached databases ──────────────────
-            all_attached = attached_sqlite_names + attached_duckdb_names
-            attached_view_names: set = set()
-            if all_attached:
-                try:
-                    all_tables = conn.execute("SHOW ALL TABLES;").fetchall()
-                    # Map: database_name -> list of table names
-                    attached_aliases = {alias for alias, _ in all_attached}
-                    for row in all_tables:
-                        db_alias = row[0]
-                        if db_alias not in attached_aliases:
-                            continue
-                        t_name = row[2]
-                        try:
-                            conn.execute(
-                                f"CREATE OR REPLACE TEMPORARY VIEW \"{t_name}\" AS "
-                                f"SELECT * FROM \"{db_alias}\".\"{t_name}\";"
-                            )
-                            attached_view_names.add(t_name)
-                            logger.info(f"Auto-created temp view '{t_name}' from attached DB '{db_alias}'")
-                        except Exception as ve:
-                            logger.warning(f"Failed to create view for '{t_name}' from '{db_alias}': {ve}")
-                except Exception as e:
-                    logger.warning(f"Failed to enumerate attached tables: {e}")
-
-            # ── Auto-create unified TEMP VIEWs for homogeneous table groups ──────
-            # When many tables share the same schema (e.g., one per stock symbol),
-            # create a single view `all_{db_basename}` with _entity_name added so
-            # the LLM can join across all entities without listing each table.
-            HOMOGENEOUS_THRESHOLD = 8
-            try:
-                cursor = conn.execute("SHOW TABLES;")
-                # Exclude views created for attached DBs — they are pass-through proxies,
-                # not the original base tables, and must not pollute homogeneity grouping.
-                all_table_names = [r[0] for r in cursor.fetchall() if r[0] not in attached_view_names]
-                schema_groups: dict = {}
-                table_col_sigs: dict = {}
-                for t_name in all_table_names:
-                    try:
-                        cols = conn.execute(f"PRAGMA table_info('{t_name}');").fetchall()
-                        sig = "|".join(f"{c[1]}:{c[2]}" for c in cols)
-                        schema_groups.setdefault(sig, []).append(t_name)
-                        table_col_sigs[t_name] = (sig, cols)
-                    except Exception:
-                        pass
-                db_basename = os.path.splitext(os.path.basename(path))[0]
-                for sig, group in schema_groups.items():
-                    if len(group) < HOMOGENEOUS_THRESHOLD:
+                attached_sqlite_names = []
+                sqlite_ext_loaded = False
+                for sqlite_file in sqlite_files:
+                    if os.path.abspath(sqlite_file) == current_abs_path:
                         continue
-                    unified_view = f"all_{db_basename}"
+                    if not is_sqlite_file(sqlite_file):
+                        continue
+                    alias = os.path.splitext(os.path.basename(sqlite_file))[0] + "_db"
                     try:
-                        union_parts = [
-                            f"SELECT '{t}' AS _entity_name, * FROM \"{t}\""
-                            for t in group
-                        ]
-                        union_sql = " UNION ALL ".join(union_parts)
-                        conn.execute(f"CREATE OR REPLACE TEMPORARY VIEW \"{unified_view}\" AS {union_sql};")
-                        logger.info(f"Auto-created unified view '{unified_view}' for {len(group)} homogeneous tables")
-                    except Exception as ve:
-                        logger.warning(f"Failed to create unified view '{unified_view}': {ve}")
-            except Exception as e:
-                logger.warning(f"Homogeneous table detection failed: {e}")
+                        if not sqlite_ext_loaded:
+                            conn.execute("INSTALL sqlite;")
+                            conn.execute("LOAD sqlite;")
+                            sqlite_ext_loaded = True
+                        sqlite_file_fs = sqlite_file.replace("\\", "/")
+                        conn.execute(f"ATTACH '{sqlite_file_fs}' AS \"{alias}\" (TYPE sqlite);")
+                        attached_sqlite_names.append((alias, sqlite_file))
+                    except Exception as e:
+                        logger.warning(f"Failed to auto-attach SQLite DB {os.path.basename(sqlite_file)}: {e}")
 
+                # ── Attach sibling DuckDB files ───────────────────────────────────
+                duckdb_files = []
+                for ext in ("*.duckdb", "*.ddb"):
+                    duckdb_files.extend(glob.glob(os.path.join(db_dir, ext)))
+                duckdb_files = list(set(duckdb_files))
+
+                attached_duckdb_names = []
+                for ddb_file in duckdb_files:
+                    if os.path.abspath(ddb_file) == current_abs_path:
+                        continue
+                    alias = os.path.splitext(os.path.basename(ddb_file))[0] + "_db"
+                    try:
+                        ddb_file_fs = ddb_file.replace("\\", "/")
+                        conn.execute(f"ATTACH '{ddb_file_fs}' AS \"{alias}\" (READ_ONLY);")
+                        attached_duckdb_names.append((alias, ddb_file))
+                    except Exception as e:
+                        logger.warning(f"Failed to auto-attach DuckDB file {os.path.basename(ddb_file)}: {e}")
+
+                # ── Create temp views for all attached databases ──────────────────
+                all_attached = attached_sqlite_names + attached_duckdb_names
+                attached_view_names: set = set()
+                if all_attached:
+                    try:
+                        all_tables = conn.execute("SHOW ALL TABLES;").fetchall()
+                        # Map: database_name -> list of table names
+                        attached_aliases = {alias for alias, _ in all_attached}
+                        for row in all_tables:
+                            db_alias = row[0]
+                            if db_alias not in attached_aliases:
+                                continue
+                            t_name = row[2]
+                            try:
+                                conn.execute(
+                                    f"CREATE OR REPLACE TEMPORARY VIEW \"{t_name}\" AS "
+                                    f"SELECT * FROM \"{db_alias}\".\"{t_name}\";"
+                                )
+                                attached_view_names.add(t_name)
+                                logger.info(f"Auto-created temp view '{t_name}' from attached DB '{db_alias}'")
+                            except Exception as ve:
+                                logger.warning(f"Failed to create view for '{t_name}' from '{db_alias}': {ve}")
+                    except Exception as e:
+                        logger.warning(f"Failed to enumerate attached tables: {e}")
+
+                # ── Auto-create unified TEMP VIEWs for homogeneous table groups ──────
+                HOMOGENEOUS_THRESHOLD = 8
+                try:
+                    cursor = conn.execute("SHOW TABLES;")
+                    all_table_names = [r[0] for r in cursor.fetchall() if r[0] not in attached_view_names]
+                    schema_groups: dict = {}
+                    table_col_sigs: dict = {}
+                    for t_name in all_table_names:
+                        try:
+                            cols = conn.execute(f"PRAGMA table_info('{t_name}');").fetchall()
+                            sig = "|".join(sorted(c[1].lower() for c in cols))
+                            schema_groups.setdefault(sig, []).append(t_name)
+                            table_col_sigs[t_name] = (sig, cols)
+                        except Exception:
+                            pass
+                    db_basename = os.path.splitext(os.path.basename(path))[0]
+                    sorted_groups = sorted(
+                        [g for g in schema_groups.values() if len(g) >= HOMOGENEOUS_THRESHOLD],
+                        key=len,
+                        reverse=True
+                    )
+                    for idx, group in enumerate(sorted_groups):
+                        unified_view = f"all_{db_basename}" if idx == 0 else f"all_{db_basename}_{idx + 1}"
+                        try:
+                            union_parts = [
+                                f"SELECT '{t}' AS _entity_name, * FROM \"{t}\""
+                                for t in group
+                            ]
+                            union_sql = " UNION ALL ".join(union_parts)
+                            conn.execute(f"CREATE OR REPLACE TEMPORARY VIEW \"{unified_view}\" AS {union_sql};")
+                            logger.info(f"Auto-created unified view '{unified_view}' for {len(group)} homogeneous tables")
+                        except Exception as ve:
+                            logger.warning(f"Failed to create unified view '{unified_view}': {ve}")
+                except Exception as e:
+                    logger.warning(f"Homogeneous table detection failed: {e}")
+
+                self._conn = conn
+                self._conn_type = "duckdb"
+
+            conn = self._conn
             rel = conn.execute(sql)
             columns = [desc[0] for desc in rel.description] if rel.description else []
             rows = [dict(zip(columns, row)) for row in rel.fetchall()]
-            conn.close()
             return rows, columns, None
         except ImportError:
             return [], [], "duckdb package not installed. Run: pip install duckdb"
@@ -588,13 +601,14 @@ class DatabaseExecutor:
             return [], [], str(e)
 
     def close(self):
-        """Close persistent Snowflake connection if open."""
+        """Close persistent connection if open."""
         if hasattr(self, "_conn") and self._conn is not None:
             try:
                 self._conn.close()
             except Exception as e:
-                logger.warning(f"Error closing Snowflake connection: {e}")
+                logger.warning(f"Error closing connection: {e}")
             self._conn = None
+            self._conn_type = None
 
     def __del__(self):
         self.close()

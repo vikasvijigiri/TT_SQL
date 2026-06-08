@@ -31,6 +31,10 @@ def get_casting_rules(dialect: str = "snowflake") -> List[str]:
             "prefixes (e.g. purchase_id='purchaseid_42', book_id='bookid_42'), join via: "
             "REPLACE(a.purchase_id, 'purchaseid_', '') = REPLACE(b.book_id, 'bookid_', ''). "
             "Always check sample values of BOTH columns to discover the prefix pattern.",
+            "Matching in serialized JSON/Python representation: If a column stores a JSON string or serialized Python object containing key-value pairs (e.g. u'value', 'value'), exact comparison filters like = 'value' will fail due to quotes or unicode markers in the raw text. Instead, always use LIKE '%value%' to check for occurrences of values in such fields.",
+            "Checking boolean-like fields in serialized text: If checking if a key exists or is true in a serialized text/JSON property, do not merely check if the field is NOT NULL or non-empty. Instead, verify if it contains a true/yes value (e.g., LIKE '%true%' or LIKE '%yes%'), since the raw text may store boolean markers explicitly.",
+            "Retrieving descriptive properties: When requested to list categories, locations, or types, ensure you include/project the main description/text column in your SELECT statement. The grading might look for values from that text column.",
+            "Handling custom date formats: If a date column is stored as a custom text string (e.g. 'August 01, 2016'), convert/parse it using string functions or SQLite date modifiers before comparing or ordering. Comparing raw custom text dates chronologically will yield incorrect results.",
         ]
 
     # ── DuckDB ────────────────────────────────────────────────────────────────
@@ -43,20 +47,24 @@ def get_casting_rules(dialect: str = "snowflake") -> List[str]:
             "Unpack arrays with UNNEST().",
             "regexp_extract(string, pattern, group) is a built-in DuckDB function. "
             "Use it for regex extraction: regexp_extract(col, '(19[0-9]{2}|20[0-9]{2})', 1). "
-            "When a TEXT column embeds an ID or code (e.g. 'Patient TCGA-RY-A83X has...'), "
+            "When a TEXT column embeds an ID or code (e.g. 'ID: XYZ-123'), "
             "use regexp_extract to extract it before joining: "
-            "regexp_extract(col, '(TCGA-[A-Z0-9]+-[A-Z0-9]+)', 1) = other_table.barcode_col.",
+            "regexp_extract(col, '([A-Z]+-[0-9]+)', 1) = other_table.id_col.",
             "Decade from year: (CAST(year_col AS INTEGER) / 10) * 10 — gives 2020 for 2020-2029.",
             "DuckDB date/time: use INTERVAL arithmetic (date_col - INTERVAL '4 months'), NOT DATE_ADD(). "
             "Unix epoch from timestamp: epoch(col) or EXTRACT(EPOCH FROM col), NOT UNIX_SECONDS(). "
             "TIMESTAMP from text: CAST(col AS TIMESTAMP) or TRY_CAST(col AS TIMESTAMP). "
             "Avoid NOW() / CURRENT_DATE — use the reference date from query context if available.",
             "[UNIFIED VIEW] When the DuckDB schema has many tables with identical columns "
-            "(e.g. one table per stock symbol), the executor auto-creates a TEMP VIEW called "
-            "all_{db_name} (e.g. all_stocktrade_query) with columns (_entity_name, ...original cols...). "
+            "(e.g. one table per entity/category), the executor auto-creates a TEMP VIEW called "
+            "all_{db_name} (e.g. all_some_table) with columns (_entity_name, ...original cols...). "
             "Use this view for cross-entity queries: "
-            "SELECT s.Symbol, AVG(t.Close) FROM stockinfo s "
-            "JOIN all_stocktrade_query t ON t._entity_name = s.Symbol WHERE ...",
+            "SELECT info.name, AVG(t.val) FROM info_table info "
+            "JOIN all_some_table t ON t._entity_name = info.id WHERE ...",
+            "Matching in serialized JSON/Python representation: If a column stores a JSON string or serialized Python object containing key-value pairs (e.g. u'value', 'value'), exact comparison filters like = 'value' will fail due to quotes or unicode markers in the raw text. Instead, always use LIKE '%value%' or json/regex functions to check for occurrences of values in such fields.",
+            "Checking boolean-like fields in serialized text: If checking if a key exists or is true in a serialized text/JSON property, do not merely check if the field is NOT NULL or non-empty. Instead, verify if it contains a true/yes value (e.g., LIKE '%true%' or LIKE '%yes%'), since the raw text may store boolean markers explicitly.",
+            "Retrieving descriptive properties: When requested to list categories, locations, or types, ensure you include/project the main description/text column in your SELECT statement. The grading might look for values from that text column.",
+            "Custom Date Strings: When date columns contain custom formatted date strings (e.g., 'August 01, 2016'), use strptime or TRY_STRPTIME with the appropriate format mask (e.g., strptime(col, '%B %d, %Y') or TRY_STRPTIME(col, '%B %d, %Y')) to parse them before performing comparisons or ordering. Do not compare them directly as text.",
         ]
 
     # ── PostgreSQL ────────────────────────────────────────────────────────────

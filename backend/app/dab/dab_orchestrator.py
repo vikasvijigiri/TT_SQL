@@ -202,12 +202,11 @@ def _pick_best_db(db_clients: Dict[str, Any], question: str = "") -> Optional[Di
         q_tokens = _tokenize(question)
         scored = [(cfg, _score_db_for_query(cfg, q_tokens)) for cfg in available_local]
 
-        # Sort by: (1) token score, (2) numeric column count — more numeric cols = richer
-        # analytical schema, (3) total column count, (4) path for determinism.
-        # This handles the all-zero case: when no tokens match (question uses domain terms
-        # not in schema names), prefer the DB that is quantitatively richer.
+        # Sort by: (1) is DuckDB (enables cross-DB queries via attaching SQLite), (2) token score,
+        # (3) numeric column count, (4) total column count, (5) path for determinism.
         scored.sort(
             key=lambda x: (
+                x[0].get("db_type", "").lower() == "duckdb",
                 x[1],
                 _count_numeric_columns(x[0].get("db_path", ""), x[0].get("db_type", "").lower()),
                 len(_get_column_names_quickly(x[0].get("db_path", ""), x[0].get("db_type", "").lower())),
@@ -222,8 +221,8 @@ def _pick_best_db(db_clients: Dict[str, Any], question: str = "") -> Optional[Di
         )
         return best_cfg
 
-    # Static type priority (original behaviour)
-    for dbtype in ("sqlite", "duckdb", "postgres", "postgresql", "mongo", "mongodb"):
+    # Static type priority (duckdb > sqlite fallback)
+    for dbtype in ("duckdb", "sqlite", "postgres", "postgresql", "mongo", "mongodb"):
         for cfg in db_clients.values():
             if cfg.get("db_type", "").lower() == dbtype:
                 db_path = cfg.get("db_path", "")

@@ -334,6 +334,8 @@ class SemanticDINOrchestrator:
         success = False
         row_count = 0
         last_correction_thought = ""
+        initial_failed_sql = None
+        initial_error_context = None
         while attempts <= self.max_retries:
             logger.info(f"Execution Attempt {attempts + 1}/{self.max_retries + 1}")
             result_msg = ""
@@ -467,6 +469,22 @@ class SemanticDINOrchestrator:
                 if validation.is_valid or attempts == self.max_retries:
                     self.sql_manager.cache_success(instance_id, current_sql, validation.audit_reasoning)
 
+                    if validation.is_valid and attempts > 0 and initial_failed_sql and initial_error_context:
+                        try:
+                            from backend.app.core.rules.lesson_synthesizer import LessonSynthesizer
+                            synthesizer = LessonSynthesizer(llm_client=self.llm)
+                            synthesizer.synthesize_and_save(
+                                question=user_query,
+                                failed_sql=initial_failed_sql,
+                                error_message=initial_error_context,
+                                corrected_sql=current_sql,
+                                dialect=self.executor.dialect,
+                                dataset=self.db_name,
+                                instance_id=instance_id
+                            )
+                        except Exception as se:
+                            logger.warning(f"Failed to synthesize lesson: {se}")
+
                     logger.info(f"RESULT PREVIEW:\n{preview_str}")
                     total_time = time.time() - start_time
                     telemetry.end_stage("execution_and_audit")
@@ -560,6 +578,11 @@ class SemanticDINOrchestrator:
                 )
                 current_sql = correction.sql
                 last_correction_thought = correction.thought_process
+            
+            if attempts == 0 and (not success or (locals().get('validation') and not validation.is_valid)):
+                initial_failed_sql = current_sql
+                initial_error_context = error_context
+
             attempts += 1
 
         best_sql = self.sql_manager.get_best_sql(instance_id)

@@ -31,6 +31,7 @@ ANSWER_EXTRACTION_SYSTEM = (
     "INSTRUCTIONS:\n"
     "- CRITICAL: Begin your answer with the key value(s) from the result — no preamble, "
     "no 'Based on...', no 'The answer is'. Lead with the raw value immediately.\n"
+    "- If any column value contains a long description sentence (e.g., 'Company Name specializes in/is a...', 'Brand Name operates as...'), clean it by extracting only the clean name (e.g., 'Company Name') before the descriptive verb/text to make the answer concise.\n"
     "- Include the specific value(s) from the result that answer the question.\n"
     "- Include contextual labels if relevant (e.g. country, category, unit, decade notation like '1990s').\n"
     "- Do not explain the SQL or methodology, just answer the question.\n"

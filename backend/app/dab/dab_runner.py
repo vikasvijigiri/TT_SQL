@@ -185,6 +185,11 @@ def main():
     parser.add_argument("--skip_docker", action="store_true", help="Skip Docker-dependent datasets")
     parser.add_argument("--force", action="store_true", help="Re-run already evaluated queries")
     parser.add_argument("--report_only", action="store_true", help="Only print accuracy report")
+    parser.add_argument(
+        "--self_improve",
+        action="store_true",
+        help="Run the self-improving loop (extract rules from failures, activate, re-run, compare)",
+    )
     args = parser.parse_args()
 
     # Load query index
@@ -201,6 +206,34 @@ def main():
 
     if args.report_only:
         print_summary([], all_queries)
+        return
+
+    if args.self_improve:
+        from backend.app.core.rules.self_improving_loop import SelfImprovingLoop
+        loop = SelfImprovingLoop(dab_repo=args.dab_repo)
+        result = loop.run_daily()
+        print(f"\n[SelfImprove] status: {result['status']}")
+        if result.get("run"):
+            run = result["run"]
+            print(f"  date        : {run['date']}")
+            print(f"  rounds done : {len(run['rounds'])}")
+            print(f"  final pass  : {run['final_passes']}/{run['total']} ({run['pass_rate']}%)")
+            for r in run["rounds"]:
+                delta_str = f"+{r['delta']}" if r['delta'] > 0 else str(r['delta'])
+                print(
+                    f"  round {r['round']}: {r['status']:16s}  "
+                    f"delta={delta_str:>3}  rules={r.get('new_rules_added',0)}  "
+                    f"elapsed={r.get('elapsed_s',0):.0f}s"
+                )
+        if result.get("rule_counts"):
+            rc = result["rule_counts"]
+            print(
+                f"  rules → ACTIVE:{rc.get('ACTIVE',0)}  "
+                f"REJECTED:{rc.get('REJECTED',0)}  "
+                f"INACTIVE:{rc.get('INACTIVE',0)}"
+            )
+        if result.get("saturated"):
+            print("  [SATURATED] Pipeline has converged — no further daily runs needed.")
         return
 
     if not (args.all or args.dataset or args.query_id):

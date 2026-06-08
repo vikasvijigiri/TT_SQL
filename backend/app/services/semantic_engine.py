@@ -564,7 +564,8 @@ class SemanticContextEngine:
                 for t_name in table_names:
                     try:
                         cols = conn.execute(f"PRAGMA table_info('{t_name}');").fetchall()
-                        sig = "|".join(f"{c[1]}:{c[2]}" for c in cols)
+                        # Group by sorted lowercase column names to allow type coercion in UNION ALL
+                        sig = "|".join(sorted(c[1].lower() for c in cols))
                         schema_groups.setdefault(sig, []).append(t_name)
                         table_col_info[t_name] = cols
                     except Exception:
