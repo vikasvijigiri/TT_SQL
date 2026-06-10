@@ -20,7 +20,7 @@ failed_ids.csv
 
 # Environment and Virtual Env
 .env
-venv_stable/
+venv_new/
 __pycache__/
 *.pyc
 
