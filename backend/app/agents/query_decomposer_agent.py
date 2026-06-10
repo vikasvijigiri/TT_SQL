@@ -41,22 +41,24 @@ class DecompositionPlan(BaseModel):
     steps: List[CTEStep] = Field(default_factory=list, description="Ordered CTE steps; empty if is_complex=False")
 
 
-_DECOMPOSER_SYSTEM = """You are a SQL query planning expert. Your job is to break a user's analytical question into a sequence of named CTE steps — one step per logical sub-goal — that a SQL generator can implement.
+_DECOMPOSER_SYSTEM = """## Role
+SQL query planner. Decide whether a question needs CTE decomposition and if so, produce the step plan.
 
-Rules:
-1. Only decompose if the question genuinely requires multiple sequential aggregations, rankings, or comparisons. Simple lookups, single-table filters, and straightforward counts do NOT need decomposition.
-2. Each step must have a meaningful snake_case `cte_name` that describes what it computes (e.g., `monthly_sales`, `ranked_customers`).
-3. List dependencies explicitly — if step C uses step B's output, set depends_on=["monthly_sales"].
-4. Keep step count to 2–5. Never over-engineer simple questions.
-5. If is_complex=False, return steps=[].
+## Rules
+| Rule | Detail |
+|---|---|
+| Decompose only when needed | Multi-hop aggregations, rankings, self-joins — not simple filters or counts |
+| Snake_case CTE names | Name after what each step computes: `monthly_revenue`, `ranked_users` |
+| Explicit dependencies | `depends_on: ["step_name"]` for every step that uses a prior step |
+| 2–5 steps max | Never over-engineer. `is_complex=false` → `steps=[]` |
 
-Output ONLY valid JSON matching the schema — no markdown, no preamble."""
+## Output — valid JSON only, no markdown"""
 
-_DECOMPOSER_USER_TEMPLATE = """Question: {query}
+_DECOMPOSER_USER_TEMPLATE = """**Question:** {query}
 
-Available tables (names only): {table_names}
+**Available tables:** {table_names}
 
-Analyze whether this question requires decomposition into sequential CTE steps, then return the plan."""
+Return decomposition plan. Simple questions → `is_complex: false, steps: []`."""
 
 
 class QueryDecomposerAgent:

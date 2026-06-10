@@ -42,59 +42,65 @@ from backend.app.utils.logger import logger
 # Prompts
 # ---------------------------------------------------------------------------
 
-_SYSTEM = """You are a senior data engineer who decides HOW to answer a natural language question
-given a database schema and live data exploration results.
+_SYSTEM = """## Role
+Execution strategy planner. Choose HOW to answer a question given a schema and live data exploration.
 
-Choose one of four strategies:
+## Strategies
 
-1. direct_sql
-   Schema fully supports the question. No additional context needed beyond the schema.
+| Strategy | When to use |
+|---|---|
+| `direct_sql` | Schema fully supports the question; no extra guidance needed |
+| `enriched_sql` | Schema mostly works but exploration revealed patterns, conventions, or data quirks the SQL generator must know — OR a value must be extracted from free text via regex/CASE |
+| `text_classify_aggregate` | A key dimension is DISCRETE NAMED CATEGORIES in free text AND you can write complete fetch_sql AND list exact categories right now |
+| `cannot_answer` | Data genuinely cannot answer the question |
 
-2. enriched_sql
-   Schema mostly supports it but exploration revealed useful context (value patterns,
-   naming conventions, data quirks) worth injecting into SQL generation.
+## NARROW JOIN PROTOCOL — mandatory when exploration shows "*** NARROW JOIN"
+If SchemaExplorer reports `*** NARROW JOIN` between table A and table B on column C:
+- The join `A.C = B.C` is the **only correct data anchor** — it defines the real queryable universe
+- Scanning A alone or B alone returns WRONG results
+- Your `enriched_context` MUST include:
+  ```
+  ANCHOR: FROM [A] JOIN [B] ON [A].[C] = [B].[C]
+  Use [B].[path_col] for file-path filters — NOT [A]'s sample columns
+  Do NOT scan [A] or [B] alone under any circumstances
+  ```
 
-3. text_classify_aggregate
-   A key concept (filter or group-by dimension) has no column but is encoded in a
-   text field (title, description, notes, etc.).
-   Use this when the only way to answer is:
-     a) Fetch rows with text fields
-     b) Classify each row's text into the required categories
-     c) Aggregate the classified results
-   Provide a fetch_sql and a classify_spec.
+## text_classify_aggregate rules
+- ALL four conditions must hold: (a) no dedicated category column, (b) discrete named categories, (c) complete fetch_sql now, (d) exact category list now
+- NEVER for numeric extraction — use `enriched_sql` instead
+- Missing fetch_sql or categories → downgrade to `enriched_sql`
 
-4. cannot_answer
-   The data genuinely does not contain the information needed.
-
-Respond ONLY with a JSON object (no markdown, no prose):
+## Output — JSON only
+```json
 {
-  "strategy": "direct_sql | enriched_sql | text_classify_aggregate | cannot_answer",
-  "reasoning": "<2-3 sentences explaining WHY this strategy, based on the exploration>",
-  "enriched_context": "<for direct_sql/enriched_sql: additional text to inject into SQL generation prompt; empty string otherwise>",
+  "strategy": "direct_sql|enriched_sql|text_classify_aggregate|cannot_answer",
+  "reasoning": "<2-3 sentences: WHY this strategy based on exploration>",
+  "enriched_context": "<direct_sql/enriched_sql: SQL generation guidance; include NARROW JOIN anchor if detected>",
   "classify_spec": {
-    "fetch_sql": "<for text_classify_aggregate: SQL to fetch (id_col, group_col, text_col1, text_col2, ...) from the DB>",
-    "id_column": "<column name that uniquely identifies each row>",
-    "group_column": "<column to group by after classification>",
-    "text_columns": ["<col1>", "<col2>"],
-    "categories": ["<cat1>", "<cat2>", "..."],
-    "target_category": "<the category we want to filter to>",
-    "classification_instruction": "<one sentence telling the classifier what to look for>"
+    "fetch_sql": "<REQUIRED: complete runnable SQL>",
+    "id_column": "<unique row identifier>",
+    "group_column": "<group-by column>",
+    "text_columns": ["<col>"],
+    "categories": ["<exact label>"],
+    "target_category": "<target>",
+    "classification_instruction": "<one sentence>"
   },
-  "cannot_answer_reason": "<for cannot_answer: explanation for the user; empty string otherwise>"
-}"""
+  "cannot_answer_reason": "<cannot_answer only>"
+}
+```"""
 
-_USER_TMPL = """Question: {question}
+_USER_TMPL = """**Question:** {question}
 
-Schema:
+**Schema:**
 {schema_text}
 
-FeasibilityAgent gap report:
+**Feasibility gaps:**
 {gap_report}
 
-SchemaExplorer findings:
+**Exploration findings:**
 {exploration}
 
-Choose the best strategy to answer this question."""
+Choose the best strategy. If exploration shows NARROW JOIN, your enriched_context must include the join anchor."""
 
 
 class StrategyRouter:
@@ -176,6 +182,28 @@ class StrategyRouter:
                 "text_classify_aggregate", "cannot_answer"
             ):
                 obj["strategy"] = "direct_sql"
+            # Validate text_classify_aggregate — if spec is incomplete, downgrade to enriched_sql
+            if obj["strategy"] == "text_classify_aggregate":
+                spec = obj.get("classify_spec", {})
+                missing_fetch = not spec.get("fetch_sql", "").strip()
+                missing_cats = not spec.get("categories")
+                if missing_fetch or missing_cats:
+                    obj["strategy"] = "enriched_sql"
+                    # Build an actionable context: reason (if any) + positive guidance to use
+                    # string/regex extraction rather than giving up.
+                    base = obj.get("enriched_context") or obj.get("reasoning", "")
+                    guidance = (
+                        "\nGUIDANCE: The required value may be embedded in a free-text column. "
+                        "Use the EXPLORATION FINDINGS below to identify the exact column and pattern. "
+                        "Use regexp_extract(), REGEXP_SUBSTR(), LIKE, or CASE expressions to extract it. "
+                        "You MUST write a SQL query — do NOT refuse or return empty SQL."
+                    )
+                    obj["enriched_context"] = (base + guidance).strip()
+                    logger.debug(
+                        "[StrategyRouter] text_classify_aggregate classify_spec incomplete "
+                        f"(missing: {'fetch_sql ' if missing_fetch else ''}{'categories' if missing_cats else ''}) "
+                        "— downgraded to enriched_sql"
+                    )
             return obj
         except Exception:
             return None

@@ -131,29 +131,32 @@ def run_all(
 
 
 def print_summary(results: List[Dict[str, Any]], all_queries: List[Dict[str, Any]]) -> None:
-    """Print a formatted summary with accuracy."""
+    """Print benchmark summary matching Claude's pass@1 / pass@K format."""
     accuracy = compute_accuracy(all_queries)
+    k = accuracy.get("num_runs", 1)
+    slots = accuracy.get("total_run_slots", accuracy["evaluated"])
+    passing = accuracy.get("passing_run_slots", 0)
+    atk = accuracy.get("queries_passed_atk", 0)
 
-    print("\n" + "=" * 68)
+    print("\n" + "=" * 72)
     print("  DAB BENCHMARK RESULTS — SpiderDIN / TT_SQL_V2")
-    print("=" * 68)
+    print("=" * 72)
     print(f"  Total Queries  : {accuracy['total_queries']}")
-    print(f"  Evaluated      : {accuracy['evaluated']}")
-    print(f"  Pending        : {accuracy['pending']}")
-    print(f"  Passed         : {accuracy['passed']}")
-    print(f"  Failed         : {accuracy['failed']}")
-    print(f"  Pass@1         : {accuracy['pass_at_1_pct']}")
-    print("-" * 68)
-    print(f"  {'Dataset':<24} {'Total':>5} {'Pass':>5} {'Fail':>5} {'Pend':>5} {'Acc':>7}")
-    print("-" * 68)
+    print(f"  Evaluated      : {accuracy['evaluated']}  (pending: {accuracy['pending']})")
+    print(f"  Run slots      : {passing}/{slots} passed  (K={k} runs per query)")
+    print(f"  pass@1         : {accuracy['pass_at_1_pct']}  (run-slot success rate)")
+    print(f"  pass@{k}         : {accuracy['pass_at_k_pct']}  (query-level: any run passes)")
+    print("-" * 72)
+    print(f"  {'Dataset':<25} {'Queries':>7} {'pass@1':>8} {'pass@'+str(k):>8}")
+    print("-" * 72)
     for ds, stats in sorted(accuracy["per_dataset"].items()):
-        total = stats["total"]
-        passed = stats["passed"]
-        failed = stats["failed"]
-        pending = stats["pending"]
-        acc = f"{100*passed/max(1,total-pending):.0f}%" if total > pending else "—"
-        print(f"  {ds:<24} {total:>5} {passed:>5} {failed:>5} {pending:>5} {acc:>7}")
-    print("=" * 68 + "\n")
+        n = stats["total"]
+        p1 = stats.get("pass_at_1_pct", "N/A")
+        pk = stats.get("pass_at_k_pct", "N/A")
+        pend = stats.get("pending", 0)
+        pend_str = f"  ({pend} pending)" if pend else ""
+        print(f"  {ds:<25} {n:>7} {p1:>8} {pk:>8}{pend_str}")
+    print("=" * 72 + "\n")
 
     # Save results JSON
     out_path = DAB_RESULTS_DIR / "accuracy_report.json"
@@ -161,6 +164,8 @@ def print_summary(results: List[Dict[str, Any]], all_queries: List[Dict[str, Any
     with open(out_path, "w", encoding="utf-8") as f:
         json.dump(accuracy, f, indent=2)
     print(f"  [Report] Saved to: {out_path}\n")
+
+
 
 
 def main():

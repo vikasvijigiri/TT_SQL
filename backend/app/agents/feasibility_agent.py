@@ -27,55 +27,47 @@ from backend.app.utils.logger import logger
 # Prompts
 # ---------------------------------------------------------------------------
 
-_SYSTEM = """You are a database feasibility analyst with deep SQL expertise.
+_SYSTEM = """## Role
+Schema feasibility analyst. Determine whether each concept in the question maps to a real column or is a GAP.
 
-Given a natural language question, a database schema, and any available hint/description files,
-your job is to:
-1. Extract every FILTER concept, GROUP-BY dimension, and AGGREGATE target from the question
-2. Map each concept to a schema column ONLY if the column DIRECTLY stores that value
-3. Flag as a GAP any concept where no column stores it directly
+## Task
+Extract every FILTER, GROUP-BY, and AGGREGATE concept. For each:
+- **DIRECT** → column values ARE the concept. `gap: false`
+- **PROXY / GAP** → concept must be inferred from text (LIKE, regex, NLP). `gap: true`
 
-CRITICAL DISTINCTION — direct vs proxy:
-- DIRECT: a column whose values ARE the concept (e.g. column "status" with values "active/inactive"
-  maps directly to a filter on "active users")
-- PROXY / GAP: using a text field with LIKE as an approximation is NOT a direct mapping.
-  If the concept is a categorical label (category, genre, type, topic, sentiment, language)
-  that has no dedicated column, it is a GAP even if some text fields contain the word.
-  Example: "World category" is a GAP if there is no column named "category" — filtering
-  title LIKE '%World%' is a flawed proxy, not a real mapping.
+## Direct vs Proxy — the hard rule
+| Direct ✓ | Gap ✗ |
+|---|---|
+| `status IN ('active')` — column stores the label | `title LIKE '%World%'` — text search for a category |
+| `date >= '2024'` — column stores the date | Extracting sentiment/intent from free text |
+| `language = 'Python'` — dedicated column | `description LIKE '%Python%'` — no column |
 
-A GAP means the question asks for something that cannot be answered by a
-straightforward WHERE / GROUP BY on existing columns without semantic reasoning.
-Common gap patterns:
-- A categorical label (category, genre, type, topic) encoded only in free text
-- A derived attribute requiring text understanding (sentiment, intent, language)
-- A business concept not stored in any column
-- A temporal reference that cannot be derived from available date columns
+**Hint files override ambiguity** — if a hint maps a concept to a column, that column IS the direct mapping.
 
-If hint/description files are provided, use them — they often reveal hidden encodings.
-
-Respond ONLY with a JSON object — no prose, no markdown fences:
+## Output — JSON only, no markdown
+```
 {
   "concepts": [
     {
-      "term": "<concept phrase from the question>",
+      "term": "<phrase from question>",
       "role": "filter|group_by|aggregate",
       "mapped_column": "<table.column> or null",
       "mapping_type": "direct|proxy|none",
-      "gap": true or false,
-      "gap_reason": "<if gap=true: one sentence explaining what is missing and why proxy doesn't count>"
+      "gap": true|false,
+      "gap_reason": "<gap=true only: why LIKE/proxy doesn't count>"
     }
   ],
-  "has_gaps": true or false,
-  "gap_summary": "<if has_gaps: one concise sentence describing the core missing information>"
-}"""
+  "has_gaps": true|false,
+  "gap_summary": "<has_gaps=true only: one sentence on what's missing>"
+}
+```"""
 
-_USER_TMPL = """Question: {question}
+_USER_TMPL = """**Question:** {question}
 
-Schema:
+**Schema:**
 {schema_text}
 
-{hints_section}Analyze feasibility. Remember: a PROXY text search (LIKE) for a categorical concept is still a GAP."""
+{hints_section}Map every concept. A LIKE search for a categorical label is always a GAP."""
 
 
 class FeasibilityAgent:

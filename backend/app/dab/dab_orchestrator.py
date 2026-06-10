@@ -284,6 +284,63 @@ def _make_db_directory_for_schema(db_cfg: Dict[str, Any], dataset: str) -> Optio
     return str(Path(db_path).parent)
 
 
+_EMPTY_ANSWER_SIGNALS = frozenset([
+    "", "no data", "no data.", "no results found", "no results found.",
+    "no rows", "none", "null", "n/a", "not found", "no output", "no output.",
+])
+
+
+def _is_empty_answer(answer: str) -> bool:
+    return not answer or answer.strip().lower().rstrip(".").rstrip(",") in _EMPTY_ANSWER_SIGNALS
+
+
+def _build_rich_schema_hint(db_path: str, db_type: str, max_tables: int = 10, sample_rows: int = 3) -> str:
+    """Introspect the live DB and return actual table/column names with sample rows as ground-truth evidence."""
+    lines = []
+    try:
+        if db_type == "sqlite":
+            import sqlite3
+            conn = sqlite3.connect(db_path)
+            c = conn.cursor()
+            c.execute("SELECT name FROM sqlite_master WHERE type='table'")
+            tables = [r[0] for r in c.fetchall()][:max_tables]
+            for table in tables:
+                try:
+                    cols = c.execute(f'PRAGMA table_info("{table}")').fetchall()
+                    col_names = [col[1] for col in cols]
+                    lines.append(f"\nTable: {table}")
+                    lines.append(f"  Columns: {', '.join(col_names)}")
+                    rows = c.execute(f'SELECT * FROM "{table}" LIMIT {sample_rows}').fetchall()
+                    if rows:
+                        lines.append("  Sample rows:")
+                        for row in rows:
+                            lines.append(f"    {dict(zip(col_names, row))}")
+                except Exception:
+                    pass
+            conn.close()
+        elif db_type == "duckdb":
+            import duckdb
+            conn = duckdb.connect(db_path, read_only=True)
+            tables = [r[0] for r in conn.execute("SHOW TABLES").fetchall()][:max_tables]
+            for table in tables:
+                try:
+                    schema_rows = conn.execute(f'DESCRIBE "{table}"').fetchall()
+                    col_names = [r[0] for r in schema_rows]
+                    lines.append(f"\nTable: {table}")
+                    lines.append(f"  Columns: {', '.join(col_names)}")
+                    rows = conn.execute(f'SELECT * FROM "{table}" LIMIT {sample_rows}').fetchall()
+                    if rows:
+                        lines.append("  Sample rows:")
+                        for row in rows:
+                            lines.append(f"    {dict(zip(col_names, row))}")
+                except Exception:
+                    pass
+            conn.close()
+    except Exception:
+        return ""
+    return "\n".join(lines)
+
+
 @traceable(name="DAB Query", run_type="chain", tags=["dab", "benchmark"])
 def run_dab_query(
     query: Dict[str, Any],
@@ -445,6 +502,58 @@ def run_dab_query(
             # Writing through extract_answer risks reading a stale CSV from a prior run.
             agent_answer = final_sql.strip()
             csv_path.write_text(f'result\n"{agent_answer}"\n', encoding="utf-8")
+
+        # Schema-grounded retry: when the first pass returns empty results, inject real
+        # sample data from the live DB so the LLM can see actual table/column names.
+        if _is_empty_answer(agent_answer):
+            logger.info("[EmptyRetry] First attempt returned empty answer — injecting real schema evidence for retry.")
+            schema_hint = _build_rich_schema_hint(db_path, db_type)
+            if schema_hint:
+                retry_knowledge = external_knowledge_text + (
+                    "\n\n=== CRITICAL: YOUR PREVIOUS QUERY RETURNED 0 ROWS ==="
+                    "\nThe ACTUAL table names and real sample data from the live database are shown below."
+                    "\nYou MUST use these exact table and column names. Your query MUST return results.\n"
+                    + schema_hint
+                    + "\n=== END OF ACTUAL DATABASE EVIDENCE ==="
+                )
+                from backend.app.core.config import RESOURCES_DIR
+                docs_dir = RESOURCES_DIR / "documents"
+                docs_dir.mkdir(parents=True, exist_ok=True)
+                retry_ext_file = docs_dir / f"dab_{dataset}_retry.txt"
+                retry_ext_file.write_text(retry_knowledge, encoding="utf-8")
+
+                orchestrator.stabilizer.retry_history.clear()
+                retry_instance_id = f"dab_{dataset}_q{query_id}_retry"
+                retry_sql = orchestrator.execute_query(
+                    user_query=question,
+                    instance_id=retry_instance_id,
+                    external_knowledge=retry_ext_file.name,
+                )
+                is_retry_sql = retry_sql.strip().lower().startswith(("select", "with", "show", "explain", "pragma", "describe"))
+                if is_retry_sql:
+                    sql_path.write_text(retry_sql, encoding="utf-8")
+                    retry_src_csv = RESULTS_DIR / db_name / f"{retry_instance_id}.csv"
+                    if retry_src_csv.exists():
+                        import shutil
+                        shutil.copy2(str(retry_src_csv), str(csv_path))
+                    retry_answer = extract_answer(
+                        question=question,
+                        csv_path=str(csv_path),
+                        ground_truth=ground_truth,
+                        llm_client=llm_client,
+                        instance_id=instance_id,
+                    )
+                else:
+                    retry_answer = retry_sql.strip()
+                    csv_path.write_text(f'result\n"{retry_answer}"\n', encoding="utf-8")
+
+                if not _is_empty_answer(retry_answer):
+                    logger.info(f"[EmptyRetry] Retry produced non-empty answer: {retry_answer[:120]}")
+                    agent_answer = retry_answer
+                    final_sql = retry_sql
+                else:
+                    logger.warning("[EmptyRetry] Retry also returned empty — keeping original answer.")
+
         save_answer(agent_answer, dataset, query_id, DAB_RESULTS_DIR, run_suffix=_run_sfx)
         logger.info(f"AGENT ANSWER: {agent_answer}")
 
@@ -472,7 +581,7 @@ def run_dab_query(
         if run_tree and _LANGSMITH_AVAILABLE:
             _push_evaluator_feedback(str(run_tree.id), eval_result)
 
-        return {
+        res = {
             "dataset": dataset,
             "query_id": query_id,
             "instance_id": instance_id,
@@ -513,7 +622,7 @@ def run_dab_query(
         if run_tree and _LANGSMITH_AVAILABLE:
             _push_evaluator_feedback(str(run_tree.id), eval_result)
 
-        return {
+        res = {
             "dataset": dataset,
             "query_id": query_id,
             "instance_id": instance_id,
@@ -534,3 +643,59 @@ def run_dab_query(
             except Exception:
                 pass
         logger.stop_live_task_log()
+
+    # Inline rule extraction on query failure
+    if res and not res.get("passed"):
+        try:
+            # 1. Read only the latest log tail
+            log_tail = ""
+            if md_path.exists():
+                try:
+                    max_chars = 15000
+                    file_size = md_path.stat().st_size
+                    if file_size <= max_chars:
+                        log_tail = md_path.read_text(encoding="utf-8", errors="replace")
+                    else:
+                        with open(md_path, "rb") as f_tail:
+                            f_tail.seek(-max_chars, 2)
+                            log_tail = f_tail.read().decode("utf-8", errors="replace")
+                except Exception as le:
+                    logger.warning(f"Inline Rule Extractor: failed to read log tail: {le}")
+
+            # 2. Extract rules inline
+            from backend.app.core.rules.dynamic_rule_store import DynamicRuleStore
+            from backend.app.core.rules.rule_extractor_agent import extract_rules_from_failure
+
+            logger.info(f"Inline Rule Extractor: Query failed. Extracting generic rules inline...")
+            rules = extract_rules_from_failure(
+                llm=llm_client,
+                question=question,
+                sql_generated=res.get("agent_answer", "") or res.get("reason", ""),
+                error_or_mismatch=res.get("reason", ""),
+                ground_truth_hint=str(ground_truth)[:200],
+                dataset=dataset,
+                log_tail=log_tail,
+            )
+
+            if rules:
+                store = DynamicRuleStore()
+                new_ids = []
+                for rule in rules:
+                    lid = store.add_rule(
+                        rule_title=rule["rule_title"],
+                        generic_rule=rule["generic_rule"],
+                        intent_pattern=rule["intent_pattern"],
+                        category=rule["category"],
+                        source_failure=f"{dataset}_q{query_id}",
+                        db_name=dataset.upper(),
+                    )
+                    if lid:
+                        new_ids.append(lid)
+                
+                if new_ids:
+                    activated = store.activate_candidates(new_ids)
+                    logger.success(f"Inline Rule Extractor: Dynamically extracted & activated {activated} rules.")
+        except Exception as re_err:
+            logger.warning(f"Inline Rule Extractor: Dynamic rule extraction failed (non-fatal): {re_err}")
+
+    return res

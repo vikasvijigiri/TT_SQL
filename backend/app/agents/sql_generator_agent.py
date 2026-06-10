@@ -12,12 +12,22 @@ from backend.app.core.config import get_prompt_path
 PROMPT_PATH = get_prompt_path("sql_generator.yaml")
 
 # Structural approach directives for diverse candidate generation.
-# Each directive steers the generator toward a structurally different SQL shape,
-# increasing the probability that at least one candidate has the correct grain.
+# Each directive forces a genuinely different SQL shape so the critic can pick the best grain.
 _DIVERSITY_APPROACHES = [
-    "Structure the query using named Common Table Expressions (CTEs) — one CTE per logical step, each named after what it computes.",
-    "Write a direct single-SELECT with inline subqueries and explicit JOINs. Zero CTEs. Minimal intermediate steps.",
-    "Approach from the output grain first: determine exactly what each output row represents, then build the joins and aggregations outward from that grain.",
+    (
+        "Use named CTEs — one CTE per logical step, each named after what it computes. "
+        "This is the baseline approach."
+    ),
+    (
+        "HARD CONSTRAINT: ABSOLUTELY NO CTEs (no WITH clause at all). "
+        "Write a single SELECT using only inline subqueries in FROM or WHERE. "
+        "If your SQL starts with WITH or contains 'AS (SELECT', you have violated this directive."
+    ),
+    (
+        "Start from the final output row: decide exactly what one output row represents, "
+        "then write window functions (ROW_NUMBER, RANK, or DENSE_RANK) to derive it directly. "
+        "Use QUALIFY or a wrapping SELECT with a WHERE on the window result. No CTEs."
+    ),
 ]
 
 
@@ -138,14 +148,19 @@ class SQLGeneratorAgent:
 
         try:
             for i, approach in enumerate(_DIVERSITY_APPROACHES[:n]):
-                directive = (
-                    f"\n\n[STRUCTURAL APPROACH DIRECTIVE — candidate {i + 1}/{n}]:\n"
-                    f"{approach}"
+                # Prepend the directive to the user prompt so it appears BEFORE all other context,
+                # not buried at the end where it gets ignored by the LLM.
+                directive_header = (
+                    f"=== MANDATORY STRUCTURAL DIRECTIVE (candidate {i + 1}/{n}) ===\n"
+                    f"{approach}\n"
+                    f"You MUST follow this directive. Violating it produces a useless duplicate.\n"
+                    f"=== END DIRECTIVE ===\n\n"
                 )
                 try:
                     system_prompt, user_prompt = self._build_prompt(
-                        user_query, linked_schema, base_lessons + directive, intent, table_columns_map
+                        user_query, linked_schema, base_lessons, intent, table_columns_map
                     )
+                    user_prompt = directive_header + user_prompt
                     result = self._call_llm_and_sanitize(system_prompt, user_prompt)
                     if result and result.sql:
                         norm = " ".join(result.sql.split()).upper()

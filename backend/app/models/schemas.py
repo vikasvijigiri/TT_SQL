@@ -45,6 +45,7 @@ class SQLGeneratorOutput(BaseModel):
 class SelfCorrectorOutput(BaseModel):
     error_analysis: Optional[Union[str, List[str]]] = Field(None, validation_alias=AliasChoices("error_analysis", "analysis"), description="Analysis of why the previous SQL threw a database execution error.")
     thought_process: Union[str, List[str]] = Field(default="", validation_alias=AliasChoices("thought_process", "reasoning", "analysis", "thought"), description="Step-by-step logic to resolve the error.")
+    probe_sql: Optional[str] = Field(None, description="Optional SQL query to execute against the database to gather diagnostic evidence (e.g. check table rows, verify columns, query sample values).")
     sql: str = Field(description="The corrected, final executable SQL query.")
 
 class CriticOutput(BaseModel):

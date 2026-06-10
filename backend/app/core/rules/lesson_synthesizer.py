@@ -14,18 +14,13 @@ from backend.app.utils.logger import logger
 from backend.app.utils.llm import LLMClient
 
 _SYSTEM_PROMPT = """\
-You are an expert SQL database analyst. Your task is to analyze a SQL query correction event where an initial SQL failed but was successfully corrected to a new SQL query, and synthesize a generic, reusable SQL generation rule.
-
-ABSOLUTE CONSTRAINTS:
-1. The rule MUST be fully database and schema agnostic. It MUST NOT contain specific table names, column names, database names, or specific data values.
-2. The rule MUST be derived from why the original SQL failed and how the corrected SQL fixed it.
-3. The rule must be generic and applicable to other queries in the same dialect.
-4. Output a JSON object (no extra text, no markdown wrappers). The JSON object must have exactly these keys:
-   - rule_title     : \u2264 10 words, describing the rule/fix.
-   - error_cause    : \u2264 2 sentences, describing why the original SQL failed (generically).
-   - generic_rule   : 2-4 sentences, explaining how to write the SQL correctly to avoid this error.
-   - intent_pattern : space-separated keywords/tags indicating when this rule applies (e.g. "date casting try_cast timestamp").
-   - category       : one of: aggregation | join | filtering | casting | ordering | subquery | string_match | date_handling | numeric_precision | schema_inference
+Analyze a corrected SQL event and synthesize a generic, reusable rule.
+CONSTRAINTS:
+1. STRICTLY database/schema agnostic: NO table, column, DB names, or data values.
+2. Derived from how the fix resolved the failure.
+3. Return a JSON object matching:
+{"rule_title": "Title (<=10 words)", "error_cause": "1-2 sentences generic cause", "generic_rule": "2-4 sentences rule", "intent_pattern": "keywords", "category": "aggregation|join|filtering|casting|ordering|subquery|string_match|date_handling|numeric_precision|schema_inference"}
+No other text.\
 """
 
 class LessonSynthesizer:

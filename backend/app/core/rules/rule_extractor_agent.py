@@ -15,23 +15,13 @@ from typing import List, Dict, Any
 from backend.app.utils.logger import logger
 
 _SYSTEM_PROMPT = """\
-You are a SQL failure analyst. Your only job is to extract SHORT, GENERIC, ACTIONABLE SQL generation rules \
-from a given query failure.
-
-ABSOLUTE CONSTRAINTS — violating any of these means the output will be discarded:
-1. Rules MUST be fully generic. They MUST NOT reference any specific table name, column name, \
-   dataset name, or data value from the failure.
-2. Rules MUST be derived ONLY from the observed failure. No speculation, no invented scenarios.
-3. Each rule must be actionable: a SQL-writing instruction that prevents this class of failure.
-4. Output a JSON array (no extra text). Each element must have exactly these keys:
-   - rule_title     : ≤ 10 words, descriptive
-   - generic_rule   : 2–4 sentences, fully generic, no specific names
-   - intent_pattern : space-separated keywords that identify when this rule applies \
-     (e.g. "aggregation group-by distinct count join duplication")
-   - category       : one of aggregation | join | filtering | casting | ordering | \
-     subquery | string_match | date_handling | numeric_precision | schema_inference
-
-Return 1 or 2 rules maximum. If the failure has no clear learnable SQL pattern, return an empty array [].\
+Extract 1-2 SHORT, GENERIC, ACTIONABLE SQL rules from query failures.
+CONSTRAINTS:
+1. STRICTLY generic: NO specific table/column/dataset names or data values of anysort etc.
+2. Derived ONLY from the failure. No speculation.
+3. Return a JSON array matching:
+[{"rule_title": "Title (<=10 words)", "generic_rule": "2-4 sentences rule", "intent_pattern": "keywords", "category": "aggregation|join|filtering|casting|ordering|subquery|string_match|date_handling|numeric_precision|schema_inference"}]
+No other text. Return [] if no rule is learnable.\
 """
 
 
@@ -42,6 +32,7 @@ def extract_rules_from_failure(
     error_or_mismatch: str,
     ground_truth_hint: str = "",
     dataset: str = "",
+    log_tail: str = "",
 ) -> List[Dict[str, Any]]:
     """
     Call the LLM to extract candidate rules from a single query failure.
@@ -53,6 +44,7 @@ def extract_rules_from_failure(
         error_or_mismatch: the evaluator's failure reason string
         ground_truth_hint: optional snippet of the ground truth (truncated for safety)
         dataset: dataset name (for context only, not to be used in rules)
+        log_tail: optional log tail containing recent execution logs
 
     Returns:
         List of rule dicts validated against the required schema.
@@ -61,9 +53,14 @@ def extract_rules_from_failure(
         "=== QUERY FAILURE REPORT ===\n\n"
         f"Question: {question[:400]}\n"
         f"Dataset type: {dataset}\n"
-        f"SQL produced:\n{sql_generated[:1500]}\n\n"
-        f"Failure reason: {error_or_mismatch[:600]}\n"
     )
+    if log_tail:
+        user_prompt += f"=== RECENT EXECUTION LOG TRACE ===\n{log_tail}\n\n"
+    else:
+        user_prompt += (
+            f"SQL produced:\n{sql_generated[:1500]}\n\n"
+            f"Failure reason: {error_or_mismatch[:600]}\n"
+        )
     if ground_truth_hint:
         user_prompt += f"Ground truth hint (truncated): {ground_truth_hint[:250]}\n"
     user_prompt += (

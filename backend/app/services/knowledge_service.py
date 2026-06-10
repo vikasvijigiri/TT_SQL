@@ -1,9 +1,33 @@
 import os
+import re
 import time
 import requests
 from typing import Dict, Tuple
 
 from backend.app.utils.logger import logger
+
+# Patterns that indicate a term is a DB schema concept, not a web-searchable entity.
+# Web lookup would always fail for these and wastes several seconds per query.
+_SCHEMA_CONCEPT_RE = re.compile(
+    r'\b(count|number|id|ids|flag|rate|score|star[s]?|total|avg|sum|'
+    r'mean|median|index|rank|pct|percent|ratio|proportion|'
+    r'metric|value|amount|quantity|price|cost|size|length|weight)\b',
+    re.IGNORECASE,
+)
+
+
+def _is_schema_concept(term: str) -> bool:
+    """Return True when a term is a DB-intrinsic concept that won't have a web article."""
+    # Underscore or camelCase → column/attribute name
+    if '_' in term or re.search(r'[a-z][A-Z]', term):
+        return True
+    # Contains a DB metric keyword
+    if _SCHEMA_CONCEPT_RE.search(term):
+        return True
+    # Single token under 20 chars with no spaces → likely a column alias
+    if ' ' not in term.strip() and len(term.strip()) < 20:
+        return True
+    return False
 
 # Simple in-memory TTL cache: term -> (result_str, expiry_timestamp)
 _KNOWLEDGE_CACHE: Dict[str, Tuple[str, float]] = {}
@@ -109,6 +133,15 @@ class WebKnowledgeService:
             if now < expiry:
                 logger.debug(f"[WebKnowledgeService] Cache hit for '{term}'.")
                 return cached_val
+
+        if _is_schema_concept(term):
+            result = (
+                f"Note: '{term}' is a database-specific concept. "
+                f"Use schema introspection and regex/string functions to interpret it — web search is not applicable."
+            )
+            logger.info(f"[WebKnowledgeService] Skipping web lookup for schema concept: '{term}'")
+            _KNOWLEDGE_CACHE[cache_key] = (result, now + _CACHE_TTL_S)
+            return result
 
         if _cb_is_open():
             return f"Note: External knowledge circuit breaker open. '{term}' lookup skipped."

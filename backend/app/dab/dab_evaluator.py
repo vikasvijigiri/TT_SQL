@@ -164,19 +164,35 @@ def load_agent_answer(dataset: str, query_id: str) -> Optional[str]:
     return None
 
 
-def compute_accuracy(queries: List[Dict[str, Any]]) -> Dict[str, Any]:
+def compute_accuracy(queries: List[Dict[str, Any]], max_runs: int = 5) -> Dict[str, Any]:
     """
-    Compute Pass@1 accuracy across all evaluated queries.
-    
+    Compute Pass@1 and Pass@K accuracy across all evaluated queries.
+
+    Definitions (matching the DAB benchmark standard):
+      pass@1 = (total passing run-slots) / (total run-slots evaluated)
+               i.e. the run-level success rate averaged over ALL independent runs.
+               Example: bookreview 3 queries x 5 runs = 15 slots; if 14 pass -> 93.3%
+
+      pass@K = (queries where ANY of the K runs passed) / (queries evaluated)
+               i.e. query-level: did the system get it right at least once?
+
+    K is auto-detected from how many _run{n}_eval.json files exist on disk.
+    A query is "pending" if run-0 eval file does not exist yet.
+
     Args:
         queries: List of query dicts from benchmark_loader.load_all_queries()
-        
-    Returns:
-        Overall and per-dataset accuracy metrics
+        max_runs: Upper bound for scanning _run{n} files (default 5).
     """
-    total = 0
-    passed_total = 0
+    total_queries = 0
     pending = 0
+
+    # Run-level tallies (for pass@1 = slot-level success rate)
+    total_run_slots = 0
+    passing_run_slots = 0
+
+    # Query-level tallies (for pass@K)
+    queries_with_any_pass = 0
+
     per_dataset: Dict[str, Dict] = {}
 
     for q in queries:
@@ -185,18 +201,22 @@ def compute_accuracy(queries: List[Dict[str, Any]]) -> Dict[str, Any]:
 
         if dataset not in per_dataset:
             per_dataset[dataset] = {
-                "total": 0,
-                "passed": 0,
-                "failed": 0,
+                "total": 0,           # queries
                 "pending": 0,
+                "evaluated": 0,
+                "run_slots": 0,       # total run slots (queries x K)
+                "passing_slots": 0,   # slots that passed
+                "passed_atk": 0,      # queries with any passing run
                 "queries": [],
             }
 
-        eval_result = load_eval_result(dataset, qid)
         per_dataset[dataset]["total"] += 1
-        total += 1
+        total_queries += 1
 
-        if eval_result is None:
+        # Load run 0 (canonical)
+        run0 = load_eval_result(dataset, qid, run_suffix="")
+
+        if run0 is None:
             per_dataset[dataset]["pending"] += 1
             pending += 1
             per_dataset[dataset]["queries"].append({
@@ -204,38 +224,103 @@ def compute_accuracy(queries: List[Dict[str, Any]]) -> Dict[str, Any]:
                 "status": "pending",
                 "passed": None,
             })
-        else:
-            p = eval_result.get("passed", False)
-            if p:
-                per_dataset[dataset]["passed"] += 1
-                passed_total += 1
-            else:
-                per_dataset[dataset]["failed"] += 1
-            per_dataset[dataset]["queries"].append({
-                "query_id": qid,
-                "status": "evaluated",
-                "passed": p,
-                "reason": eval_result.get("reason", ""),
-                "elapsed_s": eval_result.get("elapsed_s"),
-                "input_tokens": eval_result.get("input_tokens"),
-                "output_tokens": eval_result.get("output_tokens"),
-            })
+            continue
 
-    evaluated = total - pending
-    accuracy = (passed_total / evaluated) if evaluated > 0 else 0.0
+        # Collect all runs: run0 + _run1 ... _run{max_runs-1}
+        run_results = [run0]
+        for r in range(1, max_runs):
+            extra = load_eval_result(dataset, qid, run_suffix=f"_run{r}")
+            if extra is None:
+                break
+            run_results.append(extra)
 
-    total_time = sum(q.get("elapsed_s") for ds in per_dataset.values() for q in ds["queries"] if q.get("elapsed_s") is not None)
-    total_input_tokens = sum(q.get("input_tokens") for ds in per_dataset.values() for q in ds["queries"] if q.get("input_tokens") is not None)
-    total_output_tokens = sum(q.get("output_tokens") for ds in per_dataset.values() for q in ds["queries"] if q.get("output_tokens") is not None)
+        k = len(run_results)
+        passing = sum(1 for rv in run_results if rv.get("passed", False))
+        any_pass = passing > 0
+
+        # Run-level tallies
+        total_run_slots += k
+        passing_run_slots += passing
+        per_dataset[dataset]["run_slots"] += k
+        per_dataset[dataset]["passing_slots"] += passing
+        per_dataset[dataset]["evaluated"] += 1
+
+        if any_pass:
+            queries_with_any_pass += 1
+            per_dataset[dataset]["passed_atk"] += 1
+
+        # Per-run breakdown for reporting
+        runs_detail = [
+            {
+                "run": i,
+                "passed": bool(rv.get("passed", False)),
+                "reason": (rv.get("reason") or "")[:120],
+            }
+            for i, rv in enumerate(run_results)
+        ]
+
+        per_dataset[dataset]["queries"].append({
+            "query_id": qid,
+            "status": "evaluated",
+            "num_runs": k,
+            "passing_runs": passing,
+            "passed_atk": any_pass,
+            "runs": runs_detail,
+            "reason": run0.get("reason", ""),
+            "elapsed_s": run0.get("elapsed_s"),
+            "input_tokens": run0.get("input_tokens"),
+            "output_tokens": run0.get("output_tokens"),
+        })
+
+    evaluated_queries = total_queries - pending
+
+    # Global K = max runs seen across any evaluated query
+    global_k = max(
+        (len(q.get("runs") or []) for ds in per_dataset.values() for q in ds["queries"] if q.get("runs")),
+        default=1,
+    )
+
+    # pass@1 = run-slot success rate (Claude's definition)
+    pass_at_1 = (passing_run_slots / total_run_slots) if total_run_slots > 0 else 0.0
+    # pass@K = query-level any-run success rate
+    pass_at_k = (queries_with_any_pass / evaluated_queries) if evaluated_queries > 0 else 0.0
+
+    # Per-dataset pass@1 and pass@K
+    for ds_info in per_dataset.values():
+        slots = ds_info["run_slots"]
+        passing_s = ds_info["passing_slots"]
+        evaled = ds_info["evaluated"]
+        atk = ds_info["passed_atk"]
+        ds_info["pass_at_1"] = round(passing_s / slots, 4) if slots > 0 else 0.0
+        ds_info["pass_at_1_pct"] = f"{passing_s/slots*100:.1f}%" if slots > 0 else "N/A"
+        ds_info["pass_at_k"] = round(atk / evaled, 4) if evaled > 0 else 0.0
+        ds_info["pass_at_k_pct"] = f"{atk/evaled*100:.1f}%" if evaled > 0 else "N/A"
+
+    total_time = sum(
+        q.get("elapsed_s") for ds in per_dataset.values()
+        for q in ds["queries"] if q.get("elapsed_s") is not None
+    )
+    total_input_tokens = sum(
+        q.get("input_tokens") for ds in per_dataset.values()
+        for q in ds["queries"] if q.get("input_tokens") is not None
+    )
+    total_output_tokens = sum(
+        q.get("output_tokens") for ds in per_dataset.values()
+        for q in ds["queries"] if q.get("output_tokens") is not None
+    )
 
     return {
-        "total_queries": total,
-        "evaluated": evaluated,
+        "total_queries": total_queries,
+        "evaluated": evaluated_queries,
         "pending": pending,
-        "passed": passed_total,
-        "failed": evaluated - passed_total,
-        "pass_at_1": round(accuracy, 4),
-        "pass_at_1_pct": f"{accuracy * 100:.1f}%",
+        "total_run_slots": total_run_slots,
+        "passing_run_slots": passing_run_slots,
+        "queries_passed_atk": queries_with_any_pass,
+        "num_runs": global_k,
+        "pass_at_1": round(pass_at_1, 4),
+        "pass_at_1_pct": f"{pass_at_1 * 100:.1f}%",
+        "pass_at_k": round(pass_at_k, 4),
+        "pass_at_k_pct": f"{pass_at_k * 100:.1f}%",
         "total_elapsed_time_s": round(total_time, 2),
         "total_input_tokens": total_input_tokens,
         "total_output_tokens": total_output_tokens,
@@ -253,3 +338,4 @@ if __name__ == "__main__":
     queries = load_all_queries(dab_repo)
     metrics = compute_accuracy(queries)
     print(json.dumps(metrics, indent=2))
+

@@ -198,6 +198,63 @@ class SemanticDINOrchestrator:
             logger.info(f"[JoinGraph] Injecting join paths for {len(linked_schema.selected_tables)} selected tables.")
             lessons_context += f"\n\n{join_graph}"
 
+        # Cross-table join probe — discover live join sizes across ALL schema tables,
+        # not just selected ones.  SchemaLinker may have excluded a table that turns
+        # out to be the correct join anchor (e.g. a narrow join reveals the real data
+        # universe).  Probe all tables so we can add missing ones to linked_schema
+        # before the SQL generator runs.
+        _unconditional_narrow_joins: list = []   # persisted across the try block
+        try:
+            _all_schema_tables = self.schema_explorer._extract_table_names(full_schema_str)
+            _probe_scope = list(dict.fromkeys(
+                linked_schema.selected_tables + _all_schema_tables
+            ))  # selected tables first so they get priority in the cap
+            if len(_probe_scope) >= 2:
+                _join_probe_text = self.schema_explorer._probe_cross_table_joins(
+                    _probe_scope, self.executor
+                )
+                if _join_probe_text and "(no shared column names found" not in _join_probe_text:
+                    lessons_context += (
+                        f"\n\nCROSS-TABLE JOIN SIZES (live data probes):\n"
+                        f"{_join_probe_text}"
+                    )
+                    logger.info("[JoinProbe] Live join sizes injected into context.")
+                    # Amend linked_schema with any narrow-join tables excluded by SchemaLinker
+                    _narrow = self.schema_explorer.extract_narrow_join_tables(_join_probe_text)
+                    _unconditional_narrow_joins = _narrow   # persist for post-StrategyRouter override
+                    for _ta, _tb, _col in _narrow:
+                        for _t in (_ta, _tb):
+                            if _t not in linked_schema.selected_tables:
+                                try:
+                                    _dialect = getattr(self.executor, "dialect", "sqlite")
+                                    _q = '"' if _dialect in ("sqlite", "postgres", "duckdb") else "`"
+                                    if _dialect in ("sqlite", "duckdb"):
+                                        _csql = f"PRAGMA table_info({_q}{_t}{_q})"
+                                    else:
+                                        _csql = (
+                                            f"SELECT column_name FROM information_schema.columns "
+                                            f"WHERE table_name='{_t}' ORDER BY ordinal_position"
+                                        )
+                                    _ok, _, _cdata = self.executor.execute_direct(_csql)
+                                    if _ok and _cdata:
+                                        _cols = [
+                                            list(r.values())[1] if len(r) > 1 else list(r.values())[0]
+                                            for r in _cdata
+                                        ]
+                                        linked_schema.selected_tables.append(_t)
+                                        for _c in _cols:
+                                            _fqn = f"{_t}.{_c}"
+                                            if _fqn not in linked_schema.selected_columns:
+                                                linked_schema.selected_columns.append(_fqn)
+                                        logger.info(
+                                            f"[JoinProbe] Added narrow-join table '{_t}' "
+                                            f"({len(_cols)} cols) to linked schema."
+                                        )
+                                except Exception as _ne:
+                                    logger.debug(f"[JoinProbe] Could not add '{_t}': {_ne}")
+        except Exception as _jpe:
+            logger.debug(f"[JoinProbe] probe failed (non-fatal): {_jpe}")
+
         table_columns_map = {}
         if linked_schema and linked_schema.selected_columns:
             for fqn in linked_schema.selected_columns:
@@ -260,6 +317,41 @@ class SemanticDINOrchestrator:
                     description_text=None,
                 )
 
+                # 2b. Amend linked_schema with tables that appear in narrow joins but
+                #     were excluded by SchemaLinker (which ran before SchemaExplorer).
+                #     Without this, the SQL Generator never sees the join anchor.
+                _narrow_joins = self.schema_explorer.extract_narrow_join_tables(exploration)
+                for _ta, _tb, _col in _narrow_joins:
+                    for _t in (_ta, _tb):
+                        if _t not in linked_schema.selected_tables:
+                            try:
+                                _dialect = getattr(self.executor, "dialect", "sqlite")
+                                _q = '"' if _dialect in ("sqlite", "postgres", "duckdb") else "`"
+                                if _dialect in ("sqlite", "duckdb"):
+                                    _csql = f"PRAGMA table_info({_q}{_t}{_q})"
+                                else:
+                                    _csql = (
+                                        f"SELECT column_name FROM information_schema.columns "
+                                        f"WHERE table_name='{_t}' ORDER BY ordinal_position"
+                                    )
+                                _ok, _, _cdata = self.executor.execute_direct(_csql)
+                                if _ok and _cdata:
+                                    _cols = [
+                                        list(r.values())[1] if len(r) > 1 else list(r.values())[0]
+                                        for r in _cdata
+                                    ]
+                                    linked_schema.selected_tables.append(_t)
+                                    for _c in _cols:
+                                        _fqn = f"{_t}.{_c}"
+                                        if _fqn not in linked_schema.selected_columns:
+                                            linked_schema.selected_columns.append(_fqn)
+                                    logger.info(
+                                        f"[NarrowJoinAmend] Added '{_t}' ({len(_cols)} cols) "
+                                        f"to linked schema."
+                                    )
+                            except Exception as _nje:
+                                logger.debug(f"[NarrowJoinAmend] Could not amend '{_t}': {_nje}")
+
                 # 3. LLM decides execution strategy
                 strategy = self.strategy_router.route(
                     question=user_query,
@@ -267,6 +359,25 @@ class SemanticDINOrchestrator:
                     feasibility=feasibility,
                     exploration=exploration,
                 )
+
+                # 3b. If narrow joins were detected, mandate their use in enriched_context.
+                # The StrategyRouter LLM may output guidance that contradicts the narrow join
+                # (e.g. "use contents.sample_path") — override here so the SQL Generator
+                # cannot miss the correct join anchor.
+                _nj_for_override = _narrow_joins or _unconditional_narrow_joins
+                if _nj_for_override and strategy.get("strategy") in ("enriched_sql", "direct_sql"):
+                    _anchor_lines = []
+                    for _ta, _tb, _oc in _nj_for_override:
+                        _anchor_lines.append(
+                            f"## Narrow-Join Anchor (verified by live data probe)\n"
+                            f"- **Required FROM:** `FROM \"{_ta}\" a JOIN \"{_tb}\" b ON a.\"{_oc}\" = b.\"{_oc}\"`\n"
+                            f"- Scanning `{_ta}` alone or `{_tb}` alone returns WRONG results\n"
+                            f"- Use `{_tb}` columns for path/key filters, not `{_ta}` sample columns\n"
+                            f"- This join defines the only valid data universe for this query"
+                        )
+                    # REPLACE enriched_context — do not append after conflicting guidance
+                    strategy["enriched_context"] = "\n\n".join(_anchor_lines)
+                    logger.info("[NarrowJoinOverride] Narrow join anchor REPLACED enriched_context.")
 
                 strat = strategy["strategy"]
                 logger.info(f"[DiagnosticLayer] Strategy selected: {strat}")
@@ -297,9 +408,11 @@ class SemanticDINOrchestrator:
                         )
 
                 else:
-                    # enriched_sql or fallback direct_sql — inject context
+                    # enriched_sql or fallback direct_sql — inject context.
+                    # Always inject exploration when it exists so schema-gap queries see live
+                    # sample data even when enriched_context is empty.
                     enriched = strategy.get("enriched_context", "")
-                    if enriched:
+                    if enriched or exploration:
                         lessons_context += (
                             f"\n\nDIAGNOSTIC CONTEXT (schema gap analysis):\n{enriched}\n"
                             f"\nEXPLORATION FINDINGS:\n{exploration}\n"
@@ -698,6 +811,51 @@ class SemanticDINOrchestrator:
                     table_columns=table_columns_map if unpruned_tables == linked_schema.selected_tables else None,
                     intent=intent
                 )
+                
+                # Dynamic probing loop to let Corrector inspect database values or schema dynamically
+                probe_limit = 2
+                probe_count = 0
+                while getattr(correction, "probe_sql", None) and probe_count < probe_limit:
+                    probe_count += 1
+                    probe_query = correction.probe_sql.strip()
+                    logger.info(f"Self-Corrector requested database probe SQL (probe {probe_count}/{probe_limit}): {probe_query}")
+                    
+                    probe_success, probe_msg, probe_rows = self.executor.execute(probe_query, f"{instance_id}_corrector_probe_{probe_count}")
+                    
+                    probe_preview = "No result returned."
+                    if probe_success:
+                        probe_csv_path = os.path.join(str(RESULTS_DIR), self.db_name, f"{instance_id}_corrector_probe_{probe_count}.csv")
+                        if os.path.exists(probe_csv_path):
+                            try:
+                                df_probe = pd.read_csv(probe_csv_path)
+                                probe_preview = self._safe_markdown_preview(df_probe, max_rows=5)
+                            except Exception as pe:
+                                probe_preview = f"Failed to format probe output: {pe}"
+                    else:
+                        probe_preview = f"Probe execution failed: {probe_msg}"
+                    
+                    logger.info(f"Probe Result:\n{probe_preview}")
+                    
+                    # Update error_context with probe outcomes
+                    error_context += (
+                        f"\n\n[DIAGNOSTIC DATABASE PROBE {probe_count} RESULT]\n"
+                        f"PROBE SQL: {probe_query}\n"
+                        f"PROBE OUTPUT:\n{probe_preview}"
+                    )
+                    
+                    # Call corrector again with updated error context containing probe evidence
+                    correction = self.corrector.correct_sql(
+                        user_query=user_query,
+                        failed_sql=current_sql,
+                        error_message=error_context,
+                        linked_schema=linked_schema,
+                        schema_context=correction_context,
+                        lessons=correction_lessons,
+                        relevant_tables=unpruned_tables,
+                        table_columns=table_columns_map if unpruned_tables == linked_schema.selected_tables else None,
+                        intent=intent
+                    )
+                
                 current_sql = correction.sql
                 last_correction_thought = correction.thought_process
             
@@ -743,10 +901,98 @@ class SemanticDINOrchestrator:
         return "[CORRECTION STRATEGY]: All targeted corrections have failed. Completely rewrite the SQL from scratch using the most minimal approach possible — fewest JOINs and filters first."
 
     def _safeguard_lessons(self, lessons_context: str) -> str:
-        if len(lessons_context) > 6000:
-            logger.info("Token Safeguard: Condensing context by keeping only the most recent core lessons.")
-            return lessons_context[:2000] + "\n\n... [TRUNCATED FOR TOKEN CONVERGENCE] ...\n\n" + lessons_context[-3500:]
-        return lessons_context
+        if len(lessons_context) <= 6000:
+            return lessons_context
+
+        logger.info("Token Safeguard: Condensing context intelligently by section parsing.")
+        
+        # Split lessons_context into structural blocks
+        blocks = lessons_context.split("\n\n")
+        pruned_blocks = []
+        
+        for block in blocks:
+            block_stripped = block.strip()
+            if not block_stripped:
+                continue
+            
+            # 1. Prune Dialect Rules: keep only first 5 rules
+            if block_stripped.startswith("=== DIALECT RULES ==="):
+                lines = block_stripped.split("\n")
+                header = lines[0]
+                rules = [l for l in lines[1:] if l.strip().startswith("-")]
+                if len(rules) > 5:
+                    logger.info(f"Token Safeguard: Pruned dialect rules from {len(rules)} to 5.")
+                    rules = rules[:5]
+                pruned_blocks.append(header + "\n" + "\n".join(rules))
+            
+            # 2. Prune Dynamically Retrieved Lessons: keep only first 3 rules
+            elif block_stripped.startswith("=== DYNAMICALLY RETRIEVED LESSONS FROM HISTORICAL RUNS ==="):
+                lines = block_stripped.split("\n")
+                header = lines[0]
+                rule_blocks = []
+                current_rule = []
+                for line in lines[1:]:
+                    if line.strip().startswith("RULE:") and current_rule:
+                        rule_blocks.append("\n".join(current_rule))
+                        current_rule = [line]
+                    else:
+                        current_rule.append(line)
+                if current_rule:
+                    rule_blocks.append("\n".join(current_rule))
+                
+                if len(rule_blocks) > 3:
+                    logger.info(f"Token Safeguard: Pruned historical lessons from {len(rule_blocks)} to 3.")
+                    rule_blocks = rule_blocks[:3]
+                pruned_blocks.append(header + "\n\n" + "\n\n".join(rule_blocks))
+            
+            # 3. Prune External Knowledge sections: limit to max 1200 characters on clean sentence boundary
+            elif "EXTERNAL KNOWLEDGE" in block_stripped:
+                # Find the header/label lines
+                lines = block_stripped.split("\n")
+                header_lines = []
+                content_lines = []
+                for line in lines:
+                    if line.isupper() or (":" in line and len(line) < 50):
+                        header_lines.append(line)
+                    else:
+                        content_lines.append(line)
+                
+                content = "\n".join(content_lines)
+                if len(content) > 1200:
+                    logger.info(f"Token Safeguard: Pruned external knowledge block from {len(content)} chars.")
+                    truncated = content[:1200]
+                    # Try to terminate on a clean sentence boundary
+                    last_period = max(truncated.rfind("."), truncated.rfind("?"), truncated.rfind("!"))
+                    if last_period > 600:
+                        truncated = truncated[:last_period + 1]
+                    else:
+                        truncated += " ..."
+                    content = truncated
+                pruned_blocks.append("\n".join(header_lines) + "\n" + content)
+            
+            # 4. Keep structural blocks (join paths, profiling, CTE plans, strategies) intact
+            else:
+                pruned_blocks.append(block_stripped)
+                
+        condensed = "\n\n".join(pruned_blocks)
+        
+        # If still over limit, do a fallback cleanup: drop external knowledge or general hints first,
+        # but always preserve database schema / join graph / strategies
+        if len(condensed) > 6000:
+            logger.info("Token Safeguard: Condensed context still above limit. Running fallback pruning.")
+            # Let's filter out non-essential blocks to fit the token budget
+            essential_blocks = []
+            for block in pruned_blocks:
+                # Essential: join paths, CTE plan, strategy, profiling
+                if any(x in block for x in ("JOIN PATHS", "FOREIGN KEYS", "DYNAMIC PROFILING", "BLUEPRINT", "STRATEGY")):
+                    essential_blocks.append(block)
+                # Keep dialect rules but restrict to top 3
+                elif "=== DIALECT RULES ===" in block:
+                    lines = block.split("\n")
+                    essential_blocks.append(lines[0] + "\n" + "\n".join(lines[1:4]))
+            condensed = "\n\n".join(essential_blocks)
+            
+        return condensed
 
 if __name__ == "__main__":
     print("Semantic DIN-SQL Orchestrator. Use run_batch.py or run_random_eval.py to execute queries.")

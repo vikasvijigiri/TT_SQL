@@ -5,9 +5,12 @@ When the FeasibilityAgent detects a gap (a question concept with no schema colum
 SchemaExplorer runs lightweight, zero-LLM introspection to understand the data:
 
   1. SELECT DISTINCT on every column of every relevant table (up to 50 values each)
-  2. SELECT sample rows (10–20) from relevant tables
-  3. Read any hint / description files provided by the caller
-  4. Summarise raw findings as plain text for StrategyRouter
+  2. Cross-table join probes — discover which table pairs share columns and whether
+     the join is narrow (much smaller than either table alone).  Narrow joins define
+     the true queryable universe and must be used as the SQL anchor.
+  3. SELECT sample rows (10–20) from relevant tables
+  4. Read any hint / description files provided by the caller
+  5. Summarise raw findings as plain text for StrategyRouter
 
 All of this is deterministic SQL + file I/O — no LLM call, no hardcoding.
 The analyst pattern: "before deciding how to query, look at the data."
@@ -30,6 +33,8 @@ class SchemaExplorer:
     MAX_DISTINCT_VALUES = 50
     MAX_SAMPLE_ROWS = 20
     MAX_TEXT_SAMPLE_CHARS = 120   # truncate long text fields in display
+    MAX_JOIN_PROBES = 30          # cap total join probes to avoid excessive queries
+    NARROW_JOIN_THRESHOLD = 0.1   # join < 10 % of smaller table = narrow join
 
     def explore(
         self,
@@ -61,12 +66,20 @@ class SchemaExplorer:
         if distinct_section:
             sections.append(f"=== COLUMN VALUE SAMPLES ===\n{distinct_section}")
 
-        # 4. Sample rows (understand text field content)
+        # 4. Cross-table join probes — discover shared keys and narrow joins.
+        #    A narrow join (join rows << either table size) means the joined view IS
+        #    the meaningful data universe; queries must anchor on it, not on either
+        #    table alone.  This is discovered dynamically from actual column overlap.
+        join_section = self._probe_cross_table_joins(tables, executor)
+        if join_section:
+            sections.append(f"=== CROSS-TABLE JOIN PROBES ===\n{join_section}")
+
+        # 5. Sample rows (understand text field content)
         sample_section = self._probe_sample_rows(tables, executor)
         if sample_section:
             sections.append(f"=== SAMPLE ROWS ===\n{sample_section}")
 
-        # 5. Summarise gap concepts against what was found
+        # 6. Summarise gap concepts against what was found
         gap_note = (
             f"=== GAP ANALYSIS ===\n"
             f"The question requires: {', '.join(gap_concepts)}\n"
@@ -145,6 +158,129 @@ class SchemaExplorer:
 
         return "\n".join(lines) if lines else "(no distinct value data)"
 
+    def _probe_cross_table_joins(self, tables: list[str], executor) -> str:
+        """
+        Dynamically discover cross-table relationships by:
+          1. Fetching column names for every table.
+          2. Finding all pairs that share at least one column name.
+          3. Running COUNT(*) for each shared-column JOIN.
+          4. Flagging narrow joins where the result is much smaller than either
+             table alone — those joins define the real queryable universe.
+
+        Fully generic: no column names, table names, or schema assumptions are
+        hardcoded. Works for any dialect (sqlite, duckdb, postgres).
+        """
+        dialect = getattr(executor, "dialect", "sqlite")
+        quote = '"' if dialect in ("sqlite", "postgres", "duckdb") else "`"
+
+        # --- collect column names and row counts per table ---
+        table_cols: dict[str, list[str]] = {}   # table → [original-case col names]
+        table_size: dict[str, int] = {}
+
+        for table in tables:
+            try:
+                col_sql = self._columns_query(table, dialect, quote)
+                ok, _, col_data = executor.execute_direct(col_sql)
+                if not ok or not col_data:
+                    continue
+                cols = [
+                    list(r.values())[1] if len(r) > 1 else list(r.values())[0]
+                    for r in col_data
+                ]
+                table_cols[table] = cols
+            except Exception:
+                continue
+
+            try:
+                ok2, _, cnt_rows = executor.execute_direct(
+                    f"SELECT COUNT(*) FROM {quote}{table}{quote}"
+                )
+                if ok2 and cnt_rows:
+                    table_size[table] = int(list(cnt_rows[0].values())[0])
+            except Exception:
+                pass
+
+        if len(table_cols) < 2:
+            return ""
+
+        lines: list[str] = []
+        probes_run = 0
+        table_list = list(table_cols.keys())
+
+        for i, ta in enumerate(table_list):
+            for tb in table_list[i + 1:]:
+                if probes_run >= self.MAX_JOIN_PROBES:
+                    lines.append(f"  (join probe cap of {self.MAX_JOIN_PROBES} reached)")
+                    break
+
+                # Case-insensitive column name overlap
+                cols_a_lower = {c.lower(): c for c in table_cols[ta]}
+                cols_b_lower = {c.lower(): c for c in table_cols[tb]}
+                shared_lower = sorted(set(cols_a_lower) & set(cols_b_lower))
+
+                if not shared_lower:
+                    continue
+
+                for col_lower in shared_lower:
+                    if probes_run >= self.MAX_JOIN_PROBES:
+                        break
+
+                    col_a = cols_a_lower[col_lower]   # original case from table A
+                    col_b = cols_b_lower[col_lower]   # original case from table B
+
+                    try:
+                        join_sql = (
+                            f"SELECT COUNT(*) "
+                            f"FROM {quote}{ta}{quote} a "
+                            f"JOIN {quote}{tb}{quote} b "
+                            f"ON a.{quote}{col_a}{quote} = b.{quote}{col_b}{quote}"
+                        )
+                        ok, _, rows = executor.execute_direct(join_sql)
+                        if not ok or not rows:
+                            continue
+                        join_count = int(list(rows[0].values())[0])
+                        probes_run += 1
+
+                        size_a = table_size.get(ta)
+                        size_b = table_size.get(tb)
+
+                        size_note = ""
+                        if size_a is not None and size_b is not None:
+                            size_note = f" (table sizes: {ta}={size_a:,}, {tb}={size_b:,})"
+                            min_size = min(size_a, size_b)
+                            if min_size > 0:
+                                ratio = join_count / min_size
+                                if ratio < self.NARROW_JOIN_THRESHOLD:
+                                    size_note += (
+                                        f"\n    *** NARROW JOIN ({ratio:.1%} of smaller table) — "
+                                        f"CRITICAL: this join defines the real data universe. "
+                                        f"Queries MUST anchor on "
+                                        f"'{ta} JOIN {tb} ON {col_a}={col_b}' "
+                                        f"NOT on either table scanned alone. ***"
+                                    )
+                                elif join_count < min_size:
+                                    size_note += f"  (selective join, {ratio:.1%} of smaller table)"
+
+                        lines.append(
+                            f"  {ta}.{col_a} = {tb}.{col_b}: "
+                            f"{join_count:,} joined rows{size_note}"
+                        )
+
+                    except Exception as e:
+                        logger.debug(f"[SchemaExplorer] join probe {ta}×{tb} on {col_lower}: {e}")
+                        continue
+
+        if not lines:
+            return "(no shared column names found between tables — tables appear independent)"
+
+        header = (
+            "Each line shows how two tables connect via a shared column and "
+            "how many rows the join produces.\n"
+            "NARROW JOINs (marked ***) are the correct anchors for multi-table queries — "
+            "scanning either table alone gives the wrong universe.\n"
+        )
+        return header + "\n".join(lines)
+
     def _probe_sample_rows(self, tables: list[str], executor) -> str:
         lines: list[str] = []
         dialect = getattr(executor, "dialect", "sqlite")
@@ -166,6 +302,37 @@ class SchemaExplorer:
                 continue
 
         return "\n".join(lines) if lines else "(no sample row data)"
+
+    # ------------------------------------------------------------------
+    # Narrow-join extraction (used by callers to amend linked schema)
+    # ------------------------------------------------------------------
+
+    @staticmethod
+    def extract_narrow_join_tables(exploration: str) -> list[tuple[str, str, str]]:
+        """
+        Parse the exploration report and return (table_a, table_b, shared_col)
+        for every NARROW JOIN found.  Callers use this to add the missing table
+        to the linked schema BEFORE SQL generation so the generator can use the
+        correct join anchor.
+        """
+        import re
+        results: list[tuple[str, str, str]] = []
+        # Match the join line followed IMMEDIATELY by the *** NARROW JOIN marker.
+        # Format:
+        #   "  table_a.col_a = table_b.col_b: N joined rows ...\n"
+        #   "    *** NARROW JOIN ..."
+        # CRITICAL: no intermediate lines allowed between the join line and the marker.
+        # Allowing intermediate lines causes the regex to match the WRONG table pair
+        # (e.g. commit × files when the marker is actually for contents × files).
+        pattern = re.compile(
+            r"^\s{2}(\w+)\.(\w+)\s*=\s*(\w+)\.(\w+):\s*[\d,]+\s*joined rows[^\n]*\n"
+            r"[ \t]*\*\*\*\s*NARROW JOIN",
+            re.MULTILINE,
+        )
+        for m in pattern.finditer(exploration):
+            table_a, col_a, table_b, _col_b = m.group(1), m.group(2), m.group(3), m.group(4)
+            results.append((table_a, table_b, col_a))
+        return results
 
     # ------------------------------------------------------------------
     # Helpers
