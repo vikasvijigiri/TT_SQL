@@ -25,7 +25,7 @@ sys.path.insert(0, str(ROOT_DIR))
 
 from backend.app.dab.benchmark_loader import load_all_queries, summarize_queries
 from backend.app.dab.dab_orchestrator import run_dab_query, DAB_RESULTS_DIR
-from backend.app.dab.dab_evaluator import compute_accuracy, load_eval_result
+from backend.app.dab.dab_evaluator import compute_accuracy
 from backend.app.utils.llm import LLMClient
 from backend.app.core.config import DAB_REPO
 
@@ -46,9 +46,15 @@ def run_all(
     dataset_filter: Optional[str] = None,
     query_id_filter: Optional[str] = None,
     force_rerun: bool = False,
+    num_runs: int = 1,
 ) -> List[Dict[str, Any]]:
-    """Run all (or filtered) queries and return results."""
-    
+    """Run all (or filtered) queries and return results.
+
+    num_runs: how many independent runs per query (default 1).
+    Run 0 saves to canonical files; runs 1..N-1 save with _run{N} suffix.
+    """
+    from backend.app.dab.dab_evaluator import load_eval_result as _load_eval
+
     # Apply filters
     filtered = queries
     if skip_docker:
@@ -59,75 +65,65 @@ def run_all(
     if query_id_filter:
         filtered = [q for q in filtered if q["query_id"] == str(query_id_filter)]
 
-    # Skip already-evaluated queries unless force_rerun
-    if not force_rerun:
-        pending = []
-        for q in filtered:
-            ev = load_eval_result(q["dataset"], q["query_id"])
-            if ev is None:
-                pending.append(q)
-            else:
-                print(f"  [SKIP] {q['instance_id']} (already evaluated: {'PASS' if ev.get('passed') else 'FAIL'})")
-        filtered = pending
+    # Build (query, run_number) work items; skip already-completed slots
+    work: List[tuple] = []
+    for q in filtered:
+        for r in range(num_runs):
+            run_sfx = f"_run{r}" if r > 0 else ""
+            if not force_rerun:
+                ev = _load_eval(q["dataset"], q["query_id"], run_suffix=run_sfx)
+                if ev is not None:
+                    tag = "PASS" if ev.get("passed") else "FAIL"
+                    label = f"run {r}" if r > 0 else "run 0"
+                    print(f"  [SKIP] {q['instance_id']} {label} (already evaluated: {tag})")
+                    continue
+            work.append((q, r))
 
-    if not filtered:
-        print("\n[OK] All queries already evaluated. Use --force to re-run.")
+    if not work:
+        print("\n[OK] All query runs already evaluated. Use --force to re-run.")
         return []
 
-    print(f"\n[RUN] Running {len(filtered)} queries  (workers={workers})")
+    total_slots = len(work)
+    print(f"\n[RUN] {total_slots} work items  (queries × runs, workers={workers})")
     print("-" * 60)
 
     results = []
-    passed = 0
-    failed = 0
-    errors = 0
-
     llm_client = LLMClient()
 
     if workers == 1:
-        for i, q in enumerate(filtered, 1):
-            print(f"\n[{i}/{len(filtered)}] {q['instance_id']}")
-            print_progress_bar(i - 1, len(filtered), prefix="Progress")
-            result = run_dab_query(q, llm_client=llm_client)
+        for i, (q, r) in enumerate(work, 1):
+            label = f"run {r}" if num_runs > 1 else ""
+            print(f"\n[{i}/{total_slots}] {q['instance_id']} {label}".rstrip())
+            print_progress_bar(i - 1, total_slots, prefix="Progress")
+            result = run_dab_query(q, llm_client=llm_client, run_number=r)
             results.append(result)
             if result["status"] == "passed":
-                passed += 1
                 print(f"\n  [PASS] {result['reason'][:80]}")
             elif result["status"] == "error":
-                errors += 1
-                print(f"\n  [ERROR] {result['error'][:80]}")
+                print(f"\n  [ERROR] {result.get('error', '')[:80]}")
             else:
-                failed += 1
                 print(f"\n  [FAIL] {result['reason'][:80]}")
-            # Update and save the summary report on the fly
             print_summary(results, queries)
     else:
         with ThreadPoolExecutor(max_workers=workers) as executor:
-            futures = {executor.submit(run_dab_query, q, llm_client): q for q in filtered}
+            futures = {executor.submit(run_dab_query, q, llm_client, r): (q, r) for q, r in work}
             completed = 0
             for future in as_completed(futures):
                 completed += 1
-                print_progress_bar(completed, len(filtered), prefix="Progress")
+                print_progress_bar(completed, total_slots, prefix="Progress")
                 try:
                     result = future.result()
                     results.append(result)
-                    if result["status"] == "passed":
-                        passed += 1
-                    elif result["status"] == "error":
-                        errors += 1
-                    else:
-                        failed += 1
                 except Exception as e:
-                    errors += 1
-                    q = futures[future]
+                    q, r = futures[future]
                     results.append({
                         "dataset": q["dataset"],
                         "query_id": q["query_id"],
+                        "run_number": r,
                         "status": "error",
                         "passed": False,
                         "error": str(e),
                     })
-                # Update and save the summary report on the fly
                 print_summary(results, queries)
 
     print("\n")
@@ -184,6 +180,7 @@ def main():
     parser.add_argument("--workers", type=int, default=1)
     parser.add_argument("--skip_docker", action="store_true", help="Skip Docker-dependent datasets")
     parser.add_argument("--force", action="store_true", help="Re-run already evaluated queries")
+    parser.add_argument("--runs", type=int, default=1, help="Number of independent runs per query (default 1)")
     parser.add_argument("--report_only", action="store_true", help="Only print accuracy report")
     parser.add_argument(
         "--self_improve",
@@ -248,6 +245,7 @@ def main():
         dataset_filter=args.dataset,
         query_id_filter=args.query_id,
         force_rerun=args.force,
+        num_runs=args.runs,
     )
 
     print_summary(results, all_queries)

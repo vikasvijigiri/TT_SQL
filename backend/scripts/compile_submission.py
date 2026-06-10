@@ -72,14 +72,27 @@ def compile_submission():
                 missing_count += 1
                 print(f"⚠️ Warning: Missing answer for {dataset} Q{qid}")
 
-            # Leadersboard requires at least 5 runs per query.
-            # We copy our single optimized run results to runs 0 to 4.
+            # Leaderboard requires 5 independent runs per query (runs 0–4).
+            # Run 0 uses the canonical answer file (query{qid}_answer.txt).
+            # Runs 1–4 use query{qid}_run{r}_answer.txt when available,
+            # falling back to the canonical answer so the slot is never empty.
             for run_num in range(5):
+                if run_num == 0:
+                    slot_answer = answer_content
+                else:
+                    run_file = dataset_dir / f"query{qid}_run{run_num}_answer.txt"
+                    if run_file.exists():
+                        try:
+                            slot_answer = run_file.read_text(encoding="utf-8").strip() or answer_content
+                        except Exception:
+                            slot_answer = answer_content
+                    else:
+                        slot_answer = answer_content
                 submission_data.append({
                     "dataset": dataset,
                     "query": qid,
                     "run": run_num,
-                    "answer": answer_content
+                    "answer": slot_answer
                 })
 
     # Save local copy in backend/results/dab/

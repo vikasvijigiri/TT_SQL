@@ -16,6 +16,7 @@ import re
 import json
 import time
 import traceback
+import threading
 from pathlib import Path
 from typing import Dict, Any, Optional, Tuple, List
 import yaml
@@ -25,6 +26,33 @@ from backend.app.utils.llm import LLMClient, reset_token_counters, get_tokens
 from backend.app.core.config import RESULTS_DIR, DAB_REPO
 from backend.app.dab.answer_extractor import extract_answer, save_answer, load_answer
 from backend.app.dab.dab_evaluator import evaluate_answer, load_eval_result
+
+# LangSmith tracing — imported lazily so missing keys never crash the pipeline
+try:
+    from langsmith import traceable
+    from langsmith.run_helpers import get_current_run_tree
+    _LANGSMITH_AVAILABLE = True
+except ImportError:
+    _LANGSMITH_AVAILABLE = False
+    traceable = lambda **kw: (lambda fn: fn)  # no-op decorator
+    get_current_run_tree = lambda: None
+
+
+def _push_evaluator_feedback(run_id: str, eval_json: dict) -> None:
+    """
+    Post all 8 evaluator scores to a LangSmith run ID in a background thread.
+    Thread is non-daemon so it always completes before process exit.
+    The pipeline won't wait for it — the thread runs concurrently with the
+    next query, so there is zero added latency to the benchmark.
+    """
+    def _worker():
+        try:
+            from backend.app.core.langsmith_evaluators import attach_feedback_to_run
+            attach_feedback_to_run(run_id, eval_json)
+        except Exception:
+            pass  # never crash the pipeline over telemetry
+    t = threading.Thread(target=_worker, daemon=False)
+    t.start()
 
 
 DAB_RESULTS_DIR = RESULTS_DIR / "dab"
@@ -256,17 +284,23 @@ def _make_db_directory_for_schema(db_cfg: Dict[str, Any], dataset: str) -> Optio
     return str(Path(db_path).parent)
 
 
+@traceable(name="DAB Query", run_type="chain", tags=["dab", "benchmark"])
 def run_dab_query(
     query: Dict[str, Any],
     llm_client: Optional[LLMClient] = None,
+    run_number: int = 0,
 ) -> Dict[str, Any]:
     """
     Run a single DAB query through the SpiderDIN pipeline.
-    
+    LangSmith: each call is traced as a top-level run; all 8 evaluator scores
+    are attached as feedback to that run after grading completes.
+
     Args:
         query: Query dict from benchmark_loader.load_all_queries()
         llm_client: Shared LLMClient instance (created if None)
-        
+        run_number: Which run slot this is (0 = canonical, 1-4 = additional runs).
+                    When > 0, files are saved with a _run{N} suffix.
+
     Returns:
         Result dict with: status, agent_answer, passed, elapsed_s, error
     """
@@ -288,9 +322,18 @@ def run_dab_query(
     result_dir = DAB_RESULTS_DIR / dataset
     result_dir.mkdir(parents=True, exist_ok=True)
 
-    md_path = result_dir / f"query{query_id}.md"
-    csv_path = result_dir / f"query{query_id}.csv"
-    sql_path = result_dir / f"query{query_id}.sql"
+    # run_number=0 → canonical files (query1.md); run_number>0 → query1_run2.md
+    _run_sfx = f"_run{run_number}" if run_number > 0 else ""
+    md_path = result_dir / f"query{query_id}{_run_sfx}.md"
+    csv_path = result_dir / f"query{query_id}{_run_sfx}.csv"
+    sql_path = result_dir / f"query{query_id}{_run_sfx}.sql"
+
+    for p in (md_path, csv_path, sql_path):
+        if p.exists():
+            try:
+                p.unlink()
+            except Exception:
+                pass
 
     if llm_client is None:
         llm_client = LLMClient()
@@ -376,31 +419,39 @@ def run_dab_query(
             external_knowledge=ext_knowledge_param,
         )
 
-        # Save SQL
-        sql_path.write_text(final_sql, encoding="utf-8")
+        # Determine if the returned value is a SQL query or a direct text answer
+        is_sql = final_sql.strip().lower().startswith(("select", "with", "show", "explain", "pragma", "describe"))
+        if is_sql:
+            # Save SQL
+            sql_path.write_text(final_sql, encoding="utf-8")
 
-        # CSV is auto-saved by executor under RESULTS_DIR/{db_name}/{instance_id}.csv
-        # Move it to our DAB results dir
-        src_csv = RESULTS_DIR / db_name / f"dab_{dataset}_q{query_id}.csv"
-        if src_csv.exists():
-            import shutil
-            shutil.copy2(str(src_csv), str(csv_path))
+            # CSV is auto-saved by executor under RESULTS_DIR/{db_name}/{instance_id}.csv
+            # Move it to our DAB results dir
+            src_csv = RESULTS_DIR / db_name / f"dab_{dataset}_q{query_id}.csv"
+            if src_csv.exists():
+                import shutil
+                shutil.copy2(str(src_csv), str(csv_path))
 
-        # Extract concise text answer for DAB grading
-        agent_answer = extract_answer(
-            question=question,
-            csv_path=str(csv_path),
-            ground_truth=ground_truth,
-            llm_client=llm_client,
-            instance_id=instance_id,
-        )
-        save_answer(agent_answer, dataset, query_id, DAB_RESULTS_DIR)
+            # Extract concise text answer for DAB grading (from CSV)
+            agent_answer = extract_answer(
+                question=question,
+                csv_path=str(csv_path),
+                ground_truth=ground_truth,
+                llm_client=llm_client,
+                instance_id=instance_id,
+            )
+        else:
+            # Direct text answer from diagnostic layer — use it verbatim, no CSV needed.
+            # Writing through extract_answer risks reading a stale CSV from a prior run.
+            agent_answer = final_sql.strip()
+            csv_path.write_text(f'result\n"{agent_answer}"\n', encoding="utf-8")
+        save_answer(agent_answer, dataset, query_id, DAB_RESULTS_DIR, run_suffix=_run_sfx)
         logger.info(f"AGENT ANSWER: {agent_answer}")
 
         # Evaluate against ground truth
         elapsed = round(time.time() - start_time, 1)
         in_t, out_t = get_tokens()
-        
+
         eval_result = evaluate_answer(
             dataset=dataset,
             query_id=query_id,
@@ -410,15 +461,22 @@ def run_dab_query(
             elapsed_s=elapsed,
             input_tokens=in_t,
             output_tokens=out_t,
+            run_suffix=_run_sfx,
         )
 
         status = "passed" if eval_result["passed"] else "failed"
         logger.success(f"DAB Evaluation: {status.upper()} | {eval_result['reason']}")
 
+        # Attach all 8 evaluator scores to the LangSmith trace (non-blocking)
+        run_tree = get_current_run_tree()
+        if run_tree and _LANGSMITH_AVAILABLE:
+            _push_evaluator_feedback(str(run_tree.id), eval_result)
+
         return {
             "dataset": dataset,
             "query_id": query_id,
             "instance_id": instance_id,
+            "run_number": run_number,
             "status": status,
             "passed": eval_result["passed"],
             "agent_answer": agent_answer,
@@ -447,7 +505,13 @@ def run_dab_query(
             elapsed_s=elapsed,
             input_tokens=in_t,
             output_tokens=out_t,
+            run_suffix=_run_sfx,
         )
+
+        # Attach evaluator scores to LangSmith trace even on error (non-blocking)
+        run_tree = get_current_run_tree()
+        if run_tree and _LANGSMITH_AVAILABLE:
+            _push_evaluator_feedback(str(run_tree.id), eval_result)
 
         return {
             "dataset": dataset,

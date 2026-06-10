@@ -268,11 +268,11 @@ def extract_answer(
         return f"Based on the data: {csv_preview[:500]}"
 
 
-def save_answer(answer: str, dataset: str, query_id: str, results_dir: Path) -> str:
-    """Save the extracted answer to disk."""
+def save_answer(answer: str, dataset: str, query_id: str, results_dir: Path, run_suffix: str = "") -> str:
+    """Save the extracted answer to disk. run_suffix="" for run 0, "_run2" for run 2, etc."""
     save_dir = results_dir / dataset
     save_dir.mkdir(parents=True, exist_ok=True)
-    answer_path = save_dir / f"query{query_id}_answer.txt"
+    answer_path = save_dir / f"query{query_id}{run_suffix}_answer.txt"
     answer_path.write_text(answer, encoding="utf-8")
     return str(answer_path)
 

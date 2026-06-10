@@ -18,6 +18,12 @@ from backend.app.core.dialects.rule_retriever import DialectRuleRetriever
 from backend.app.core.retrieval.hierarchical_retriever import HierarchicalRetriever
 from backend.app.core.query_analysis.capability_detector import QueryCapabilityDetector
 
+# Diagnostic reasoning layer: feasibility → exploration → strategy → (classify if needed)
+from backend.app.agents.feasibility_agent import FeasibilityAgent
+from backend.app.agents.schema_explorer import SchemaExplorer
+from backend.app.agents.strategy_router import StrategyRouter
+from backend.app.agents.text_classify_executor import TextClassifyExecutor
+
 import pandas as pd
 import os
 import time
@@ -85,6 +91,12 @@ class SemanticDINOrchestrator:
         self.profiler = ProfilerAgent()
         self.critic = SQLCriticAgent(self.llm, self.semantic_engine)
         self.decomposer = QueryDecomposerAgent(self.llm)
+
+        # Diagnostic reasoning layer
+        self.feasibility_agent = FeasibilityAgent(self.llm)
+        self.schema_explorer = SchemaExplorer()
+        self.strategy_router = StrategyRouter(self.llm)
+        self.text_classify_executor = TextClassifyExecutor(self.llm)
 
         # Load System Parameters
         params_path = CONFIG_DIR / "system_params.yaml"
@@ -198,6 +210,116 @@ class SemanticDINOrchestrator:
                     table_columns_map[t_name].append(c_name)
 
         telemetry.end_stage("schema_linking")
+
+        # ── Diagnostic Reasoning Layer ─────────────────────────────────────────
+        # Before writing any SQL, check whether the schema actually supports the
+        # question. If gaps are found, explore the live data, decide on a strategy,
+        # and either enrich the SQL generation context or execute an alternative path.
+        telemetry.start_stage("feasibility_and_strategy")
+        _diagnostic_answer = None   # set when strategy bypasses SQL generation
+
+        try:
+            _schema_text_for_diag = self.semantic_engine.format_for_prompt()
+
+            # Collect hint files before feasibility analysis so the agent can
+            # distinguish direct columns from LIKE-proxy workarounds
+            hint_files = []
+            _hints_text = ""
+            if external_knowledge:
+                from backend.app.core.config import RESOURCES_DIR
+                hint_candidate = RESOURCES_DIR / "documents" / external_knowledge
+                if hint_candidate.exists():
+                    hint_files.append(str(hint_candidate))
+            dab_hint = Path(self.executor.explicit_db_path).parent.parent / "db_description_withhint.txt" \
+                if hasattr(self.executor, "explicit_db_path") and self.executor.explicit_db_path else None
+            if dab_hint and dab_hint.exists():
+                hint_files.append(str(dab_hint))
+            for _hf in hint_files:
+                try:
+                    _hints_text += Path(_hf).read_text(encoding="utf-8", errors="replace")[:2000] + "\n"
+                except Exception:
+                    pass
+
+            # 1. Map question concepts → schema columns, flag any gaps
+            feasibility = self.feasibility_agent.analyze(
+                user_query, _schema_text_for_diag, hints=_hints_text
+            )
+
+            if feasibility["has_gaps"]:
+                logger.info(
+                    f"[DiagnosticLayer] Schema gaps detected: {feasibility['gap_summary']}"
+                )
+
+                # 2. Introspect live data and read hint/description files
+                gap_terms = [c["term"] for c in feasibility["concepts"] if c.get("gap")]
+                exploration = self.schema_explorer.explore(
+                    gap_concepts=gap_terms,
+                    schema_text=_schema_text_for_diag,
+                    executor=self.executor,
+                    hint_files=hint_files or None,
+                    description_text=None,
+                )
+
+                # 3. LLM decides execution strategy
+                strategy = self.strategy_router.route(
+                    question=user_query,
+                    schema_text=_schema_text_for_diag,
+                    feasibility=feasibility,
+                    exploration=exploration,
+                )
+
+                strat = strategy["strategy"]
+                logger.info(f"[DiagnosticLayer] Strategy selected: {strat}")
+
+                if strat == "cannot_answer":
+                    _diagnostic_answer = strategy["cannot_answer_reason"] or \
+                        "The database does not contain the information needed to answer this question."
+
+                elif strat == "text_classify_aggregate":
+                    # Execute the two-step classify+aggregate path
+                    logger.info("[DiagnosticLayer] Executing text_classify_aggregate path")
+                    classify_spec = strategy.get("classify_spec", {})
+                    try:
+                        _diagnostic_answer = self.text_classify_executor.execute(
+                            question=user_query,
+                            classify_spec=classify_spec,
+                            executor=self.executor,
+                        )
+                    except Exception as tce:
+                        logger.warning(
+                            f"[DiagnosticLayer] text_classify_aggregate failed ({tce}), "
+                            f"falling back to enriched SQL path"
+                        )
+                        lessons_context += (
+                            f"\n\nDIAGNOSTIC CONTEXT (schema gap detected):\n"
+                            f"{strategy.get('enriched_context','')}\n\n"
+                            f"EXPLORATION FINDINGS:\n{exploration}\n"
+                        )
+
+                else:
+                    # enriched_sql or fallback direct_sql — inject context
+                    enriched = strategy.get("enriched_context", "")
+                    if enriched:
+                        lessons_context += (
+                            f"\n\nDIAGNOSTIC CONTEXT (schema gap analysis):\n{enriched}\n"
+                            f"\nEXPLORATION FINDINGS:\n{exploration}\n"
+                        )
+                        logger.info("[DiagnosticLayer] Enriched context injected into SQL generation.")
+
+            else:
+                logger.info("[DiagnosticLayer] Schema fully supports the question — proceeding directly.")
+
+        except Exception as _diag_err:
+            # Diagnostic layer must never crash the pipeline
+            logger.debug(f"[DiagnosticLayer] non-fatal error: {_diag_err}")
+
+        telemetry.end_stage("feasibility_and_strategy")
+
+        # If the diagnostic layer produced a direct answer, return it now
+        if _diagnostic_answer:
+            logger.success(f"[DiagnosticLayer] Answer from alternative path: {_diagnostic_answer}")
+            return _diagnostic_answer
+
         telemetry.start_stage("profiling_and_generation")
 
         # Dynamic Profiling Probe (Reflective schema exploration before generation)

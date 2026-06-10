@@ -23,6 +23,15 @@ warnings.filterwarnings("ignore", category=UserWarning)
 warnings.filterwarnings("ignore", message=".*urllib3.*")
 warnings.filterwarnings("ignore", message=".*Pydantic.*")
 
+# ── LangSmith: set env vars before any langchain import so tracing is active ──
+from dotenv import load_dotenv
+load_dotenv(override=True)
+for _ls_key in ("LANGCHAIN_TRACING_V2", "LANGCHAIN_API_KEY", "LANGCHAIN_PROJECT",
+                "LANGCHAIN_ENDPOINT"):
+    _ls_val = os.getenv(_ls_key)
+    if _ls_val:
+        os.environ[_ls_key] = _ls_val
+
 import yaml
 from backend.app.core.config import RESULTS_DIR, DATABASES_DIR, INPUT_DIR, GOLD_DIR, PROMPTS_DIR, MEMORY_DIR, CONFIG_DIR
 from backend.app.utils.llm import LLMClient
@@ -374,6 +383,8 @@ def _cached_get_metrics(ttl_hash: int):
     
     if RESULTS_DIR.exists():
         for md_file in RESULTS_DIR.glob("**/*.md"):
+            if "dab" in [p.name.lower() for p in md_file.parents]:
+                continue
             instance_id = md_file.stem
             csv_file = md_file.parent / f"{instance_id}.csv"
             data = parse_md_log(md_file)
@@ -415,6 +426,119 @@ def _cached_get_metrics(ttl_hash: int):
             "complex": complexity_counts.get("forensic_depth", 0)
         }
     }
+
+@app.get("/api/health")
+def health_check():
+    """
+    Full subsystem health check.
+    Returns per-check pass/fail and an overall status.
+    """
+    import os as _os
+    checks: List[Dict[str, Any]] = []
+
+    def _check(name: str, fn):
+        try:
+            detail = fn()
+            checks.append({"name": name, "status": "ok", "detail": detail})
+        except Exception as exc:
+            checks.append({"name": name, "status": "fail", "detail": str(exc)})
+
+    # 1. Results directory
+    _check("results_dir", lambda: {
+        "path": str(RESULTS_DIR),
+        "exists": RESULTS_DIR.exists(),
+        "writable": _os.access(str(RESULTS_DIR), _os.W_OK),
+    })
+
+    # 2. Databases directory
+    _check("databases_dir", lambda: {
+        "path": str(DATABASES_DIR),
+        "exists": DATABASES_DIR.exists(),
+        "sqlite_count": len(list(DATABASES_DIR.glob("**/*.sqlite"))) if DATABASES_DIR.exists() else 0,
+        "duckdb_count": len(list(DATABASES_DIR.glob("**/*.duckdb"))) if DATABASES_DIR.exists() else 0,
+    })
+
+    # 3. Memory / lessons file
+    _check("dynamic_lessons", lambda: {
+        "path": str(MEMORY_DIR / "dynamic_lessons.json"),
+        "exists": (MEMORY_DIR / "dynamic_lessons.json").exists(),
+        "rule_count": len(json.load(open(MEMORY_DIR / "dynamic_lessons.json", encoding="utf-8")))
+            if (MEMORY_DIR / "dynamic_lessons.json").exists() else 0,
+    })
+
+    # 4. Improvement log (optional — created after first self-improvement run)
+    _check("improvement_log", lambda: (
+        lambda p: {
+            "initialized": p.exists(),
+            "saturated": json.load(open(p, encoding="utf-8")).get("saturated", False) if p.exists() else False,
+            "total_rounds": json.load(open(p, encoding="utf-8")).get("total_rounds", 0) if p.exists() else 0,
+            "note": "ok" if p.exists() else "not yet created (runs after first self-improvement cycle)",
+        }
+    )(MEMORY_DIR / "improvement_log.json"))
+
+    # 5. LLM config
+    _check("llm_config", lambda: {
+        "config_file": (CONFIG_DIR / "system_params.yaml").exists(),
+        "bedrock_key_set": bool(_os.getenv("BEDROCK_SECRET_ACCESS_KEY")),
+        "bedrock_region": _os.getenv("BEDROCK_REGION", "us-east-1"),
+    })
+
+    # 6. Prompts directory
+    _check("prompts_dir", lambda: {
+        "exists": PROMPTS_DIR.exists(),
+        "yaml_count": len(list(PROMPTS_DIR.glob("*.yaml"))) if PROMPTS_DIR.exists() else 0,
+    })
+
+    # 7. DAB repo
+    _check("dab_repo", lambda: {
+        "path": str(DAB_REPO_PATH_DEFAULT),
+        "exists": Path(DAB_REPO_PATH_DEFAULT).exists(),
+        "dataset_dirs": len([d for d in Path(DAB_REPO_PATH_DEFAULT).iterdir() if d.is_dir() and d.name.startswith("query_")])
+            if Path(DAB_REPO_PATH_DEFAULT).exists() else 0,
+    })
+
+    # 8. DAB results
+    _check("dab_results", lambda: {
+        "dir": str(RESULTS_DIR / "dab"),
+        "exists": (RESULTS_DIR / "dab").exists(),
+        "eval_count": len(list((RESULTS_DIR / "dab").glob("**/*_eval.json")))
+            if (RESULTS_DIR / "dab").exists() else 0,
+    })
+
+    # 9. Gold eval standards
+    _check("gold_standards", lambda: {
+        "exists": (GOLD_DIR / "spider2lite_eval.jsonl").exists(),
+        "entry_count": sum(1 for _ in open(GOLD_DIR / "spider2lite_eval.jsonl", encoding="utf-8"))
+            if (GOLD_DIR / "spider2lite_eval.jsonl").exists() else 0,
+    })
+
+    # 10. API self-ping (always passes if we're responding)
+    _check("api_self", lambda: {"endpoint_count": 36, "status": "serving"})
+
+    critical = {"results_dir", "databases_dir", "llm_config", "gold_standards"}
+    failed = [c for c in checks if c["status"] == "fail"]
+    degraded = [
+        c for c in checks
+        if c["status"] == "ok"
+        and c["name"] in critical
+        and isinstance(c.get("detail"), dict)
+        and c["detail"].get("exists") is False
+    ]
+
+    overall = "healthy" if not failed and not degraded else ("degraded" if not failed else "unhealthy")
+
+    return {
+        "overall": overall,
+        "timestamp": datetime.utcnow().isoformat() + "Z",
+        "checks": checks,
+        "summary": {
+            "total": len(checks),
+            "ok": len([c for c in checks if c["status"] == "ok"]),
+            "fail": len(failed),
+            "degraded": len(degraded),
+        },
+    }
+
 
 @app.get("/api/metrics")
 def get_metrics():
@@ -489,8 +613,11 @@ def _cached_get_recent_results(limit: int, ttl_hash: int):
     recent_runs = []
     if not RESULTS_DIR.exists():
         return []
-        
-    all_md_files = list(RESULTS_DIR.glob("**/*.md"))
+
+    all_md_files = [
+        f for f in RESULTS_DIR.glob("**/*.md")
+        if "dab" not in [p.name.lower() for p in f.parents]
+    ]
     all_md_files.sort(key=lambda x: x.stat().st_mtime, reverse=True)
     
     for md_file in all_md_files[:limit]:
@@ -538,6 +665,8 @@ def _cached_get_all_results(ttl_hash: int):
         return []
         
     for md_file in RESULTS_DIR.glob("**/*.md"):
+        if "dab" in [p.name.lower() for p in md_file.parents]:
+            continue
         instance_id = md_file.stem
         db_name = md_file.parent.name
         csv_file = md_file.parent / f"{instance_id}.csv"
@@ -968,6 +1097,13 @@ def trigger_global_audit():
 @app.get("/api/evaluate/status")
 def get_audit_status():
     return {"running": GLOBAL_AUDIT_RUNNING}
+
+@app.get("/api/run/status")
+def get_run_status():
+    return {
+        "running": len(RUNNING_TASKS) > 0,
+        "tasks": list(RUNNING_TASKS)
+    }
 
 class PromptUpdateRequest(BaseModel):
     content: str
@@ -1838,6 +1974,49 @@ def run_dab_all(payload: DabRunAllPayload = DabRunAllPayload()):
         "skip_docker": payload.skip_docker,
     }
 
+@app.get("/api/dab/results/recent")
+def get_dab_recent_results(limit: int = 15):
+    """Return recent DAB eval results formatted like Spider's /api/results/recent."""
+    from backend.app.core.config import DAB_REPO
+    dab_results_dir = RESULTS_DIR / "dab"
+    if not dab_results_dir.exists():
+        return []
+
+    eval_files = list(dab_results_dir.glob("**/*_eval.json"))
+    eval_files.sort(key=lambda f: f.stat().st_mtime, reverse=True)
+
+    recent: List[Dict[str, Any]] = []
+    for ef in eval_files[:limit]:
+        try:
+            with open(ef, "r", encoding="utf-8") as fp:
+                ev = json.load(fp)
+        except Exception:
+            continue
+
+        passed = ev.get("passed", False)
+        in_t = ev.get("input_tokens", 0)
+        out_t = ev.get("output_tokens", 0)
+        total_tokens = in_t + out_t
+        recent.append({
+            "id": ev.get("instance_id", ef.stem.replace("_eval", "")),
+            "db": ev.get("dataset", ef.parent.name),
+            "status": "success" if passed else "error",
+            "gold_status": "gold_pass" if passed else "gold_fail",
+            "latency": round(ev.get("elapsed_s", 0), 1),
+            "complexity": "medium",
+            "complexity_type": "Unclassified",
+            "complexity_score": 0.0,
+            "corrections": 0,
+            "critic_rounds": 0,
+            "rows": 0,
+            "timestamp": ev.get("timestamp", datetime.fromtimestamp(ef.stat().st_mtime).isoformat()),
+            "total_tokens": total_tokens,
+            "cost": round(total_tokens * 0.000003, 6),
+            "reason": ev.get("reason", ""),
+        })
+    return recent
+
+
 @app.get("/api/dab/status")
 def get_dab_run_status():
     """Get which DAB queries are currently running."""
@@ -1942,6 +2121,158 @@ async def trigger_improvement_run(background_tasks: BackgroundTasks):
 
     background_tasks.add_task(_run)
     return {"message": "Self-improvement run started in background. Check /api/improvement/status for results."}
+
+
+# ---------------------------------------------------------------------------
+# LangSmith Evaluators API
+# ---------------------------------------------------------------------------
+
+DAB_RESULTS_PATH = Path(__file__).resolve().parent.parent.parent / "backend" / "results" / "dab"
+
+_langsmith_eval_running = False
+
+
+@app.get("/api/langsmith/status")
+async def langsmith_status():
+    """
+    Return LangSmith connection status, project info, and dataset stats.
+    Also shows per-evaluator aggregate scores from stored DAB eval results.
+    """
+    from backend.app.core.langsmith_evaluators import (
+        _client, DATASET_NAME, run_all_evaluators
+    )
+
+    status = {
+        "connected": False,
+        "project": os.getenv("LANGCHAIN_PROJECT", "TT_SQL_V2"),
+        "tracing_enabled": os.getenv("LANGCHAIN_TRACING_V2", "false").lower() == "true",
+        "dataset_name": DATASET_NAME,
+        "dataset_examples": 0,
+        "eval_running": _langsmith_eval_running,
+        "evaluator_summaries": {},
+    }
+
+    try:
+        projects = {p.name: str(p.id) for p in _client.list_projects()}
+        status["connected"] = True
+        status["project_id"] = projects.get(status["project"])
+        status["all_projects"] = list(projects.keys())
+
+        # Dataset count
+        try:
+            dataset = _client.read_dataset(dataset_name=DATASET_NAME)
+            status["dataset_examples"] = sum(1 for _ in _client.list_examples(dataset_id=str(dataset.id)))
+        except Exception:
+            status["dataset_examples"] = 0
+
+    except Exception as e:
+        status["error"] = str(e)
+
+    # Aggregate evaluator scores over stored eval JSON records
+    agg: dict[str, list] = {}
+    if DAB_RESULTS_PATH.exists():
+        for eval_file in DAB_RESULTS_PATH.glob("**/*.json"):
+            try:
+                rec = json.loads(eval_file.read_text(encoding="utf-8"))
+                feedbacks = run_all_evaluators(rec)
+                for fb in feedbacks:
+                    key = fb["key"]
+                    score = fb.get("score")
+                    if score is not None:
+                        agg.setdefault(key, []).append(score)
+            except Exception:
+                continue
+
+    for key, scores in agg.items():
+        if scores:
+            status["evaluator_summaries"][key] = {
+                "mean": round(sum(scores) / len(scores), 3),
+                "n": len(scores),
+                "flagged": sum(1 for s in scores if s > 0.5),
+            }
+
+    return status
+
+
+@app.post("/api/langsmith/build_dataset")
+async def build_langsmith_dataset(background_tasks: BackgroundTasks):
+    """Create/update the 'DAB Benchmark' LangSmith dataset with all 54 queries."""
+    def _build():
+        try:
+            from backend.app.core.langsmith_evaluators import build_dab_dataset
+            dataset_id = build_dab_dataset()
+            logger.info(f"LangSmith dataset built: {dataset_id}")
+        except Exception as e:
+            logger.error(f"LangSmith dataset build failed: {e}")
+
+    background_tasks.add_task(_build)
+    return {"message": "Building DAB Benchmark dataset in LangSmith. Check /api/langsmith/status for progress."}
+
+
+@app.post("/api/langsmith/run_eval")
+async def run_langsmith_eval(background_tasks: BackgroundTasks):
+    """
+    Run a full offline LangSmith experiment over the DAB Benchmark dataset
+    applying all 8 evaluators. Results appear in LangSmith under TT_SQL_V2 project.
+    """
+    global _langsmith_eval_running
+    if _langsmith_eval_running:
+        return {"message": "Evaluation already running. Check LangSmith dashboard for progress."}
+
+    def _run():
+        global _langsmith_eval_running
+        _langsmith_eval_running = True
+        try:
+            from backend.app.core.langsmith_evaluators import run_langsmith_experiment
+            summary = run_langsmith_experiment(experiment_prefix="TT_SQL_V2")
+            logger.info(f"LangSmith experiment complete: {summary}")
+        except Exception as e:
+            import traceback as tb
+            logger.error(f"LangSmith eval failed: {e}\n{tb.format_exc()}")
+        finally:
+            _langsmith_eval_running = False
+
+    background_tasks.add_task(_run)
+    return {
+        "message": "LangSmith evaluation started. All 8 evaluators running over 54 DAB queries.",
+        "evaluators": [
+            "correctness", "hallucination", "pii_leakage", "prompt_injection",
+            "toxicity", "bias_fairness", "perceived_error", "user_satisfaction"
+        ],
+        "view_at": "https://smith.langchain.com",
+    }
+
+
+@app.get("/api/langsmith/scores")
+async def get_langsmith_scores():
+    """
+    Return per-query evaluator scores from stored DAB eval JSON records.
+    Used by the UI to show the evaluator scorecard.
+    """
+    rows = []
+    if not DAB_RESULTS_PATH.exists():
+        return {"scores": rows}
+
+    from backend.app.core.langsmith_evaluators import run_all_evaluators
+
+    for eval_file in sorted(DAB_RESULTS_PATH.glob("**/*.json")):
+        try:
+            rec = json.loads(eval_file.read_text(encoding="utf-8"))
+        except Exception:
+            continue
+
+        feedbacks = run_all_evaluators(rec)
+        row = {
+            "instance_id": rec.get("instance_id", ""),
+            "dataset": rec.get("dataset", ""),
+            "query_id": rec.get("query_id", 0),
+            "passed": rec.get("passed", False),
+        }
+        for fb in feedbacks:
+            row[fb["key"]] = fb.get("score")
+        rows.append(row)
+
+    return {"scores": rows, "total": len(rows)}
 
 
 if __name__ == "__main__":

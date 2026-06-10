@@ -80,6 +80,7 @@ def evaluate_answer(
     elapsed_s: Optional[float] = None,
     input_tokens: Optional[int] = None,
     output_tokens: Optional[int] = None,
+    run_suffix: str = "",
 ) -> Dict[str, Any]:
     """
     Grade a single DAB answer.
@@ -124,16 +125,16 @@ def evaluate_answer(
     if save:
         save_dir = DAB_RESULTS_DIR / dataset
         save_dir.mkdir(parents=True, exist_ok=True)
-        eval_path = save_dir / f"query{query_id}_eval.json"
+        eval_path = save_dir / f"query{query_id}{run_suffix}_eval.json"
         with open(eval_path, "w", encoding="utf-8") as f:
             json.dump(result, f, indent=2)
 
     return result
 
 
-def load_eval_result(dataset: str, query_id: str) -> Optional[Dict[str, Any]]:
+def load_eval_result(dataset: str, query_id: str, run_suffix: str = "") -> Optional[Dict[str, Any]]:
     """Load a previously saved evaluation result."""
-    eval_path = DAB_RESULTS_DIR / dataset / f"query{query_id}_eval.json"
+    eval_path = DAB_RESULTS_DIR / dataset / f"query{query_id}{run_suffix}_eval.json"
     if not eval_path.exists():
         return None
     try:
