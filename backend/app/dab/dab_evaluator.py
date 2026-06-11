@@ -12,23 +12,25 @@ Results stored as: backend/results/dab/{dataset}/query{id}_eval.json
 
 import re
 import json
-import types
-import importlib.util
 from pathlib import Path
 from typing import Dict, Any, Optional, Tuple, List
 from datetime import datetime
 
 from backend.app.core.config import DAB_REPO
+import contextlib
 
 DAB_RESULTS_DIR = Path(__file__).resolve().parent.parent.parent / "results" / "dab"
 
 
-def _run_dynamic_validate(validate_src: str, agent_answer: str, filepath: str = None) -> Tuple[bool, str]:
+def _run_dynamic_validate(
+    validate_src: str, agent_answer: str, filepath: str | None = None
+) -> Tuple[bool, str]:
     """
     Execute the validate.py source in a sandboxed namespace and call validate(agent_answer).
     Returns (passed: bool, reason: str).
     """
     import sys
+
     dab_path = str(DAB_REPO)
     added_to_path = False
     if dab_path not in sys.path:
@@ -50,10 +52,8 @@ def _run_dynamic_validate(validate_src: str, agent_answer: str, filepath: str = 
         return False, f"validate.py execution error: {e}"
     finally:
         if added_to_path and dab_path in sys.path:
-            try:
+            with contextlib.suppress(ValueError):
                 sys.path.remove(dab_path)
-            except ValueError:
-                pass
     return False, "No validate() function found"
 
 
@@ -84,7 +84,7 @@ def evaluate_answer(
 ) -> Dict[str, Any]:
     """
     Grade a single DAB answer.
-    
+
     Args:
         dataset: e.g. "bookreview"
         query_id: e.g. "1"
@@ -92,7 +92,7 @@ def evaluate_answer(
         ground_truth: Expected answer string from ground_truth.csv
         validate_src: Source code of validate.py
         save: If True, persist result to disk
-        
+
     Returns:
         dict with: passed, reason, method, timestamp
     """
@@ -101,7 +101,9 @@ def evaluate_answer(
         validate_py_path = str(
             DAB_REPO / f"query_{dataset}" / f"query{query_id}" / "validate.py"
         )
-        passed, reason = _run_dynamic_validate(validate_src, agent_answer, filepath=validate_py_path)
+        passed, reason = _run_dynamic_validate(
+            validate_src, agent_answer, filepath=validate_py_path
+        )
         method = "dynamic_validate_py"
     else:
         passed, reason = _run_static_validate(ground_truth, agent_answer)
@@ -132,7 +134,9 @@ def evaluate_answer(
     return result
 
 
-def load_eval_result(dataset: str, query_id: str, run_suffix: str = "") -> Optional[Dict[str, Any]]:
+def load_eval_result(
+    dataset: str, query_id: str, run_suffix: str = ""
+) -> Optional[Dict[str, Any]]:
     """Load a previously saved evaluation result."""
     eval_path = DAB_RESULTS_DIR / dataset / f"query{query_id}{run_suffix}_eval.json"
     if not eval_path.exists():
@@ -151,20 +155,24 @@ def load_agent_answer(dataset: str, query_id: str) -> Optional[str]:
     answer_file = result_dir / f"query{query_id}_answer.txt"
     if answer_file.exists():
         return answer_file.read_text(encoding="utf-8").strip()
-    
+
     # Try markdown log
     md_file = result_dir / f"query{query_id}.md"
     if md_file.exists():
         content = md_file.read_text(encoding="utf-8", errors="replace")
         # Extract the final answer section if present
-        match = re.search(r"## FINAL ANSWER[:\s]*(.*?)(?=\n##|\Z)", content, re.DOTALL | re.IGNORECASE)
+        match = re.search(
+            r"## FINAL ANSWER[:\s]*(.*?)(?=\n##|\Z)", content, re.DOTALL | re.IGNORECASE
+        )
         if match:
             return match.group(1).strip()
         return content[:2000]  # Fallback: first 2000 chars of log
     return None
 
 
-def compute_accuracy(queries: List[Dict[str, Any]], max_runs: int = 5) -> Dict[str, Any]:
+def compute_accuracy(
+    queries: List[Dict[str, Any]], max_runs: int = 5, date: str = "all"
+) -> Dict[str, Any]:
     """
     Compute Pass@1 and Pass@K accuracy across all evaluated queries.
 
@@ -182,6 +190,7 @@ def compute_accuracy(queries: List[Dict[str, Any]], max_runs: int = 5) -> Dict[s
     Args:
         queries: List of query dicts from benchmark_loader.load_all_queries()
         max_runs: Upper bound for scanning _run{n} files (default 5).
+        date: Optional YYYY-MM-DD string to filter results by execution day.
     """
     total_queries = 0
     pending = 0
@@ -201,12 +210,12 @@ def compute_accuracy(queries: List[Dict[str, Any]], max_runs: int = 5) -> Dict[s
 
         if dataset not in per_dataset:
             per_dataset[dataset] = {
-                "total": 0,           # queries
+                "total": 0,  # queries
                 "pending": 0,
                 "evaluated": 0,
-                "run_slots": 0,       # total run slots (queries x K)
-                "passing_slots": 0,   # slots that passed
-                "passed_atk": 0,      # queries with any passing run
+                "run_slots": 0,  # total run slots (queries x K)
+                "passing_slots": 0,  # slots that passed
+                "passed_atk": 0,  # queries with any passing run
                 "queries": [],
             }
 
@@ -216,14 +225,23 @@ def compute_accuracy(queries: List[Dict[str, Any]], max_runs: int = 5) -> Dict[s
         # Load run 0 (canonical)
         run0 = load_eval_result(dataset, qid, run_suffix="")
 
+        if run0 is not None and date != "all":
+            eval_path = DAB_RESULTS_DIR / dataset / f"query{qid}_eval.json"
+            if eval_path.exists():
+                file_date = datetime.fromtimestamp(eval_path.stat().st_mtime).strftime("%Y-%m-%d")
+                if file_date != date:
+                    run0 = None
+
         if run0 is None:
             per_dataset[dataset]["pending"] += 1
             pending += 1
-            per_dataset[dataset]["queries"].append({
-                "query_id": qid,
-                "status": "pending",
-                "passed": None,
-            })
+            per_dataset[dataset]["queries"].append(
+                {
+                    "query_id": qid,
+                    "status": "pending",
+                    "passed": None,
+                }
+            )
             continue
 
         # Collect all runs: run0 + _run1 ... _run{max_runs-1}
@@ -259,31 +277,40 @@ def compute_accuracy(queries: List[Dict[str, Any]], max_runs: int = 5) -> Dict[s
             for i, rv in enumerate(run_results)
         ]
 
-        per_dataset[dataset]["queries"].append({
-            "query_id": qid,
-            "status": "evaluated",
-            "num_runs": k,
-            "passing_runs": passing,
-            "passed_atk": any_pass,
-            "runs": runs_detail,
-            "reason": run0.get("reason", ""),
-            "elapsed_s": run0.get("elapsed_s"),
-            "input_tokens": run0.get("input_tokens"),
-            "output_tokens": run0.get("output_tokens"),
-        })
+        per_dataset[dataset]["queries"].append(
+            {
+                "query_id": qid,
+                "status": "evaluated",
+                "num_runs": k,
+                "passing_runs": passing,
+                "passed_atk": any_pass,
+                "runs": runs_detail,
+                "reason": run0.get("reason", ""),
+                "elapsed_s": run0.get("elapsed_s"),
+                "input_tokens": run0.get("input_tokens"),
+                "output_tokens": run0.get("output_tokens"),
+            }
+        )
 
     evaluated_queries = total_queries - pending
 
     # Global K = max runs seen across any evaluated query
     global_k = max(
-        (len(q.get("runs") or []) for ds in per_dataset.values() for q in ds["queries"] if q.get("runs")),
+        (
+            len(q.get("runs") or [])
+            for ds in per_dataset.values()
+            for q in ds["queries"]
+            if q.get("runs")
+        ),
         default=1,
     )
 
     # pass@1 = run-slot success rate (Claude's definition)
     pass_at_1 = (passing_run_slots / total_run_slots) if total_run_slots > 0 else 0.0
     # pass@K = query-level any-run success rate
-    pass_at_k = (queries_with_any_pass / evaluated_queries) if evaluated_queries > 0 else 0.0
+    pass_at_k = (
+        (queries_with_any_pass / evaluated_queries) if evaluated_queries > 0 else 0.0
+    )
 
     # Per-dataset pass@1 and pass@K
     for ds_info in per_dataset.values():
@@ -292,21 +319,29 @@ def compute_accuracy(queries: List[Dict[str, Any]], max_runs: int = 5) -> Dict[s
         evaled = ds_info["evaluated"]
         atk = ds_info["passed_atk"]
         ds_info["pass_at_1"] = round(passing_s / slots, 4) if slots > 0 else 0.0
-        ds_info["pass_at_1_pct"] = f"{passing_s/slots*100:.1f}%" if slots > 0 else "N/A"
+        ds_info["pass_at_1_pct"] = (
+            f"{passing_s / slots * 100:.1f}%" if slots > 0 else "N/A"
+        )
         ds_info["pass_at_k"] = round(atk / evaled, 4) if evaled > 0 else 0.0
-        ds_info["pass_at_k_pct"] = f"{atk/evaled*100:.1f}%" if evaled > 0 else "N/A"
+        ds_info["pass_at_k_pct"] = f"{atk / evaled * 100:.1f}%" if evaled > 0 else "N/A"
 
     total_time = sum(
-        q.get("elapsed_s") for ds in per_dataset.values()
-        for q in ds["queries"] if q.get("elapsed_s") is not None
+        q.get("elapsed_s")
+        for ds in per_dataset.values()
+        for q in ds["queries"]
+        if q.get("elapsed_s") is not None
     )
     total_input_tokens = sum(
-        q.get("input_tokens") for ds in per_dataset.values()
-        for q in ds["queries"] if q.get("input_tokens") is not None
+        q.get("input_tokens")
+        for ds in per_dataset.values()
+        for q in ds["queries"]
+        if q.get("input_tokens") is not None
     )
     total_output_tokens = sum(
-        q.get("output_tokens") for ds in per_dataset.values()
-        for q in ds["queries"] if q.get("output_tokens") is not None
+        q.get("output_tokens")
+        for ds in per_dataset.values()
+        for q in ds["queries"]
+        if q.get("output_tokens") is not None
     )
 
     return {
@@ -331,6 +366,7 @@ def compute_accuracy(queries: List[Dict[str, Any]], max_runs: int = 5) -> Dict[s
 
 if __name__ == "__main__":
     import sys
+
     sys.path.insert(0, str(Path(__file__).resolve().parent.parent.parent.parent))
     from backend.app.dab.benchmark_loader import load_all_queries
 
@@ -338,4 +374,3 @@ if __name__ == "__main__":
     queries = load_all_queries(dab_repo)
     metrics = compute_accuracy(queries)
     print(json.dumps(metrics, indent=2))
-

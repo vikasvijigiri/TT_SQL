@@ -3,8 +3,8 @@ class ReasoningDirectives:
     Compact operational directives for specific SQL reasoning domains.
     Replaces verbose philosophical prose with direct, actionable instructions.
     """
-    
-    JOIN_SAFETY = """[JOIN DIRECTIVES]: 
+
+    JOIN_SAFETY = """[JOIN DIRECTIVES]:
 - Verify foreign key to primary key relationships before joining.
 - Avoid unmediated many-to-many joins. If joining a 1-to-many relationship, pre-aggregate the many side before joining to preserve fact table row grain."""
 
@@ -49,10 +49,16 @@ class ReasoningDirectives:
         return cls._DIALECT_SAFETY_GENERIC
 
     @classmethod
-    def get_all_directives(cls, dialect: str = "snowflake", include_sqlite_time_series: bool = False) -> str:
+    def get_all_directives(
+        cls, dialect: str = "snowflake", include_sqlite_time_series: bool = False
+    ) -> str:
         directives = [
-            cls.JOIN_SAFETY, cls.AGGREGATION, cls.NULL_HANDLING,
-            cls.VARIANT_EXTRACTION, cls.GEOSPATIAL, cls.get_dialect_safety(dialect)
+            cls.JOIN_SAFETY,
+            cls.AGGREGATION,
+            cls.NULL_HANDLING,
+            cls.VARIANT_EXTRACTION,
+            cls.GEOSPATIAL,
+            cls.get_dialect_safety(dialect),
         ]
         if dialect.lower() == "sqlite" and include_sqlite_time_series:
             directives.append(cls.SQLITE_TIME_SERIES)

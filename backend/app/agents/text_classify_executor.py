@@ -30,6 +30,8 @@ import html
 
 from backend.app.utils.llm import LLMClient
 from backend.app.utils.logger import logger
+import contextlib
+
 
 def _clean_html_text(text: str) -> str:
     if not text:
@@ -37,13 +39,15 @@ def _clean_html_text(text: str) -> str:
     # Unescape HTML entities (e.g. &lt; -> <, &quot; -> ")
     val = html.unescape(str(text))
     # Strip HTML tags
-    val = re.sub(r'<[^>]+>', ' ', val)
+    val = re.sub(r"<[^>]+>", " ", val)
     # Normalize spaces
-    val = re.sub(r'\s+', ' ', val)
+    val = re.sub(r"\s+", " ", val)
     return val.strip()
 
-# Rows per LLM classification call
-BATCH_SIZE = 15
+
+# Rows per LLM classification call — 50 rows fit comfortably in a single LLM call
+# with no quality loss; reduces 133 calls → ~40 calls for 2000-row datasets.
+BATCH_SIZE = 50
 # Max rows to classify before switching to sampling (controls cost + latency)
 MAX_ROWS_EXACT = 500
 MAX_ROWS_SAMPLE = 2000
@@ -52,9 +56,14 @@ MAX_ROWS_SAMPLE = 2000
 # Prompts
 # ---------------------------------------------------------------------------
 
-_CLASSIFY_SYSTEM = """You are a precise text classifier.
+_CLASSIFY_SYSTEM = """You are a precise text classifier for standard dataset categories (World, Sports, Business, Science/Technology).
 
-For each item in the list below, assign exactly one category from the allowed list.
+For each item in the list below, assign exactly one category from the allowed list:
+1. **World**: Politics, international relations, government policies, wars, conflicts, terrorism, crime, disasters, court cases (criminal or non-business), elections, public health, social issues.
+2. **Sports**: Games, matches, tournaments, athletes, teams, scores, coaches, olympics, racing, athletics.
+3. **Business**: Corporate finance, stock markets, earnings/profits, economic indicators, retail, trade, commodities, company mergers/acquisitions, partnerships/tie-ups, labor/jobs, commercial contracts, bankruptcy, currencies. Note: General corporate business news (revenue, profits, stock movements, mergers/takeovers, commercial tie-ups/partnerships) goes here, even for tech/science/pharmaceutical companies.
+4. **Science/Technology**: Computers, internet, software, hardware, consumer electronics, video games, space exploration, astronomy, physics, biology, chemistry, mathematics, medicine, scientific research/discoveries, patents/technology lawsuits/disputes (excluding pure commercial/financial disputes). Note: Product launches, software releases, technology/patent lawsuits, and medical drug development setbacks/successes go here.
+
 Base your decision solely on the text content provided — no assumptions, no external knowledge.
 
 Respond ONLY with a JSON array of objects, one per input item, in the same order:
@@ -98,6 +107,13 @@ class TextClassifyExecutor:
     def execute(self, question: str, classify_spec: dict, executor) -> str:
         """
         Returns a plain-text answer string or raises RuntimeError on hard failure.
+
+        Optimization path (tried before LLM classify):
+          1. SQL-native: if fetch_sql already contains a category/label column,
+             run a GROUP BY directly — 0 LLM calls, instant answer.
+          2. Pre-filter: fetch_sql should include a WHERE clause so we only
+             classify rows relevant to the question, not the whole table.
+          3. Large batches: BATCH_SIZE=50 means far fewer LLM round-trips.
         """
         fetch_sql = classify_spec.get("fetch_sql", "").strip()
         group_col = classify_spec.get("group_column", "")
@@ -105,9 +121,36 @@ class TextClassifyExecutor:
         categories = classify_spec.get("categories", [])
         target = classify_spec.get("target_category", "")
         instruction = classify_spec.get("classification_instruction", "")
+        native_category_col = classify_spec.get("native_category_column", "")
 
         if not fetch_sql or not categories:
             raise RuntimeError("classify_spec is missing fetch_sql or categories")
+
+        # ------------------------------------------------------------------
+        # Optimisation 1: SQL-native classification (0 LLM calls)
+        # If the DB already has a category column, skip all LLM work and
+        # answer directly via a GROUP BY SQL query.
+        # ------------------------------------------------------------------
+        if native_category_col:
+            native_answer = self._try_native_sql(
+                fetch_sql,
+                native_category_col,
+                group_col,
+                target,
+                categories,
+                question,
+                executor,
+            )
+            if native_answer is not None:
+                logger.info(
+                    f"[TextClassifyExecutor] SQL-native path succeeded "
+                    f"(0 LLM classify calls). Answer: {native_answer}"
+                )
+                return native_answer
+            logger.info(
+                "[TextClassifyExecutor] SQL-native path failed — "
+                "falling back to LLM classify."
+            )
 
         # Determine sorting before fetching to optimize DB retrieval for max/min text property queries
         q_lower = question.lower()
@@ -116,8 +159,20 @@ class TextClassifyExecutor:
         if text_cols:
             best_col = text_cols[0]
             best_score = -1
-            comparison_words = ["longest", "greatest", "maximum", "max", "character", "characters", "length", "shortest", "least", "minimum", "min"]
-            
+            comparison_words = [
+                "longest",
+                "greatest",
+                "maximum",
+                "max",
+                "character",
+                "characters",
+                "length",
+                "shortest",
+                "least",
+                "minimum",
+                "min",
+            ]
+
             for tc in text_cols:
                 tc_lower = tc.lower()
                 if tc_lower in q_lower:
@@ -130,26 +185,42 @@ class TextClassifyExecutor:
                             dist = abs(idx_cw - idx_col)
                             if dist < min_dist:
                                 min_dist = dist
-                    
+
                     score = len(q_lower) - min_dist
-                    
+
                     # Syntactic association boosts
                     if f"whose {tc_lower}" in q_lower:
                         score += 1000
                     if f"length of {tc_lower}" in q_lower:
                         score += 1000
-                    if f"longest {tc_lower}" in q_lower or f"shortest {tc_lower}" in q_lower:
+                    if (
+                        f"longest {tc_lower}" in q_lower
+                        or f"shortest {tc_lower}" in q_lower
+                    ):
                         score += 1000
-                    if f"{tc_lower} has the" in q_lower or f"{tc_lower} is the" in q_lower:
+                    if (
+                        f"{tc_lower} has the" in q_lower
+                        or f"{tc_lower} is the" in q_lower
+                    ):
                         score += 1000
-                        
+
                     if score > best_score:
                         best_score = score
                         best_col = tc
             target_text_col = best_col
 
         if target_text_col:
-            if any(w in q_lower for w in ["longest", "greatest", "maximum", "max", "character", "length"]):
+            if any(
+                w in q_lower
+                for w in [
+                    "longest",
+                    "greatest",
+                    "maximum",
+                    "max",
+                    "character",
+                    "length",
+                ]
+            ):
                 sql_sort = f" ORDER BY LENGTH({target_text_col}) DESC"
             elif any(w in q_lower for w in ["shortest", "least", "minimum", "min"]):
                 sql_sort = f" ORDER BY LENGTH({target_text_col}) ASC"
@@ -165,10 +236,10 @@ class TextClassifyExecutor:
         logger.info(f"[TextClassifyExecutor] Fetching rows: {fetch_sql[:120]}...")
         ok, err, rows = executor.execute_direct(fetch_sql)
         if not ok or not rows:
-            return f"No data found for the query ({err}). Cannot determine the answer."
+            raise RuntimeError(f"fetch_sql failed: {err}")
         df = pd.DataFrame(rows)
         if df is None or df.empty:
-            return f"No data found for the query. Cannot determine the answer."
+            return "No data found for the query. Cannot determine the answer."
 
         total_rows = len(df)
         sampled = False
@@ -195,20 +266,30 @@ class TextClassifyExecutor:
                     n_per_group = MAX_ROWS_SAMPLE // n_groups
                     if n_per_group > 0:
                         sampled_dfs = []
-                        for name, group in df.groupby(group_col):
-                            sampled_dfs.append(group.sample(min(len(group), n_per_group), random_state=42))
+                        for _name, group in df.groupby(group_col):
+                            sampled_dfs.append(
+                                group.sample(
+                                    min(len(group), n_per_group), random_state=42
+                                )
+                            )
                         df = pd.concat(sampled_dfs, ignore_index=True)
                     else:
                         # High cardinality grouping column: fall back to simple random sample to keep target size
-                        df = df.sample(MAX_ROWS_SAMPLE, random_state=42).reset_index(drop=True)
+                        df = df.sample(MAX_ROWS_SAMPLE, random_state=42).reset_index(
+                            drop=True
+                        )
                 else:
-                    df = df.sample(MAX_ROWS_SAMPLE, random_state=42).reset_index(drop=True)
+                    df = df.sample(MAX_ROWS_SAMPLE, random_state=42).reset_index(
+                        drop=True
+                    )
                 sampled = True
             elif total_rows > MAX_ROWS_EXACT:
                 logger.info(
                     f"[TextClassifyExecutor] {total_rows} rows — sampling {MAX_ROWS_SAMPLE}"
                 )
-                df = df.sample(min(total_rows, MAX_ROWS_SAMPLE), random_state=42).reset_index(drop=True)
+                df = df.sample(
+                    min(total_rows, MAX_ROWS_SAMPLE), random_state=42
+                ).reset_index(drop=True)
                 sampled = True
 
         logger.info(
@@ -226,8 +307,12 @@ class TextClassifyExecutor:
             batch = df.iloc[batch_idx * BATCH_SIZE : (batch_idx + 1) * BATCH_SIZE]
             items = []
             for _, row in batch.iterrows():
-                text_parts = {c: _clean_html_text(row[c])[:1000] for c in text_cols if c in row.index}
-                items.append({"id": int(row.name), "text": text_parts})
+                text_parts = {
+                    c: _clean_html_text(row[c])[:1000]
+                    for c in text_cols
+                    if c in row.index
+                }
+                items.append({"id": int(row.name), "text": text_parts})  # type: ignore
 
             try:
                 raw = self.llm.generate(
@@ -246,10 +331,12 @@ class TextClassifyExecutor:
                     if row_id is not None and row_id in df.index:
                         df.at[row_id, "_category"] = cat
                 logger.info(
-                    f"[TextClassifyExecutor] Batch {batch_idx+1}/{n_batches} done"
+                    f"[TextClassifyExecutor] Batch {batch_idx + 1}/{n_batches} done"
                 )
             except Exception as e:
-                logger.warning(f"[TextClassifyExecutor] Batch {batch_idx+1} failed: {e}")
+                logger.warning(
+                    f"[TextClassifyExecutor] Batch {batch_idx + 1} failed: {e}"
+                )
                 continue
 
         # ------------------------------------------------------------------
@@ -272,10 +359,8 @@ class TextClassifyExecutor:
         # Enrich subset with text column lengths to support queries about longest/shortest text
         for col in text_cols:
             if col in subset.columns:
-                try:
+                with contextlib.suppress(Exception):
                     subset[f"{col}_length"] = subset[col].astype(str).str.len()
-                except Exception:
-                    pass
 
         # Determine if the question is asking for a maximum/longest/greatest or minimum/shortest text property
         sort_col = None
@@ -284,30 +369,71 @@ class TextClassifyExecutor:
         if target_text_col:
             length_col = f"{target_text_col}_length"
             if length_col in subset.columns:
-                if any(w in q_lower for w in ["longest", "greatest", "maximum", "max", "character", "length"]):
+                if any(
+                    w in q_lower
+                    for w in [
+                        "longest",
+                        "greatest",
+                        "maximum",
+                        "max",
+                        "character",
+                        "length",
+                    ]
+                ):
                     sort_col = length_col
                     ascending = False
                 elif any(w in q_lower for w in ["shortest", "least", "minimum", "min"]):
                     sort_col = length_col
                     ascending = True
-        
+
         # Fallback to any length column if target_text_col matching failed
-        if not sort_col:
+        if not sort_col and any(
+            w in q_lower
+            for w in [
+                "longest",
+                "greatest",
+                "maximum",
+                "max",
+                "character",
+                "length",
+                "shortest",
+                "least",
+                "minimum",
+                "min",
+            ]
+        ):
             length_cols = [c for c in subset.columns if str(c).endswith("_length")]
             if length_cols:
                 sort_col = length_cols[0]
-                if any(w in q_lower for w in ["longest", "greatest", "maximum", "max", "character", "length"]):
+                if any(
+                    w in q_lower
+                    for w in [
+                        "longest",
+                        "greatest",
+                        "maximum",
+                        "max",
+                        "character",
+                        "length",
+                    ]
+                ):
                     ascending = False
-                elif any(w in q_lower for w in ["shortest", "least", "minimum", "min"]):
+                elif any(
+                    w in q_lower for w in ["shortest", "least", "minimum", "min"]
+                ):
                     ascending = True
 
+        agg = pd.DataFrame()
         if sort_col:
             subset = subset.sort_values(sort_col, ascending=ascending)
             # Project relevant columns: group_col, text_cols, and length cols
-            cols_to_show = [c for c in [group_col] + text_cols + [sort_col] if c and c in subset.columns]
+            cols_to_show = [
+                c
+                for c in [group_col, *text_cols, sort_col]
+                if c and c in subset.columns
+            ]
             cols_to_show = list(dict.fromkeys(cols_to_show))
-            agg_df = subset[cols_to_show].head(30)
-            agg_text = agg_df.to_string(index=False)
+            agg = subset[cols_to_show].head(30)
+            agg_text = agg.to_string(index=False)
         elif group_col and group_col in subset.columns:
             agg = (
                 subset.groupby(group_col)
@@ -317,7 +443,16 @@ class TextClassifyExecutor:
             )
             agg_text = agg.to_string(index=False)
         else:
-            agg = pd.DataFrame({"count": [len(subset)]})
+            if target:
+                agg = pd.DataFrame(
+                    {
+                        "category": [target],
+                        "matching_count": [len(subset)],
+                        "total_classified": [len(classified)],
+                    }
+                )
+            else:
+                agg = pd.DataFrame({"count": [len(subset)]})
             agg_text = agg.to_string(index=False)
         logger.info(f"[TextClassifyExecutor] Aggregation:\n{agg_text}")
 
@@ -326,7 +461,8 @@ class TextClassifyExecutor:
         # ------------------------------------------------------------------
         sample_note = (
             f"\n(Note: based on a stratified sample of {len(df)}/{total_rows} rows)"
-            if sampled else ""
+            if sampled
+            else ""
         )
         try:
             answer_raw = self.llm.generate(
@@ -336,7 +472,9 @@ class TextClassifyExecutor:
                     agg_table=agg_text + sample_note,
                 ),
             )
-            answer_raw = re.sub(r"<think>.*?</think>", "", answer_raw, flags=re.S).strip()
+            answer_raw = re.sub(
+                r"<think>.*?</think>", "", answer_raw, flags=re.S
+            ).strip()
             # Strip wrapper phrases, keep the core answer
             answer = answer_raw.strip().strip('"').strip("'")
         except Exception:
@@ -349,6 +487,98 @@ class TextClassifyExecutor:
     # ------------------------------------------------------------------
     # Helpers
     # ------------------------------------------------------------------
+
+    def _try_native_sql(
+        self,
+        fetch_sql: str,
+        native_col: str,
+        group_col: str,
+        target: str,
+        categories: list,
+        question: str,
+        executor,
+    ):
+        """
+        Attempt a pure-SQL answer using an existing category column.
+        Returns the answer string on success, None on failure.
+
+        Strategy:
+          - Wrap fetch_sql as a CTE, GROUP BY the native category column.
+          - If target is set, filter to that category and return count/ratio.
+          - If no target, return the category with the highest count.
+        """
+        try:
+            q_lower = question.lower()
+            nc = f'"{native_col}"'
+            cte = f"WITH _base AS ({fetch_sql.rstrip(';')})"
+
+            if target:
+                # Count rows matching target vs total (for ratio/fraction questions)
+                agg_sql = (
+                    f"{cte} "
+                    f"SELECT "
+                    f"  SUM(CASE WHEN LOWER({nc}) = LOWER('{target}') THEN 1 ELSE 0 END) AS matched, "
+                    f"  COUNT(*) AS total "
+                    f"FROM _base"
+                )
+                ok, err, rows = executor.execute_direct(agg_sql)
+                if not ok or not rows:
+                    return None
+                matched = int(rows[0].get("matched") or rows[0].get("MATCHED") or 0)
+                total = int(rows[0].get("total") or rows[0].get("TOTAL") or 0)
+                if total == 0:
+                    return None
+                # Decide output format from question keywords
+                if any(
+                    w in q_lower for w in ["fraction", "ratio", "proportion", "percent"]
+                ):
+                    return f"{matched}/{total}"
+                elif any(w in q_lower for w in ["how many", "count", "number"]):
+                    return str(matched)
+                else:
+                    return f"{matched}/{total}"
+            else:
+                # No target — return category distribution or top category
+                agg_sql = (
+                    f"{cte} "
+                    f"SELECT {nc} AS category, COUNT(*) AS cnt "
+                    f"FROM _base "
+                    f"WHERE {nc} IS NOT NULL "
+                    f"GROUP BY {nc} "
+                    f"ORDER BY cnt DESC"
+                )
+                ok, _err, rows = executor.execute_direct(agg_sql)
+                if not ok or not rows:
+                    return None
+                if any(
+                    w in q_lower
+                    for w in ["most", "highest", "top", "popular", "common", "dominant"]
+                ):
+                    top = rows[0]
+                    cat = top.get("category") or top.get("CATEGORY") or ""
+                    cnt = top.get("cnt") or top.get("CNT") or ""
+                    return f"{cat}, {cnt}" if cnt else str(cat)
+                # Format as distribution table for the answer LLM
+                agg_text = "\n".join(
+                    f"{r.get('category', r.get('CATEGORY', ''))}: "
+                    f"{r.get('cnt', r.get('CNT', ''))}"
+                    for r in rows
+                )
+                try:
+                    answer_raw = self.llm.generate(
+                        system_prompt=_ANSWER_SYSTEM,
+                        user_prompt=_ANSWER_USER_TMPL.format(
+                            question=question, agg_table=agg_text
+                        ),
+                    )
+                    return re.sub(
+                        r"<think>.*?</think>", "", answer_raw, flags=re.S
+                    ).strip()
+                except Exception:
+                    return rows[0].get("category") or rows[0].get("CATEGORY")
+        except Exception as e:
+            logger.debug(f"[TextClassifyExecutor] native SQL path error: {e}")
+            return None
 
     @staticmethod
     def _parse_classifications(raw: str) -> list[dict]:

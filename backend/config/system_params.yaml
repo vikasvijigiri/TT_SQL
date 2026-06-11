@@ -1,0 +1,25 @@
+batch:
+  workers: 4
+data_iq:
+  placeholders:
+  - ''
+  - ' '
+  - '""'
+  - '" "'
+  - \
+  - ''''''
+  - nan
+  - None
+  - 'NULL'
+  preview_row_limit: 10
+llm:
+  max_retries: 3
+  max_tokens: 8000
+  model: bedrock/openai.gpt-oss-safeguard-120b
+  retry_base_delay_s: 1
+  temperature: 0
+orchestrator:
+  max_retries: 4
+  pruning_threshold_tokens: 3500
+  research_term_limit: 2
+  token_heuristic: 4

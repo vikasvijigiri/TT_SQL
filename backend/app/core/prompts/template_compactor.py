@@ -1,6 +1,7 @@
 import re
 from typing import Dict, List
 
+
 class TemplateCompactor:
     """
     Enterprise Syntax Template Compaction Engine.
@@ -11,11 +12,11 @@ class TemplateCompactor:
     @classmethod
     def compact_sql(cls, sql: str) -> str:
         # Strip SQL comments
-        cleaned = re.sub(r'--.*?\n', '\n', sql)
-        cleaned = re.sub(r'/\*.*?\*/', '', cleaned, flags=re.DOTALL)
-        
+        cleaned = re.sub(r"--.*?\n", "\n", sql)
+        cleaned = re.sub(r"/\*.*?\*/", "", cleaned, flags=re.DOTALL)
+
         # Remove extra whitespace while keeping clean indentation
-        lines = [l.rstrip() for l in cleaned.splitlines() if l.strip()]
+        lines = [line.rstrip() for line in cleaned.splitlines() if line.strip()]
         return "\n".join(lines)
 
     @classmethod
@@ -23,10 +24,7 @@ class TemplateCompactor:
         name = template.get("name", "Template")
         sql = template.get("sql", "")
         compacted_sql = cls.compact_sql(sql)
-        return {
-            "name": name,
-            "sql": compacted_sql
-        }
+        return {"name": name, "sql": compacted_sql}
 
     @classmethod
     def compact_templates(cls, templates: List[Dict[str, str]]) -> List[Dict[str, str]]:

@@ -33,16 +33,37 @@ Schema feasibility analyst. Determine whether each concept in the question maps 
 ## Task
 Extract every FILTER, GROUP-BY, and AGGREGATE concept. For each:
 - **DIRECT** → column values ARE the concept. `gap: false`
-- **PROXY / GAP** → concept must be inferred from text (LIKE, regex, NLP). `gap: true`
+- **PROXY / GAP** → concept must be inferred from free-text with no queryable structure. `gap: true`
 
 ## Direct vs Proxy — the hard rule
 | Direct ✓ | Gap ✗ |
 |---|---|
-| `status IN ('active')` — column stores the label | `title LIKE '%World%'` — text search for a category |
-| `date >= '2024'` — column stores the date | Extracting sentiment/intent from free text |
-| `language = 'Python'` — dedicated column | `description LIKE '%Python%'` — no column |
+| `status IN ('active')` — column stores the label | Extracting sentiment/implicit intent from free text |
+| `date >= '2024'` — column stores the date | Deriving an industry from a prose description |
+| `language = 'Python'` — dedicated column | Cultural/semantic inference with no keyword |
+| JSON/serialized attr column — key detectable via `json_extract` or `LIKE '%key%'` | Completely unstructured blob with no pattern |
 
 **Hint files override ambiguity** — if a hint maps a concept to a column, that column IS the direct mapping.
+
+## CRITICAL: Structured JSON / Serialized-Text columns are NOT semantic gaps
+If a column stores JSON strings or Python-serialized dicts (e.g. `{"key": "value"}` or `{'key': True}`),
+its keys ARE queryable via `json_extract()`, `LIKE '%Key%value%'`, or `regexp_extract()`.
+These are **enriched_sql** candidates — mark `gap: false`.
+
+**Mark `gap: false`** (queryable) when:
+- A concept maps to a JSON key that can be extracted with `json_extract()` or `LIKE '%key%'`
+- A value is embedded in a structured/serialized text column extractable via regex or LIKE
+- A category or label is stored inside a JSON attributes column
+
+**Mark `gap: true` ONLY when:**
+- The concept genuinely requires LLM semantic understanding (sentiment, implicit topic, cultural inference)
+- No pattern-matching rule (LIKE, regex, json_extract) can reliably detect the concept
+
+## CRITICAL: Entity-level vs Event-level metric disambiguation
+When the question asks for a "rating", "score", or "average" of an entity (e.g. "average rating of businesses"):
+- Prefer the **entity's own rating column** (e.g. `business.stars`, `product.rating`) over aggregating from a child event table (e.g. `review.rating`, `order.score`)
+- Entity-level ratings are pre-aggregated; event-level ratings are raw per-event values — they produce **different numbers**
+- Only use an event-table rating column when the question explicitly references events (e.g. "average rating *given in* reviews")
 
 ## Output — JSON only, no markdown
 ```
@@ -54,7 +75,7 @@ Extract every FILTER, GROUP-BY, and AGGREGATE concept. For each:
       "mapped_column": "<table.column> or null",
       "mapping_type": "direct|proxy|none",
       "gap": true|false,
-      "gap_reason": "<gap=true only: why LIKE/proxy doesn't count>"
+      "gap_reason": "<gap=true only: why no pattern-matching can detect this>"
     }
   ],
   "has_gaps": true|false,
@@ -67,7 +88,7 @@ _USER_TMPL = """**Question:** {question}
 **Schema:**
 {schema_text}
 
-{hints_section}Map every concept. A LIKE search for a categorical label is always a GAP."""
+{hints_section}Map every concept. Remember: JSON/serialized-text extraction via json_extract() or LIKE is NOT a gap — it is enriched_sql."""
 
 
 class FeasibilityAgent:
@@ -92,7 +113,9 @@ class FeasibilityAgent:
           has_gaps      bool
           gap_summary   str (empty string when no gaps)
         """
-        hints_section = f"Hint/description files:\n{hints.strip()}\n\n" if hints.strip() else ""
+        hints_section = (
+            f"Hint/description files:\n{hints.strip()}\n\n" if hints.strip() else ""
+        )
         prompt = _USER_TMPL.format(
             question=question,
             schema_text=schema_text,
@@ -113,7 +136,7 @@ class FeasibilityAgent:
                 if result["has_gaps"]:
                     logger.info(f"[FeasibilityAgent] Gap: {result['gap_summary']}")
                 return result
-        except Exception as e:
+        except Exception as e:  # noqa: BLE001
             logger.debug(f"[FeasibilityAgent] failed (non-fatal): {e}")
 
         # Safe default — assume no gaps, continue with standard pipeline
@@ -144,5 +167,6 @@ class FeasibilityAgent:
             if "gap_summary" not in obj:
                 obj["gap_summary"] = ""
             return obj
-        except Exception:
+        except Exception as e:  # noqa: BLE001
+            logger.debug(f"[FeasibilityAgent] parsing failed: {e}")
             return None

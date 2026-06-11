@@ -32,15 +32,15 @@ class SchemaExplorer:
 
     MAX_DISTINCT_VALUES = 50
     MAX_SAMPLE_ROWS = 20
-    MAX_TEXT_SAMPLE_CHARS = 120   # truncate long text fields in display
-    MAX_JOIN_PROBES = 30          # cap total join probes to avoid excessive queries
-    NARROW_JOIN_THRESHOLD = 0.1   # join < 10 % of smaller table = narrow join
+    MAX_TEXT_SAMPLE_CHARS = 120  # truncate long text fields in display
+    MAX_JOIN_PROBES = 30  # cap total join probes to avoid excessive queries
+    NARROW_JOIN_THRESHOLD = 0.1  # join < 10 % of smaller table = narrow join
 
     def explore(
         self,
         gap_concepts: list[str],
         schema_text: str,
-        executor,                         # DatabaseExecutor instance
+        executor,  # DatabaseExecutor instance
         hint_files: Optional[list[str]] = None,
         description_text: Optional[str] = None,
     ) -> str:
@@ -89,7 +89,9 @@ class SchemaExplorer:
         sections.append(gap_note)
 
         report = "\n\n".join(sections)
-        logger.info(f"[SchemaExplorer] Report ready ({len(report)} chars, {len(sections)} sections)")
+        logger.info(
+            f"[SchemaExplorer] Report ready ({len(report)} chars, {len(sections)} sections)"
+        )
         return report
 
     # ------------------------------------------------------------------
@@ -111,7 +113,9 @@ class SchemaExplorer:
                 p = Path(fpath)
                 if p.exists():
                     try:
-                        content = p.read_text(encoding="utf-8", errors="replace").strip()
+                        content = p.read_text(
+                            encoding="utf-8", errors="replace"
+                        ).strip()
                         parts.append(f"[{p.name}]\n{content[:2000]}")
                     except Exception as e:
                         parts.append(f"[{p.name}] (read error: {e})")
@@ -122,36 +126,54 @@ class SchemaExplorer:
     # Live DB probing
     # ------------------------------------------------------------------
 
+    @staticmethod
+    def _tref(table: str, quote: str) -> str:
+        """Return the correct SQL table reference for FROM/JOIN clauses.
+
+        Qualified names (db.table) must NOT be wrapped in a single outer quote
+        pair — doing so confuses most SQL engines.  Plain names use the normal
+        identifier quote character.
+        """
+        if "." in table:
+            return table  # e.g. repo_metadata_db.languages — use as-is
+        return f"{quote}{table}{quote}"
+
     def _probe_distinct_values(self, tables: list[str], executor) -> str:
         lines: list[str] = []
         dialect = getattr(executor, "dialect", "sqlite")
         quote = '"' if dialect in ("sqlite", "postgres", "duckdb") else "`"
 
         for table in tables:
+            if "all_" in table.lower():
+                continue
             # Get column names first
             try:
                 col_sql = self._columns_query(table, dialect, quote)
                 ok, _, col_data = executor.execute_direct(col_sql)
                 if not ok or not col_data:
                     continue
-                # PRAGMA table_info returns rows with (cid, name, type, ...) — name is index 1
-                columns = [list(r.values())[1] if len(r) > 1 else list(r.values())[0] for r in col_data]
+                # PRAGMA table_info / our DESCRIBE wrapper return name at index 1
+                columns = [
+                    list(r.values())[1] if len(r) > 1 else next(iter(r.values()))
+                    for r in col_data
+                ]
             except Exception as e:
                 logger.debug(f"[SchemaExplorer] col probe failed for {table}: {e}")
                 continue
 
-            for col in columns[:12]:   # cap at 12 columns per table
+            tref = self._tref(table, quote)
+            for col in columns[:12]:  # cap at 12 columns per table
                 try:
                     q = (
-                        f'SELECT DISTINCT {quote}{col}{quote} '
-                        f'FROM {quote}{table}{quote} '
-                        f'WHERE {quote}{col}{quote} IS NOT NULL '
-                        f'LIMIT {self.MAX_DISTINCT_VALUES}'
+                        f"SELECT DISTINCT {quote}{col}{quote} "
+                        f"FROM {tref} "
+                        f"WHERE {quote}{col}{quote} IS NOT NULL "
+                        f"LIMIT {self.MAX_DISTINCT_VALUES}"
                     )
                     ok2, _, raw_rows = executor.execute_direct(q)
                     if not ok2 or not raw_rows:
                         continue
-                    vals = [str(list(r.values())[0])[:60] for r in raw_rows]
+                    vals = [str(next(iter(r.values())))[:60] for r in raw_rows]
                     lines.append(f"  {table}.{col}: [{', '.join(vals[:20])}]")
                 except Exception:
                     continue
@@ -174,17 +196,19 @@ class SchemaExplorer:
         quote = '"' if dialect in ("sqlite", "postgres", "duckdb") else "`"
 
         # --- collect column names and row counts per table ---
-        table_cols: dict[str, list[str]] = {}   # table → [original-case col names]
+        table_cols: dict[str, list[str]] = {}  # table → [original-case col names]
         table_size: dict[str, int] = {}
 
         for table in tables:
+            if "all_" in table.lower():
+                continue
             try:
                 col_sql = self._columns_query(table, dialect, quote)
                 ok, _, col_data = executor.execute_direct(col_sql)
                 if not ok or not col_data:
                     continue
                 cols = [
-                    list(r.values())[1] if len(r) > 1 else list(r.values())[0]
+                    list(r.values())[1] if len(r) > 1 else next(iter(r.values()))
                     for r in col_data
                 ]
                 table_cols[table] = cols
@@ -192,11 +216,12 @@ class SchemaExplorer:
                 continue
 
             try:
+                tref = self._tref(table, quote)
                 ok2, _, cnt_rows = executor.execute_direct(
-                    f"SELECT COUNT(*) FROM {quote}{table}{quote}"
+                    f"SELECT COUNT(*) FROM {tref}"
                 )
                 if ok2 and cnt_rows:
-                    table_size[table] = int(list(cnt_rows[0].values())[0])
+                    table_size[table] = int(next(iter(cnt_rows[0].values())))
             except Exception:
                 pass
 
@@ -208,9 +233,11 @@ class SchemaExplorer:
         table_list = list(table_cols.keys())
 
         for i, ta in enumerate(table_list):
-            for tb in table_list[i + 1:]:
+            for tb in table_list[i + 1 :]:
                 if probes_run >= self.MAX_JOIN_PROBES:
-                    lines.append(f"  (join probe cap of {self.MAX_JOIN_PROBES} reached)")
+                    lines.append(
+                        f"  (join probe cap of {self.MAX_JOIN_PROBES} reached)"
+                    )
                     break
 
                 # Case-insensitive column name overlap
@@ -225,20 +252,20 @@ class SchemaExplorer:
                     if probes_run >= self.MAX_JOIN_PROBES:
                         break
 
-                    col_a = cols_a_lower[col_lower]   # original case from table A
-                    col_b = cols_b_lower[col_lower]   # original case from table B
+                    col_a = cols_a_lower[col_lower]  # original case from table A
+                    col_b = cols_b_lower[col_lower]  # original case from table B
 
                     try:
                         join_sql = (
                             f"SELECT COUNT(*) "
-                            f"FROM {quote}{ta}{quote} a "
-                            f"JOIN {quote}{tb}{quote} b "
+                            f"FROM {self._tref(ta, quote)} a "
+                            f"JOIN {self._tref(tb, quote)} b "
                             f"ON a.{quote}{col_a}{quote} = b.{quote}{col_b}{quote}"
                         )
                         ok, _, rows = executor.execute_direct(join_sql)
                         if not ok or not rows:
                             continue
-                        join_count = int(list(rows[0].values())[0])
+                        join_count = int(next(iter(rows[0].values())))
                         probes_run += 1
 
                         size_a = table_size.get(ta)
@@ -246,7 +273,9 @@ class SchemaExplorer:
 
                         size_note = ""
                         if size_a is not None and size_b is not None:
-                            size_note = f" (table sizes: {ta}={size_a:,}, {tb}={size_b:,})"
+                            size_note = (
+                                f" (table sizes: {ta}={size_a:,}, {tb}={size_b:,})"
+                            )
                             min_size = min(size_a, size_b)
                             if min_size > 0:
                                 ratio = join_count / min_size
@@ -267,7 +296,9 @@ class SchemaExplorer:
                         )
 
                     except Exception as e:
-                        logger.debug(f"[SchemaExplorer] join probe {ta}×{tb} on {col_lower}: {e}")
+                        logger.debug(
+                            f"[SchemaExplorer] join probe {ta}×{tb} on {col_lower}: {e}"
+                        )
                         continue
 
         if not lines:
@@ -286,16 +317,20 @@ class SchemaExplorer:
         dialect = getattr(executor, "dialect", "sqlite")
         quote = '"' if dialect in ("sqlite", "postgres", "duckdb") else "`"
 
-        for table in tables[:4]:   # limit to first 4 tables
+        for table in tables[:4]:  # limit to first 4 tables
+            if "all_" in table.lower():
+                continue
             try:
-                q = f'SELECT * FROM {quote}{table}{quote} LIMIT {self.MAX_SAMPLE_ROWS}'
+                q = f"SELECT * FROM {self._tref(table, quote)} LIMIT {self.MAX_SAMPLE_ROWS}"
                 ok2, _, raw_rows = executor.execute_direct(q)
                 if not ok2 or not raw_rows:
                     continue
                 lines.append(f"  Table: {table}")
                 lines.append(f"  Columns: {list(raw_rows[0].keys())}")
                 for row in raw_rows[:5]:
-                    truncated = {k: str(v)[:self.MAX_TEXT_SAMPLE_CHARS] for k, v in row.items()}
+                    truncated = {
+                        k: str(v)[: self.MAX_TEXT_SAMPLE_CHARS] for k, v in row.items()
+                    }
                     lines.append(f"    {truncated}")
             except Exception as e:
                 logger.debug(f"[SchemaExplorer] sample failed for {table}: {e}")
@@ -316,6 +351,7 @@ class SchemaExplorer:
         correct join anchor.
         """
         import re
+
         results: list[tuple[str, str, str]] = []
         # Match the join line followed IMMEDIATELY by the *** NARROW JOIN marker.
         # Format:
@@ -324,13 +360,20 @@ class SchemaExplorer:
         # CRITICAL: no intermediate lines allowed between the join line and the marker.
         # Allowing intermediate lines causes the regex to match the WRONG table pair
         # (e.g. commit × files when the marker is actually for contents × files).
+        # Handle both plain (table.col) and qualified (db.table.col) references.
+        # A plain ref has exactly one dot; a qualified ref has two dots.
         pattern = re.compile(
-            r"^\s{2}(\w+)\.(\w+)\s*=\s*(\w+)\.(\w+):\s*[\d,]+\s*joined rows[^\n]*\n"
+            r"^\s{2}([\w.]+)\.(\w+)\s*=\s*([\w.]+)\.(\w+):\s*[\d,]+\s*joined rows[^\n]*\n"
             r"[ \t]*\*\*\*\s*NARROW JOIN",
             re.MULTILINE,
         )
         for m in pattern.finditer(exploration):
-            table_a, col_a, table_b, _col_b = m.group(1), m.group(2), m.group(3), m.group(4)
+            table_a, col_a, table_b, _col_b = (
+                m.group(1),
+                m.group(2),
+                m.group(3),
+                m.group(4),
+            )
             results.append((table_a, table_b, col_a))
         return results
 
@@ -340,29 +383,51 @@ class SchemaExplorer:
 
     @staticmethod
     def _extract_table_names(schema_text: str) -> list[str]:
-        """Parse table names from formatted schema text."""
+        """Parse table names from formatted schema text.
+
+        Handles both plain table names and db-qualified names (db.table).
+        Qualified names are returned as-is so downstream probes can use the
+        correct prefix when querying cross-database schemas (e.g. DuckDB with
+        an attached SQLite database).
+        """
         import re
-        # Match "Table: tablename" or "tablename (" patterns
+
+        # Prefer qualified names (db.table) first, then plain names
         patterns = [
-            r"Table:\s*[`\"]?(\w+)[`\"]?",
-            r"^[`\"]?(\w+)[`\"]?\s*\(",
+            r"Table:\s*[`\"]?(\w+\.\w+)[`\"]?",  # qualified: db.table
+            r"Table:\s*[`\"]?(\w+)[`\"]?",  # plain: table
+            r"^[`\"]?(\w+)[`\"]?\s*\(",  # CREATE-style
             r"CREATE TABLE\s+[`\"]?(\w+)[`\"]?",
         ]
         found = []
         for pat in patterns:
             matches = re.findall(pat, schema_text, re.I | re.M)
             found.extend(matches)
-        # deduplicate preserving order
-        seen = set()
+        # Deduplicate; skip SQL keywords; also skip bare db-prefix entries
+        # (e.g. "repo_metadata_db") when the qualified form was already found
+        seen: set[str] = set()
+        qualified_dbs: set[str] = set()
         result = []
         for t in found:
-            if t.lower() not in seen and t.lower() not in ("create", "table", "if"):
-                seen.add(t.lower())
-                result.append(t)
+            key = t.lower()
+            if key in seen or key in ("create", "table", "if"):
+                continue
+            seen.add(key)
+            result.append(t)
+            if "." in t:
+                qualified_dbs.add(t.split(".")[0].lower())
+
+        # Remove bare db-prefix entries already covered by a qualified form
+        result = [t for t in result if t.lower() not in qualified_dbs]
         return result
 
     @staticmethod
     def _columns_query(table: str, dialect: str, quote: str) -> str:
+        if "." in table and dialect == "duckdb":
+            # Qualified name (e.g. repo_metadata_db.languages) — use DESCRIBE
+            # wrapped in a subquery so callers always see (cid, name, ...) shape:
+            # we fake the cid column so index [1] still gives the column name.
+            return f"SELECT 0 AS cid, column_name AS name FROM (DESCRIBE {table})"
         if dialect in ("sqlite", "duckdb"):
             return f"PRAGMA table_info({quote}{table}{quote})"
         elif dialect == "postgres":

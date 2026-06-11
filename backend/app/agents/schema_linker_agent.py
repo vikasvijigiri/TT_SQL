@@ -1,14 +1,14 @@
+import typing
 from backend.app.utils.llm import LLMClient
-from backend.app.utils.prompt_loader import PromptLoader
 from backend.app.models.schemas import SchemaLinkerOutput
 from backend.app.utils.logger import logger
-from backend.app.core.dialects.rule_retriever import DialectRuleRetriever
 from backend.app.services.semantic_engine import SemanticContextEngine
 from backend.app.services.schema_pruner import TablePruner, ColumnPruner
 from backend.app.core.retrieval.hierarchical_retriever import HierarchicalRetriever
 from backend.app.core.retrieval.fallback_strategy import ProgressiveExpansionStrategy
 
 from backend.app.core.config import get_prompt_path
+
 PROMPT_PATH = get_prompt_path("schema_linker.yaml")
 
 
@@ -33,10 +33,10 @@ class SchemaLinkerAgent:
         in selected_columns. For any lookup-like table (has both a code-type
         column AND a description-type column) where the description was selected
         but the code column was omitted, the code column is automatically added.
-        
+
         """
         JOIN_KEY_HINTS = {"code", "id", "key", "num", "number", "ref", "fk", "pk"}
-        DESC_HINTS     = {"description", "desc", "name", "label", "text", "title"}
+        DESC_HINTS = {"description", "desc", "name", "label", "text", "title"}
 
         if not self.semantic_engine.context:
             return result
@@ -46,19 +46,19 @@ class SchemaLinkerAgent:
         # Value is (full_fqn, [all_column_names]).
         short_to_full = {}
         for tbl in self.semantic_engine.context.tables:
-            short_key = tbl.name.lower().replace('"', '').split('.')[-1]
+            short_key = tbl.name.lower().replace('"', "").split(".")[-1]
             short_to_full[short_key] = (tbl.name, [col.name for col in tbl.columns])
 
         # Parse selected_columns into {table_short_name: [col_name, ...]}
         # Strips quotes first so both "ICD10CODE"."Description" and
         # DEATH.DEATH.ICD10CODE.Description map to short key "icd10code".
-        selected_map = {}  # short_key -> [col_name, ...]
+        selected_map: dict[str, typing.Any] = {}  # short_key -> [col_name, ...]
         for fqn in result.selected_columns:
-            clean = fqn.replace('"', '')          # remove all surrounding quotes
-            parts = clean.split('.')
+            clean = fqn.replace('"', "")  # remove all surrounding quotes
+            parts = clean.split(".")
             if len(parts) >= 2:
-                col_name  = parts[-1]
-                tbl_short = parts[-2].lower()     # second-to-last segment = table name
+                col_name = parts[-1]
+                tbl_short = parts[-2].lower()  # second-to-last segment = table name
                 selected_map.setdefault(tbl_short, []).append(col_name)
 
         added_fqns = []
@@ -67,10 +67,12 @@ class SchemaLinkerAgent:
                 continue
             full_fqn, all_cols = short_to_full[tbl_short]
 
-            selected_set = set(c.lower() for c in selected_cols)
+            selected_set = {c.lower() for c in selected_cols}
 
             # Identify identifier-like and description-like columns in this table
-            code_cols = [c for c in all_cols if any(h in c.lower() for h in JOIN_KEY_HINTS)]
+            code_cols = [
+                c for c in all_cols if any(h in c.lower() for h in JOIN_KEY_HINTS)
+            ]
             desc_cols = [c for c in all_cols if any(h in c.lower() for h in DESC_HINTS)]
 
             # Lookup pattern: table has BOTH a code-type AND a desc-type column.
@@ -102,7 +104,9 @@ class SchemaLinkerAgent:
 
         return result
 
-    def _enforce_valuemapping_tables(self, result: SchemaLinkerOutput) -> SchemaLinkerOutput:
+    def _enforce_valuemapping_tables(
+        self, result: SchemaLinkerOutput
+    ) -> SchemaLinkerOutput:
         """
         Ensure every table referenced in a value mapping column is present in selected_tables.
 
@@ -121,18 +125,20 @@ class SchemaLinkerAgent:
         # Build short base name → full FQN for all tables in the context
         known: dict = {}
         for t in self.semantic_engine.context.tables:
-            short = t.name.lower().replace('"', '').split('.')[-1]
+            short = t.name.lower().replace('"', "").split(".")[-1]
             known[short] = t.name
 
-        selected_short = {t.lower().replace('"', '').split('.')[-1] for t in result.selected_tables}
+        selected_short = {
+            t.lower().replace('"', "").split(".")[-1] for t in result.selected_tables
+        }
         added = []
 
         for vm in result.value_mappings:
-            col_ref = (vm.column or "").replace('"', '')
-            if '.' not in col_ref:
+            col_ref = (vm.column or "").replace('"', "")
+            if "." not in col_ref:
                 continue  # no table prefix — cannot determine owning table
             # Take the segment immediately before the column name
-            parts = col_ref.split('.')
+            parts = col_ref.split(".")
             tbl_short = parts[-2].lower()
 
             if tbl_short in selected_short:
@@ -155,10 +161,16 @@ class SchemaLinkerAgent:
             )
         return result
 
-    def link_schema(self, user_query: str, dialect: str = "snowflake", lessons: str = "", force_full: bool = False) -> SchemaLinkerOutput:
+    def link_schema(
+        self,
+        user_query: str,
+        dialect: str = "snowflake",
+        lessons: str = "",
+        force_full: bool = False,
+    ) -> SchemaLinkerOutput:
         logger.set_agent("SCHEMA_LINKER")
         logger.info(f"Linking schema for query: '{user_query}'")
-        
+
         if not self.semantic_engine.context:
             self.semantic_engine.build_context()
 
@@ -171,43 +183,64 @@ class SchemaLinkerAgent:
 
         # 1. Multi-Tier Table Pruning Check with Progressive Fallback
         if force_full or full_tokens <= 4000 or len(all_tables) <= 5:
-            logger.info(f"Compact database schema detected (~{full_tokens} tokens, {len(all_tables)} tables). Skipping Table Pruner.")
+            logger.info(
+                f"Compact database schema detected (~{full_tokens} tokens, {len(all_tables)} tables). Skipping Table Pruner."
+            )
             relevant_tables = all_tables
         else:
-            logger.info(f"Extensive database schema detected (~{full_tokens} tokens, {len(all_tables)} tables). Running Table Pruner.")
-            relevant_tables = self.table_pruner.prune(user_query, lessons=lessons, dialect=dialect, intent=intent)
+            logger.info(
+                f"Extensive database schema detected (~{full_tokens} tokens, {len(all_tables)} tables). Running Table Pruner."
+            )
+            relevant_tables = self.table_pruner.prune(
+                user_query, lessons=lessons, dialect=dialect, intent=intent
+            )
             if not relevant_tables:
-                logger.warning(f"Table pruning returned empty. Utilizing Progressive Expansion Fallback.")
+                logger.warning(
+                    "Table pruning returned empty. Utilizing Progressive Expansion Fallback."
+                )
                 fallback = ProgressiveExpansionStrategy(retriever)
-                narrowed_ctx, _, _ = fallback.execute_with_fallback(user_query, self.semantic_engine.context)
+                narrowed_ctx, _, _ = fallback.execute_with_fallback(
+                    user_query, self.semantic_engine.context
+                )
                 relevant_tables = [t.name for t in narrowed_ctx.tables]
 
         # 2. Multi-Tier Column Pruning Check
         pruned_context = self.semantic_engine.format_for_prompt(
-            relevant_tables=relevant_tables,
-            include_samples=True
+            relevant_tables=relevant_tables, include_samples=True
         )
         pruned_tokens = len(pruned_context) // 4
-        
+
         # Absolute Token Safety Guard for Bedrock 131K limit
         if pruned_tokens > 95000:
-            logger.warning(f"Pruned context (~{pruned_tokens} tokens) exceeds safe Bedrock limits. Restricting table subset.")
+            logger.warning(
+                f"Pruned context (~{pruned_tokens} tokens) exceeds safe Bedrock limits. Restricting table subset."
+            )
             relevant_tables = relevant_tables[:35]
             pruned_context = self.semantic_engine.format_for_prompt(
-                relevant_tables=relevant_tables,
-                include_samples=True
+                relevant_tables=relevant_tables, include_samples=True
             )
             pruned_tokens = len(pruned_context) // 4
-        
+
         if pruned_tokens <= 4500:
-            logger.info(f"Pruned table context is compact (~{pruned_tokens} tokens). Skipping Column Pruner.")
+            logger.info(
+                f"Pruned table context is compact (~{pruned_tokens} tokens). Skipping Column Pruner."
+            )
             table_columns = None
         else:
-            logger.info(f"Pruned table context is extensive (~{pruned_tokens} tokens). Running Column Pruner.")
-            table_columns = self.column_pruner.prune(user_query, relevant_tables, lessons=lessons, dialect=dialect, intent=intent)
+            logger.info(
+                f"Pruned table context is extensive (~{pruned_tokens} tokens). Running Column Pruner."
+            )
+            table_columns = self.column_pruner.prune(
+                user_query,
+                relevant_tables,
+                lessons=lessons,
+                dialect=dialect,
+                intent=intent,
+            )
 
         # 3. Assemble surgical prompt using PromptAssembler
         from backend.app.core.prompts.prompt_assembler import PromptAssembler
+
         assembler = PromptAssembler(dialect=dialect, stage="SCHEMA_LINKER")
         assembled = assembler.assemble(
             user_query=user_query,
@@ -216,11 +249,11 @@ class SchemaLinkerAgent:
             intent=intent,
             relevant_tables=relevant_tables,
             table_columns=table_columns,
-            lessons=lessons
+            lessons=lessons,
         )
 
         system_prompt = assembled.system_prompt
-        user_prompt   = assembled.user_prompt
+        user_prompt = assembled.user_prompt
 
         try:
             result = self.llm.generate_structured(

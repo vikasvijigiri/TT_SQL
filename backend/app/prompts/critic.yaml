@@ -24,6 +24,8 @@ messages:
       | 9 | **Temporal correctness** | `BETWEEN` on a timestamp misses everything after midnight on the end date. Integer division truncates — cast numerator or denominator first. Slowly-changing-dimension joins on business key alone silently return current attribute values for all history. |
       | 10 | **Grain & determinism** | Top-N ORDER BY must fully break ties (secondary sort key). Verify the aggregate matches intent: COUNT(*) vs SUM, ID column vs computed metric, row-present count vs actual measure. |
       | 11 | **Dimension granularity** | When schema has multiple tables for the same concept at different granularities, verify the query uses the correct one. Coarser tables merge descriptions and change which rows a LIKE/text filter matches. Also verify fact table FK column matches the chosen lookup table. |
+      | 12 | **Exclusion fan-out** | If the query excludes parent entities via `WHERE child.col NOT LIKE …` or `WHERE child.col != …` on a child table that has multiple rows per parent, this is a silent semantic error — the parent still appears via other non-matching rows. Correct pattern: `WHERE parent.key NOT IN (SELECT parent_key FROM child WHERE condition)` or `NOT EXISTS (…)`. Treat any direct `NOT LIKE`/`≠` filter on a potential one-to-many child table as a hard flaw. |
+      | 13 | **Anchor compliance** | If the schema context or `enriched_context` contains `*** NARROW JOIN`, `ANCHOR: FROM`, or an explicit join anchor instruction, the SQL `FROM` clause MUST use that exact join. Scanning the base table alone via a proxy column (e.g. `sample_path`, `file_name`) instead of the anchor join is a hard structural error — treat it as invalid. |
 
       ## Output — JSON only
       ```json

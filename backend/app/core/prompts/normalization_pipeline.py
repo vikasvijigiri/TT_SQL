@@ -1,5 +1,5 @@
 import re
-from typing import List
+
 
 class PromptNormalizationPipeline:
     """
@@ -16,7 +16,7 @@ class PromptNormalizationPipeline:
         # Remove trailing whitespace per line
         lines = [line.rstrip() for line in text.splitlines()]
         # Rejoin and collapse 3+ consecutive newlines into exactly 2
-        collapsed = re.sub(r'\n{3,}', '\n\n', "\n".join(lines))
+        collapsed = re.sub(r"\n{3,}", "\n\n", "\n".join(lines))
         return collapsed.strip()
 
     @classmethod
@@ -25,7 +25,7 @@ class PromptNormalizationPipeline:
         if not text:
             return ""
         # Match lines starting with optional whitespace, then *, -, or • followed by spaces
-        normalized = re.sub(r'^(\s*)[\*\•]\s+', r'\1- ', text, flags=re.MULTILINE)
+        normalized = re.sub(r"^(\s*)[\*\•]\s+", r"\1- ", text, flags=re.MULTILINE)
         return normalized
 
     @classmethod
@@ -34,9 +34,14 @@ class PromptNormalizationPipeline:
         if not text:
             return ""
         # Remove tags like [Rule], [Directive], [Template], etc.
-        clean = re.sub(r'\[(?:Rule|Directive|Template|Join Directives|Aggregation Directives|Null & Division Directives|Variant & JSON Directives|Geospatial Directives|Dialect Directives)\]:?\s*', '', text, flags=re.IGNORECASE)
+        clean = re.sub(
+            r"\[(?:Rule|Directive|Template|Join Directives|Aggregation Directives|Null & Division Directives|Variant & JSON Directives|Geospatial Directives|Dialect Directives)\]:?\s*",
+            "",
+            text,
+            flags=re.IGNORECASE,
+        )
         # Clean up any leftover double spaces after prefix removal
-        clean = re.sub(r' -  ', ' - ', clean)
+        clean = re.sub(r" -  ", " - ", clean)
         return clean.strip()
 
     @classmethod
@@ -45,7 +50,10 @@ class PromptNormalizationPipeline:
         if not text:
             return ""
         # Detect and consolidate repeated dialect rule headers
-        pattern_rules_header = re.compile(r'(?:===\s*SNOWFLAKE\s*DIALECT\s*RULES\s*===|QUERY-AWARE\s*DIALECT\s*RULES\s*FOR\s*SNOWFLAKE:?)[\s\n]*(?:===\s*SNOWFLAKE\s*DIALECT\s*RULES\s*===|QUERY-AWARE\s*DIALECT\s*RULES\s*FOR\s*SNOWFLAKE:?)?', re.IGNORECASE)
+        pattern_rules_header = re.compile(
+            r"(?:===\s*SNOWFLAKE\s*DIALECT\s*RULES\s*===|QUERY-AWARE\s*DIALECT\s*RULES\s*FOR\s*SNOWFLAKE:?)[\s\n]*(?:===\s*SNOWFLAKE\s*DIALECT\s*RULES\s*===|QUERY-AWARE\s*DIALECT\s*RULES\s*FOR\s*SNOWFLAKE:?)?",
+            re.IGNORECASE,
+        )
         text = pattern_rules_header.sub("=== SNOWFLAKE DIALECT RULES ===", text)
         return text
 

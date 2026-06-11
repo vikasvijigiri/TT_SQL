@@ -1,0 +1,100 @@
+@import "tailwindcss";
+@config "../tailwind.config.js";
+
+:root {
+  color-scheme: dark;
+}
+
+body {
+  background-color: #0a0a0b;
+  color: #e2e8f0;
+  font-family: 'Inter', sans-serif;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+/* Custom Scrollbar */
+::-webkit-scrollbar {
+  height: 6px;
+  width: 6px;
+}
+
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+::-webkit-scrollbar-thumb {
+  background: #1f1f23;
+  border-radius: 999px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: #2f2f35;
+}
+
+.glass {
+  background-color: rgba(17, 17, 20, 0.6);
+  border: 1px solid #1f1f23;
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+}
+
+.gradient-text {
+  background-clip: text;
+  -webkit-background-clip: text;
+  color: transparent;
+  background-image: linear-gradient(to right, #60a5fa, #6366f1);
+}
+
+.no-scrollbar::-webkit-scrollbar {
+  display: none;
+}
+
+.no-scrollbar {
+  -ms-overflow-style: none;
+  scrollbar-width: none;
+}
+
+@keyframes led-rotate {
+  from { transform: rotate(0deg); }
+  to { transform: rotate(360deg); }
+}
+
+.animate-led-border {
+  position: relative;
+  overflow: hidden;
+  border: none !important;
+}
+
+.animate-led-border::before {
+  content: '';
+  position: absolute;
+  top: -150%;
+  left: -150%;
+  width: 400%;
+  height: 400%;
+  background: conic-gradient(
+    transparent, 
+    transparent, 
+    transparent, 
+    #3b82f6, 
+    #60a5fa, 
+    #3b82f6
+  );
+  animation: led-rotate 3s linear infinite;
+  z-index: 0;
+}
+
+.animate-led-border::after {
+  content: '';
+  position: absolute;
+  inset: 1px;
+  background: #111114; /* Matches card bg */
+  border-radius: 12px;
+  z-index: 1;
+}
+
+.animate-led-border > * {
+  position: relative;
+  z-index: 2;
+}

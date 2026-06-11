@@ -22,6 +22,8 @@ messages:
       | Pre-filter pattern | For many-to-many bridge filters: create a CTE with DISTINCT keys first, then inner-join back |
       | Dirty data | Use flexible matches (`OR`, `REPLACE`, `IN` list) when exploration shows variant values |
       | Narrow join anchor | If `*** NARROW JOIN` is in context: `FROM tableA JOIN tableB ON tableA.col = tableB.col` — never scan alone |
+      | Exclusion fan-out trap | When excluding parent entities based on a child table (one parent → many child rows), `WHERE child.col NOT LIKE …` is wrong — the parent reappears via other non-matching rows. Correct pattern: `WHERE parent.key NOT IN (SELECT parent_key FROM child WHERE condition)` or `NOT EXISTS (…)` |
+      | Anchor obedience | If context contains `ANCHOR: FROM X JOIN Y ON` or `*** NARROW JOIN`, that join defines the data universe. The FROM clause must start with that exact join — never substitute a proxy column scan (e.g. `sample_path`, `file_name`) on the base table alone |
 
       ## Multi-Agent Debate Format
       Write `thought_process` as a concise debate:

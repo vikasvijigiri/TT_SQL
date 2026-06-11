@@ -1,7 +1,10 @@
 import os
 from typing import NoReturn
 from dotenv import load_dotenv
+
 load_dotenv()
+import tempfile
+from pathlib import Path
 from sqlalchemy import create_engine
 
 import databao.agent as bao
@@ -18,9 +21,8 @@ def from_env(key: str) -> str:
 def main() -> None:
     # The Snowflake driver expects a file path for private_key_file.
     # Since the environment variable contains the key itself, we write it to a temp file.
-    import tempfile
     pk_content = from_env("SNOWFLAKE_PRIVATE_KEY_FILE")
-    with tempfile.NamedTemporaryFile(mode='w', delete=False, suffix='.pem') as tf:
+    with tempfile.NamedTemporaryFile(mode="w", delete=False, suffix=".pem") as tf:
         tf.write(pk_content)
         temp_pk_path = tf.name
 
@@ -41,7 +43,9 @@ def main() -> None:
         gcp_creds_content = os.getenv("GOOGLE_APPLICATION_CREDENTIALS_JSON")
         gcp_creds_path = ""
         if gcp_creds_content:
-            with tempfile.NamedTemporaryFile(mode='w', delete=False, suffix='.json') as gtf:
+            with tempfile.NamedTemporaryFile(
+                mode="w", delete=False, suffix=".json"
+            ) as gtf:
                 gtf.write(gcp_creds_content)
                 gcp_creds_path = gtf.name
                 os.environ["GOOGLE_APPLICATION_CREDENTIALS"] = gcp_creds_path
@@ -62,14 +66,20 @@ def main() -> None:
             executor_type="separate_executor",
         )
 
-        result = agent.thread().ask("Could you provide a clean, structured dataset from dicom_all table that only includes SM images marked as VOLUME from the TCGA-LUAD and TCGA-LUSC collections, excluding any slides with compression type 'other,' where the specimen preparation step explicitly has 'Embedding medium' set to 'Tissue freezing medium,' and ensuring that the tissue type is only 'normal' or 'tumor' and the cancer subtype is reported accordingly?")
+        result = agent.thread().ask(
+            "Could you provide a clean, structured dataset from dicom_all table that only includes SM images marked as VOLUME from the TCGA-LUAD and TCGA-LUSC collections, excluding any slides with compression type 'other,' where the specimen preparation step explicitly has 'Embedding medium' set to 'Tissue freezing medium,' and ensuring that the tissue type is only 'normal' or 'tumor' and the cancer subtype is reported accordingly?"
+        )
         df = result.df()
-        print(df.head())
+        print(df.head())  # type: ignore
     finally:
-        if os.path.exists(temp_pk_path):
-            os.remove(temp_pk_path)
-        if 'gcp_creds_path' in locals() and gcp_creds_path and os.path.exists(gcp_creds_path):
-            os.remove(gcp_creds_path)
+        if Path(temp_pk_path).exists():
+            Path(temp_pk_path).unlink()
+        if (
+            "gcp_creds_path" in locals()
+            and gcp_creds_path
+            and Path(gcp_creds_path).exists()
+        ):
+            Path(gcp_creds_path).unlink()
 
 
 if __name__ == "__main__":

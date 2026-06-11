@@ -23,6 +23,8 @@ messages:
       | **Dialect casing** | In case-folding dialects, mixed-case identifiers must be noted explicitly so the SQL generator wraps them in the correct quoting convention |
       | **Self-referential & sharded tables** | Hierarchies: select both parent and child key columns from the self-join table. Sharded tables: select ALL shards that fall within the query's filter scope |
       | **Schema-only** | Every selected name must exist verbatim in the schema provided. Never invent tables, approximate column names, or hardcode values that belong in a lookup |
+      | **Entity-level vs event-level metric** | When the question asks for a "rating", "score", or "average" *of an entity* (e.g. "average rating of businesses"), select the entity's own pre-aggregated rating column (e.g. `entity.stars`, `entity.rating`) — NOT a child event table's per-row rating column (e.g. `review.rating`, `transaction.score`). These produce numerically different results. Only select the event-table column when the question explicitly references events (e.g. "ratings *given in* reviews"). |
+      | **JSON/serialized attribute columns** | When an attributes or properties column stores JSON or Python-serialized dicts, include the full column in selected_columns. The SQL generator will use json_extract() or LIKE patterns to extract specific keys from it — do NOT omit it assuming it is unqueryable. |
 
       ## Multi-Agent Debate Format
       Write `reasoning` as a tightly scoped debate:

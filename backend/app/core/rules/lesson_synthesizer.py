@@ -4,6 +4,7 @@ lesson_synthesizer.py
 Extracts generic, database-agnostic SQL rules from successful SQL correction events.
 Saves these rules dynamically to dynamic_lessons.json.
 """
+
 import re
 import json
 import time
@@ -22,6 +23,7 @@ CONSTRAINTS:
 {"rule_title": "Title (<=10 words)", "error_cause": "1-2 sentences generic cause", "generic_rule": "2-4 sentences rule", "intent_pattern": "keywords", "category": "aggregation|join|filtering|casting|ordering|subquery|string_match|date_handling|numeric_precision|schema_inference"}
 No other text.\
 """
+
 
 class LessonSynthesizer:
     def __init__(self, llm_client=None):
@@ -58,12 +60,16 @@ class LessonSynthesizer:
         corrected_sql: str,
         dialect: str,
         dataset: str = "",
-        instance_id: str = ""
+        instance_id: str = "",
     ) -> Optional[Dict[str, Any]]:
         """
         Synthesizes a rule from a correction event and saves it to dynamic_lessons.json as ACTIVE.
         """
-        if not failed_sql or not corrected_sql or failed_sql.strip() == corrected_sql.strip():
+        if (
+            not failed_sql
+            or not corrected_sql
+            or failed_sql.strip() == corrected_sql.strip()
+        ):
             return None
 
         user_prompt = (
@@ -93,19 +99,31 @@ class LessonSynthesizer:
             return None
 
         # Validate fields
-        required = {"rule_title", "error_cause", "generic_rule", "intent_pattern", "category"}
+        required = {
+            "rule_title",
+            "error_cause",
+            "generic_rule",
+            "intent_pattern",
+            "category",
+        }
         if not required.issubset(rule_data.keys()):
-            logger.warning(f"LessonSynthesizer: missing required fields in JSON: {rule_data.keys()}")
+            logger.warning(
+                f"LessonSynthesizer: missing required fields in JSON: {rule_data.keys()}"
+            )
             return None
 
         generic_rule = rule_data["generic_rule"]
         self.store.reload()  # Make sure we have the latest rules from disk
-        if self.store.is_covered(generic_rule) or self.store.was_tried_before(generic_rule):
-            logger.info("LessonSynthesizer: Synthesized rule is already covered or was tried before. Skipping.")
+        if self.store.is_covered(generic_rule) or self.store.was_tried_before(
+            generic_rule
+        ):
+            logger.info(
+                "LessonSynthesizer: Synthesized rule is already covered or was tried before. Skipping."
+            )
             return None
 
         lesson_id = f"dyn_{int(time.time() * 1000) % 10_000_000_000}_{hashlib.sha256(generic_rule.encode()).hexdigest()[:6]}"
-        
+
         new_rule = {
             "lesson_id": lesson_id,
             "intent_pattern": rule_data["intent_pattern"],
@@ -123,5 +141,7 @@ class LessonSynthesizer:
 
         self.store._rules.append(new_rule)
         self.store._save()
-        logger.info(f"LessonSynthesizer: Synthesized and saved ACTIVE rule '{rule_data['rule_title']}' [{lesson_id}] for {dialect}")
+        logger.info(
+            f"LessonSynthesizer: Synthesized and saved ACTIVE rule '{rule_data['rule_title']}' [{lesson_id}] for {dialect}"
+        )
         return new_rule

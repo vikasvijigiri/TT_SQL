@@ -12,9 +12,7 @@ Usage:
 
 import sys
 import json
-import time
 import argparse
-import traceback
 from pathlib import Path
 from typing import List, Dict, Any, Optional
 from concurrent.futures import ThreadPoolExecutor, as_completed
@@ -28,11 +26,14 @@ from backend.app.dab.dab_orchestrator import run_dab_query, DAB_RESULTS_DIR
 from backend.app.dab.dab_evaluator import compute_accuracy
 from backend.app.utils.llm import LLMClient
 from backend.app.core.config import DAB_REPO
+import contextlib
 
 DAB_REPO_DEFAULT = str(DAB_REPO)
 
 
-def print_progress_bar(current: int, total: int, prefix: str = "", width: int = 40) -> None:
+def print_progress_bar(
+    current: int, total: int, prefix: str = "", width: int = 40
+) -> None:
     filled = int(width * current / total) if total > 0 else 0
     bar = "█" * filled + "░" * (width - filled)
     pct = 100 * current / total if total > 0 else 0
@@ -59,9 +60,13 @@ def run_all(
     filtered = queries
     if skip_docker:
         filtered = [q for q in filtered if not q["needs_docker"]]
-        print(f"[skip_docker] Filtered to {len(filtered)} queries (SQLite + DuckDB only)")
+        print(
+            f"[skip_docker] Filtered to {len(filtered)} queries (SQLite + DuckDB only)"
+        )
     if dataset_filter:
-        filtered = [q for q in filtered if q["dataset"].lower() == dataset_filter.lower()]
+        filtered = [
+            q for q in filtered if q["dataset"].lower() == dataset_filter.lower()
+        ]
     if query_id_filter:
         filtered = [q for q in filtered if q["query_id"] == str(query_id_filter)]
 
@@ -75,7 +80,9 @@ def run_all(
                 if ev is not None:
                     tag = "PASS" if ev.get("passed") else "FAIL"
                     label = f"run {r}" if r > 0 else "run 0"
-                    print(f"  [SKIP] {q['instance_id']} {label} (already evaluated: {tag})")
+                    print(
+                        f"  [SKIP] {q['instance_id']} {label} (already evaluated: {tag})"
+                    )
                     continue
             work.append((q, r))
 
@@ -106,7 +113,10 @@ def run_all(
             print_summary(results, queries)
     else:
         with ThreadPoolExecutor(max_workers=workers) as executor:
-            futures = {executor.submit(run_dab_query, q, llm_client, r): (q, r) for q, r in work}
+            futures = {
+                executor.submit(run_dab_query, q, llm_client, r): (q, r)
+                for q, r in work
+            }
             completed = 0
             for future in as_completed(futures):
                 completed += 1
@@ -116,38 +126,46 @@ def run_all(
                     results.append(result)
                 except Exception as e:
                     q, r = futures[future]
-                    results.append({
-                        "dataset": q["dataset"],
-                        "query_id": q["query_id"],
-                        "run_number": r,
-                        "status": "error",
-                        "passed": False,
-                        "error": str(e),
-                    })
+                    results.append(
+                        {
+                            "dataset": q["dataset"],
+                            "query_id": q["query_id"],
+                            "run_number": r,
+                            "status": "error",
+                            "passed": False,
+                            "error": str(e),
+                        }
+                    )
                 print_summary(results, queries)
 
     print("\n")
     return results
 
 
-def print_summary(results: List[Dict[str, Any]], all_queries: List[Dict[str, Any]]) -> None:
+def print_summary(
+    results: List[Dict[str, Any]], all_queries: List[Dict[str, Any]]
+) -> None:
     """Print benchmark summary matching Claude's pass@1 / pass@K format."""
     accuracy = compute_accuracy(all_queries)
     k = accuracy.get("num_runs", 1)
     slots = accuracy.get("total_run_slots", accuracy["evaluated"])
     passing = accuracy.get("passing_run_slots", 0)
-    atk = accuracy.get("queries_passed_atk", 0)
+    accuracy.get("queries_passed_atk", 0)
 
     print("\n" + "=" * 72)
     print("  DAB BENCHMARK RESULTS — SpiderDIN / TT_SQL_V2")
     print("=" * 72)
     print(f"  Total Queries  : {accuracy['total_queries']}")
-    print(f"  Evaluated      : {accuracy['evaluated']}  (pending: {accuracy['pending']})")
+    print(
+        f"  Evaluated      : {accuracy['evaluated']}  (pending: {accuracy['pending']})"
+    )
     print(f"  Run slots      : {passing}/{slots} passed  (K={k} runs per query)")
     print(f"  pass@1         : {accuracy['pass_at_1_pct']}  (run-slot success rate)")
-    print(f"  pass@{k}         : {accuracy['pass_at_k_pct']}  (query-level: any run passes)")
+    print(
+        f"  pass@{k}         : {accuracy['pass_at_k_pct']}  (query-level: any run passes)"
+    )
     print("-" * 72)
-    print(f"  {'Dataset':<25} {'Queries':>7} {'pass@1':>8} {'pass@'+str(k):>8}")
+    print(f"  {'Dataset':<25} {'Queries':>7} {'pass@1':>8} {'pass@' + str(k):>8}")
     print("-" * 72)
     for ds, stats in sorted(accuracy["per_dataset"].items()):
         n = stats["total"]
@@ -166,27 +184,38 @@ def print_summary(results: List[Dict[str, Any]], all_queries: List[Dict[str, Any
     print(f"  [Report] Saved to: {out_path}\n")
 
 
-
-
 def main():
-    try:
-        sys.stdout.reconfigure(encoding='utf-8')
-    except Exception:
-        pass
-    try:
-        sys.stderr.reconfigure(encoding='utf-8')
-    except Exception:
-        pass
-    parser = argparse.ArgumentParser(description="Run DataAgentBench queries through SpiderDIN.")
+    with contextlib.suppress(Exception):
+        sys.stdout.reconfigure(encoding="utf-8")
+    with contextlib.suppress(Exception):
+        sys.stderr.reconfigure(encoding="utf-8")
+    parser = argparse.ArgumentParser(
+        description="Run DataAgentBench queries through SpiderDIN."
+    )
     parser.add_argument("--all", action="store_true", help="Run all 54 queries")
-    parser.add_argument("--dataset", type=str, default=None, help="Run a specific dataset")
-    parser.add_argument("--query_id", type=str, default=None, help="Run a specific query ID")
+    parser.add_argument(
+        "--dataset", type=str, default=None, help="Run a specific dataset"
+    )
+    parser.add_argument(
+        "--query_id", type=str, default=None, help="Run a specific query ID"
+    )
     parser.add_argument("--dab_repo", type=str, default=DAB_REPO_DEFAULT)
     parser.add_argument("--workers", type=int, default=1)
-    parser.add_argument("--skip_docker", action="store_true", help="Skip Docker-dependent datasets")
-    parser.add_argument("--force", action="store_true", help="Re-run already evaluated queries")
-    parser.add_argument("--runs", type=int, default=1, help="Number of independent runs per query (default 1)")
-    parser.add_argument("--report_only", action="store_true", help="Only print accuracy report")
+    parser.add_argument(
+        "--skip_docker", action="store_true", help="Skip Docker-dependent datasets"
+    )
+    parser.add_argument(
+        "--force", action="store_true", help="Re-run already evaluated queries"
+    )
+    parser.add_argument(
+        "--runs",
+        type=int,
+        default=1,
+        help="Number of independent runs per query (default 1)",
+    )
+    parser.add_argument(
+        "--report_only", action="store_true", help="Only print accuracy report"
+    )
     parser.add_argument(
         "--self_improve",
         action="store_true",
@@ -199,9 +228,11 @@ def main():
         all_queries = load_all_queries(args.dab_repo)
     except FileNotFoundError as e:
         print(f"ERROR: {e}")
-        print(f"\nPlease clone the DataAgentBench repo first:")
-        print(f"  git lfs install")
-        print(f"  git clone https://github.com/ucbepic/DataAgentBench.git {args.dab_repo}")
+        print("\nPlease clone the DataAgentBench repo first:")
+        print("  git lfs install")
+        print(
+            f"  git clone https://github.com/ucbepic/DataAgentBench.git {args.dab_repo}"
+        )
         sys.exit(1)
 
     summarize_queries(all_queries)
@@ -212,6 +243,7 @@ def main():
 
     if args.self_improve:
         from backend.app.core.rules.self_improving_loop import SelfImprovingLoop
+
         loop = SelfImprovingLoop(dab_repo=args.dab_repo)
         result = loop.run_daily()
         print(f"\n[SelfImprove] status: {result['status']}")
@@ -219,27 +251,33 @@ def main():
             run = result["run"]
             print(f"  date        : {run['date']}")
             print(f"  rounds done : {len(run['rounds'])}")
-            print(f"  final pass  : {run['final_passes']}/{run['total']} ({run['pass_rate']}%)")
+            print(
+                f"  final pass  : {run['final_passes']}/{run['total']} ({run['pass_rate']}%)"
+            )
             for r in run["rounds"]:
-                delta_str = f"+{r['delta']}" if r['delta'] > 0 else str(r['delta'])
+                delta_str = f"+{r['delta']}" if r["delta"] > 0 else str(r["delta"])
                 print(
                     f"  round {r['round']}: {r['status']:16s}  "
-                    f"delta={delta_str:>3}  rules={r.get('new_rules_added',0)}  "
-                    f"elapsed={r.get('elapsed_s',0):.0f}s"
+                    f"delta={delta_str:>3}  rules={r.get('new_rules_added', 0)}  "
+                    f"elapsed={r.get('elapsed_s', 0):.0f}s"
                 )
         if result.get("rule_counts"):
             rc = result["rule_counts"]
             print(
-                f"  rules → ACTIVE:{rc.get('ACTIVE',0)}  "
-                f"REJECTED:{rc.get('REJECTED',0)}  "
-                f"INACTIVE:{rc.get('INACTIVE',0)}"
+                f"  rules → ACTIVE:{rc.get('ACTIVE', 0)}  "
+                f"REJECTED:{rc.get('REJECTED', 0)}  "
+                f"INACTIVE:{rc.get('INACTIVE', 0)}"
             )
         if result.get("saturated"):
-            print("  [SATURATED] Pipeline has converged — no further daily runs needed.")
+            print(
+                "  [SATURATED] Pipeline has converged — no further daily runs needed."
+            )
         return
 
     if not (args.all or args.dataset or args.query_id):
-        print("Please specify --all, --dataset <name>, or --dataset <name> --query_id <id>")
+        print(
+            "Please specify --all, --dataset <name>, or --dataset <name> --query_id <id>"
+        )
         parser.print_help()
         sys.exit(1)
 

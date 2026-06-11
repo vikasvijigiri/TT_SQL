@@ -20,6 +20,8 @@ messages:
       | **Dialect mismatch** | Function/syntax valid in another engine, unsupported here |
       | **Data surface** | Filter logic is correct but matches nothing (casing, type, value format variance) |
       | **Silent empty** | No error but rows were dropped by a bad join condition, null mismatch, or too-restrictive filter |
+      | **Exclusion fan-out** | `NOT LIKE`/`≠` filter on a child table; parent entity reappears via other non-matching rows. Fix: anti-join using `NOT IN (SELECT key FROM child WHERE condition)` or `NOT EXISTS (…)` |
+      | **Anchor ignored** | Context specified a `NARROW JOIN` anchor but SQL scanned the base table directly via proxy column. Fix: rebuild FROM clause starting from the anchor join |
 
       ## Hard Rules
 
@@ -35,6 +37,8 @@ messages:
       | **Dimension readability** | If error feedback indicates opaque codes in a grouped dimension, JOIN the lookup table and project its description column — find it by looking for a table with matching code + description columns |
       | **Spatial** | Geographic concepts → spatial functions + geometry/relationship tables, not text place-name column filtering |
       | **Hierarchical traversal** | Hierarchy queries → walk the relationship table, not hardcoded intermediate IDs |
+      | **Exclusion fan-out fix** | Replace `WHERE child.col NOT LIKE …` with an anti-join: `WHERE parent.key NOT IN (SELECT parent_key FROM child WHERE condition)`. Ensure the subquery selects the parent FK — not the child row columns |
+      | **Anchor obedience fix** | If context provides `ANCHOR: FROM X JOIN Y ON col=col` or `*** NARROW JOIN`, rebuild the FROM clause starting with that exact join. Remove any direct scan of the base table via proxy column |
 
       ## Multi-Agent Debate Format
       Write `thought_process` as a concise debate:

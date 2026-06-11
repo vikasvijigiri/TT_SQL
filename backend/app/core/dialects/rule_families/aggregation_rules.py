@@ -1,5 +1,6 @@
 from typing import List
 
+
 def get_aggregation_rules() -> List[str]:
     return [
         "Every non-aggregated SELECT column MUST appear in GROUP BY. Never use positional GROUP BY references.",

@@ -13,29 +13,32 @@ The db_description.txt is injected as external knowledge context.
 
 import os
 import re
-import json
 import time
 import traceback
 import threading
 from pathlib import Path
-from typing import Dict, Any, Optional, Tuple, List
+from typing import Dict, Any, Optional, List
 import yaml
 
 from backend.app.utils.logger import logger
 from backend.app.utils.llm import LLMClient, reset_token_counters, get_tokens
 from backend.app.core.config import RESULTS_DIR, DAB_REPO
-from backend.app.dab.answer_extractor import extract_answer, save_answer, load_answer
-from backend.app.dab.dab_evaluator import evaluate_answer, load_eval_result
+from backend.app.dab.answer_extractor import extract_answer, save_answer
+from backend.app.dab.dab_evaluator import evaluate_answer
+import contextlib
 
 # LangSmith tracing — imported lazily so missing keys never crash the pipeline
 try:
     from langsmith import traceable
     from langsmith.run_helpers import get_current_run_tree
+
     _LANGSMITH_AVAILABLE = True
 except ImportError:
     _LANGSMITH_AVAILABLE = False
-    traceable = lambda **kw: (lambda fn: fn)  # no-op decorator
-    get_current_run_tree = lambda: None
+    def traceable(**kw):  # type: ignore
+        return lambda fn: fn  # no-op decorator
+    def get_current_run_tree():  # type: ignore
+        return None
 
 
 def _push_evaluator_feedback(run_id: str, eval_json: dict) -> None:
@@ -45,12 +48,15 @@ def _push_evaluator_feedback(run_id: str, eval_json: dict) -> None:
     The pipeline won't wait for it — the thread runs concurrently with the
     next query, so there is zero added latency to the benchmark.
     """
+
     def _worker():
         try:
             from backend.app.core.langsmith_evaluators import attach_feedback_to_run
+
             attach_feedback_to_run(run_id, eval_json)
         except Exception:
             pass  # never crash the pipeline over telemetry
+
     t = threading.Thread(target=_worker, daemon=False)
     t.start()
 
@@ -61,7 +67,9 @@ DAB_REPO_PATH = str(DAB_REPO)  # backward-compat alias; prefer DAB_REPO from con
 
 def _load_configured_max_retries(default: int = 2) -> int:
     """Load the orchestrator retry budget from project config when available."""
-    params_path = Path(__file__).resolve().parent.parent / "config" / "system_params.yaml"
+    params_path = (
+        Path(__file__).resolve().parent.parent / "config" / "system_params.yaml"
+    )
     try:
         with open(params_path, "r", encoding="utf-8") as f:
             params = yaml.safe_load(f) or {}
@@ -78,8 +86,8 @@ def _tokenize(text: str) -> set:
     Example: 'VoiceCallTranscript__c' -> {'voice', 'call', 'transcript'}
     """
     # Insert a space before each uppercase letter group to split CamelCase
-    spaced = re.sub(r'([A-Z]+)', r' \1', text)
-    tokens = re.findall(r'[a-zA-Z]{3,}', spaced.lower())
+    spaced = re.sub(r"([A-Z]+)", r" \1", text)
+    tokens = re.findall(r"[a-zA-Z]{3,}", spaced.lower())
     return set(tokens)
 
 
@@ -88,6 +96,7 @@ def _get_table_names_quickly(db_path: str, db_type: str) -> List[str]:
     try:
         if db_type == "sqlite":
             import sqlite3
+
             conn = sqlite3.connect(db_path)
             c = conn.cursor()
             c.execute("SELECT name FROM sqlite_master WHERE type='table'")
@@ -96,7 +105,8 @@ def _get_table_names_quickly(db_path: str, db_type: str) -> List[str]:
             return tables
         elif db_type == "duckdb":
             import duckdb
-            conn = duckdb.connect(db_path, read_only=True)
+
+            conn = duckdb.connect(db_path, read_only=True)  # type: ignore
             tables = [r[0] for r in conn.execute("SHOW TABLES").fetchall()]
             conn.close()
             return tables
@@ -113,6 +123,7 @@ def _get_column_info_quickly(db_path: str, db_type: str) -> List[tuple]:
     try:
         if db_type == "sqlite":
             import sqlite3
+
             conn = sqlite3.connect(db_path)
             c = conn.cursor()
             c.execute("SELECT name FROM sqlite_master WHERE type='table'")
@@ -125,7 +136,8 @@ def _get_column_info_quickly(db_path: str, db_type: str) -> List[tuple]:
             return cols
         elif db_type == "duckdb":
             import duckdb
-            conn = duckdb.connect(db_path, read_only=True)
+
+            conn = duckdb.connect(db_path, read_only=True)  # type: ignore
             rows = conn.execute(
                 "SELECT column_name, data_type FROM information_schema.columns"
             ).fetchall()
@@ -142,8 +154,22 @@ def _get_column_names_quickly(db_path: str, db_type: str) -> List[str]:
 
 
 _NUMERIC_TYPES = frozenset(
-    {"INT", "INTEGER", "BIGINT", "SMALLINT", "TINYINT", "REAL", "FLOAT", "DOUBLE",
-     "DECIMAL", "NUMERIC", "NUMBER", "DOUBLE PRECISION", "HUGEINT", "UBIGINT"}
+    {
+        "INT",
+        "INTEGER",
+        "BIGINT",
+        "SMALLINT",
+        "TINYINT",
+        "REAL",
+        "FLOAT",
+        "DOUBLE",
+        "DECIMAL",
+        "NUMERIC",
+        "NUMBER",
+        "DOUBLE PRECISION",
+        "HUGEINT",
+        "UBIGINT",
+    }
 )
 
 
@@ -204,7 +230,9 @@ def _score_db_for_query(cfg: Dict[str, Any], q_tokens: set) -> float:
     return score
 
 
-def _pick_best_db(db_clients: Dict[str, Any], question: str = "") -> Optional[Dict[str, Any]]:
+def _pick_best_db(
+    db_clients: Dict[str, Any], question: str = ""
+) -> Optional[Dict[str, Any]]:
     """
     Select the best available DB from a dataset's db_clients.
 
@@ -236,8 +264,14 @@ def _pick_best_db(db_clients: Dict[str, Any], question: str = "") -> Optional[Di
             key=lambda x: (
                 x[0].get("db_type", "").lower() == "duckdb",
                 x[1],
-                _count_numeric_columns(x[0].get("db_path", ""), x[0].get("db_type", "").lower()),
-                len(_get_column_names_quickly(x[0].get("db_path", ""), x[0].get("db_type", "").lower())),
+                _count_numeric_columns(
+                    x[0].get("db_path", ""), x[0].get("db_type", "").lower()
+                ),
+                len(
+                    _get_column_names_quickly(
+                        x[0].get("db_path", ""), x[0].get("db_type", "").lower()
+                    )
+                ),
                 x[0].get("db_path", ""),
             ),
             reverse=True,
@@ -266,14 +300,16 @@ def _pick_best_db(db_clients: Dict[str, Any], question: str = "") -> Optional[Di
 def _get_all_available_dbs(db_clients: Dict[str, Any]) -> List[Dict[str, Any]]:
     """Return all DB configs that have existing files."""
     available = []
-    for name, cfg in db_clients.items():
+    for _name, cfg in db_clients.items():
         db_path = cfg.get("db_path", "")
         if db_path and Path(db_path).exists():
             available.append(cfg)
     return available
 
 
-def _make_db_directory_for_schema(db_cfg: Dict[str, Any], dataset: str) -> Optional[str]:
+def _make_db_directory_for_schema(
+    db_cfg: Dict[str, Any], dataset: str
+) -> Optional[str]:
     """
     Return the parent directory of the selected DB file so SemanticContextEngine
     can walk it and introspect all sibling DB files in the same dataset directory.
@@ -284,22 +320,40 @@ def _make_db_directory_for_schema(db_cfg: Dict[str, Any], dataset: str) -> Optio
     return str(Path(db_path).parent)
 
 
-_EMPTY_ANSWER_SIGNALS = frozenset([
-    "", "no data", "no data.", "no results found", "no results found.",
-    "no rows", "none", "null", "n/a", "not found", "no output", "no output.",
-])
+_EMPTY_ANSWER_SIGNALS = frozenset(
+    [
+        "",
+        "no data",
+        "no data.",
+        "no results found",
+        "no results found.",
+        "no rows",
+        "none",
+        "null",
+        "n/a",
+        "not found",
+        "no output",
+        "no output.",
+    ]
+)
 
 
 def _is_empty_answer(answer: str) -> bool:
-    return not answer or answer.strip().lower().rstrip(".").rstrip(",") in _EMPTY_ANSWER_SIGNALS
+    return (
+        not answer
+        or answer.strip().lower().rstrip(".").rstrip(",") in _EMPTY_ANSWER_SIGNALS
+    )
 
 
-def _build_rich_schema_hint(db_path: str, db_type: str, max_tables: int = 10, sample_rows: int = 3) -> str:
+def _build_rich_schema_hint(
+    db_path: str, db_type: str, max_tables: int = 10, sample_rows: int = 3
+) -> str:
     """Introspect the live DB and return actual table/column names with sample rows as ground-truth evidence."""
     lines = []
     try:
         if db_type == "sqlite":
             import sqlite3
+
             conn = sqlite3.connect(db_path)
             c = conn.cursor()
             c.execute("SELECT name FROM sqlite_master WHERE type='table'")
@@ -310,17 +364,20 @@ def _build_rich_schema_hint(db_path: str, db_type: str, max_tables: int = 10, sa
                     col_names = [col[1] for col in cols]
                     lines.append(f"\nTable: {table}")
                     lines.append(f"  Columns: {', '.join(col_names)}")
-                    rows = c.execute(f'SELECT * FROM "{table}" LIMIT {sample_rows}').fetchall()
+                    rows = c.execute(
+                        f'SELECT * FROM "{table}" LIMIT {sample_rows}'
+                    ).fetchall()
                     if rows:
                         lines.append("  Sample rows:")
                         for row in rows:
-                            lines.append(f"    {dict(zip(col_names, row))}")
+                            lines.append(f"    {dict(zip(col_names, row, strict=False))}")
                 except Exception:
                     pass
             conn.close()
         elif db_type == "duckdb":
             import duckdb
-            conn = duckdb.connect(db_path, read_only=True)
+
+            conn = duckdb.connect(db_path, read_only=True)  # type: ignore
             tables = [r[0] for r in conn.execute("SHOW TABLES").fetchall()][:max_tables]
             for table in tables:
                 try:
@@ -328,11 +385,13 @@ def _build_rich_schema_hint(db_path: str, db_type: str, max_tables: int = 10, sa
                     col_names = [r[0] for r in schema_rows]
                     lines.append(f"\nTable: {table}")
                     lines.append(f"  Columns: {', '.join(col_names)}")
-                    rows = conn.execute(f'SELECT * FROM "{table}" LIMIT {sample_rows}').fetchall()
+                    rows = conn.execute(
+                        f'SELECT * FROM "{table}" LIMIT {sample_rows}'
+                    ).fetchall()
                     if rows:
                         lines.append("  Sample rows:")
                         for row in rows:
-                            lines.append(f"    {dict(zip(col_names, row))}")
+                            lines.append(f"    {dict(zip(col_names, row, strict=False))}")
                 except Exception:
                     pass
             conn.close()
@@ -371,7 +430,7 @@ def run_dab_query(
     validate_src = query["validate_src"]
     db_clients = query["db_clients"]
     db_description = query["db_description"]
-    query_dir = Path(query["query_dir"])
+    Path(query["query_dir"])
 
     start_time = time.time()
 
@@ -387,10 +446,8 @@ def run_dab_query(
 
     for p in (md_path, csv_path, sql_path):
         if p.exists():
-            try:
+            with contextlib.suppress(Exception):
                 p.unlink()
-            except Exception:
-                pass
 
     if llm_client is None:
         llm_client = LLMClient()
@@ -404,8 +461,10 @@ def run_dab_query(
         # Pick best available DB (query-aware when multiple local DBs exist)
         best_db = _pick_best_db(db_clients, question=question)
         if not best_db:
-            raise RuntimeError(f"No available DB files found for dataset '{dataset}'. "
-                               f"Check that DataAgentBench was cloned with git lfs.")
+            raise RuntimeError(
+                f"No available DB files found for dataset '{dataset}'. "
+                f"Check that DataAgentBench was cloned with git lfs."
+            )
 
         db_path = best_db.get("db_path", "")
         db_type = best_db.get("db_type", "sqlite").lower()
@@ -458,6 +517,7 @@ def run_dab_query(
         ext_knowledge_param = None
         if external_knowledge_text:
             from backend.app.core.config import RESOURCES_DIR
+
             docs_dir = RESOURCES_DIR / "documents"
             docs_dir.mkdir(parents=True, exist_ok=True)
             ext_file = docs_dir / f"dab_{dataset}_description.txt"
@@ -477,7 +537,11 @@ def run_dab_query(
         )
 
         # Determine if the returned value is a SQL query or a direct text answer
-        is_sql = final_sql.strip().lower().startswith(("select", "with", "show", "explain", "pragma", "describe"))
+        is_sql = (
+            final_sql.strip()
+            .lower()
+            .startswith(("select", "with", "show", "explain", "pragma", "describe"))
+        )
         if is_sql:
             # Save SQL
             sql_path.write_text(final_sql, encoding="utf-8")
@@ -487,6 +551,7 @@ def run_dab_query(
             src_csv = RESULTS_DIR / db_name / f"dab_{dataset}_q{query_id}.csv"
             if src_csv.exists():
                 import shutil
+
                 shutil.copy2(str(src_csv), str(csv_path))
 
             # Extract concise text answer for DAB grading (from CSV)
@@ -506,7 +571,9 @@ def run_dab_query(
         # Schema-grounded retry: when the first pass returns empty results, inject real
         # sample data from the live DB so the LLM can see actual table/column names.
         if _is_empty_answer(agent_answer):
-            logger.info("[EmptyRetry] First attempt returned empty answer — injecting real schema evidence for retry.")
+            logger.info(
+                "[EmptyRetry] First attempt returned empty answer — injecting real schema evidence for retry."
+            )
             schema_hint = _build_rich_schema_hint(db_path, db_type)
             if schema_hint:
                 retry_knowledge = external_knowledge_text + (
@@ -517,6 +584,7 @@ def run_dab_query(
                     + "\n=== END OF ACTUAL DATABASE EVIDENCE ==="
                 )
                 from backend.app.core.config import RESOURCES_DIR
+
                 docs_dir = RESOURCES_DIR / "documents"
                 docs_dir.mkdir(parents=True, exist_ok=True)
                 retry_ext_file = docs_dir / f"dab_{dataset}_retry.txt"
@@ -529,12 +597,19 @@ def run_dab_query(
                     instance_id=retry_instance_id,
                     external_knowledge=retry_ext_file.name,
                 )
-                is_retry_sql = retry_sql.strip().lower().startswith(("select", "with", "show", "explain", "pragma", "describe"))
+                is_retry_sql = (
+                    retry_sql.strip()
+                    .lower()
+                    .startswith(
+                        ("select", "with", "show", "explain", "pragma", "describe")
+                    )
+                )
                 if is_retry_sql:
                     sql_path.write_text(retry_sql, encoding="utf-8")
                     retry_src_csv = RESULTS_DIR / db_name / f"{retry_instance_id}.csv"
                     if retry_src_csv.exists():
                         import shutil
+
                         shutil.copy2(str(retry_src_csv), str(csv_path))
                     retry_answer = extract_answer(
                         question=question,
@@ -548,13 +623,19 @@ def run_dab_query(
                     csv_path.write_text(f'result\n"{retry_answer}"\n', encoding="utf-8")
 
                 if not _is_empty_answer(retry_answer):
-                    logger.info(f"[EmptyRetry] Retry produced non-empty answer: {retry_answer[:120]}")
+                    logger.info(
+                        f"[EmptyRetry] Retry produced non-empty answer: {retry_answer[:120]}"
+                    )
                     agent_answer = retry_answer
                     final_sql = retry_sql
                 else:
-                    logger.warning("[EmptyRetry] Retry also returned empty — keeping original answer.")
+                    logger.warning(
+                        "[EmptyRetry] Retry also returned empty — keeping original answer."
+                    )
 
-        save_answer(agent_answer, dataset, query_id, DAB_RESULTS_DIR, run_suffix=_run_sfx)
+        save_answer(
+            agent_answer, dataset, query_id, DAB_RESULTS_DIR, run_suffix=_run_sfx
+        )
         logger.info(f"AGENT ANSWER: {agent_answer}")
 
         # Evaluate against ground truth
@@ -638,14 +719,16 @@ def run_dab_query(
         }
     finally:
         if "orchestrator" in dir():
-            try:
+            with contextlib.suppress(Exception):
                 orchestrator.executor.close()
-            except Exception:
-                pass
         logger.stop_live_task_log()
 
     # Inline rule extraction on query failure
-    if res and not res.get("passed"):
+    if (
+        res
+        and not res.get("passed")
+        and os.environ.get("INLINE_RULE_EXTRACTION") == "1"
+    ):
         try:
             # 1. Read only the latest log tail
             log_tail = ""
@@ -660,13 +743,19 @@ def run_dab_query(
                             f_tail.seek(-max_chars, 2)
                             log_tail = f_tail.read().decode("utf-8", errors="replace")
                 except Exception as le:
-                    logger.warning(f"Inline Rule Extractor: failed to read log tail: {le}")
+                    logger.warning(
+                        f"Inline Rule Extractor: failed to read log tail: {le}"
+                    )
 
             # 2. Extract rules inline
             from backend.app.core.rules.dynamic_rule_store import DynamicRuleStore
-            from backend.app.core.rules.rule_extractor_agent import extract_rules_from_failure
+            from backend.app.core.rules.rule_extractor_agent import (
+                extract_rules_from_failure,
+            )
 
-            logger.info(f"Inline Rule Extractor: Query failed. Extracting generic rules inline...")
+            logger.info(
+                "Inline Rule Extractor: Query failed. Extracting generic rules inline..."
+            )
             rules = extract_rules_from_failure(
                 llm=llm_client,
                 question=question,
@@ -691,11 +780,15 @@ def run_dab_query(
                     )
                     if lid:
                         new_ids.append(lid)
-                
+
                 if new_ids:
                     activated = store.activate_candidates(new_ids)
-                    logger.success(f"Inline Rule Extractor: Dynamically extracted & activated {activated} rules.")
+                    logger.success(
+                        f"Inline Rule Extractor: Dynamically extracted & activated {activated} rules."
+                    )
         except Exception as re_err:
-            logger.warning(f"Inline Rule Extractor: Dynamic rule extraction failed (non-fatal): {re_err}")
+            logger.warning(
+                f"Inline Rule Extractor: Dynamic rule extraction failed (non-fatal): {re_err}"
+            )
 
     return res

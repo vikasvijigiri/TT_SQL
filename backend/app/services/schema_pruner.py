@@ -1,19 +1,26 @@
+import typing
 from typing import List, Dict
 from pydantic import BaseModel
 from backend.app.utils.llm import LLMClient
 from backend.app.services.semantic_engine import SemanticContextEngine
 from backend.app.utils.logger import logger
 from backend.app.core.config import get_prompt_path
-from backend.app.core.retrieval.hierarchical_retriever import HierarchicalRetriever, QueryIntentAnalysis
+from backend.app.core.retrieval.hierarchical_retriever import (
+    HierarchicalRetriever,
+    QueryIntentAnalysis,
+)
 from backend.app.models.schemas import SemanticContext
+
 
 class TablePruningResult(BaseModel):
     selected_tables: List[str]
     reasoning: str
 
+
 class ColumnPruningResult(BaseModel):
     selected_columns: List[str]
     reasoning: str
+
 
 class TablePruner:
     def __init__(self, llm_client: LLMClient, semantic_engine: SemanticContextEngine):
@@ -21,7 +28,13 @@ class TablePruner:
         self.semantic_engine = semantic_engine
         self.prompt_path = get_prompt_path("table_pruner.yaml")
 
-    def prune(self, user_query: str, lessons: str = "", dialect: str = "snowflake", intent: QueryIntentAnalysis = None) -> List[str]:
+    def prune(
+        self,
+        user_query: str,
+        lessons: str = "",
+        dialect: str = "snowflake",
+        intent: QueryIntentAnalysis = None,  # type: ignore
+    ) -> List[str]:
         logger.set_agent("TABLE_PRUNER")
         logger.info(f"Pruning tables for query: '{user_query}'")
 
@@ -32,8 +45,9 @@ class TablePruner:
         # Pre-filter candidate tables using hierarchical retrieval to avoid token overload
         full_ctx = self.semantic_engine.context or self.semantic_engine.build_context()
         narrowed_ctx, _, _ = retriever.narrow_schema(user_query, full_ctx)
-        
+
         from backend.app.core.prompts.prompt_assembler import PromptAssembler
+
         assembler = PromptAssembler(dialect=dialect, stage="TABLE_PRUNER")
         assembled = assembler.assemble(
             user_query=user_query,
@@ -41,11 +55,11 @@ class TablePruner:
             context=narrowed_ctx,
             intent=intent,
             relevant_tables=[t.name for t in narrowed_ctx.tables],
-            lessons=lessons
+            lessons=lessons,
         )
 
         system_prompt = assembled.system_prompt
-        user_prompt   = assembled.user_prompt
+        user_prompt = assembled.user_prompt
 
         try:
             result = self.llm.generate_structured(
@@ -54,13 +68,16 @@ class TablePruner:
                 response_model=TablePruningResult,
             )
             logger.info(f"PRUNING REASONING: {result.reasoning}")
-            logger.info(f"Selected {len(result.selected_tables)} tables: {result.selected_tables}")
+            logger.info(
+                f"Selected {len(result.selected_tables)} tables: {result.selected_tables}"
+            )
             return result.selected_tables
         except Exception as e:
             logger.error(f"Table pruning failed: {e}")
             return [t.name for t in narrowed_ctx.tables]
         finally:
             logger.reset_agent()
+
 
 class ColumnPruner:
     def __init__(self, llm_client: LLMClient, semantic_engine: SemanticContextEngine):
@@ -72,11 +89,11 @@ class ColumnPruner:
         self,
         selected_columns: Dict[str, List[str]],
         relevant_tables: List[str],
-        full_ctx
+        full_ctx,
     ) -> Dict[str, List[str]]:
         """
         Post-pruning safety guard: restores join-key columns that the LLM may have
-        incorrectly pruned. 
+        incorrectly pruned.
 
         For each selected table, if the table appears to be a lookup/dimension table
         (i.e. it has both a 'Code'-like column AND a 'Description'-like column), and
@@ -95,10 +112,10 @@ class ColumnPruner:
         all_table_cols: Dict[str, List[str]] = {}
         if full_ctx:
             for tbl in full_ctx.tables:
-                tbl_clean = tbl.name.lower().replace('"', '')
+                tbl_clean = tbl.name.lower().replace('"', "")
                 is_relevant = any(
-                    rt.lower().replace('"', '') == tbl_clean or
-                    tbl_clean.endswith('.' + rt.lower().split('.')[-1])
+                    rt.lower().replace('"', "") == tbl_clean
+                    or tbl_clean.endswith("." + rt.lower().split(".")[-1])
                     for rt in relevant_tables
                 )
                 if is_relevant:
@@ -109,7 +126,9 @@ class ColumnPruner:
             current_cols = set(selected_columns.get(tbl_name, []))
 
             # Identify which columns in this table are "code-like" vs "desc-like"
-            code_cols = [c for c in all_cols if any(h in c.lower() for h in JOIN_KEY_HINTS)]
+            code_cols = [
+                c for c in all_cols if any(h in c.lower() for h in JOIN_KEY_HINTS)
+            ]
             desc_cols = [c for c in all_cols if any(h in c.lower() for h in DESC_HINTS)]
 
             # If this table has BOTH code-like and description-like columns, it's likely
@@ -136,7 +155,14 @@ class ColumnPruner:
             )
         return selected_columns
 
-    def prune(self, user_query: str, relevant_tables: List[str], lessons: str = "", dialect: str = "snowflake", intent: QueryIntentAnalysis = None) -> Dict[str, List[str]]:
+    def prune(
+        self,
+        user_query: str,
+        relevant_tables: List[str],
+        lessons: str = "",
+        dialect: str = "snowflake",
+        intent: QueryIntentAnalysis = None,  # type: ignore
+    ) -> Dict[str, List[str]]:
         logger.set_agent("COLUMN_PRUNER")
         logger.info(f"Pruning columns for {len(relevant_tables)} tables.")
 
@@ -145,11 +171,23 @@ class ColumnPruner:
             intent = retriever.analyze_intent(user_query)
 
         full_ctx = self.semantic_engine.context or self.semantic_engine.build_context()
-        selected_tbl_objs = [t for t in full_ctx.tables if any(rt.lower().replace('"', '') in t.name.lower().replace('"', '') for rt in relevant_tables)]
-        
-        narrowed_ctx, table_cols_map, _ = retriever.narrow_schema(user_query, SemanticContext(tables=selected_tbl_objs), force_tables=relevant_tables)
+        selected_tbl_objs = [
+            t
+            for t in full_ctx.tables
+            if any(
+                rt.lower().replace('"', "") in t.name.lower().replace('"', "")
+                for rt in relevant_tables
+            )
+        ]
+
+        narrowed_ctx, table_cols_map, _ = retriever.narrow_schema(
+            user_query,
+            SemanticContext(tables=selected_tbl_objs),
+            force_tables=relevant_tables,
+        )
 
         from backend.app.core.prompts.prompt_assembler import PromptAssembler
+
         assembler = PromptAssembler(dialect=dialect, stage="COLUMN_PRUNER")
         assembled = assembler.assemble(
             user_query=user_query,
@@ -158,11 +196,11 @@ class ColumnPruner:
             intent=intent,
             relevant_tables=relevant_tables,
             table_columns=table_cols_map,
-            lessons=lessons
+            lessons=lessons,
         )
 
         system_prompt = assembled.system_prompt
-        user_prompt   = assembled.user_prompt
+        user_prompt = assembled.user_prompt
 
         try:
             result = self.llm.generate_structured(
@@ -170,9 +208,9 @@ class ColumnPruner:
                 user_prompt=user_prompt,
                 response_model=ColumnPruningResult,
             )
-            
+
             # Convert flat list "table.column" to Dict[table, List[column]]
-            final_table_columns = {}
+            final_table_columns: dict[str, typing.Any] = {}
             for fqn in result.selected_columns:
                 if "." in fqn:
                     parts = fqn.split(".")
@@ -181,9 +219,11 @@ class ColumnPruner:
                     if tbl not in final_table_columns:
                         final_table_columns[tbl] = []
                     final_table_columns[tbl].append(col)
-            
+
             # Apply code-level join-key safety guard AFTER LLM pruning
-            final_table_columns = self._restore_join_keys(final_table_columns, relevant_tables, full_ctx)
+            final_table_columns = self._restore_join_keys(
+                final_table_columns, relevant_tables, full_ctx
+            )
 
             logger.info(f"Selected columns across {len(final_table_columns)} tables.")
             return final_table_columns

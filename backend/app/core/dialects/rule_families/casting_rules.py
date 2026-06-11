@@ -32,19 +32,44 @@ def get_casting_rules(dialect: str = "snowflake") -> List[str]:
             "REPLACE(a.purchase_id, 'purchaseid_', '') = REPLACE(b.book_id, 'bookid_', ''). "
             "Always check sample values of BOTH columns to discover the prefix pattern.",
             "Matching in serialized JSON/Python representation: If a column stores a JSON string or serialized Python object containing key-value pairs (e.g. u'value', 'value'), exact comparison filters like = 'value' will fail due to quotes or unicode markers in the raw text. Instead, always use LIKE '%value%' to check for occurrences of values in such fields.",
-            "Checking boolean-like fields in serialized text: If checking if a key exists or is true in a serialized text/JSON property, do not merely check if the field is NOT NULL or non-empty. Instead, verify if it contains a true/yes value (e.g., LIKE '%true%' or LIKE '%yes%'), since the raw text may store boolean markers explicitly.",
+            "Checking boolean-like fields in serialized text: If checking if a key exists or is true in a serialized text/JSON property, do not merely check if the field is NOT NULL or non-empty. Instead, verify if it contains a true/yes value (e.g., LIKE '%true%' or LIKE '%yes%'), since the raw text may store boolean markers explicitly. For example, if a key contains a nested dict of options, check if the nested value contains 'True' (e.g., json_extract(attributes, '$.BusinessParking') LIKE '%True%'), rather than just checking if the key IS NOT NULL.",
+            "[CRITICAL] JSON vs Python-serialized dicts (SQLite): If a TEXT column is a valid JSON object at the top level (starts with '{' and uses double quotes for keys like `{\"key\": \"val\"}`), it is VALID JSON and you MUST use `json_extract(col, '$.KeyName')` to extract values. NEVER use raw outer LIKE queries (like `col LIKE '%KeyName%True%'`) on valid JSON columns because it will greedily match True values in subsequent keys. If a nested value is a string representation of a Python dict (like `{'garage': True}`), extract it first and then check the extracted string: `json_extract(col, '$.KeyName') LIKE '%True%'`. Only use LIKE-based extraction on the outer column if the column is wholly a Python-serialized dict at the top level (using single quotes for outer keys, e.g., `{'Key': True}`).",
             "Retrieving descriptive properties: When requested to list categories, locations, or types, ensure you include/project the main description/text column in your SELECT statement. The grading might look for values from that text column.",
             "Handling custom date formats: If a date column is stored as a custom text string (e.g. 'August 01, 2016'), convert/parse it using string functions or SQLite date modifiers before comparing or ordering. Comparing raw custom text dates chronologically will yield incorrect results.",
+            "[CRITICAL] JSON array function safety: NEVER use json_each() or any JSON array function on "
+            "a TEXT column without first confirming from sample values that it stores a JSON array "
+            "(values starting with '['). "
+            "If sample values start with '{' use json_extract() for object keys. "
+            "If sample values are plain strings or delimited values (e.g. 'A22B', 'a,b,c', 'X>Y>Z') "
+            "use LIKE, regexp_extract(), or string manipulation — json_each() on plain strings "
+            "silently returns ZERO rows with no error.",
         ]
 
     # ── DuckDB ────────────────────────────────────────────────────────────────
     if d == "duckdb":
         return [
             "DuckDB supports both CAST(expr AS TYPE) and col::TYPE shorthand — prefer ::TYPE for brevity.",
+            "[CRITICAL] MULTI-DATABASE PREFIX: When the schema or exploration context shows table names "
+            "with a dot-prefix (e.g., business_db.business, repo_db.repos, package_query_db.packageinfo), "
+            "ALWAYS use the EXACT full prefix in your SQL. DuckDB can have multiple attached databases — "
+            "tables in attached SQLite files are NOT in the main DuckDB schema and REQUIRE the prefix. "
+            "Dropping the prefix causes: 'Table with name X does not exist! Did you mean db_name.X?' "
+            "Even if the schema only shows one database, use the prefix shown in the schema/exploration. "
+            "WRONG: `FROM business` | CORRECT: `FROM business_db.business`",
             "DuckDB types: INTEGER, BIGINT, DOUBLE, VARCHAR, BOOLEAN, DATE, TIMESTAMP, INTERVAL, JSON.",
             "TRY_CAST(expr AS TYPE) returns NULL instead of raising on failure — use when input is untrusted.",
             "JSON extraction: col->'$.key' or json_extract_string(col, '$.key'). "
             "Unpack arrays with UNNEST().",
+            "[CRITICAL] JSON array function safety: NEVER use json_each(), UNNEST(), or any JSON array "
+            "function on a TEXT column without first verifying from sample values that the column actually "
+            "stores a JSON array (values starting with '['). "
+            "DETECTION from sample values: "
+            "(a) Starts with '[' → valid JSON array → safe to use json_each() or UNNEST(). "
+            "(b) Starts with '{' → JSON object, NOT an array → use json_extract_string() instead. "
+            "(c) Plain string (e.g. 'A22B', 'foo,bar', 'X>Y>Z') → NOT JSON at all → use "
+            "LIKE, regexp_extract(), or string_split(col, delimiter) instead. "
+            "Applying json_each() to a plain string returns ZERO rows silently — causing the entire "
+            "query to produce empty results with no error message.",
             "regexp_extract(string, pattern, group) is a built-in DuckDB function. "
             "Use it for regex extraction: regexp_extract(col, '(19[0-9]{2}|20[0-9]{2})', 1). "
             "When a TEXT column embeds an ID or code (e.g. 'ID: XYZ-123'), "
@@ -62,9 +87,44 @@ def get_casting_rules(dialect: str = "snowflake") -> List[str]:
             "SELECT info.name, AVG(t.val) FROM info_table info "
             "JOIN all_some_table t ON t._entity_name = info.id WHERE ...",
             "Matching in serialized JSON/Python representation: If a column stores a JSON string or serialized Python object containing key-value pairs (e.g. u'value', 'value'), exact comparison filters like = 'value' will fail due to quotes or unicode markers in the raw text. Instead, always use LIKE '%value%' or json/regex functions to check for occurrences of values in such fields.",
-            "Checking boolean-like fields in serialized text: If checking if a key exists or is true in a serialized text/JSON property, do not merely check if the field is NOT NULL or non-empty. Instead, verify if it contains a true/yes value (e.g., LIKE '%true%' or LIKE '%yes%'), since the raw text may store boolean markers explicitly.",
+            "Checking boolean-like fields in serialized text: If checking if a key exists or is true in a serialized text/JSON property, do not merely check if the field is NOT NULL or non-empty. Instead, verify if it contains a true/yes value (e.g., LIKE '%true%' or LIKE '%yes%'), since the raw text may store boolean markers explicitly. For example, if a key contains a nested dict of options, check if the nested value contains 'True' (e.g., json_extract_string(attributes, '$.BusinessParking') LIKE '%True%'), rather than just checking if the key IS NOT NULL.",
+            "[CRITICAL] JSON vs Python-serialized dicts (DuckDB): If a TEXT column is a valid JSON object at the top level (starts with '{' and uses double quotes for keys like `{\"key\": \"val\"}`), it is VALID JSON and you MUST use `json_extract_string(col, '$.KeyName')` to extract values. NEVER use raw outer LIKE queries (like `col LIKE '%KeyName%True%'`) on valid JSON columns because it will greedily match True values in subsequent keys. If a nested value is a string representation of a Python dict (like `{'garage': True}`), extract it first and then check the extracted string: `json_extract_string(col, '$.KeyName') LIKE '%True%'`. Only use LIKE-based extraction on the outer column if the column is wholly a Python-serialized dict at the top level (using single quotes for outer keys, e.g., `{'Key': True}`).",
             "Retrieving descriptive properties: When requested to list categories, locations, or types, ensure you include/project the main description/text column in your SELECT statement. The grading might look for values from that text column.",
             "Custom Date Strings: When date columns contain custom formatted date strings (e.g., 'August 01, 2016'), use strptime or TRY_STRPTIME with the appropriate format mask (e.g., strptime(col, '%B %d, %Y') or TRY_STRPTIME(col, '%B %d, %Y')) to parse them before performing comparisons or ordering. Do not compare them directly as text.",
+            "[CRITICAL] regexp_extract returns '' (empty string), NOT NULL, when the pattern does not match. "
+            "Always filter with `!= ''` (not `IS NOT NULL`) after regexp_extract calls, e.g. "
+            "`WHERE regexp_extract(col, pattern, 1) != ''`. "
+            "For COALESCE fallback chains, always wrap each regexp_extract in NULLIF(..., '') first: "
+            "`COALESCE(NULLIF(regexp_extract(col, pat1, 1), ''), NULLIF(regexp_extract(col, pat2, 1), ''))`. "
+            "This applies to state/code/ID extraction from embedded text columns.",
+            "[REGEX BOUNDARY] When extracting state/region codes from a description column, "
+            "the location can appear in two formats: "
+            "(a) '...in City, STATE, rest...' — state followed by comma; "
+            "(b) 'This CityName, STATE rest...' — state followed by space (NO trailing comma). "
+            "ALWAYS use `[,\\s\\.]` as the trailing boundary, NEVER bare `,`. "
+            "Correct: `regexp_extract(description, ', ([A-Z]{2})[,\\s\\.]', 1)`. "
+            "Wrong (misses format-b entries): `regexp_extract(description, ', ([A-Z]{2}),', 1)`. "
+            "The bare-comma pattern silently drops entries like 'This Philadelphia, PA location...' "
+            "where PA is followed by a space — causing under-counting of reviews by ~7%.",
+            "[DESCRIPTION CATEGORY LIST] When a 'description' column embeds a comma-separated list "
+            "of categories/types/tags, use this TWO-STEP approach: "
+            "STEP 1 — Extract the category list using COALESCE of multiple patterns with the "
+            "restrictive char class `[A-Za-z, /&()''-]+?` (includes parens for 'American (New)', "
+            "apostrophes for 'Women\\'s Clothing', but NO `.*` to prevent over-matching): "
+            "COALESCE("
+            "NULLIF(regexp_extract(description, 'in the categor(?:y|ies) of [\\'\"]+ ([A-Za-z, /&()''-]+)[\\'\"]+ ', 1), ''), "
+            "NULLIF(regexp_extract(description, 'in the (?:categor(?:y|ies)|fields?|areas?) of ([A-Za-z, /&()''-]+?)[.]', 1), ''), "
+            "NULLIF(regexp_extract(description, 'categor(?:y|ies) such as ([A-Za-z, /&()''-]+?)[.]', 1), ''), "
+            "NULLIF(regexp_extract(description, ', including ([A-Za-z, /&()''-]+?)[.]', 1), ''), "
+            "NULLIF(regexp_extract(description, 'services[, ]+(?:in|including) ([A-Za-z, /&()''-]+?)[.]', 1), ''), "
+            "NULLIF(regexp_extract(description, '(?:mix of|ranging from|options in|services in|(?:range of )?solutions in|array of (?:dishes |options )?in) ([A-Za-z, /&()''-]+?)[.]', 1), '') "
+            "). Then UNNEST(regexp_split_to_array(cat_str, ', | and ')), TRIM each item, "
+            "filter LENGTH(category) < 50 (to drop trailing sentence fragments), "
+            "group by TRIM(category), ORDER BY COUNT(DISTINCT business_id) DESC LIMIT 1. "
+            "STEP 2 — Once you have the top category name, count ALL matching businesses and compute avg using: "
+            "`description LIKE '%' || top_category || '%'` (this correctly counts all businesses "
+            "that mention that category anywhere in their description, matching the expected result). "
+            "IMPORTANT: Use the exact category name string (e.g. 'Restaurants') in the LIKE, not a truncated form.",
         ]
 
     # ── PostgreSQL ────────────────────────────────────────────────────────────

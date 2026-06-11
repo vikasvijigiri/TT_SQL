@@ -7,6 +7,7 @@ ROOT_DIR = Path(__file__).resolve().parent.parent.parent
 sys.path.insert(0, str(ROOT_DIR))
 
 from backend.app.utils.llm import LLMClient
+
 llm = LLMClient()
 
 title = "The Rundown"
@@ -45,10 +46,16 @@ Respond ONLY with a JSON array of objects, one per input item, in the same order
   ...
 ]"""
 
-res_strict = llm.generate(system_prompt=sys_strict, user_prompt=user_prompt_template.format(items_json=json.dumps(items)))
+res_strict = llm.generate(
+    system_prompt=sys_strict,
+    user_prompt=user_prompt_template.format(items_json=json.dumps(items)),
+)
 print("--- Strict Prompt Output ---")
 print(res_strict.strip())
 
-res_knowledge = llm.generate(system_prompt=sys_knowledge, user_prompt=user_prompt_template.format(items_json=json.dumps(items)))
+res_knowledge = llm.generate(
+    system_prompt=sys_knowledge,
+    user_prompt=user_prompt_template.format(items_json=json.dumps(items)),
+)
 print("\n--- General Knowledge Prompt Output ---")
 print(res_knowledge.strip())

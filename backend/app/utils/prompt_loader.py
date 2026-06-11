@@ -18,7 +18,7 @@ class PromptLoader:
     """
 
     @staticmethod
-    def load(file_path: str, variables: Dict[str, Any] = None) -> List[Dict[str, str]]:
+    def load(file_path: str, variables: Dict[str, Any] | None = None) -> List[Dict[str, str]]:
         if not os.path.exists(file_path):
             raise FileNotFoundError(f"Prompt file not found: {file_path}")
 
@@ -41,7 +41,7 @@ class PromptLoader:
         return formatted
 
     @staticmethod
-    def system(file_path: str, variables: Dict[str, Any] = None) -> str:
+    def system(file_path: str, variables: Dict[str, Any] | None = None) -> str:
         """Return only the system-role content string (convenience helper)."""
         messages = PromptLoader.load(file_path, variables)
         for m in messages:
@@ -50,7 +50,7 @@ class PromptLoader:
         return ""
 
     @staticmethod
-    def user(file_path: str, variables: Dict[str, Any] = None) -> str:
+    def user(file_path: str, variables: Dict[str, Any] | None = None) -> str:
         """Return only the user-role content string (convenience helper)."""
         messages = PromptLoader.load(file_path, variables)
         for m in messages:

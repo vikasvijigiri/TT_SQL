@@ -1,8 +1,8 @@
-from typing import List, Tuple, Dict
-from backend.app.core.prompts.prompt_ast import PromptAST, PromptNode
+from typing import List, Tuple
+from backend.app.core.prompts.prompt_ast import PromptAST
 from backend.app.core.tokenization.final_tokenizer import FinalTokenizer
 from backend.app.core.context.context_value_ranker import ContextValueRanker
-from backend.app.utils.logger import logger
+
 
 class FinalBudgetEnforcer:
     """
@@ -20,16 +20,28 @@ class FinalBudgetEnforcer:
         "SELF_CORRECTOR": 14000,
         "DATA_IQ": 12000,
         "CRITIC": 10000,
-        "DEFAULT": 15000
+        "DEFAULT": 15000,
     }
 
     @classmethod
-    def enforce_budget(cls, ast: PromptAST, system_tokens: int, stage: str = "DEFAULT", custom_cap: int = None) -> Tuple[PromptAST, List[str]]:
-        cap = custom_cap if custom_cap is not None else cls.STAGE_BUDGETS.get(stage.upper(), cls.STAGE_BUDGETS["DEFAULT"])
+    def enforce_budget(
+        cls,
+        ast: PromptAST,
+        system_tokens: int,
+        stage: str = "DEFAULT",
+        custom_cap: int | None = None,
+    ) -> Tuple[PromptAST, List[str]]:
+        cap = (
+            custom_cap
+            if custom_cap is not None
+            else cls.STAGE_BUDGETS.get(stage.upper(), cls.STAGE_BUDGETS["DEFAULT"])
+        )
 
         # Calculate current total
         rendered_nodes = [(node, node.render()) for node in ast.root_nodes]
-        user_tokens = sum(FinalTokenizer.count_user_tokens(rn[1]) for rn in rendered_nodes)
+        user_tokens = sum(
+            FinalTokenizer.count_user_tokens(rn[1]) for rn in rendered_nodes
+        )
         total_tokens = system_tokens + user_tokens
 
         if total_tokens <= cap:
@@ -39,7 +51,9 @@ class FinalBudgetEnforcer:
         retained_nodes, dropped_names = ContextValueRanker.rank_and_trim(
             ast.root_nodes,
             max_budget=max_user_budget,
-            token_estimator=lambda x: FinalTokenizer.count_user_tokens(x if isinstance(x, str) else str(x))
+            token_estimator=lambda x: FinalTokenizer.count_user_tokens(
+                x if isinstance(x, str) else str(x)
+            ),
         )
 
         trimmed_ast = PromptAST()

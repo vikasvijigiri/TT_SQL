@@ -2,6 +2,7 @@ from typing import List, Tuple, Set
 from backend.app.core.prompts.global_deduplicator import GlobalPromptDeduplicator
 from backend.app.utils.logger import logger
 
+
 class LessonRuleOverlapResolver:
     """
     Enterprise Lesson-Rule Overlap Resolver.
@@ -11,7 +12,9 @@ class LessonRuleOverlapResolver:
     """
 
     @classmethod
-    def resolve_overlap(cls, past_lessons: str, active_rules: List[str], active_directives: str) -> Tuple[str, int]:
+    def resolve_overlap(
+        cls, past_lessons: str, active_rules: List[str], active_directives: str
+    ) -> Tuple[str, int]:
         """
         Deduplicates past lessons against active dialect rules and directives.
         Returns clean past lessons and total tokens saved.
@@ -62,19 +65,29 @@ class LessonRuleOverlapResolver:
                 is_overlap = True
             else:
                 for base in baseline_keys:
-                    if GlobalPromptDeduplicator.compute_jaccard_similarity(key, base) >= 0.80 or base in key:
+                    if (
+                        GlobalPromptDeduplicator.compute_jaccard_similarity(key, base)
+                        >= 0.80
+                        or base in key
+                    ):
                         is_overlap = True
                         break
 
             if is_overlap:
                 tokens_saved += max(1, len(line_str) // 4)
-                logger.debug(f"[LessonResolver] Removed lesson line overlapping with core rule: '{line_str[:50]}...'")
+                logger.debug(
+                    f"[LessonResolver] Removed lesson line overlapping with core rule: '{line_str[:50]}...'"
+                )
             else:
                 clean_lines.append(line)
 
         clean_text = "\n".join(clean_lines).strip()
         # If all substantive lines were removed, clear entirely
-        substantive = [l for l in clean_lines if l.strip() and not ("===" in l or "VALUE MAPPINGS" in l)]
+        substantive = [
+            line
+            for line in clean_lines
+            if line.strip() and not ("===" in line or "VALUE MAPPINGS" in line)
+        ]
         if not substantive:
             tokens_saved = raw_tokens
             return "", tokens_saved

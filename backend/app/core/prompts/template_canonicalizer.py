@@ -1,7 +1,7 @@
 import re
-import hashlib
-from typing import List, Dict, Any, Tuple, Set
+from typing import List, Dict, Tuple, Set
 from backend.app.utils.logger import logger
+
 
 class TemplateCanonicalizer:
     """
@@ -25,7 +25,12 @@ class TemplateCanonicalizer:
             features.add("LATERAL_FLATTEN")
         if "OVER (" in clean or "PARTITION BY" in clean or "QUALIFY " in clean:
             features.add("WINDOW_FUNCTION")
-        if "GROUP BY" in clean or "COUNT(" in clean or "SUM(" in clean or "AVG(" in clean:
+        if (
+            "GROUP BY" in clean
+            or "COUNT(" in clean
+            or "SUM(" in clean
+            or "AVG(" in clean
+        ):
             features.add("AGGREGATION")
         if " JOIN " in clean:
             features.add("JOIN")
@@ -37,7 +42,9 @@ class TemplateCanonicalizer:
         return tuple(sorted(features))
 
     @classmethod
-    def canonicalize_templates(cls, templates: List[Dict[str, str]]) -> Tuple[List[Dict[str, str]], int]:
+    def canonicalize_templates(
+        cls, templates: List[Dict[str, str]]
+    ) -> Tuple[List[Dict[str, str]], int]:
         """
         Deduplicates a list of template dictionaries ('name', 'sql', 'description')
         based on structural equivalence signatures.
@@ -57,7 +64,7 @@ class TemplateCanonicalizer:
                 continue
 
             # Check exact SQL string deduplication
-            exact_norm = re.sub(r'\s+', ' ', sql_text.lower())
+            exact_norm = re.sub(r"\s+", " ", sql_text.lower())
             if exact_norm in seen_exact_sqls:
                 tokens_saved += max(1, len(sql_text) // 4)
                 continue
@@ -68,7 +75,9 @@ class TemplateCanonicalizer:
             # If the signature is non-empty and we've already seen an exact match for this structural combination
             if sig and sig in seen_signatures:
                 tokens_saved += max(1, len(sql_text) // 4)
-                logger.debug(f"[TemplateCanonicalizer] Dropped structurally equivalent template: '{tmpl.get('name', 'Template')}' Signature: {sig}")
+                logger.debug(
+                    f"[TemplateCanonicalizer] Dropped structurally equivalent template: '{tmpl.get('name', 'Template')}' Signature: {sig}"
+                )
             else:
                 if sig:
                     seen_signatures.add(sig)

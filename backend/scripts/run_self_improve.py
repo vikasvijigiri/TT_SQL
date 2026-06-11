@@ -12,8 +12,8 @@ Schedule (Windows Task Scheduler):
     Trigger: Daily, 02:07 AM
     Start in: C:\\path\\to\\TT_SQL_V2
 """
+
 import sys
-import json
 from pathlib import Path
 
 ROOT_DIR = Path(__file__).resolve().parent.parent.parent
@@ -21,7 +21,6 @@ sys.path.insert(0, str(ROOT_DIR))
 
 from backend.app.core.rules.self_improving_loop import SelfImprovingLoop
 from backend.app.core.config import DAB_REPO
-from backend.app.utils.logger import logger
 
 
 def main():
@@ -57,7 +56,9 @@ def main():
         )
 
     if result.get("saturated"):
-        print("\n[SATURATED] Pipeline has converged — accuracy cannot improve further with current architecture.")
+        print(
+            "\n[SATURATED] Pipeline has converged — accuracy cannot improve further with current architecture."
+        )
 
     print("\n" + "=" * 60)
 

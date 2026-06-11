@@ -1,6 +1,7 @@
-from typing import List, Dict, Tuple, Set
+from typing import List, Tuple, Set
 from backend.app.core.prompts.global_deduplicator import GlobalPromptDeduplicator
 from backend.app.utils.logger import logger
+
 
 class RuleCanonicalizer:
     """
@@ -10,9 +11,9 @@ class RuleCanonicalizer:
     """
 
     CANONICAL_REGISTRY = {
-        "double quote identifiers": "Strictly double-quote all lowercase or mixed-case identifiers (\"schema\".\"table\".\"column\").",
-        "quote identifiers": "Strictly double-quote all lowercase or mixed-case identifiers (\"schema\".\"table\".\"column\").",
-        "uppercase unquoted identifiers": "Strictly double-quote all lowercase or mixed-case identifiers (\"schema\".\"table\".\"column\").",
+        "double quote identifiers": 'Strictly double-quote all lowercase or mixed-case identifiers ("schema"."table"."column").',
+        "quote identifiers": 'Strictly double-quote all lowercase or mixed-case identifiers ("schema"."table"."column").',
+        "uppercase unquoted identifiers": 'Strictly double-quote all lowercase or mixed-case identifiers ("schema"."table"."column").',
         "colon extraction": "Use explicit colon extraction (col:\"nested_key\"::type) or GET_PATH(col, 'key')::type for VARIANT columns.",
         "variant json extraction": "Use explicit colon extraction (col:\"nested_key\"::type) or GET_PATH(col, 'key')::type for VARIANT columns.",
         "parse json": "Use explicit colon extraction (col:\"nested_key\"::type) or GET_PATH(col, 'key')::type for VARIANT columns.",
@@ -24,7 +25,7 @@ class RuleCanonicalizer:
         "every non aggregated column": "Every non-aggregated column in SELECT MUST be explicitly listed in GROUP BY.",
         "do not quote table function": "Do not quote table function outputs like VALUE, INDEX, KEY, PATH.",
         "geospatial calculating areas perimeters": "Use explicit ST_ spatial functions (e.g., ST_AREA(ST_GEOGRAPHYFROMWKT(col))).",
-        "spatial bounding containment predicates": "Do not filter raw geography strings; use spatial containment predicates."
+        "spatial bounding containment predicates": "Do not filter raw geography strings; use spatial containment predicates.",
     }
 
     @classmethod
@@ -35,12 +36,18 @@ class RuleCanonicalizer:
         """
         key = GlobalPromptDeduplicator.get_core_semantic_key(raw_rule)
         for reg_key, canonical_text in cls.CANONICAL_REGISTRY.items():
-            if GlobalPromptDeduplicator.compute_jaccard_similarity(key, reg_key) >= 0.75 or reg_key in key:
+            if (
+                GlobalPromptDeduplicator.compute_jaccard_similarity(key, reg_key)
+                >= 0.75
+                or reg_key in key
+            ):
                 return canonical_text
         return raw_rule.strip()
 
     @classmethod
-    def canonicalize_and_deduplicate(cls, raw_rules: List[str], global_seen_rules: Set[str] = None) -> Tuple[List[str], int]:
+    def canonicalize_and_deduplicate(
+        cls, raw_rules: List[str], global_seen_rules: Set[str] | None = None
+    ) -> Tuple[List[str], int]:
         """
         Executes the canonicalization pipeline:
         raw_rules -> normalize -> canonicalize -> deduplicate -> inject once.
@@ -56,22 +63,29 @@ class RuleCanonicalizer:
             r_str = r.strip()
             if not r_str or len(r_str) < 5:
                 continue
-                
+
             canonical = cls.get_canonical_rule(r_str)
             key = GlobalPromptDeduplicator.get_core_semantic_key(canonical)
-            
+
             is_dup = False
             if key in global_seen_rules or canonical in global_seen_rules:
                 is_dup = True
             else:
                 for seen in global_seen_rules:
-                    if GlobalPromptDeduplicator.compute_jaccard_similarity(key, GlobalPromptDeduplicator.get_core_semantic_key(seen)) >= 0.85:
+                    if (
+                        GlobalPromptDeduplicator.compute_jaccard_similarity(
+                            key, GlobalPromptDeduplicator.get_core_semantic_key(seen)
+                        )
+                        >= 0.85
+                    ):
                         is_dup = True
                         break
 
             if is_dup:
                 tokens_saved += max(1, len(r_str) // 4)
-                logger.debug(f"[RuleCanonicalizer] Suppressed duplicate rule: '{r_str[:50]}...'")
+                logger.debug(
+                    f"[RuleCanonicalizer] Suppressed duplicate rule: '{r_str[:50]}...'"
+                )
             else:
                 global_seen_rules.add(key)
                 global_seen_rules.add(canonical)

@@ -9,6 +9,7 @@ Deduplication uses two-level Jaccard similarity:
   - TRIED_THRESHOLD (0.65): blocks re-adding a rule very similar to any previously-tried rule
     (any status, including REJECTED) — enforces convergence.
 """
+
 import json
 import os
 import time
@@ -22,10 +23,10 @@ from backend.app.utils.logger import logger
 
 DYNAMIC_LESSONS_FILE = MEMORY_DIR / "dynamic_lessons.json"
 
-MAX_RULES = 60
-COVER_THRESHOLD = 0.38
-TRIED_THRESHOLD = 0.65
-DEPRECATE_MIN_APPS = 5
+MAX_RULES = 120  # raised: was 60, filled up causing silent drops
+COVER_THRESHOLD = 0.42  # slightly stricter dedup (was 0.38) — avoids over-blocking
+TRIED_THRESHOLD = 0.70  # slightly stricter tried-before guard (was 0.65)
+DEPRECATE_MIN_APPS = 3  # evict poor rules faster (was 5) to free slots
 DEPRECATE_SUCCESS_RATE = 0.15
 
 
@@ -95,16 +96,21 @@ class DynamicRuleStore:
         """True if an ACTIVE or CANDIDATE rule is already similar enough."""
         with self._lock:
             for r in self._rules:
-                if r.get("status") in ("ACTIVE", "CANDIDATE"):
-                    if self._jaccard(generic_rule, r.get("generic_rule", "")) >= COVER_THRESHOLD:
-                        return True
+                if r.get("status") in ("ACTIVE", "CANDIDATE") and (
+                    self._jaccard(generic_rule, r.get("generic_rule", ""))
+                    >= COVER_THRESHOLD
+                ):
+                    return True
             return False
 
     def was_tried_before(self, generic_rule: str) -> bool:
         """True if a highly-similar rule has been tried before (any status)."""
         with self._lock:
             for r in self._rules:
-                if self._jaccard(generic_rule, r.get("generic_rule", "")) >= TRIED_THRESHOLD:
+                if (
+                    self._jaccard(generic_rule, r.get("generic_rule", ""))
+                    >= TRIED_THRESHOLD
+                ):
                     return True
             return False
 
@@ -150,7 +156,9 @@ class DynamicRuleStore:
             }
             self._rules.append(rule)
             self._save()
-            logger.info(f"DynamicRuleStore: added CANDIDATE '{rule_title}' [{lesson_id}]")
+            logger.info(
+                f"DynamicRuleStore: added CANDIDATE '{rule_title}' [{lesson_id}]"
+            )
             return lesson_id
 
     def activate_candidates(self, lesson_ids: Optional[List[str]] = None) -> int:
@@ -187,7 +195,10 @@ class DynamicRuleStore:
                 if r.get("status") == "ACTIVE":
                     apps = r.get("applications", 0)
                     suc = r.get("successes", 0)
-                    if apps >= DEPRECATE_MIN_APPS and (suc / apps) < DEPRECATE_SUCCESS_RATE:
+                    if (
+                        apps >= DEPRECATE_MIN_APPS
+                        and (suc / apps) < DEPRECATE_SUCCESS_RATE
+                    ):
                         r["status"] = "INACTIVE"
                         count += 1
             if count:
@@ -208,16 +219,38 @@ class DynamicRuleStore:
     # Retrieval
     # ------------------------------------------------------------------
 
-    def retrieve_relevant(self, query_words: set, top_k: int = 5) -> List[Dict[str, Any]]:
-        """Return up to top_k ACTIVE rules most relevant to query_words."""
+    def retrieve_relevant(
+        self, query_words: set, top_k: int = 8, db_name: str = ""
+    ) -> List[Dict[str, Any]]:
+        """Return up to top_k ACTIVE rules most relevant to query_words.
+
+        Scoring uses three fields so that rules with sparse intent_pattern still match:
+          1. intent_pattern   (direct overlap — weighted ×3)
+          2. rule_title       (overlap — weighted ×2)
+          3. first sentence of generic_rule (overlap — weighted ×1)
+        """
         with self._lock:
             active = [r for r in self._rules if r.get("status") == "ACTIVE"]
             scored = []
             for r in active:
                 pattern_words = self._tokenize(r.get("intent_pattern", ""))
-                overlap = len(pattern_words & query_words)
-                if overlap > 0:
-                    scored.append((overlap, r))
+                title_words = self._tokenize(r.get("rule_title", ""))
+                # Only first sentence of generic_rule to avoid noise
+                gr_first = r.get("generic_rule", "").split(".")[0]
+                gr_words = self._tokenize(gr_first)
+
+                score = (
+                    3 * len(pattern_words & query_words)
+                    + 2 * len(title_words & query_words)
+                    + 1 * len(gr_words & query_words)
+                )
+                if db_name:
+                    clean_db = db_name.upper().replace("DAB_", "")
+                    clean_rule_db = r.get("db_name", "").upper().replace("DAB_", "")
+                    if clean_db == clean_rule_db and clean_db:
+                        score += 15
+                if score > 0:
+                    scored.append((score, r))
             scored.sort(key=lambda x: -x[0])
             return [r for _, r in scored[:top_k]]
 
@@ -227,7 +260,12 @@ class DynamicRuleStore:
 
     def counts(self) -> Dict[str, int]:
         with self._lock:
-            result: Dict[str, int] = {"ACTIVE": 0, "CANDIDATE": 0, "REJECTED": 0, "INACTIVE": 0}
+            result: Dict[str, int] = {
+                "ACTIVE": 0,
+                "CANDIDATE": 0,
+                "REJECTED": 0,
+                "INACTIVE": 0,
+            }
             for r in self._rules:
                 s = r.get("status", "UNKNOWN")
                 result[s] = result.get(s, 0) + 1

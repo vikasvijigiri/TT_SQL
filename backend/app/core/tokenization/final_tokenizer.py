@@ -1,5 +1,6 @@
-from typing import Dict, Any
+from typing import Dict
 from backend.app.utils.logger import logger
+
 
 class FinalTokenizer:
     """
@@ -27,10 +28,14 @@ class FinalTokenizer:
     @classmethod
     def count_total_tokens(cls, system_prompt: str, user_prompt: str) -> int:
         """Returns aggregate token count for both system and user prompts."""
-        return cls.count_system_tokens(system_prompt) + cls.count_user_tokens(user_prompt)
+        return cls.count_system_tokens(system_prompt) + cls.count_user_tokens(
+            user_prompt
+        )
 
     @classmethod
-    def tokenize_final_prompt(cls, system_prompt: str, user_prompt: str) -> Dict[str, int]:
+    def tokenize_final_prompt(
+        cls, system_prompt: str, user_prompt: str
+    ) -> Dict[str, int]:
         """
         Tokenizes the final rendered prompt strings and returns granular counts.
         """
@@ -38,9 +43,11 @@ class FinalTokenizer:
         usr_cnt = cls.count_user_tokens(user_prompt)
         tot_cnt = sys_cnt + usr_cnt
 
-        logger.debug(f"[FinalTokenizer] Final Sent Token Count: {tot_cnt} (System: {sys_cnt}, User: {usr_cnt}).")
+        logger.debug(
+            f"[FinalTokenizer] Final Sent Token Count: {tot_cnt} (System: {sys_cnt}, User: {usr_cnt})."
+        )
         return {
             "system_tokens": sys_cnt,
             "user_tokens": usr_cnt,
-            "total_tokens": tot_cnt
+            "total_tokens": tot_cnt,
         }

@@ -1,18 +1,19 @@
 import os
-from typing import List, Dict, Any, Tuple, Optional
-from pydantic import BaseModel, Field
+from typing import List, Dict
+from pydantic import BaseModel
 from backend.app.core.pipeline_config import PipelineModeConfig, BALANCED_CONFIG
-from backend.app.core.prompts.compression_pipeline import CompressionPipeline, CompressedPromptOutput
-from backend.app.core.prompting.context_scorer import ContextQualityScorer, ContextQualityScore
+from backend.app.core.prompts.compression_pipeline import CompressionPipeline
+from backend.app.core.prompting.context_scorer import ContextQualityScorer
 from backend.app.core.dialects.rule_retriever import DialectRuleRetriever
-from backend.app.core.query_analysis.capability_detector import QueryCapabilityDetector, QueryCapabilityProfile
-from backend.app.core.context.confidence_estimator import ConfidenceEstimator, ConfidenceMetrics
+from backend.app.core.query_analysis.capability_detector import QueryCapabilityDetector
+from backend.app.core.context.confidence_estimator import ConfidenceEstimator
 from backend.app.core.prompting.adaptive_budgeting import AdaptiveBudgetManager
 from backend.app.models.schemas import SemanticContext
 from backend.app.core.retrieval.hierarchical_retriever import QueryIntentAnalysis
 from backend.app.utils.logger import logger
 from backend.app.utils.prompt_loader import PromptLoader
 from backend.app.core.config import PROMPTS_DIR
+
 
 class AssembledPrompt(BaseModel):
     system_prompt: str
@@ -21,6 +22,7 @@ class AssembledPrompt(BaseModel):
     quality_score: float
     dropped_sections: List[str]
 
+
 class PromptAssembler:
     """
     Enterprise Surgical Prompt Assembly Engine.
@@ -28,11 +30,19 @@ class PromptAssembler:
     confidence estimation, adaptive budgeting, dynamic rule retrieval, and the 6-stage
     CompressionPipeline while strictly enforcing token ceilings and relevance quality scoring.
     """
-    def __init__(self, config: PipelineModeConfig = BALANCED_CONFIG, dialect: str = "snowflake", stage: str = "DEFAULT"):
+
+    def __init__(
+        self,
+        config: PipelineModeConfig = BALANCED_CONFIG,
+        dialect: str = "snowflake",
+        stage: str = "DEFAULT",
+    ):
         self.config = config
         self.dialect = dialect.lower()
         self.stage = stage.upper()
-        self.pipeline = CompressionPipeline(config=config, stage=self.stage, dialect=self.dialect)
+        self.pipeline = CompressionPipeline(
+            config=config, stage=self.stage, dialect=self.dialect
+        )
         self.rule_retriever = DialectRuleRetriever(dialect=self.dialect)
         self.scorer = ContextQualityScorer()
 
@@ -45,12 +55,12 @@ class PromptAssembler:
             "COLUMN_PRUNER": "column_pruner.yaml",
             "DATA_IQ": "result_validator.yaml",
             "RESULT_VALIDATOR": "result_validator.yaml",
-            "CRITIC": "critic.yaml"
+            "CRITIC": "critic.yaml",
         }
-        
+
         filename = mapping.get(agent_type.upper(), "sql_generator.yaml")
         filepath = os.path.join(PROMPTS_DIR, filename)
-        
+
         if os.path.exists(filepath):
             try:
                 content = PromptLoader.system(filepath)
@@ -58,7 +68,7 @@ class PromptAssembler:
                     return content.strip()
             except Exception as e:
                 logger.warning(f"[PromptAssembler] Failed to read {filepath}: {e}")
-                
+
         return f"You are a high-precision enterprise {agent_type} agent. Your task is to analyze the database schema and query to output the required JSON structure."
 
     def assemble(
@@ -67,12 +77,14 @@ class PromptAssembler:
         agent_type: str,
         context: SemanticContext,
         intent: QueryIntentAnalysis,
-        relevant_tables: List[str] = None,
-        table_columns: Dict[str, List[str]] = None,
+        relevant_tables: List[str] | None = None,
+        table_columns: Dict[str, List[str]] | None = None,
         lessons: str = "",
-        error_history: str = ""
+        error_history: str = "",
     ) -> AssembledPrompt:
-        logger.debug(f"[PromptAssembler] Assembling surgical prompt for agent '{agent_type}'...")
+        logger.debug(
+            f"[PromptAssembler] Assembling surgical prompt for agent '{agent_type}'..."
+        )
 
         # 1. Load Surgical System Prompt Directives
         sys_prompt = self._load_compact_system_prompt(agent_type)
@@ -105,23 +117,37 @@ class PromptAssembler:
             error_history=error_history,
             profile=profile,
             confidence=confidence,
-            custom_ceiling=budget["total_ceiling"]
+            custom_ceiling=budget["total_ceiling"],
         )
 
         # 7. Context Quality Evaluation
-        total_cols = sum(len(t.columns) for t in context.tables) if (context and context.tables) else 1
-        rel_cols = sum(len(cols) for cols in table_columns.values()) if table_columns else total_cols
-        
-        eval_res = self.scorer.evaluate_prompt(user_query, comp_out.user_prompt, total_cols, rel_cols)
-        if not eval_res.is_acceptable:
-            logger.warning(f"[PromptAssembler] Context quality flagged (Score: {eval_res.total_score}). {eval_res.rejection_reason}")
+        total_cols = (
+            sum(len(t.columns) for t in context.tables)
+            if (context and context.tables)
+            else 1
+        )
+        rel_cols = (
+            sum(len(cols) for cols in table_columns.values())
+            if table_columns
+            else total_cols
+        )
 
-        logger.info(f"[PromptAssembler] Surgical prompt assembled successfully (~{comp_out.total_tokens} tokens, Quality: {eval_res.total_score}).")
+        eval_res = self.scorer.evaluate_prompt(
+            user_query, comp_out.user_prompt, total_cols, rel_cols
+        )
+        if not eval_res.is_acceptable:
+            logger.warning(
+                f"[PromptAssembler] Context quality flagged (Score: {eval_res.total_score}). {eval_res.rejection_reason}"
+            )
+
+        logger.info(
+            f"[PromptAssembler] Surgical prompt assembled successfully (~{comp_out.total_tokens} tokens, Quality: {eval_res.total_score})."
+        )
 
         return AssembledPrompt(
             system_prompt=comp_out.system_prompt,
             user_prompt=comp_out.user_prompt,
             total_tokens=comp_out.total_tokens,
             quality_score=eval_res.total_score,
-            dropped_sections=comp_out.summary.dropped_sections
+            dropped_sections=comp_out.summary.dropped_sections,
         )

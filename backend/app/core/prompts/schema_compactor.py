@@ -3,6 +3,7 @@ from typing import Type, Dict, Any, List, Union
 from pydantic import BaseModel
 from backend.app.utils.logger import logger
 
+
 class SchemaCompactor:
     """
     Enterprise Pydantic Schema Compaction Engine.
@@ -13,14 +14,14 @@ class SchemaCompactor:
 
     @classmethod
     def _get_type_skeleton(cls, field_type: Any) -> Any:
-        origin = getattr(field_type, '__origin__', None)
-        args = getattr(field_type, '__args__', ())
+        origin = getattr(field_type, "__origin__", None)
+        args = getattr(field_type, "__args__", ())
 
         # Handle Optional / Union
         if origin is Union:
             # Pick the first non-None type
             for arg in args:
-                if arg != type(None):
+                if arg is not type(None):
                     return cls._get_type_skeleton(arg)
             return "string"
 
@@ -41,17 +42,19 @@ class SchemaCompactor:
         # Base scalar types
         if field_type in (int, float):
             return 0
-        if field_type == bool:
+        if field_type is bool:
             return True
         return "string"
 
     @classmethod
     def _build_skeleton_dict(cls, model: Type[BaseModel]) -> Dict[str, Any]:
         skeleton = {}
-        fields = getattr(model, 'model_fields', getattr(model, '__fields__', {}))
-        
+        fields = getattr(model, "model_fields", getattr(model, "__fields__", {}))
+
         for field_name, field_info in fields.items():
-            field_type = getattr(field_info, 'annotation', getattr(field_info, 'type_', str))
+            field_type = getattr(
+                field_info, "annotation", getattr(field_info, "type_", str)
+            )
             skeleton[field_name] = cls._get_type_skeleton(field_type)
 
         return skeleton
@@ -65,11 +68,15 @@ class SchemaCompactor:
         try:
             skeleton = cls._build_skeleton_dict(model)
             compact_str = json.dumps(skeleton, indent=2)
-            logger.debug(f"[SchemaCompactor] Generated compact schema for '{model.__name__}' (~{max(1, len(compact_str)//4)} tokens).")
+            logger.debug(
+                f"[SchemaCompactor] Generated compact schema for '{model.__name__}' (~{max(1, len(compact_str) // 4)} tokens)."
+            )
             return compact_str
         except Exception as e:
-            logger.warning(f"[SchemaCompactor] Failed to compact schema for '{model.__name__}': {e}. Using raw schema fallback.")
+            logger.warning(
+                f"[SchemaCompactor] Failed to compact schema for '{model.__name__}': {e}. Using raw schema fallback."
+            )
             try:
                 return json.dumps(model.model_json_schema(), indent=2)
-            except:
+            except Exception:
                 return f"{{\n  // Required fields matching {model.__name__}\n}}"

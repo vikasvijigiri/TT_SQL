@@ -1,8 +1,8 @@
-from typing import Optional
 from pydantic import BaseModel
 from backend.app.core.context.confidence_estimator import ConfidenceMetrics
 from backend.app.core.query_analysis.capability_detector import QueryCapabilityProfile
 from backend.app.utils.logger import logger
+
 
 class AdaptiveCompressionPolicy(BaseModel):
     max_sample_values_per_col: int
@@ -11,6 +11,7 @@ class AdaptiveCompressionPolicy(BaseModel):
     preserve_templates: bool
     preserve_past_lessons: bool
     pruning_similarity_threshold: float
+
 
 class AdaptiveCompressionEngine:
     """
@@ -25,10 +26,15 @@ class AdaptiveCompressionEngine:
         query: str,
         confidence: ConfidenceMetrics,
         profile: QueryCapabilityProfile,
-        budget_pressure_ratio: float = 0.5
+        budget_pressure_ratio: float = 0.5,
     ) -> AdaptiveCompressionPolicy:
         # Determine query complexity
-        is_complex = profile.requires_windows or profile.requires_variants or profile.requires_joins or (len(query.split()) > 20)
+        is_complex = (
+            profile.requires_windows
+            or profile.requires_variants
+            or profile.requires_joins
+            or (len(query.split()) > 20)
+        )
         is_ambiguous = confidence.is_low_confidence
 
         if is_ambiguous or (is_complex and budget_pressure_ratio < 0.8):
@@ -39,9 +45,11 @@ class AdaptiveCompressionEngine:
                 max_schema_description_len=150,
                 preserve_templates=True,
                 preserve_past_lessons=True,
-                pruning_similarity_threshold=0.85
+                pruning_similarity_threshold=0.85,
             )
-            logger.info("[AdaptiveCompressionEngine] Selected CONSERVATIVE compression policy (preserving guidance).")
+            logger.info(
+                "[AdaptiveCompressionEngine] Selected CONSERVATIVE compression policy (preserving guidance)."
+            )
         elif not is_complex and confidence.composite_confidence > 0.85:
             # Simple query + high confidence -> aggressive compression
             policy = AdaptiveCompressionPolicy(
@@ -50,9 +58,11 @@ class AdaptiveCompressionEngine:
                 max_schema_description_len=60,
                 preserve_templates=False,
                 preserve_past_lessons=False,
-                pruning_similarity_threshold=0.75
+                pruning_similarity_threshold=0.75,
             )
-            logger.info("[AdaptiveCompressionEngine] Selected AGGRESSIVE compression policy (high confidence/simple query).")
+            logger.info(
+                "[AdaptiveCompressionEngine] Selected AGGRESSIVE compression policy (high confidence/simple query)."
+            )
         else:
             # Balanced
             policy = AdaptiveCompressionPolicy(
@@ -61,8 +71,10 @@ class AdaptiveCompressionEngine:
                 max_schema_description_len=100,
                 preserve_templates=True,
                 preserve_past_lessons=True,
-                pruning_similarity_threshold=0.80
+                pruning_similarity_threshold=0.80,
             )
-            logger.info("[AdaptiveCompressionEngine] Selected BALANCED compression policy.")
+            logger.info(
+                "[AdaptiveCompressionEngine] Selected BALANCED compression policy."
+            )
 
         return policy

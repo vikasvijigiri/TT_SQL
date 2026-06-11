@@ -1,5 +1,6 @@
-from typing import List, Dict, Tuple
+from typing import List, Tuple
 from backend.app.utils.logger import logger
+
 
 class RulePriorityRanker:
     """
@@ -8,8 +9,33 @@ class RulePriorityRanker:
     When token pressure is high, lower priority rules are trimmed first.
     """
 
-    CRITICAL_KWS = ("double-quote", "identifier", "schema casing", "variant", ":", "lateral flatten", "group by", "inner", "left", "on")
-    LOW_KWS = ("srid", "st_geographyfromwkb", "st_geographyfromwkt", "approx_count_distinct", "hll")
+    CRITICAL_KWS = (
+        "double-quote",
+        "identifier",
+        "schema casing",
+        "variant",
+        ":",
+        "lateral flatten",
+        "group by",
+        "inner",
+        "left",
+        "on",
+        "critical",
+        "regexp_extract",
+        "regex",
+        "json",
+        "cast",
+        "null",
+        "strptime",
+        "try_cast",
+    )
+    LOW_KWS = (
+        "srid",
+        "st_geographyfromwkb",
+        "st_geographyfromwkt",
+        "approx_count_distinct",
+        "hll",
+    )
 
     @classmethod
     def rank_rules(cls, rules: List[str]) -> List[Tuple[str, str]]:
@@ -30,7 +56,9 @@ class RulePriorityRanker:
         return ranked
 
     @classmethod
-    def trim_rules_by_priority(cls, ranked_rules: List[Tuple[str, str]], max_rules: int) -> List[str]:
+    def trim_rules_by_priority(
+        cls, ranked_rules: List[Tuple[str, str]], max_rules: int
+    ) -> List[str]:
         if len(ranked_rules) <= max_rules:
             return [r[0] for r in ranked_rules]
 
@@ -41,9 +69,11 @@ class RulePriorityRanker:
 
         retained = critical[:max_rules]
         if len(retained) < max_rules:
-            retained += medium[:max_rules - len(retained)]
+            retained += medium[: max_rules - len(retained)]
         if len(retained) < max_rules:
-            retained += low[:max_rules - len(retained)]
+            retained += low[: max_rules - len(retained)]
 
-        logger.warning(f"[RulePriorityRanker] Trimmed rules from {len(ranked_rules)} -> {len(retained)} based on priority tiers.")
+        logger.warning(
+            f"[RulePriorityRanker] Trimmed rules from {len(ranked_rules)} -> {len(retained)} based on priority tiers."
+        )
         return retained

@@ -15,22 +15,22 @@ Each daily run performs up to MAX_ROUNDS of targeted improvement cycles:
 Progress and history are written atomically to improvement_log.json so the
 UI can display them without any server restart.
 """
+
 import json
 import os
 import time
 from datetime import datetime, date
-from pathlib import Path
 from typing import Any, Dict, List, Optional, Tuple
 
-from backend.app.core.config import MEMORY_DIR, DAB_REPO
+from backend.app.core.config import MEMORY_DIR, DAB_REPO, RESULTS_DIR
 from backend.app.utils.logger import logger
 
 # ------------------------------------------------------------------ constants
 MAX_ROUNDS = 3
 MIN_IMPROVEMENT = 1
 MAX_NO_IMPROVE = 2
-MAX_FAILURES_PER_ROUND = 20   # max failures to extract rules from per round
-MAX_RERUN_PER_ROUND = 15      # max queries to re-run per round
+MAX_FAILURES_PER_ROUND = 20  # max failures to extract rules from per round
+MAX_RERUN_PER_ROUND = 15  # max queries to re-run per round
 
 IMPROVEMENT_LOG_FILE = MEMORY_DIR / "improvement_log.json"
 
@@ -81,7 +81,8 @@ class SelfImprovingLoop:
         passed = sum(
             1
             for q in queries
-            if (ev := load_eval_result(q["dataset"], q["query_id"])) and ev.get("passed")
+            if (ev := load_eval_result(q["dataset"], q["query_id"]))
+            and ev.get("passed")
         )
         return passed, total
 
@@ -94,7 +95,8 @@ class SelfImprovingLoop:
         return [
             {"query": q, "eval": ev}
             for q in queries
-            if (ev := load_eval_result(q["dataset"], q["query_id"])) and not ev.get("passed")
+            if (ev := load_eval_result(q["dataset"], q["query_id"]))
+            and not ev.get("passed")
         ]
 
     def _prioritize_failures(
@@ -123,7 +125,9 @@ class SelfImprovingLoop:
         Safe to call multiple times: respects the daily run cap.
         """
         from backend.app.core.rules.dynamic_rule_store import DynamicRuleStore
-        from backend.app.core.rules.rule_extractor_agent import extract_rules_from_failure
+        from backend.app.core.rules.rule_extractor_agent import (
+            extract_rules_from_failure,
+        )
         from backend.app.dab.dab_orchestrator import run_dab_query
         from backend.app.utils.llm import LLMClient
 
@@ -154,7 +158,9 @@ class SelfImprovingLoop:
 
         # Record baseline on very first ever run
         if self._log.get("baseline_pass_rate") is None:
-            self._log["baseline_pass_rate"] = round(100 * passes_before / total, 1) if total else 0
+            self._log["baseline_pass_rate"] = (
+                round(100 * passes_before / total, 1) if total else 0
+            )
 
         for round_num in range(1, rounds_left + 1):
             t_start = time.time()
@@ -166,12 +172,22 @@ class SelfImprovingLoop:
             # ── Step 1: collect current failures ──────────────────────────
             failures = self._get_failures()
             if not failures:
-                logger.info("[SelfImprove] No failures remaining — perfect score achieved!")
-                round_results.append({
-                    "round": round_num, "date": today, "status": "perfect",
-                    "passes_before": passes_before, "passes_after": passes_before,
-                    "delta": 0, "total": total, "new_rules_added": 0, "elapsed_s": 0,
-                })
+                logger.info(
+                    "[SelfImprove] No failures remaining — perfect score achieved!"
+                )
+                round_results.append(
+                    {
+                        "round": round_num,
+                        "date": today,
+                        "status": "perfect",
+                        "passes_before": passes_before,
+                        "passes_after": passes_before,
+                        "delta": 0,
+                        "total": total,
+                        "new_rules_added": 0,
+                        "elapsed_s": 0,
+                    }
+                )
                 break
 
             # ── Step 2: extract rules from failures ───────────────────────
@@ -181,13 +197,53 @@ class SelfImprovingLoop:
             for f in failures[:MAX_FAILURES_PER_ROUND]:
                 q, ev = f["query"], f["eval"]
                 try:
+                    dataset = q.get("dataset", "")
+                    query_id = q.get("query_id", "")
+
+                    # 1. Fetch full SQL generated if available
+                    sql_generated = ev.get("agent_answer_snippet", "")
+                    sql_path = RESULTS_DIR / "dab" / dataset / f"query{query_id}.sql"
+                    if sql_path.exists():
+                        try:
+                            sql_generated = sql_path.read_text(
+                                encoding="utf-8", errors="replace"
+                            )
+                        except Exception as se:
+                            logger.warning(
+                                f"[SelfImprove] Failed to read SQL file: {se}"
+                            )
+
+                    # 2. Fetch log_tail from md file if available
+                    log_tail = ""
+                    md_path = RESULTS_DIR / "dab" / dataset / f"query{query_id}.md"
+                    if md_path.exists():
+                        try:
+                            max_chars = 30000
+                            file_size = md_path.stat().st_size
+                            if file_size <= max_chars:
+                                log_tail = md_path.read_text(
+                                    encoding="utf-8", errors="replace"
+                                )
+                            else:
+                                with open(md_path, "rb") as f_tail:
+                                    f_tail.seek(-max_chars, 2)
+                                    log_tail = f_tail.read().decode(
+                                        "utf-8", errors="replace"
+                                    )
+                        except Exception as le:
+                            logger.warning(
+                                f"[SelfImprove] Failed to read log tail for query {query_id}: {le}"
+                            )
+
+                    # 3. Call extract_rules_from_failure with log_tail
                     rules = extract_rules_from_failure(
                         llm=self._llm,
                         question=q.get("question", ""),
-                        sql_generated=ev.get("agent_answer_snippet", ""),
+                        sql_generated=sql_generated,
                         error_or_mismatch=ev.get("reason", ""),
                         ground_truth_hint=str(ev.get("ground_truth", ""))[:200],
-                        dataset=q.get("dataset", ""),
+                        dataset=dataset,
+                        log_tail=log_tail,
                     )
                     for rule in rules:
                         lid = store.add_rule(
@@ -195,8 +251,8 @@ class SelfImprovingLoop:
                             generic_rule=rule["generic_rule"],
                             intent_pattern=rule["intent_pattern"],
                             category=rule["category"],
-                            source_failure=f"{q['dataset']}_q{q['query_id']}",
-                            db_name=q.get("dataset", "").upper(),
+                            source_failure=f"{dataset}_q{query_id}",
+                            db_name=dataset.upper(),
                         )
                         if lid:
                             new_candidate_ids.append(lid)
@@ -213,12 +269,19 @@ class SelfImprovingLoop:
                     "(all failures already covered or MAX_RULES reached)."
                 )
                 no_improve_streak += 1
-                round_results.append({
-                    "round": round_num, "date": today, "status": "no_new_rules",
-                    "passes_before": passes_before, "passes_after": passes_before,
-                    "delta": 0, "total": total, "new_rules_added": 0,
-                    "elapsed_s": round(time.time() - t_start, 1),
-                })
+                round_results.append(
+                    {
+                        "round": round_num,
+                        "date": today,
+                        "status": "no_new_rules",
+                        "passes_before": passes_before,
+                        "passes_after": passes_before,
+                        "delta": 0,
+                        "total": total,
+                        "new_rules_added": 0,
+                        "elapsed_s": round(time.time() - t_start, 1),
+                    }
+                )
                 if no_improve_streak >= MAX_NO_IMPROVE:
                     self._log["saturated"] = True
                     break
@@ -226,7 +289,9 @@ class SelfImprovingLoop:
 
             # ── Step 3: activate candidates ───────────────────────────────
             activated = store.activate_candidates(new_candidate_ids)
-            logger.info(f"[SelfImprove] Activated {activated} rules → re-running failures")
+            logger.info(
+                f"[SelfImprove] Activated {activated} rules → re-running failures"
+            )
 
             # ── Step 4: re-run the most likely to benefit ─────────────────
             prioritized = self._prioritize_failures(failures, new_rule_patterns)
@@ -238,7 +303,7 @@ class SelfImprovingLoop:
                     result = run_dab_query(q, llm_client=self._llm)
                     status_str = result.get("status", "unknown")
                     logger.info(
-                        f"[SelfImprove] Re-run {q.get('instance_id','?')}: {status_str}"
+                        f"[SelfImprove] Re-run {q.get('instance_id', '?')}: {status_str}"
                     )
                 except Exception as e:
                     logger.warning(
@@ -269,18 +334,20 @@ class SelfImprovingLoop:
                 store.reject_candidates(new_candidate_ids)
                 no_improve_streak += 1
 
-            round_results.append({
-                "round": round_num,
-                "date": today,
-                "status": status,
-                "passes_before": passes_after - delta,
-                "passes_after": passes_after,
-                "delta": delta,
-                "total": total,
-                "new_rules_added": activated if delta >= MIN_IMPROVEMENT else 0,
-                "elapsed_s": elapsed,
-                "pass_rate": round(100 * passes_after / total, 1) if total else 0,
-            })
+            round_results.append(
+                {
+                    "round": round_num,
+                    "date": today,
+                    "status": status,
+                    "passes_before": passes_after - delta,
+                    "passes_after": passes_after,
+                    "delta": delta,
+                    "total": total,
+                    "new_rules_added": activated if delta >= MIN_IMPROVEMENT else 0,
+                    "elapsed_s": elapsed,
+                    "pass_rate": round(100 * passes_after / total, 1) if total else 0,
+                }
+            )
 
             if no_improve_streak >= MAX_NO_IMPROVE:
                 self._log["saturated"] = True
@@ -298,7 +365,9 @@ class SelfImprovingLoop:
             "pass_rate": round(100 * final_passes / total, 1) if total else 0,
         }
         self._log.setdefault("runs", []).append(run_entry)
-        self._log["total_rounds"] = self._log.get("total_rounds", 0) + len(round_results)
+        self._log["total_rounds"] = self._log.get("total_rounds", 0) + len(
+            round_results
+        )
         self._log["last_run"] = run_entry["timestamp"]
         self._save_log()
 

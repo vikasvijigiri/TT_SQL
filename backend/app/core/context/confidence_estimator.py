@@ -1,9 +1,10 @@
-from typing import List, Dict, Any, Optional
+from typing import Optional
 from pydantic import BaseModel
 from backend.app.models.schemas import SemanticContext
 from backend.app.core.retrieval.hierarchical_retriever import QueryIntentAnalysis
 from backend.app.core.query_analysis.capability_detector import QueryCapabilityProfile
 from backend.app.utils.logger import logger
+
 
 class ConfidenceMetrics(BaseModel):
     schema_confidence: float
@@ -13,6 +14,7 @@ class ConfidenceMetrics(BaseModel):
     retrieval_confidence: float
     composite_confidence: float
     is_low_confidence: bool
+
 
 class ConfidenceEstimator:
     """
@@ -29,12 +31,16 @@ class ConfidenceEstimator:
         query: str,
         context: Optional[SemanticContext] = None,
         intent: Optional[QueryIntentAnalysis] = None,
-        profile: Optional[QueryCapabilityProfile] = None
+        profile: Optional[QueryCapabilityProfile] = None,
     ) -> ConfidenceMetrics:
         # 1. Schema Confidence
         # More tables/columns in context without clear narrowing lowers confidence
         num_tables = len(context.tables) if context and context.tables else 1
-        num_cols = sum(len(t.columns) for t in context.tables) if context and context.tables else 10
+        num_cols = (
+            sum(len(t.columns) for t in context.tables)
+            if context and context.tables
+            else 10
+        )
         schema_conf = max(0.4, 1.0 - (num_tables * 0.05) - (num_cols * 0.005))
 
         # 2. Join Confidence
@@ -54,10 +60,18 @@ class ConfidenceEstimator:
 
         # 4. Rule & Retrieval Confidence
         rule_conf = 0.90 if profile and not profile.requires_variants else 0.75
-        retrieval_conf = 0.85 if intent and intent.inferred_domain != "General Enterprise" else 0.70
+        retrieval_conf = (
+            0.85 if intent and intent.inferred_domain != "General Enterprise" else 0.70
+        )
 
         # Composite weighting
-        comp = (schema_conf * 0.3) + (join_conf * 0.25) + (mapping_conf * 0.2) + (retrieval_conf * 0.15) + (rule_conf * 0.1)
+        comp = (
+            (schema_conf * 0.3)
+            + (join_conf * 0.25)
+            + (mapping_conf * 0.2)
+            + (retrieval_conf * 0.15)
+            + (rule_conf * 0.1)
+        )
         comp = round(min(1.0, max(0.1, comp)), 2)
 
         is_low = comp < cls.LOW_CONFIDENCE_THRESHOLD
@@ -69,8 +83,10 @@ class ConfidenceEstimator:
             rule_confidence=round(rule_conf, 2),
             retrieval_confidence=round(retrieval_conf, 2),
             composite_confidence=comp,
-            is_low_confidence=is_low
+            is_low_confidence=is_low,
         )
 
-        logger.debug(f"[ConfidenceEstimator] Confidence estimated: {comp} (Low? {is_low})")
+        logger.debug(
+            f"[ConfidenceEstimator] Confidence estimated: {comp} (Low? {is_low})"
+        )
         return metrics

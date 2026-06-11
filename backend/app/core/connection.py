@@ -41,54 +41,60 @@ from urllib.parse import urlparse, parse_qs, unquote
 # Mapping from URI scheme (lower) → canonical dialect keyword used
 # throughout the pipeline (dialect rules, casting, SQL generation hints).
 _SCHEME_TO_DIALECT: Dict[str, str] = {
-    "sqlite":                    "sqlite",
-    "duckdb":                    "duckdb",
-    "postgresql":                "postgresql",
-    "postgres":                  "postgresql",
-    "mysql":                     "mysql",
-    "mysql+mysqlconnector":      "mysql",
-    "mysql+pymysql":             "mysql",
-    "mysql+aiomysql":            "mysql",
-    "mariadb":                   "mysql",
-    "mariadb+mariadbconnector":  "mysql",
-    "mssql":                     "mssql",
-    "mssql+pyodbc":              "mssql",
-    "mssql+pymssql":             "mssql",
-    "sqlserver":                 "mssql",
-    "bigquery":                  "bigquery",
-    "mongodb":                   "mongodb",
-    "mongodb+srv":               "mongodb",
-    "snowflake":                 "snowflake",
-    "oracle":                    "oracle",
-    "oracle+cx_oracle":          "oracle",
-    "oracle+oracledb":           "oracle",
-    "trino":                     "trino",
-    "presto":                    "trino",
-    "redshift":                  "redshift",
+    "sqlite": "sqlite",
+    "duckdb": "duckdb",
+    "postgresql": "postgresql",
+    "postgres": "postgresql",
+    "mysql": "mysql",
+    "mysql+mysqlconnector": "mysql",
+    "mysql+pymysql": "mysql",
+    "mysql+aiomysql": "mysql",
+    "mariadb": "mysql",
+    "mariadb+mariadbconnector": "mysql",
+    "mssql": "mssql",
+    "mssql+pyodbc": "mssql",
+    "mssql+pymssql": "mssql",
+    "sqlserver": "mssql",
+    "bigquery": "bigquery",
+    "mongodb": "mongodb",
+    "mongodb+srv": "mongodb",
+    "snowflake": "snowflake",
+    "oracle": "oracle",
+    "oracle+cx_oracle": "oracle",
+    "oracle+oracledb": "oracle",
+    "trino": "trino",
+    "presto": "trino",
+    "redshift": "redshift",
     "redshift+redshift_connector": "redshift",
-    "spark":                     "spark",
-    "databricks":                "spark",
-    "hive":                      "hive",
+    "spark": "spark",
+    "databricks": "spark",
+    "hive": "hive",
 }
 
 
 @dataclass
 class ConnectionConfig:
-    dialect: str               # canonical dialect: sqlite / duckdb / postgresql / mysql / ...
-    db_name: str               # catalog / database name (used for schema lookups)
-    raw_uri: str               # original URI string, safe to pass to sqlalchemy.create_engine()
-    schema_name: str = ""      # schema within the database (for multi-schema DBs)
+    dialect: str  # canonical dialect: sqlite / duckdb / postgresql / mysql / ...
+    db_name: str  # catalog / database name (used for schema lookups)
+    raw_uri: str  # original URI string, safe to pass to sqlalchemy.create_engine()
+    schema_name: str = ""  # schema within the database (for multi-schema DBs)
     host: Optional[str] = None
     port: Optional[int] = None
     username: Optional[str] = None
     password: Optional[str] = None
-    path: Optional[str] = None          # for file-based DBs (sqlite / duckdb)
+    path: Optional[str] = None  # for file-based DBs (sqlite / duckdb)
     extra_params: Dict[str, str] = field(default_factory=dict)
 
     # Whether this connection needs SQLAlchemy (vs. native driver in executor)
     @property
     def needs_sqlalchemy(self) -> bool:
-        return self.dialect not in ("sqlite", "duckdb", "postgresql", "snowflake", "mongodb")
+        return self.dialect not in (
+            "sqlite",
+            "duckdb",
+            "postgresql",
+            "snowflake",
+            "mongodb",
+        )
 
     # psycopg2-style DSN string for PostgreSQL executor backend
     @property
@@ -98,8 +104,8 @@ class ConnectionConfig:
         host = self.host or "localhost"
         port = self.port or 5432
         user = self.username or "postgres"
-        pwd  = self.password or ""
-        db   = self.db_name or "postgres"
+        pwd = self.password or ""
+        db = self.db_name or "postgres"
         return f"host={host} port={port} user={user} password={pwd} dbname={db}"
 
     # SQLAlchemy-compatible URI (normalises scheme aliases)
@@ -132,8 +138,8 @@ def parse_connection(uri: str) -> ConnectionConfig:
     dialect = _SCHEME_TO_DIALECT.get(scheme, scheme)  # unknown → use scheme as-is
 
     # ── 2. Extract host / port / user / password ────────────────────────────
-    host     = parsed.hostname or None
-    port     = parsed.port or None
+    host = parsed.hostname or None
+    port = parsed.port or None
     username = unquote(parsed.username) if parsed.username else None
     password = unquote(parsed.password) if parsed.password else None
 
@@ -150,9 +156,12 @@ def parse_connection(uri: str) -> ConnectionConfig:
         if re.match(r"^/[A-Za-z]:/", full_path):
             full_path = full_path[1:]
         file_path = full_path or path_raw
-        db_name = re.sub(r"\.(sqlite|sqlite3|db|duckdb)$", "",
-                         full_path.replace("\\", "/").split("/")[-1],
-                         flags=re.IGNORECASE)
+        db_name = re.sub(
+            r"\.(sqlite|sqlite3|db|duckdb)$",
+            "",
+            full_path.replace("\\", "/").split("/")[-1],
+            flags=re.IGNORECASE,
+        )
         return ConnectionConfig(
             dialect=dialect,
             db_name=db_name.upper() if db_name else "LOCAL",
@@ -163,12 +172,12 @@ def parse_connection(uri: str) -> ConnectionConfig:
     # Network DBs: path segments give catalog / schema
     segments = [s for s in path_raw.split("/") if s]
 
-    db_name     = segments[0] if len(segments) >= 1 else ""
+    db_name = segments[0] if len(segments) >= 1 else ""
     schema_name = segments[1] if len(segments) >= 2 else ""
 
     # BigQuery: uri = bigquery://project/dataset  → db=project, schema=dataset
     if dialect == "bigquery":
-        db_name     = parsed.netloc or segments[0] if segments else ""
+        db_name = parsed.netloc or segments[0] if segments else ""
         schema_name = segments[0] if len(segments) >= 1 else ""
 
     # MongoDB: path="/dbname"
@@ -178,7 +187,7 @@ def parse_connection(uri: str) -> ConnectionConfig:
 
     # Snowflake: path="/db/schema/warehouse" (optional segments)
     if dialect == "snowflake":
-        db_name     = segments[0] if segments else ""
+        db_name = segments[0] if segments else ""
         schema_name = segments[1] if len(segments) >= 2 else ""
 
     # ── 4. Extra query-string params ─────────────────────────────────────────

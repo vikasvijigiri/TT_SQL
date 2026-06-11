@@ -1,5 +1,6 @@
-from typing import Dict, Tuple
+from typing import Tuple
 from backend.app.utils.logger import logger
+
 
 class DirectiveCompactor:
     """
@@ -20,7 +21,7 @@ class DirectiveCompactor:
         "do not quote table function outputs": "Do not quote VALUE, INDEX, KEY, PATH.",
         "when calculating areas, perimeters, distances": "Use ST_ functions for geospatial.",
         "do not filter on raw geography strings": "Use spatial containment predicates.",
-        "unquoted identifiers fold": "Strictly double-quote mixed/lowercase identifiers."
+        "unquoted identifiers fold": "Strictly double-quote mixed/lowercase identifiers.",
     }
 
     COMPACT_BLOCKS = {
@@ -29,13 +30,15 @@ class DirectiveCompactor:
         "NULL_HANDLING": "- Wrap division denominators with NULLIF(col, 0).\n- COALESCE NULLs in SUM/COUNT.",
         "VARIANT_EXTRACTION": "- Use col:key::type or GET_PATH() for VARIANT.\n- Do not quote VALUE, INDEX, KEY, PATH.",
         "GEOSPATIAL": "- Use ST_ functions for geospatial.\n- Use spatial containment predicates.",
-        "DIALECT_SAFETY": "- Strictly double-quote mixed/lowercase identifiers."
+        "DIALECT_SAFETY": "- Strictly double-quote mixed/lowercase identifiers.",
     }
 
     @classmethod
     def get_compact_all(cls) -> str:
         """Returns all reasoning directives in their ultra-compact, 70%-reduced form."""
-        compact_text = "=== REASONING DIRECTIVES ===\n" + "\n".join(cls.COMPACT_BLOCKS.values())
+        compact_text = "=== REASONING DIRECTIVES ===\n" + "\n".join(
+            cls.COMPACT_BLOCKS.values()
+        )
         return compact_text.strip()
 
     @classmethod
@@ -48,13 +51,18 @@ class DirectiveCompactor:
             return "", 0
 
         raw_tokens = max(1, len(raw_directives_text) // 4)
-        
+
         # If it's the standard ReasoningDirectives output, return the pristine block
-        if "JOIN DIRECTIVES" in raw_directives_text or "AGGREGATION DIRECTIVES" in raw_directives_text:
+        if (
+            "JOIN DIRECTIVES" in raw_directives_text
+            or "AGGREGATION DIRECTIVES" in raw_directives_text
+        ):
             compact_text = cls.get_compact_all()
             comp_tokens = max(1, len(compact_text) // 4)
             savings = max(0, raw_tokens - comp_tokens)
-            logger.debug(f"[DirectiveCompactor] Compacted directives (~{savings} tokens saved, ~{round(savings/raw_tokens*100, 1)}% reduction).")
+            logger.debug(
+                f"[DirectiveCompactor] Compacted directives (~{savings} tokens saved, ~{round(savings / raw_tokens * 100, 1)}% reduction)."
+            )
             return compact_text, savings
 
         # Fallback line-by-line replacement

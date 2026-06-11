@@ -2,6 +2,7 @@ from typing import List, Any
 from backend.app.core.query_analysis.capability_detector import QueryCapabilityProfile
 from backend.app.utils.logger import logger
 
+
 class PromptQualityGuard:
     """
     Enterprise Prompt Quality Preservation Guard.
@@ -44,17 +45,22 @@ class PromptQualityGuard:
         elif not rules_node:
             if nodes and hasattr(nodes[0], "section_type"):
                 from backend.app.core.prompts.prompt_ast import PromptNode
+
                 new_node = PromptNode(
-                    name="dialect_rules", section_type="rules",
+                    name="dialect_rules",
+                    section_type="rules",
                     content=f"=== RE-EXPANDED DIALECT RULES ===\n{text}",
-                    priority=1, droppable=False,
+                    priority=1,
+                    droppable=False,
                 )
             else:
                 from backend.app.core.prompts.prompt_sections import PromptSection
-                new_node = PromptSection(
+
+                new_node = PromptSection(  # type: ignore
                     name="dialect_rules",
                     content=f"=== RE-EXPANDED DIALECT RULES ===\n{text}",
-                    priority=1, droppable=False,
+                    priority=1,
+                    droppable=False,
                 )
             nodes.insert(1, new_node)
 
@@ -89,28 +95,39 @@ class PromptQualityGuard:
 
         # 3. Aggregation safeguard
         if profile.requires_aggregation and "group by" not in content_str.lower():
-            logger.warning("[PromptQualityGuard] Aggregation rules missing — re-injecting.")
+            logger.warning(
+                "[PromptQualityGuard] Aggregation rules missing — re-injecting."
+            )
             cls._inject(nodes, rules_node, cls.AGGREGATION_SAFEGUARD_TEXT)
             content_str += "\n" + cls.AGGREGATION_SAFEGUARD_TEXT
             rules_node = next((n for n in nodes if n.name == "dialect_rules"), None)
 
         # 4. Timestamp safeguard
         if profile.requires_timestamps and "date" not in content_str.lower():
-            logger.warning("[PromptQualityGuard] Timestamp rules missing — re-injecting.")
+            logger.warning(
+                "[PromptQualityGuard] Timestamp rules missing — re-injecting."
+            )
             cls._inject(nodes, rules_node, cls.TIMESTAMP_SAFEGUARD_TEXT)
             content_str += "\n" + cls.TIMESTAMP_SAFEGUARD_TEXT
             rules_node = next((n for n in nodes if n.name == "dialect_rules"), None)
 
         # 5. Geospatial safeguard
-        if getattr(profile, "requires_geospatial", False) and "st_" not in content_str.lower():
-            logger.warning("[PromptQualityGuard] Geospatial rules missing — re-injecting.")
+        if (
+            getattr(profile, "requires_geospatial", False)
+            and "st_" not in content_str.lower()
+        ):
+            logger.warning(
+                "[PromptQualityGuard] Geospatial rules missing — re-injecting."
+            )
             cls._inject(nodes, rules_node, cls.GEOSPATIAL_SAFEGUARD_TEXT)
             content_str += "\n" + cls.GEOSPATIAL_SAFEGUARD_TEXT
             rules_node = next((n for n in nodes if n.name == "dialect_rules"), None)
 
         # 6. Guard against dialect_rules being dropped entirely
         if "dialect_rules" in dropped_names:
-            logger.warning("[PromptQualityGuard] 'dialect_rules' was dropped entirely — re-injecting minimal baseline.")
+            logger.warning(
+                "[PromptQualityGuard] 'dialect_rules' was dropped entirely — re-injecting minimal baseline."
+            )
             minimal_rules = (
                 "=== CRITICAL DIALECT RULES ===\n"
                 "- Double-quote identifiers matching SCHEMA casing.\n"
@@ -118,10 +135,27 @@ class PromptQualityGuard:
             )
             if nodes and hasattr(nodes[0], "section_type"):
                 from backend.app.core.prompts.prompt_ast import PromptNode
-                nodes.append(PromptNode(name="dialect_rules", section_type="rules", content=minimal_rules, priority=1, droppable=False))
+
+                nodes.append(
+                    PromptNode(
+                        name="dialect_rules",
+                        section_type="rules",
+                        content=minimal_rules,
+                        priority=1,
+                        droppable=False,
+                    )
+                )
             else:
                 from backend.app.core.prompts.prompt_sections import PromptSection
-                nodes.append(PromptSection(name="dialect_rules", content=minimal_rules, priority=1, droppable=False))
+
+                nodes.append(
+                    PromptSection(
+                        name="dialect_rules",
+                        content=minimal_rules,
+                        priority=1,
+                        droppable=False,
+                    )
+                )
             dropped_names.remove("dialect_rules")
 
         return nodes

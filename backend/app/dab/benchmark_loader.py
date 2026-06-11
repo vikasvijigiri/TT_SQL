@@ -1,3 +1,4 @@
+import typing
 """
 benchmark_loader.py
 -------------------
@@ -17,11 +18,11 @@ Expected DAB repo layout:
       query_dataset/       <- Actual DB files (.sqlite, .duckdb, .sql dumps)
 """
 
-import os
 import json
 import yaml
 from pathlib import Path
 from typing import List, Dict, Any, Optional
+import contextlib
 
 
 # Canonical DAB dataset list (matches run_agent.py DATASET_LIST)
@@ -59,7 +60,7 @@ def _load_db_config(config_path: Path) -> Dict[str, Any]:
         with open(config_path, "r", encoding="utf-8") as f:
             data = yaml.safe_load(f) or {}
         return data.get("db_clients", {})
-    except Exception as e:
+    except Exception:
         return {}
 
 
@@ -111,7 +112,9 @@ def _load_validate_source(query_dir: Path) -> Optional[str]:
         return None
 
 
-def _resolve_db_paths(db_clients: Dict[str, Any], query_dataset_dir: Path) -> Dict[str, Any]:
+def _resolve_db_paths(
+    db_clients: Dict[str, Any], query_dataset_dir: Path
+) -> Dict[str, Any]:
     """
     Resolve relative DB paths in db_config to absolute paths,
     and classify each DB by type.
@@ -131,7 +134,7 @@ def _resolve_db_paths(db_clients: Dict[str, Any], query_dataset_dir: Path) -> Di
         if rel_path:
             abs_path = (query_dataset_dir / rel_path).resolve()
             entry["db_path"] = str(abs_path)
-        
+
         # For postgres / mongo: store connection metadata
         if db_type in ("postgres", "postgresql"):
             entry["db_name"] = cfg.get("db_name", name)
@@ -146,7 +149,7 @@ def _resolve_db_paths(db_clients: Dict[str, Any], query_dataset_dir: Path) -> Di
 def load_all_queries(dab_repo_path: str) -> List[Dict[str, Any]]:
     """
     Crawl the DataAgentBench repository and return a list of all query dicts.
-    
+
     Each dict contains:
       dataset      : str  (e.g. "bookreview")
       query_id     : str  (e.g. "1")
@@ -179,7 +182,7 @@ def load_all_queries(dab_repo_path: str) -> List[Dict[str, Any]]:
 
         db_config_path = dataset_dir / "db_config.yaml"
         db_clients_raw = _load_db_config(db_config_path)
-        query_dataset_dir = dataset_dir / "query_dataset"
+        dataset_dir / "query_dataset"
 
         # Resolve DB paths
         db_clients = _resolve_db_paths(db_clients_raw, dataset_dir)
@@ -190,11 +193,9 @@ def load_all_queries(dab_repo_path: str) -> List[Dict[str, Any]]:
         hint_file = dataset_dir / "db_description_withhint.txt"
         db_description = ""
         if desc_file.exists():
-            try:
+            with contextlib.suppress(Exception):
                 db_description = desc_file.read_text(encoding="utf-8").strip()
-            except Exception:
-                pass
-        
+
         # Load and append hints if they exist
         if hint_file.exists():
             try:
@@ -226,44 +227,26 @@ def load_all_queries(dab_repo_path: str) -> List[Dict[str, Any]]:
 
             instance_id = f"{dataset_lower}_q{query_id_str}"
 
-            queries.append({
-                "dataset": dataset_lower,
-                "query_id": query_id_str,
-                "instance_id": instance_id,
-                "question": question,
-                "ground_truth": ground_truth or "",
-                "db_clients": db_clients,
-                "validate_src": validate_src or "",
-                "needs_docker": any_docker,
-                "query_dir": str(item),
-                "dataset_dir": str(dataset_dir),
-                "has_hint": has_hint,
-                "db_description": db_description,
-            })
+            queries.append(
+                {
+                    "dataset": dataset_lower,
+                    "query_id": query_id_str,
+                    "instance_id": instance_id,
+                    "question": question,
+                    "ground_truth": ground_truth or "",
+                    "db_clients": db_clients,
+                    "validate_src": validate_src or "",
+                    "needs_docker": any_docker,
+                    "query_dir": str(item),
+                    "dataset_dir": str(dataset_dir),
+                    "has_hint": has_hint,
+                    "db_description": db_description,
+                }
+            )
 
     # Sort by dataset, then query_id numerically
-    queries.sort(key=lambda x: (x["dataset"], int(x["query_id"])))
+    queries.sort(key=lambda x: (x["dataset"], int(x["query_id"])))  # type: ignore
     return queries
-
-
-def get_primary_sqlite_db(db_clients: Dict[str, Any]) -> Optional[str]:
-    """Return the path of the first available SQLite DB for a dataset."""
-    for name, cfg in db_clients.items():
-        if cfg.get("db_type") == "sqlite":
-            p = cfg.get("db_path", "")
-            if p and Path(p).exists():
-                return p
-    return None
-
-
-def get_primary_duckdb(db_clients: Dict[str, Any]) -> Optional[str]:
-    """Return the path of the first available DuckDB for a dataset."""
-    for name, cfg in db_clients.items():
-        if cfg.get("db_type") == "duckdb":
-            p = cfg.get("db_path", "")
-            if p and Path(p).exists():
-                return p
-    return None
 
 
 def summarize_queries(queries: List[Dict[str, Any]]) -> None:
@@ -272,15 +255,15 @@ def summarize_queries(queries: List[Dict[str, Any]]) -> None:
     with_docker = sum(1 for q in queries if q["needs_docker"])
     no_docker = total - with_docker
 
-    print(f"\n{'='*60}")
-    print(f"  DataAgentBench - Query Index")
-    print(f"{'='*60}")
+    print(f"\n{'=' * 60}")
+    print("  DataAgentBench - Query Index")
+    print(f"{'=' * 60}")
     print(f"  Total queries : {total}")
     print(f"  No Docker     : {no_docker}")
     print(f"  Needs Docker  : {with_docker}")
-    print(f"{'-'*60}")
+    print(f"{'-' * 60}")
 
-    datasets = {}
+    datasets: dict[str, typing.Any] = {}
     for q in queries:
         ds = q["dataset"]
         datasets.setdefault(ds, []).append(q)
@@ -291,13 +274,16 @@ def summarize_queries(queries: List[Dict[str, Any]]) -> None:
         for q in qs:
             for cfg in q["db_clients"].values():
                 dbtypes.add(cfg.get("db_type", "?"))
-        print(f"  {docker_flag} {ds:<22} {len(qs):>2} queries  [{', '.join(sorted(dbtypes))}]")
-    print(f"{'='*60}\n")
+        print(
+            f"  {docker_flag} {ds:<22} {len(qs):>2} queries  [{', '.join(sorted(dbtypes))}]"
+        )
+    print(f"{'=' * 60}\n")
 
 
 if __name__ == "__main__":
     import sys
     from backend.app.core.config import DAB_REPO as _DAB_REPO
+
     repo = sys.argv[1] if len(sys.argv) > 1 else str(_DAB_REPO)
     qs = load_all_queries(repo)
     summarize_queries(qs)

@@ -1,7 +1,8 @@
 import re
-from typing import Dict, Any, List
-from pydantic import BaseModel, Field
+from typing import Dict, List
+from pydantic import BaseModel
 from backend.app.utils.logger import logger
+
 
 class ComponentScore(BaseModel):
     component_name: str
@@ -12,6 +13,7 @@ class ComponentScore(BaseModel):
     is_retained: bool = True
     rejection_reason: str = ""
 
+
 class ContextRelevanceScorer:
     """
     Enterprise Context Relevance Auditing Engine.
@@ -19,22 +21,63 @@ class ContextRelevanceScorer:
     across query overlap, domain keywords, and structural necessity before prompt assembly.
     Blocks below the configured minimum threshold are marked for exclusion.
     """
-    
+
     DOMAIN_KEYWORDS = {
-        "geospatial": ["area", "distance", "boundary", "region", "polygon", "st_", "geo", "latitude", "longitude"],
-        "variant": ["genotype", "variant", "allele", "vcf", "json", "nested", "call", "path", "flatten", "lateral"],
-        "temporal": ["date", "time", "year", "month", "day", "epoch", "interval", "between", "timestamp"],
-        "aggregation": ["sum", "avg", "count", "max", "min", "average", "total", "percentage", "ratio"]
+        "geospatial": [
+            "area",
+            "distance",
+            "boundary",
+            "region",
+            "polygon",
+            "st_",
+            "geo",
+            "latitude",
+            "longitude",
+        ],
+        "variant": [
+            "genotype",
+            "variant",
+            "allele",
+            "vcf",
+            "json",
+            "nested",
+            "call",
+            "path",
+            "flatten",
+            "lateral",
+        ],
+        "temporal": [
+            "date",
+            "time",
+            "year",
+            "month",
+            "day",
+            "epoch",
+            "interval",
+            "between",
+            "timestamp",
+        ],
+        "aggregation": [
+            "sum",
+            "avg",
+            "count",
+            "max",
+            "min",
+            "average",
+            "total",
+            "percentage",
+            "ratio",
+        ],
     }
 
     def __init__(self, min_threshold: float = 0.20):
         self.min_threshold = min_threshold
 
     def _compute_query_overlap(self, query: str, content: str) -> float:
-        q_tokens = set(re.findall(r'\w+', query.lower()))
+        q_tokens = set(re.findall(r"\w+", query.lower()))
         if not q_tokens or not content:
             return 0.0
-        c_tokens = set(re.findall(r'\w+', content.lower()))
+        c_tokens = set(re.findall(r"\w+", content.lower()))
         if not c_tokens:
             return 0.0
         overlap = len(q_tokens.intersection(c_tokens))
@@ -43,21 +86,32 @@ class ContextRelevanceScorer:
     def _compute_keyword_relevance(self, query: str, content: str) -> float:
         query_lower = query.lower()
         content_lower = content.lower()
-        
+
         # Determine active domains in query
-        active_domains = [domain for domain, kws in self.DOMAIN_KEYWORDS.items() if any(kw in query_lower for kw in kws)]
+        active_domains = [
+            domain
+            for domain, kws in self.DOMAIN_KEYWORDS.items()
+            if any(kw in query_lower for kw in kws)
+        ]
         if not active_domains:
-            return 0.5 # Neutral baseline if no specific domain triggers
-            
+            return 0.5  # Neutral baseline if no specific domain triggers
+
         score = 0.0
         for domain in active_domains:
             kws = self.DOMAIN_KEYWORDS[domain]
             if any(kw in content_lower for kw in kws):
                 score += 1.0
-                
+
         return min(1.0, score / len(active_domains))
 
-    def score_component(self, name: str, content: str, user_query: str, is_mandatory: bool = False, baseline_necessity: float = 0.5) -> ComponentScore:
+    def score_component(
+        self,
+        name: str,
+        content: str,
+        user_query: str,
+        is_mandatory: bool = False,
+        baseline_necessity: float = 0.5,
+    ) -> ComponentScore:
         """Scores a single prompt component across multiple relevance dimensions."""
         if is_mandatory:
             return ComponentScore(
@@ -67,7 +121,7 @@ class ContextRelevanceScorer:
                 structural_necessity=1.0,
                 composite_score=1.0,
                 is_retained=True,
-                rejection_reason="Mandatory component"
+                rejection_reason="Mandatory component",
             )
 
         q_overlap = self._compute_query_overlap(user_query, content)
@@ -79,10 +133,16 @@ class ContextRelevanceScorer:
         comp = round(min(1.0, max(0.0, comp)), 3)
 
         retained = comp >= self.min_threshold
-        reason = f"Composite score {comp} below minimum threshold {self.min_threshold}." if not retained else ""
+        reason = (
+            f"Composite score {comp} below minimum threshold {self.min_threshold}."
+            if not retained
+            else ""
+        )
 
         if not retained:
-            logger.debug(f"[ContextRelevanceScorer] Component '{name}' flagged for exclusion (Score: {comp}).")
+            logger.debug(
+                f"[ContextRelevanceScorer] Component '{name}' flagged for exclusion (Score: {comp})."
+            )
 
         return ComponentScore(
             component_name=name,
@@ -91,20 +151,25 @@ class ContextRelevanceScorer:
             structural_necessity=round(struct, 3),
             composite_score=comp,
             is_retained=retained,
-            rejection_reason=reason
+            rejection_reason=reason,
         )
 
-    def filter_components(self, components: Dict[str, str], user_query: str, mandatory_names: List[str] = None) -> Dict[str, str]:
+    def filter_components(
+        self,
+        components: Dict[str, str],
+        user_query: str,
+        mandatory_names: List[str] | None = None,
+    ) -> Dict[str, str]:
         """
         Takes a map of component name -> content and returns only those that pass relevance scoring.
         """
         mandatory_names = mandatory_names or []
         retained = {}
-        
+
         for name, content in components.items():
             is_man = name in mandatory_names
             score = self.score_component(name, content, user_query, is_mandatory=is_man)
             if score.is_retained:
                 retained[name] = content
-                
+
         return retained

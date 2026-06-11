@@ -9,9 +9,9 @@ from backend.app.utils.logger import logger
 # Patterns that indicate a term is a DB schema concept, not a web-searchable entity.
 # Web lookup would always fail for these and wastes several seconds per query.
 _SCHEMA_CONCEPT_RE = re.compile(
-    r'\b(count|number|id|ids|flag|rate|score|star[s]?|total|avg|sum|'
-    r'mean|median|index|rank|pct|percent|ratio|proportion|'
-    r'metric|value|amount|quantity|price|cost|size|length|weight)\b',
+    r"\b(count|number|id|ids|flag|rate|score|star[s]?|total|avg|sum|"
+    r"mean|median|index|rank|pct|percent|ratio|proportion|"
+    r"metric|value|amount|quantity|price|cost|size|length|weight)\b",
     re.IGNORECASE,
 )
 
@@ -19,15 +19,14 @@ _SCHEMA_CONCEPT_RE = re.compile(
 def _is_schema_concept(term: str) -> bool:
     """Return True when a term is a DB-intrinsic concept that won't have a web article."""
     # Underscore or camelCase → column/attribute name
-    if '_' in term or re.search(r'[a-z][A-Z]', term):
+    if "_" in term or re.search(r"[a-z][A-Z]", term):
         return True
     # Contains a DB metric keyword
     if _SCHEMA_CONCEPT_RE.search(term):
         return True
     # Single token under 20 chars with no spaces → likely a column alias
-    if ' ' not in term.strip() and len(term.strip()) < 20:
-        return True
-    return False
+    return bool(" " not in term.strip() and len(term.strip()) < 20)
+
 
 # Simple in-memory TTL cache: term -> (result_str, expiry_timestamp)
 _KNOWLEDGE_CACHE: Dict[str, Tuple[str, float]] = {}
@@ -55,7 +54,9 @@ def _cb_record_failure() -> None:
     _cb_failures += 1
     if _cb_failures >= _CB_FAILURE_THRESHOLD:
         _cb_opened_at = time.time()
-        logger.warning("[WebKnowledgeService] Circuit breaker OPEN — external knowledge calls suspended.")
+        logger.warning(
+            "[WebKnowledgeService] Circuit breaker OPEN — external knowledge calls suspended."
+        )
 
 
 def _cb_record_success() -> None:
@@ -69,19 +70,27 @@ class WebKnowledgeService:
     def __init__(self):
         self.api_key = os.getenv("TAVILY_API_KEY", "")
         if not self.api_key:
-            logger.info("TAVILY_API_KEY not found. Operating in keyless mode (Wikipedia + DuckDuckGo fallbacks).")
+            logger.info(
+                "TAVILY_API_KEY not found. Operating in keyless mode (Wikipedia + DuckDuckGo fallbacks)."
+            )
 
     def _search_wikipedia_summary(self, term: str) -> str:
         try:
-            headers = {"User-Agent": "AntigravityForensicPipeline/2.0 (contact@antigravity-ai.org)"}
+            headers = {
+                "User-Agent": "AntigravityForensicPipeline/2.0 (contact@antigravity-ai.org)"
+            }
             formatted_term = term.replace(" ", "_")
-            api_url = f"https://en.wikipedia.org/api/rest_v1/page/summary/{formatted_term}"
+            api_url = (
+                f"https://en.wikipedia.org/api/rest_v1/page/summary/{formatted_term}"
+            )
             response = requests.get(api_url, headers=headers, timeout=5)
             if response.status_code == 200:
                 data = response.json()
                 extract = data.get("extract", "")
                 title = data.get("title", term)
-                page_url = data.get("content_urls", {}).get("desktop", {}).get("page", "")
+                page_url = (
+                    data.get("content_urls", {}).get("desktop", {}).get("page", "")
+                )
                 if extract:
                     return f"EXTERNAL KNOWLEDGE (Wikipedia Summary - {title}):\n- {extract}\nSource: {page_url}"
         except Exception as e:
@@ -90,7 +99,9 @@ class WebKnowledgeService:
 
     def _search_wikipedia_opensearch(self, term: str) -> str:
         try:
-            headers = {"User-Agent": "AntigravityForensicPipeline/2.0 (contact@antigravity-ai.org)"}
+            headers = {
+                "User-Agent": "AntigravityForensicPipeline/2.0 (contact@antigravity-ai.org)"
+            }
             api_url = f"https://en.wikipedia.org/w/api.php?action=opensearch&search={term}&limit=3&namespace=0&format=json"
             response = requests.get(api_url, headers=headers, timeout=5)
             if response.status_code == 200:
@@ -100,10 +111,14 @@ class WebKnowledgeService:
                     descriptions = data[2]
                     links = data[3]
                     items = []
-                    for t, desc, link in zip(titles, descriptions, links):
-                        items.append(f"- {t}: {desc if desc else 'Domain-specific entity.'} ({link})")
+                    for t, desc, link in zip(titles, descriptions, links, strict=False):
+                        items.append(
+                            f"- {t}: {desc if desc else 'Domain-specific entity.'} ({link})"
+                        )
                     if items:
-                        return "EXTERNAL KNOWLEDGE (Wikipedia Search):\n" + "\n".join(items)
+                        return "EXTERNAL KNOWLEDGE (Wikipedia Search):\n" + "\n".join(
+                            items
+                        )
         except Exception as e:
             logger.debug(f"Wikipedia OpenSearch failed: {e}")
         return ""
@@ -139,7 +154,9 @@ class WebKnowledgeService:
                 f"Note: '{term}' is a database-specific concept. "
                 f"Use schema introspection and regex/string functions to interpret it — web search is not applicable."
             )
-            logger.info(f"[WebKnowledgeService] Skipping web lookup for schema concept: '{term}'")
+            logger.info(
+                f"[WebKnowledgeService] Skipping web lookup for schema concept: '{term}'"
+            )
             _KNOWLEDGE_CACHE[cache_key] = (result, now + _CACHE_TTL_S)
             return result
 
@@ -170,7 +187,9 @@ class WebKnowledgeService:
                         f"- {r['title']}: {r['content']}" for r in results
                     )
             except Exception as e:
-                logger.warning(f"Tavily search failed: {e}. Falling back to keyless sources.")
+                logger.warning(
+                    f"Tavily search failed: {e}. Falling back to keyless sources."
+                )
 
         # 2–4. Keyless fallback chain
         if not result:
@@ -191,6 +210,3 @@ class WebKnowledgeService:
 
         _KNOWLEDGE_CACHE[cache_key] = (result, now + _CACHE_TTL_S)
         return result
-
-    def clarify_query(self, _query: str) -> str:
-        return ""

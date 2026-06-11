@@ -1,3 +1,4 @@
+import typing
 import sqlglot
 import re
 from typing import List
@@ -9,6 +10,7 @@ from backend.app.utils.logger import logger
 from backend.app.services.semantic_engine import SemanticContextEngine
 
 from backend.app.core.config import get_prompt_path
+
 PROMPT_PATH = get_prompt_path("sql_generator.yaml")
 
 # Structural approach directives for diverse candidate generation.
@@ -32,7 +34,12 @@ _DIVERSITY_APPROACHES = [
 
 
 class SQLGeneratorAgent:
-    def __init__(self, llm_client: LLMClient, semantic_engine: SemanticContextEngine, dialect: str = "snowflake"):
+    def __init__(
+        self,
+        llm_client: LLMClient,
+        semantic_engine: SemanticContextEngine,
+        dialect: str = "snowflake",
+    ):
         self.llm = llm_client
         self.semantic_engine = semantic_engine
         self.dialect = dialect.lower()
@@ -51,12 +58,14 @@ class SQLGeneratorAgent:
             return "None"
         lines = []
         for m in linked_schema.value_mappings:
-            lines.append(f"  - User said '{m.user_term}' -> use '{m.db_value}' in column {m.column}")
+            lines.append(
+                f"  - User said '{m.user_term}' -> use '{m.db_value}' in column {m.column}"
+            )
         return "\n".join(lines)
 
     def _build_table_columns_map(self, linked_schema: SchemaLinkerOutput) -> dict:
         """Pre-compute {table_fqn: [col_name, ...]} from schema linker output."""
-        table_columns_map = {}
+        table_columns_map: dict[str, typing.Any] = {}
         for fqn in linked_schema.selected_columns:
             if "." in fqn:
                 parts = fqn.split(".")
@@ -67,10 +76,17 @@ class SQLGeneratorAgent:
                 table_columns_map[table_name].append(col_name)
         return table_columns_map
 
-    def _build_prompt(self, user_query: str, linked_schema: SchemaLinkerOutput,
-                      combined_lessons: str, intent, table_columns_map: dict):
+    def _build_prompt(
+        self,
+        user_query: str,
+        linked_schema: SchemaLinkerOutput,
+        combined_lessons: str,
+        intent,
+        table_columns_map: dict,
+    ):
         """Assemble the system + user prompt for SQL generation."""
         from backend.app.core.prompts.prompt_assembler import PromptAssembler
+
         assembler = PromptAssembler(dialect=self.dialect, stage="SQL_GENERATOR")
         assembled = assembler.assemble(
             user_query=user_query,
@@ -83,7 +99,9 @@ class SQLGeneratorAgent:
         )
         return assembled.system_prompt, assembled.user_prompt
 
-    def _call_llm_and_sanitize(self, system_prompt: str, user_prompt: str) -> SQLGeneratorOutput:
+    def _call_llm_and_sanitize(
+        self, system_prompt: str, user_prompt: str
+    ) -> SQLGeneratorOutput:
         """Call LLM and apply dialect-specific post-processing sanitizers."""
         result = self.llm.generate_structured(
             system_prompt=system_prompt,
@@ -94,21 +112,30 @@ class SQLGeneratorAgent:
             search = sanitizer.get("search")
             replace = sanitizer.get("replace")
             if search:
-                result.sql = re.sub(re.escape(search), replace, result.sql, flags=re.IGNORECASE)
+                result.sql = re.sub(
+                    re.escape(search), replace, result.sql, flags=re.IGNORECASE
+                )
         return result
 
     # ------------------------------------------------------------------
     # Public API
     # ------------------------------------------------------------------
 
-    def generate(self, user_query: str, linked_schema: SchemaLinkerOutput,
-                 lessons: str = "", intent=None) -> SQLGeneratorOutput:
+    def generate(
+        self,
+        user_query: str,
+        linked_schema: SchemaLinkerOutput,
+        lessons: str = "",
+        intent=None,
+    ) -> SQLGeneratorOutput:
         """Single-attempt SQL generation (backward-compatible)."""
         logger.set_agent("SQL_GENERATOR")
         if intent is None:
             intent = HierarchicalRetriever().analyze_intent(user_query)
         val_mappings_str = f"VALUE MAPPINGS FROM SCHEMA LINKER:\n{self._format_value_mappings(linked_schema)}"
-        combined_lessons = f"{val_mappings_str}\n\n{lessons}" if lessons else val_mappings_str
+        combined_lessons = (
+            f"{val_mappings_str}\n\n{lessons}" if lessons else val_mappings_str
+        )
         table_columns_map = self._build_table_columns_map(linked_schema)
         system_prompt, user_prompt = self._build_prompt(
             user_query, linked_schema, combined_lessons, intent, table_columns_map
@@ -116,7 +143,9 @@ class SQLGeneratorAgent:
         try:
             result = self._call_llm_and_sanitize(system_prompt, user_prompt)
             if not self._validate_syntax(result.sql):
-                logger.warning("Generated SQL failed static syntax validation — proceeding to execution.")
+                logger.warning(
+                    "Generated SQL failed static syntax validation — proceeding to execution."
+                )
             logger.log_parsed_data("Generation Output", result)
             return result
         except Exception:
@@ -125,8 +154,14 @@ class SQLGeneratorAgent:
         finally:
             logger.reset_agent()
 
-    def generate_diverse(self, user_query: str, linked_schema: SchemaLinkerOutput,
-                         lessons: str = "", intent=None, n: int = 3) -> List[SQLGeneratorOutput]:
+    def generate_diverse(
+        self,
+        user_query: str,
+        linked_schema: SchemaLinkerOutput,
+        lessons: str = "",
+        intent=None,
+        n: int = 3,
+    ) -> List[SQLGeneratorOutput]:
         """
         Generate N structurally diverse SQL candidates by providing a different
         structural approach directive to each LLM call.  Duplicate SQL strings
@@ -140,7 +175,9 @@ class SQLGeneratorAgent:
         if intent is None:
             intent = HierarchicalRetriever().analyze_intent(user_query)
         val_mappings_str = f"VALUE MAPPINGS FROM SCHEMA LINKER:\n{self._format_value_mappings(linked_schema)}"
-        base_lessons = f"{val_mappings_str}\n\n{lessons}" if lessons else val_mappings_str
+        base_lessons = (
+            f"{val_mappings_str}\n\n{lessons}" if lessons else val_mappings_str
+        )
         table_columns_map = self._build_table_columns_map(linked_schema)
 
         candidates: List[SQLGeneratorOutput] = []
@@ -158,7 +195,11 @@ class SQLGeneratorAgent:
                 )
                 try:
                     system_prompt, user_prompt = self._build_prompt(
-                        user_query, linked_schema, base_lessons, intent, table_columns_map
+                        user_query,
+                        linked_schema,
+                        base_lessons,
+                        intent,
+                        table_columns_map,
                     )
                     user_prompt = directive_header + user_prompt
                     result = self._call_llm_and_sanitize(system_prompt, user_prompt)
@@ -167,17 +208,27 @@ class SQLGeneratorAgent:
                         if norm not in seen_sql:
                             seen_sql.add(norm)
                             candidates.append(result)
-                            logger.info(f"[SQLGenerator] Diverse candidate {len(candidates)}/{n} accepted.")
+                            logger.info(
+                                f"[SQLGenerator] Diverse candidate {len(candidates)}/{n} accepted."
+                            )
                 except Exception as e:
-                    logger.warning(f"[SQLGenerator] Candidate {i + 1} generation failed: {e}")
+                    logger.warning(
+                        f"[SQLGenerator] Candidate {i + 1} generation failed: {e}"
+                    )
 
             if not candidates:
-                logger.warning("[SQLGenerator] All diverse attempts failed — falling back to standard generate().")
+                logger.warning(
+                    "[SQLGenerator] All diverse attempts failed — falling back to standard generate()."
+                )
                 logger.reset_agent()
-                fallback = self.generate(user_query, linked_schema, lessons=lessons, intent=intent)
+                fallback = self.generate(
+                    user_query, linked_schema, lessons=lessons, intent=intent
+                )
                 return [fallback] if fallback else []
 
-            logger.info(f"[SQLGenerator] Diverse generation complete: {len(candidates)} unique candidates.")
+            logger.info(
+                f"[SQLGenerator] Diverse generation complete: {len(candidates)} unique candidates."
+            )
             return candidates
         finally:
             logger.reset_agent()

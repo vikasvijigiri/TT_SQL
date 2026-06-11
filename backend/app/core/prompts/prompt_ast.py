@@ -1,18 +1,37 @@
 from typing import List, Dict, Any, Optional, Union
 from pydantic import BaseModel, Field
 
+
 class PromptNode(BaseModel):
     """
     Structured internal representation of a prompt section or component.
     Enables intelligent deduplication, selective rendering, and priority trimming.
     """
-    section_type: str = Field(description="Category of the node: rules, schema, templates, directives, lessons, query, metadata, or system.")
-    name: str = Field(description="Unique identifier for the section (e.g., 'dynamic_schema', 'dialect_rules').")
-    content: Union[str, Dict[str, Any], List[Any]] = Field(description="Raw or structured content of the section.")
-    priority: int = Field(default=5, description="Priority rank: 1=highest (schema/joins/rules), 5=lowest (verbose examples/metadata).")
-    droppable: bool = Field(default=True, description="Whether this section can be trimmed or dropped if budget is exceeded.")
-    semantic_value: float = Field(default=1.0, description="Relevance score (0.0 to 1.0) derived from query context matching.")
-    metadata: Dict[str, Any] = Field(default_factory=dict, description="Additional context or telemetry tags.")
+
+    section_type: str = Field(
+        description="Category of the node: rules, schema, templates, directives, lessons, query, metadata, or system."
+    )
+    name: str = Field(
+        description="Unique identifier for the section (e.g., 'dynamic_schema', 'dialect_rules')."
+    )
+    content: Union[str, Dict[str, Any], List[Any]] = Field(
+        description="Raw or structured content of the section."
+    )
+    priority: int = Field(
+        default=5,
+        description="Priority rank: 1=highest (schema/joins/rules), 5=lowest (verbose examples/metadata).",
+    )
+    droppable: bool = Field(
+        default=True,
+        description="Whether this section can be trimmed or dropped if budget is exceeded.",
+    )
+    semantic_value: float = Field(
+        default=1.0,
+        description="Relevance score (0.0 to 1.0) derived from query context matching.",
+    )
+    metadata: Dict[str, Any] = Field(
+        default_factory=dict, description="Additional context or telemetry tags."
+    )
 
     def render(self) -> str:
         """Renders the node content to a string."""
@@ -29,7 +48,10 @@ class PromptAST(BaseModel):
     """
     Abstract Syntax Tree managing the hierarchy and sequence of prompt nodes.
     """
-    root_nodes: List[PromptNode] = Field(default_factory=list, description="Ordered sequence of prompt nodes in the AST.")
+
+    root_nodes: List[PromptNode] = Field(
+        default_factory=list, description="Ordered sequence of prompt nodes in the AST."
+    )
 
     def add_node(self, node: PromptNode) -> None:
         """Appends a new node to the AST, replacing any node with the exact same name."""

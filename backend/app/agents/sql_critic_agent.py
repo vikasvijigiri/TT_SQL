@@ -1,4 +1,3 @@
-import logging
 import re
 from typing import List, Optional, Dict, Tuple
 from backend.app.utils.llm import LLMClient
@@ -29,7 +28,17 @@ _STATIC_SQL_WARNINGS: List[Tuple[frozenset, re.Pattern, str]] = [
         "Use TRY_STRPTIME(col, format) for custom string-to-timestamp conversion.",
     ),
     (
-        frozenset({"duckdb", "sqlite", "postgres", "postgresql", "snowflake", "mssql", "mysql"}),
+        frozenset(
+            {
+                "duckdb",
+                "sqlite",
+                "postgres",
+                "postgresql",
+                "snowflake",
+                "mssql",
+                "mysql",
+            }
+        ),
         re.compile(r"/\s*(?!NULLIF\b)[a-zA-Z_\"\[`]", re.I),
         "STATIC ANALYSIS WARNING: Division operator detected without NULLIF guard on the "
         "denominator.  If any denominator row is zero this will raise a division-by-zero "
@@ -62,24 +71,37 @@ class SQLCriticAgent:
     join cardinality, opaque code projection, JSON casting, spatial integrity,
     temporal boundary correctness, and semantic grain/determinism.
     """
-    
+
     def __init__(self, llm_client: LLMClient, semantic_engine):
         self.llm = llm_client
         self.semantic_engine = semantic_engine
 
-    def critique_sql(self, user_query: str, proposed_sql: str, schema_context: str, lessons: str, dialect: str = "snowflake", relevant_tables: Optional[List[str]] = None, table_columns: Optional[Dict[str, List[str]]] = None, intent=None) -> CriticOutput:
+    def critique_sql(
+        self,
+        user_query: str,
+        proposed_sql: str,
+        schema_context: str,
+        lessons: str,
+        dialect: str = "snowflake",
+        relevant_tables: Optional[List[str]] = None,
+        table_columns: Optional[Dict[str, List[str]]] = None,
+        intent=None,
+    ) -> CriticOutput:
         """
         Runs a structured, 10-directive adversarial forensic audit of the proposed SQL.
         If a flaw is found, outputs a precise criticism and an actionable fix recipe.
         """
         logger.set_agent("CRITIC")
         logger.info("Executing adversarial Planner-Critic query audit...")
-        
-        from backend.app.core.retrieval.hierarchical_retriever import HierarchicalRetriever
+
+        from backend.app.core.retrieval.hierarchical_retriever import (
+            HierarchicalRetriever,
+        )
+
         # Reuse pre-computed intent from orchestrator to avoid redundant analysis
         if intent is None:
             intent = HierarchicalRetriever().analyze_intent(user_query)
-        
+
         # Run static analysis on the SQL before bundling — flags unsafe patterns
         # (e.g. STRPTIME without TRY_, division without NULLIF) from the SQL text itself.
         static_warnings = _static_sql_analysis(proposed_sql, dialect)
@@ -92,8 +114,9 @@ class SQLCriticAgent:
             f"SCHEMA:\n{schema_context}\n\n"
             f"PAST LESSONS:\n{lessons}"
         )
-        
+
         from backend.app.core.prompts.prompt_assembler import PromptAssembler
+
         assembler = PromptAssembler(dialect=dialect, stage="CRITIC")
         assembled = assembler.assemble(
             user_query=user_query,
@@ -102,25 +125,27 @@ class SQLCriticAgent:
             intent=intent,
             relevant_tables=relevant_tables,
             table_columns=table_columns,
-            lessons=combined_lessons
+            lessons=combined_lessons,
         )
 
         system_prompt = assembled.system_prompt
-        user_prompt   = assembled.user_prompt
-        
+        user_prompt = assembled.user_prompt
+
         try:
             result = self.llm.generate_structured(
                 system_prompt=system_prompt,
                 user_prompt=user_prompt,
-                response_model=CriticOutput
+                response_model=CriticOutput,
             )
-            
+
             logger.log_parsed_data("Critic Output", result)
             return result
-            
+
         except Exception as e:
             # Safe Fallback: if Critic LLM call fails, let the query proceed to execution
-            logger.warning(f"Critic audit failed to compile structured response: {e}. Bypassing audit to prevent bottleneck.")
-            return CriticOutput(is_valid=True)
+            logger.warning(
+                f"Critic audit failed to compile structured response: {e}. Bypassing audit to prevent bottleneck."
+            )
+            return CriticOutput(is_valid=True)  # type: ignore
         finally:
             logger.reset_agent()

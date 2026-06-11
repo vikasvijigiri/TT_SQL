@@ -1,7 +1,8 @@
-from typing import List, Dict, Any, Optional
+from typing import List, Dict
 from backend.app.core.query_analysis.capability_detector import QueryCapabilityProfile
 from backend.app.core.prompts.template_compactor import TemplateCompactor
 from backend.app.utils.logger import logger
+
 
 class SemanticTemplateRetriever:
     """
@@ -29,7 +30,7 @@ SELECT "sample_id", COUNT(*) AS "match_count"
 FROM "expanded"
 WHERE "val0" = 1 OR "val1" = 1
 GROUP BY "sample_id"
-ORDER BY "match_count" DESC;"""
+ORDER BY "match_count" DESC;""",
         }
     ]
 
@@ -37,7 +38,7 @@ ORDER BY "match_count" DESC;"""
         {
             "name": "Revenue Aggregation with COALESCE and Null-Safe Handling",
             "tags": ["ecommerce", "financial", "aggregation"],
-            "sql": """SELECT 
+            "sql": """SELECT
   "customer_id",
   COALESCE(SUM("order_total"), 0.0) AS "total_revenue",
   COUNT(DISTINCT "order_id") AS "total_orders"
@@ -45,7 +46,7 @@ FROM "TARGET_DB"."TARGET_SCHEMA"."ORDERS"
 WHERE "order_status" = 'COMPLETED'
 GROUP BY "customer_id"
 HAVING COALESCE(SUM("order_total"), 0.0) > 1000.0
-ORDER BY "total_revenue" DESC;"""
+ORDER BY "total_revenue" DESC;""",
         }
     ]
 
@@ -53,14 +54,14 @@ ORDER BY "total_revenue" DESC;"""
         {
             "name": "Clickstream JSON Payload Parsing and Duration Averaging",
             "tags": ["event_stream", "variant", "json"],
-            "sql": """SELECT 
+            "sql": """SELECT
   ev.VALUE:"event_name"::STRING AS "event_name",
   COUNT(*) AS "total_events",
   AVG(ev.VALUE:"payload"."duration_ms"::INTEGER) AS "avg_duration_ms"
 FROM "TARGET_DB"."TARGET_SCHEMA"."LOGS" AS l,
   LATERAL FLATTEN(input => l."raw_event_array") AS ev
 WHERE ev.VALUE:"event_name"::STRING = 'CLICK'
-GROUP BY "event_name";"""
+GROUP BY "event_name";""",
         }
     ]
 
@@ -69,7 +70,7 @@ GROUP BY "event_name";"""
             "name": "Window Deduplication and Top N Ranking with QUALIFY",
             "tags": ["ranking", "windows", "qualify"],
             "sql": """WITH "ranked_items" AS (
-  SELECT 
+  SELECT
     "category_id",
     "item_name",
     "sales_volume",
@@ -79,7 +80,7 @@ GROUP BY "event_name";"""
 SELECT "category_id", "item_name", "sales_volume"
 FROM "ranked_items"
 WHERE rn <= 5
-ORDER BY "category_id", rn;"""
+ORDER BY "category_id", rn;""",
         }
     ]
 
@@ -87,14 +88,14 @@ ORDER BY "category_id", rn;"""
         {
             "name": "Standard Date Truncation and Join Analytics",
             "tags": ["analytics", "temporal", "joins"],
-            "sql": """SELECT 
+            "sql": """SELECT
   DATE_TRUNC('month', u."created_at") AS "signup_month",
   COUNT(DISTINCT u."user_id") AS "new_users"
 FROM "TARGET_DB"."TARGET_SCHEMA"."USERS" AS u
 INNER JOIN "TARGET_DB"."TARGET_SCHEMA"."SUBSCRIPTIONS" AS s ON u."user_id" = s."user_id"
 WHERE s."tier" = 'PREMIUM'
 GROUP BY "signup_month"
-ORDER BY "signup_month" DESC;"""
+ORDER BY "signup_month" DESC;""",
         }
     ]
 
@@ -104,16 +105,26 @@ ORDER BY "signup_month" DESC;"""
         query: str,
         domain: str,
         profile: QueryCapabilityProfile,
-        max_templates: int = 2
+        max_templates: int = 2,
     ) -> List[Dict[str, str]]:
-        logger.debug(f"[SemanticTemplateRetriever] Retrieving templates for domain '{domain}'...")
+        logger.debug(
+            f"[SemanticTemplateRetriever] Retrieving templates for domain '{domain}'..."
+        )
         selected = []
         d_lower = domain.lower()
 
         # Domain selection
-        if "genom" in d_lower or "health" in d_lower or any(w in query.lower() for w in ("genotype", "variant", "snp", "allele")):
+        if (
+            "genom" in d_lower
+            or "health" in d_lower
+            or any(w in query.lower() for w in ("genotype", "variant", "snp", "allele"))
+        ):
             selected.extend(cls.GENOMICS_TEMPLATES)
-        elif "e-comm" in d_lower or "finan" in d_lower or any(w in query.lower() for w in ("order", "revenue", "sales", "price")):
+        elif (
+            "e-comm" in d_lower
+            or "finan" in d_lower
+            or any(w in query.lower() for w in ("order", "revenue", "sales", "price"))
+        ):
             selected.extend(cls.ECOMMERCE_TEMPLATES)
         elif any(w in query.lower() for w in ("click", "event", "payload", "log")):
             selected.extend(cls.EVENT_STREAM_TEMPLATES)
@@ -137,6 +148,8 @@ ORDER BY "signup_month" DESC;"""
                 distinct.append(t)
 
         trimmed = distinct[:max_templates]
-        compacted = TemplateCompactor.compact_templates(trimmed)
-        logger.info(f"[SemanticTemplateRetriever] Retrieved {len(compacted)} domain-aware templates.")
+        compacted = TemplateCompactor.compact_templates(trimmed)  # type: ignore
+        logger.info(
+            f"[SemanticTemplateRetriever] Retrieved {len(compacted)} domain-aware templates."
+        )
         return compacted
