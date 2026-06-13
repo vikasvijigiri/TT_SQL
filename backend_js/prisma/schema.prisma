@@ -1,0 +1,42 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlite"
+  url      = env("DATABASE_URL")
+}
+
+model Evaluation {
+  id                   Int      @id @default(autoincrement())
+  dataset              String?
+  query_id             String?
+  instance_id          String?
+  run_suffix           String?  @default("")
+  passed               Boolean?
+  reason               String?
+  method               String?
+  ground_truth         String?
+  agent_answer_snippet String?
+  elapsed_s            Float?
+  input_tokens         Int?
+  output_tokens        Int?
+  timestamp            DateTime @default(now())
+
+  @@index([dataset])
+  @@index([query_id])
+  @@index([instance_id])
+  @@map("evaluations")
+}
+
+model TaskRun {
+  id            String   @id
+  task_type     String?
+  status        String?
+  target_id     String?
+  created_at    DateTime @default(now())
+  updated_at    DateTime @default(now()) @updatedAt
+  error_message String?
+
+  @@map("task_runs")
+}

@@ -1,0 +1,34 @@
+BOIL
+
+﻿Symbol: BOIL
+﻿Symbol: BZQ
+﻿Symbol: COM
+﻿Symbol: DUST
+﻿Symbol: EDZ
+﻿Symbol: ERX
+﻿Symbol: FAZ
+﻿Symbol: FXP
+﻿Symbol: GFIN
+﻿Symbol: GUSH
+﻿Symbol: HYUP
+﻿Symbol: JDST
+﻿Symbol: JNUG
+﻿Symbol: JPN
+﻿Symbol: LABD
+﻿Symbol: LABU
+﻿Symbol: LBJ
+﻿Symbol: MDY
+﻿Symbol: PTIN
+﻿Symbol: RTL
+﻿Symbol: SDOW
+﻿Symbol: SOXS
+﻿Symbol: SSG
+﻿Symbol: TECS
+﻿Symbol: TOTAL | total_etfs: 31.0
+﻿Symbol: TZA
+﻿Symbol: UVXY
+﻿Symbol: VIXY
+﻿Symbol: VPC
+﻿Symbol: XES
+﻿Symbol: XOP
+﻿Symbol: YANG

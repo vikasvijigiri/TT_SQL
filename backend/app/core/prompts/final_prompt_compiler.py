@@ -178,16 +178,6 @@ class FinalPromptCompiler:
         ast = PromptAST()
         ast.add_node(
             PromptNode(
-                section_type="schema",
-                name="dynamic_schema",
-                content=f"=== DATABASE SCHEMA ===\n{compressed_schema_text}",
-                priority=1,
-                droppable=False,
-                semantic_value=1.0,
-            )
-        )
-        ast.add_node(
-            PromptNode(
                 section_type="rules",
                 name="dialect_rules",
                 content=rules_text,
@@ -262,8 +252,9 @@ class FinalPromptCompiler:
             trimmed_ast.root_nodes, profile, dropped_names, dialect=self.dialect
         )
 
-        # 7. Render Final User Prompt
+        # 7. Render Final User Prompt and Prepend Schema to System Prompt for Caching
         final_user_prompt = self.compile_user_prompt(trimmed_ast, user_query)
+        sys_prompt = f"=== DATABASE SCHEMA ===\n{compressed_schema_text}\n\n{sys_prompt}"
 
         token_counts = FinalTokenizer.tokenize_final_prompt(
             sys_prompt, final_user_prompt

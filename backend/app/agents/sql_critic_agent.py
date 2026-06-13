@@ -86,6 +86,7 @@ class SQLCriticAgent:
         relevant_tables: Optional[List[str]] = None,
         table_columns: Optional[Dict[str, List[str]]] = None,
         intent=None,
+        executor=None,
     ) -> CriticOutput:
         """
         Runs a structured, 10-directive adversarial forensic audit of the proposed SQL.
@@ -106,10 +107,26 @@ class SQLCriticAgent:
         # (e.g. STRPTIME without TRY_, division without NULLIF) from the SQL text itself.
         static_warnings = _static_sql_analysis(proposed_sql, dialect)
 
+        # SOTA Execution-Guided Decoding Probe
+        probe_warnings = ""
+        if executor:
+            try:
+                # Wrap proposed SQL to check if it returns 0 rows or syntax errors
+                probe_sql = f"SELECT * FROM ({proposed_sql}) AS __probe LIMIT 1"
+                ok, _, rows = executor.execute_direct(probe_sql)
+                if ok and not rows:
+                    probe_warnings = "EXECUTION PROBE WARNING: The proposed SQL executed successfully but returned ZERO rows! If the user query expects an answer, this means your JOINs or WHERE clauses are hallucinated and filtering out all data. You MUST rewrite the SQL to return data.\n\n"
+                elif not ok:
+                    # Capture runtime errors that static analysis missed
+                    probe_warnings = f"EXECUTION PROBE ERROR: The proposed SQL failed at runtime with error: {rows}. You MUST fix this error.\n\n"
+            except Exception as e:
+                probe_warnings = f"EXECUTION PROBE ERROR: The proposed SQL failed at runtime with error: {e}. You MUST fix this error.\n\n"
+
         # Bundle SQL and schema context into the lessons stream so the compression pipeline
         # injects them into the user section via {SQL} and {SCHEMA_CONTEXT} template vars
         combined_lessons = (
             f"SQL TO AUDIT:\n```sql\n{proposed_sql}\n```\n\n"
+            f"{probe_warnings}"
             f"{static_warnings}"
             f"SCHEMA:\n{schema_context}\n\n"
             f"PAST LESSONS:\n{lessons}"

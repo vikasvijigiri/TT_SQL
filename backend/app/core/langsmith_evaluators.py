@@ -40,9 +40,10 @@ for _key in ("LANGCHAIN_TRACING_V2", "LANGCHAIN_API_KEY", "LANGCHAIN_PROJECT"):
         os.environ[_key] = _val
 
 from langsmith import Client as LangSmithClient
+from backend.app.core.config import RESULTS_DIR
 
 ROOT_DIR = Path(__file__).resolve().parent.parent.parent.parent
-DAB_RESULTS_DIR = ROOT_DIR / "backend" / "results" / "dab"
+from backend.app.core.config import DAB_RESULTS_DIR
 DAB_REPO_DIR = Path(os.getenv("DAB_REPO", str(ROOT_DIR.parent / "DataAgentBench")))
 
 _client = LangSmithClient()

@@ -42,7 +42,6 @@ def extract_rules_from_failure(
     question: str,
     sql_generated: str,
     error_or_mismatch: str,
-    ground_truth_hint: str = "",
     dataset: str = "",
     log_tail: str = "",
 ) -> List[Dict[str, Any]]:
@@ -54,7 +53,6 @@ def extract_rules_from_failure(
         question: the NL question that was asked
         sql_generated: the SQL the pipeline produced
         error_or_mismatch: the evaluator's failure reason string
-        ground_truth_hint: optional snippet of the ground truth (truncated for safety)
         dataset: dataset name (for context only, not to be used in rules)
         log_tail: optional log tail containing recent execution logs
 
@@ -70,8 +68,6 @@ def extract_rules_from_failure(
     )
     if log_tail:
         user_prompt += f"=== RECENT EXECUTION LOG TRACE ===\n{log_tail}\n\n"
-    if ground_truth_hint:
-        user_prompt += f"Ground truth hint (truncated): {ground_truth_hint[:250]}\n"
     user_prompt += (
         "\nExtract 1–2 generic SQL rules that would prevent this failure category. "
         "Return ONLY a JSON array — no prose before or after.\n"

@@ -1,0 +1,2239 @@
+{
+  "total_queries": 54,
+  "evaluated": 54,
+  "pending": 0,
+  "total_run_slots": 270,
+  "passing_run_slots": 116,
+  "queries_passed_atk": 34,
+  "num_runs": 5,
+  "pass_at_1": 0.4296,
+  "pass_at_1_pct": "43.0%",
+  "pass_at_k": 0.6296,
+  "pass_at_k_pct": "63.0%",
+  "total_elapsed_time_s": 50477.8,
+  "total_input_tokens": 9998278,
+  "total_output_tokens": 2710577,
+  "per_dataset": {
+    "agnews": {
+      "total": 4,
+      "pending": 0,
+      "evaluated": 4,
+      "run_slots": 20,
+      "passing_slots": 10,
+      "passed_atk": 3,
+      "queries": [
+        {
+          "query_id": "1",
+          "status": "evaluated",
+          "num_runs": 5,
+          "passing_runs": 4,
+          "passed_atk": true,
+          "runs": [
+            {
+              "run": 0,
+              "passed": true,
+              "reason": "Ground truth found in LLM output."
+            },
+            {
+              "run": 1,
+              "passed": true,
+              "reason": "Ground truth found in LLM output."
+            },
+            {
+              "run": 2,
+              "passed": true,
+              "reason": "Ground truth found in LLM output."
+            },
+            {
+              "run": 3,
+              "passed": false,
+              "reason": "Ground truth 'The Rundown' not found in LLM output: 'Trustworthiness' still a goal for Microsoft"
+            },
+            {
+              "run": 4,
+              "passed": true,
+              "reason": "Ground truth found in LLM output."
+            }
+          ],
+          "reason": "Ground truth found in LLM output.",
+          "elapsed_s": 308.6,
+          "input_tokens": 66079,
+          "output_tokens": 24760
+        },
+        {
+          "query_id": "2",
+          "status": "evaluated",
+          "num_runs": 5,
+          "passing_runs": 1,
+          "passed_atk": true,
+          "runs": [
+            {
+              "run": 0,
+              "passed": false,
+              "reason": "Ground truth '0.14414414414414414' (tol=0.0001) not found in LLM output: 15/111"
+            },
+            {
+              "run": 1,
+              "passed": false,
+              "reason": "Ground truth '0.14414414414414414' (tol=0.0001) not found in LLM output: 15/111 (\u2248\u202f13.5%)."
+            },
+            {
+              "run": 2,
+              "passed": false,
+              "reason": "Ground truth '0.14414414414414414' (tol=0.0001) not found in LLM output: 15/111 (\u2248\u202f13.5%)."
+            },
+            {
+              "run": 3,
+              "passed": false,
+              "reason": "Ground truth '0.14414414414414414' (tol=0.0001) not found in LLM output: 15/111"
+            },
+            {
+              "run": 4,
+              "passed": true,
+              "reason": "Ground truth matched in LLM output."
+            }
+          ],
+          "reason": "Ground truth '0.14414414414414414' (tol=0.0001) not found in LLM output: 15/111",
+          "elapsed_s": 105.1,
+          "input_tokens": 18966,
+          "output_tokens": 10101
+        },
+        {
+          "query_id": "3",
+          "status": "evaluated",
+          "num_runs": 5,
+          "passing_runs": 0,
+          "passed_atk": false,
+          "runs": [
+            {
+              "run": 0,
+              "passed": false,
+              "reason": "Ground truth numeric value '336.6363636363636' (tol=0.01) not found in LLM output: The average is about\u202f51.7\u202fbusiness ar"
+            },
+            {
+              "run": 1,
+              "passed": false,
+              "reason": "Ground truth numeric value '336.6363636363636' (tol=0.01) not found in LLM output: Approximately\u202f65\u202fbusiness articles pe"
+            },
+            {
+              "run": 2,
+              "passed": false,
+              "reason": "Ground truth numeric value '336.6363636363636' (tol=0.01) not found in LLM output: Approximately\u202f59.6\u202fbusiness articles "
+            },
+            {
+              "run": 3,
+              "passed": false,
+              "reason": "Ground truth numeric value '336.6363636363636' (tol=0.01) not found in LLM output: Approximately\u202f51.6\u202fbusiness articles "
+            },
+            {
+              "run": 4,
+              "passed": false,
+              "reason": "Ground truth numeric value '336.6363636363636' (tol=0.01) not found in LLM output: Approximately\u202f51.5 business articles "
+            }
+          ],
+          "reason": "Ground truth numeric value '336.6363636363636' (tol=0.01) not found in LLM output: The average is about\u202f51.7\u202fbusiness articles per year.",
+          "elapsed_s": 1738.6,
+          "input_tokens": 165152,
+          "output_tokens": 130984
+        },
+        {
+          "query_id": "4",
+          "status": "evaluated",
+          "num_runs": 5,
+          "passing_runs": 5,
+          "passed_atk": true,
+          "runs": [
+            {
+              "run": 0,
+              "passed": true,
+              "reason": "Ground truth found in LLM output."
+            },
+            {
+              "run": 1,
+              "passed": true,
+              "reason": "Ground truth found in LLM output."
+            },
+            {
+              "run": 2,
+              "passed": true,
+              "reason": "Ground truth found in LLM output."
+            },
+            {
+              "run": 3,
+              "passed": true,
+              "reason": "Ground truth found in LLM output."
+            },
+            {
+              "run": 4,
+              "passed": true,
+              "reason": "Ground truth found in LLM output."
+            }
+          ],
+          "reason": "Ground truth found in LLM output.",
+          "elapsed_s": 1348.3,
+          "input_tokens": 165377,
+          "output_tokens": 125092
+        }
+      ],
+      "pass_at_1": 0.5,
+      "pass_at_1_pct": "50.0%",
+      "pass_at_k": 0.75,
+      "pass_at_k_pct": "75.0%"
+    },
+    "bookreview": {
+      "total": 3,
+      "pending": 0,
+      "evaluated": 3,
+      "run_slots": 15,
+      "passing_slots": 6,
+      "passed_atk": 2,
+      "queries": [
+        {
+          "query_id": "1",
+          "status": "evaluated",
+          "num_runs": 5,
+          "passing_runs": 4,
+          "passed_atk": true,
+          "runs": [
+            {
+              "run": 0,
+              "passed": true,
+              "reason": "Ground truth found in LLM output."
+            },
+            {
+              "run": 1,
+              "passed": true,
+              "reason": "Ground truth found in LLM output."
+            },
+            {
+              "run": 2,
+              "passed": true,
+              "reason": "Ground truth found in LLM output."
+            },
+            {
+              "run": 3,
+              "passed": false,
+              "reason": "Ground truth '2020' not found in LLM output."
+            },
+            {
+              "run": 4,
+              "passed": true,
+              "reason": "Ground truth found in LLM output."
+            }
+          ],
+          "reason": "Ground truth found in LLM output.",
+          "elapsed_s": 675.4,
+          "input_tokens": 151973,
+          "output_tokens": 54122
+        },
+        {
+          "query_id": "2",
+          "status": "evaluated",
+          "num_runs": 5,
+          "passing_runs": 2,
+          "passed_atk": true,
+          "runs": [
+            {
+              "run": 0,
+              "passed": false,
+              "reason": "Missing book title in LLM output: The Sludge"
+            },
+            {
+              "run": 1,
+              "passed": true,
+              "reason": "All book titles found in LLM output."
+            },
+            {
+              "run": 2,
+              "passed": true,
+              "reason": "All book titles found in LLM output."
+            },
+            {
+              "run": 3,
+              "passed": false,
+              "reason": "Missing book title in LLM output: The Sludge"
+            },
+            {
+              "run": 4,
+              "passed": false,
+              "reason": "Missing book title in LLM output: The Sludge"
+            }
+          ],
+          "reason": "Missing book title in LLM output: The Sludge",
+          "elapsed_s": 1043.1,
+          "input_tokens": 495697,
+          "output_tokens": 86969
+        },
+        {
+          "query_id": "3",
+          "status": "evaluated",
+          "num_runs": 5,
+          "passing_runs": 0,
+          "passed_atk": false,
+          "runs": [
+            {
+              "run": 0,
+              "passed": false,
+              "reason": "EXECUTION_FAILED (LLM Cheating Revoked)"
+            },
+            {
+              "run": 1,
+              "passed": false,
+              "reason": "EXECUTION_FAILED (LLM Cheating Revoked)"
+            },
+            {
+              "run": 2,
+              "passed": false,
+              "reason": "EXECUTION_FAILED (LLM Cheating Revoked)"
+            },
+            {
+              "run": 3,
+              "passed": false,
+              "reason": "EXECUTION_FAILED (LLM Cheating Revoked)"
+            },
+            {
+              "run": 4,
+              "passed": false,
+              "reason": "EXECUTION_FAILED (LLM Cheating Revoked)"
+            }
+          ],
+          "reason": "All book titles found in LLM output.",
+          "elapsed_s": 655.8,
+          "input_tokens": 64853,
+          "output_tokens": 25090
+        }
+      ],
+      "pass_at_1": 0.4,
+      "pass_at_1_pct": "40.0%",
+      "pass_at_k": 0.6667,
+      "pass_at_k_pct": "66.7%"
+    },
+    "crmarenapro": {
+      "total": 13,
+      "pending": 0,
+      "evaluated": 13,
+      "run_slots": 65,
+      "passing_slots": 17,
+      "passed_atk": 8,
+      "queries": [
+        {
+          "query_id": "1",
+          "status": "evaluated",
+          "num_runs": 5,
+          "passing_runs": 0,
+          "passed_atk": false,
+          "runs": [
+            {
+              "run": 0,
+              "passed": false,
+              "reason": "EXECUTION_FAILED (LLM Cheating Revoked)"
+            },
+            {
+              "run": 1,
+              "passed": false,
+              "reason": "EXECUTION_FAILED (LLM Cheating Revoked)"
+            },
+            {
+              "run": 2,
+              "passed": false,
+              "reason": "EXECUTION_FAILED (LLM Cheating Revoked)"
+            },
+            {
+              "run": 3,
+              "passed": false,
+              "reason": "EXECUTION_FAILED (LLM Cheating Revoked)"
+            },
+            {
+              "run": 4,
+              "passed": false,
+              "reason": "EXECUTION_FAILED (LLM Cheating Revoked)"
+            }
+          ],
+          "reason": "Found expected BANT factor: Authority",
+          "elapsed_s": 420.7,
+          "input_tokens": 224493,
+          "output_tokens": 32791
+        },
+        {
+          "query_id": "2",
+          "status": "evaluated",
+          "num_runs": 5,
+          "passing_runs": 0,
+          "passed_atk": false,
+          "runs": [
+            {
+              "run": 0,
+              "passed": false,
+              "reason": "No knowledge article ID found in LLM output"
+            },
+            {
+              "run": 1,
+              "passed": false,
+              "reason": "No knowledge article ID found in LLM output"
+            },
+            {
+              "run": 2,
+              "passed": false,
+              "reason": "No knowledge article ID found in LLM output"
+            },
+            {
+              "run": 3,
+              "passed": false,
+              "reason": "No knowledge article ID found in LLM output"
+            },
+            {
+              "run": 4,
+              "passed": false,
+              "reason": "No knowledge article ID found in LLM output"
+            }
+          ],
+          "reason": "No knowledge article ID found in LLM output",
+          "elapsed_s": 291.2,
+          "input_tokens": 193908,
+          "output_tokens": 13967
+        },
+        {
+          "query_id": "3",
+          "status": "evaluated",
+          "num_runs": 5,
+          "passing_runs": 4,
+          "passed_atk": true,
+          "runs": [
+            {
+              "run": 0,
+              "passed": false,
+              "reason": "EXECUTION_FAILED (LLM Cheating Revoked)"
+            },
+            {
+              "run": 1,
+              "passed": true,
+              "reason": "Found expected agent ID: Negotiation"
+            },
+            {
+              "run": 2,
+              "passed": true,
+              "reason": "Found expected agent ID: Negotiation"
+            },
+            {
+              "run": 3,
+              "passed": true,
+              "reason": "Found expected agent ID: Negotiation"
+            },
+            {
+              "run": 4,
+              "passed": true,
+              "reason": "Found expected agent ID: Negotiation"
+            }
+          ],
+          "reason": "Found expected agent ID: Negotiation",
+          "elapsed_s": 460.0,
+          "input_tokens": 190794,
+          "output_tokens": 29074
+        },
+        {
+          "query_id": "4",
+          "status": "evaluated",
+          "num_runs": 5,
+          "passing_runs": 3,
+          "passed_atk": true,
+          "runs": [
+            {
+              "run": 0,
+              "passed": true,
+              "reason": "Found expected agent ID: November"
+            },
+            {
+              "run": 1,
+              "passed": true,
+              "reason": "Found expected agent ID: November"
+            },
+            {
+              "run": 2,
+              "passed": false,
+              "reason": "EXECUTION_FAILED (LLM Cheating Revoked)"
+            },
+            {
+              "run": 3,
+              "passed": false,
+              "reason": "EXECUTION_FAILED (LLM Cheating Revoked)"
+            },
+            {
+              "run": 4,
+              "passed": true,
+              "reason": "Found expected agent ID: November"
+            }
+          ],
+          "reason": "Found expected agent ID: November",
+          "elapsed_s": 850.6,
+          "input_tokens": 300930,
+          "output_tokens": 54040
+        },
+        {
+          "query_id": "5",
+          "status": "evaluated",
+          "num_runs": 5,
+          "passing_runs": 3,
+          "passed_atk": true,
+          "runs": [
+            {
+              "run": 0,
+              "passed": false,
+              "reason": "EXECUTION_FAILED (LLM Cheating Revoked)"
+            },
+            {
+              "run": 1,
+              "passed": true,
+              "reason": "Found expected agent ID: a03Wt00000JqnHwIAJ"
+            },
+            {
+              "run": 2,
+              "passed": true,
+              "reason": "Found expected agent ID: a03Wt00000JqnHwIAJ"
+            },
+            {
+              "run": 3,
+              "passed": true,
+              "reason": "Found expected agent ID: a03Wt00000JqnHwIAJ"
+            },
+            {
+              "run": 4,
+              "passed": false,
+              "reason": "EXECUTION_FAILED (LLM Cheating Revoked)"
+            }
+          ],
+          "reason": "Found expected agent ID: a03Wt00000JqnHwIAJ",
+          "elapsed_s": 402.2,
+          "input_tokens": 147122,
+          "output_tokens": 24448
+        },
+        {
+          "query_id": "6",
+          "status": "evaluated",
+          "num_runs": 5,
+          "passing_runs": 0,
+          "passed_atk": false,
+          "runs": [
+            {
+              "run": 0,
+              "passed": false,
+              "reason": "EXECUTION_FAILED (LLM Cheating Revoked)"
+            },
+            {
+              "run": 1,
+              "passed": false,
+              "reason": "Found knowledge article IDs ['ka0Wt000000Eq0MIAS'], but expected 'ka0Wt000000EnwvIAC'"
+            },
+            {
+              "run": 2,
+              "passed": false,
+              "reason": "Found knowledge article IDs ['ka0Wt000000EpSUIA0'], but expected 'ka0Wt000000EnwvIAC'"
+            },
+            {
+              "run": 3,
+              "passed": false,
+              "reason": "Found knowledge article IDs ['ka0Wt000000EpSUIA0'], but expected 'ka0Wt000000EnwvIAC'"
+            },
+            {
+              "run": 4,
+              "passed": false,
+              "reason": "Found knowledge article IDs ['ka0Wt000000EpSUIA0'], but expected 'ka0Wt000000EnwvIAC'"
+            }
+          ],
+          "reason": "Found expected agent ID: ka0Wt000000EnwvIAC",
+          "elapsed_s": 520.8,
+          "input_tokens": 281944,
+          "output_tokens": 52419
+        },
+        {
+          "query_id": "7",
+          "status": "evaluated",
+          "num_runs": 5,
+          "passing_runs": 0,
+          "passed_atk": false,
+          "runs": [
+            {
+              "run": 0,
+              "passed": false,
+              "reason": "EXECUTION_FAILED (LLM Cheating Revoked)"
+            },
+            {
+              "run": 1,
+              "passed": false,
+              "reason": "EXECUTION_FAILED (LLM Cheating Revoked)"
+            },
+            {
+              "run": 2,
+              "passed": false,
+              "reason": "LLM output indicates no policy violation, but expected knowledge article ID"
+            },
+            {
+              "run": 3,
+              "passed": false,
+              "reason": "EXECUTION_FAILED (LLM Cheating Revoked)"
+            },
+            {
+              "run": 4,
+              "passed": false,
+              "reason": "EXECUTION_FAILED (LLM Cheating Revoked)"
+            }
+          ],
+          "reason": "Found expected agent ID: ka0Wt000000EoD3IAK",
+          "elapsed_s": 145.6,
+          "input_tokens": 59238,
+          "output_tokens": 12198
+        },
+        {
+          "query_id": "8",
+          "status": "evaluated",
+          "num_runs": 5,
+          "passing_runs": 1,
+          "passed_atk": true,
+          "runs": [
+            {
+              "run": 0,
+              "passed": true,
+              "reason": "Found expected agent ID: 005Wt000003NIliIAG"
+            },
+            {
+              "run": 1,
+              "passed": false,
+              "reason": "EXECUTION_FAILED (LLM Cheating Revoked)"
+            },
+            {
+              "run": 2,
+              "passed": false,
+              "reason": "Found agent IDs ['005Wt000003NBcAIAW'], but expected '005Wt000003NIliIAG'"
+            },
+            {
+              "run": 3,
+              "passed": false,
+              "reason": "Found agent IDs ['005Wt000003NGjuIAG'], but expected '005Wt000003NIliIAG'"
+            },
+            {
+              "run": 4,
+              "passed": false,
+              "reason": "Found agent IDs ['005Wt000003NBcAIAW'], but expected '005Wt000003NIliIAG'"
+            }
+          ],
+          "reason": "Found expected agent ID: 005Wt000003NIliIAG",
+          "elapsed_s": 1238.6,
+          "input_tokens": 291216,
+          "output_tokens": 59298
+        },
+        {
+          "query_id": "9",
+          "status": "evaluated",
+          "num_runs": 5,
+          "passing_runs": 0,
+          "passed_atk": false,
+          "runs": [
+            {
+              "run": 0,
+              "passed": false,
+              "reason": "Found states ['SC'], but expected 'MI'"
+            },
+            {
+              "run": 1,
+              "passed": false,
+              "reason": "Found states ['IA'], but expected 'MI'"
+            },
+            {
+              "run": 2,
+              "passed": false,
+              "reason": "Found states ['IA'], but expected 'MI'"
+            },
+            {
+              "run": 3,
+              "passed": false,
+              "reason": "EXECUTION_FAILED (LLM Cheating Revoked)"
+            },
+            {
+              "run": 4,
+              "passed": false,
+              "reason": "Found states ['IA'], but expected 'MI'"
+            }
+          ],
+          "reason": "Found states ['SC'], but expected 'MI'",
+          "elapsed_s": 759.5,
+          "input_tokens": 153595,
+          "output_tokens": 37235
+        },
+        {
+          "query_id": "10",
+          "status": "evaluated",
+          "num_runs": 5,
+          "passing_runs": 2,
+          "passed_atk": true,
+          "runs": [
+            {
+              "run": 0,
+              "passed": false,
+              "reason": "Found agent IDs ['005Wt000003NIddIAG'], but expected '005Wt000003NDqDIAW'"
+            },
+            {
+              "run": 1,
+              "passed": false,
+              "reason": "Found agent IDs ['005Wt000003NIddIAG'], but expected '005Wt000003NDqDIAW'"
+            },
+            {
+              "run": 2,
+              "passed": true,
+              "reason": "Found expected agent ID: 005Wt000003NDqDIAW"
+            },
+            {
+              "run": 3,
+              "passed": true,
+              "reason": "Found expected agent ID: 005Wt000003NDqDIAW"
+            },
+            {
+              "run": 4,
+              "passed": false,
+              "reason": "Found agent IDs ['005Wt000003NIddIAG'], but expected '005Wt000003NDqDIAW'"
+            }
+          ],
+          "reason": "Found agent IDs ['005Wt000003NIddIAG'], but expected '005Wt000003NDqDIAW'",
+          "elapsed_s": 2537.1,
+          "input_tokens": 636876,
+          "output_tokens": 129420
+        },
+        {
+          "query_id": "11",
+          "status": "evaluated",
+          "num_runs": 5,
+          "passing_runs": 1,
+          "passed_atk": true,
+          "runs": [
+            {
+              "run": 0,
+              "passed": true,
+              "reason": "Found expected product ID: 01tWt000006hV8LIAU"
+            },
+            {
+              "run": 1,
+              "passed": false,
+              "reason": "No product ID found in LLM output"
+            },
+            {
+              "run": 2,
+              "passed": false,
+              "reason": "No product ID found in LLM output"
+            },
+            {
+              "run": 3,
+              "passed": false,
+              "reason": "No product ID found in LLM output"
+            },
+            {
+              "run": 4,
+              "passed": false,
+              "reason": "No product ID found in LLM output"
+            }
+          ],
+          "reason": "Found expected product ID: 01tWt000006hV8LIAU",
+          "elapsed_s": 596.4,
+          "input_tokens": 188224,
+          "output_tokens": 33252
+        },
+        {
+          "query_id": "12",
+          "status": "evaluated",
+          "num_runs": 5,
+          "passing_runs": 1,
+          "passed_atk": true,
+          "runs": [
+            {
+              "run": 0,
+              "passed": false,
+              "reason": "Found agent IDs ['005Wt000003NJgAIAW'], but expected '005Wt000003NDEBIA4'"
+            },
+            {
+              "run": 1,
+              "passed": true,
+              "reason": "Found expected agent ID: 005Wt000003NDEBIA4"
+            },
+            {
+              "run": 2,
+              "passed": false,
+              "reason": "EXECUTION_FAILED (LLM Cheating Revoked)"
+            },
+            {
+              "run": 3,
+              "passed": false,
+              "reason": "Found agent IDs ['005Wt000003NJgAIAW'], but expected '005Wt000003NDEBIA4'"
+            },
+            {
+              "run": 4,
+              "passed": false,
+              "reason": "Found agent IDs ['005Wt000003NJgAIAW'], but expected '005Wt000003NDEBIA4'"
+            }
+          ],
+          "reason": "Found agent IDs ['005Wt000003NJgAIAW'], but expected '005Wt000003NDEBIA4'",
+          "elapsed_s": 539.3,
+          "input_tokens": 112508,
+          "output_tokens": 22773
+        },
+        {
+          "query_id": "13",
+          "status": "evaluated",
+          "num_runs": 5,
+          "passing_runs": 2,
+          "passed_atk": true,
+          "runs": [
+            {
+              "run": 0,
+              "passed": false,
+              "reason": "Found agent IDs ['005Wt000003NIaRIAW'], but expected '005Wt000003NIXCIA4'"
+            },
+            {
+              "run": 1,
+              "passed": true,
+              "reason": "Found expected agent ID: 005Wt000003NIXCIA4"
+            },
+            {
+              "run": 2,
+              "passed": true,
+              "reason": "Found expected agent ID: 005Wt000003NIXCIA4"
+            },
+            {
+              "run": 3,
+              "passed": false,
+              "reason": "Found agent IDs ['005Wt000003NIaRIAW'], but expected '005Wt000003NIXCIA4'"
+            },
+            {
+              "run": 4,
+              "passed": false,
+              "reason": "Found agent IDs ['005Wt000003NIaRIAW'], but expected '005Wt000003NIXCIA4'"
+            }
+          ],
+          "reason": "Found agent IDs ['005Wt000003NIaRIAW'], but expected '005Wt000003NIXCIA4'",
+          "elapsed_s": 648.2,
+          "input_tokens": 152070,
+          "output_tokens": 33974
+        }
+      ],
+      "pass_at_1": 0.2615,
+      "pass_at_1_pct": "26.2%",
+      "pass_at_k": 0.6154,
+      "pass_at_k_pct": "61.5%"
+    },
+    "deps_dev_v1": {
+      "total": 2,
+      "pending": 0,
+      "evaluated": 2,
+      "run_slots": 10,
+      "passing_slots": 3,
+      "passed_atk": 1,
+      "queries": [
+        {
+          "query_id": "1",
+          "status": "evaluated",
+          "num_runs": 5,
+          "passing_runs": 0,
+          "passed_atk": false,
+          "runs": [
+            {
+              "run": 0,
+              "passed": false,
+              "reason": "Version '2.6.2' not found after name '@dmrvos/infrajs>0.0.5>typescript'"
+            },
+            {
+              "run": 1,
+              "passed": false,
+              "reason": "Missing name: @dylanvann/svelte"
+            },
+            {
+              "run": 2,
+              "passed": false,
+              "reason": "Missing name: @dylanvann/svelte"
+            },
+            {
+              "run": 3,
+              "passed": false,
+              "reason": "Missing name: @dylanvann/svelte"
+            },
+            {
+              "run": 4,
+              "passed": false,
+              "reason": "Version '2.6.2' not found after name '@dmrvos/infrajs>0.0.6>typescript'"
+            }
+          ],
+          "reason": "Version '2.6.2' not found after name '@dmrvos/infrajs>0.0.5>typescript'",
+          "elapsed_s": 2264.3,
+          "input_tokens": 93006,
+          "output_tokens": 35885
+        },
+        {
+          "query_id": "2",
+          "status": "evaluated",
+          "num_runs": 5,
+          "passing_runs": 3,
+          "passed_atk": true,
+          "runs": [
+            {
+              "run": 0,
+              "passed": true,
+              "reason": "All project names found."
+            },
+            {
+              "run": 1,
+              "passed": true,
+              "reason": "All project names found."
+            },
+            {
+              "run": 2,
+              "passed": false,
+              "reason": "EXECUTION_FAILED (LLM Cheating Revoked)"
+            },
+            {
+              "run": 3,
+              "passed": true,
+              "reason": "All project names found."
+            },
+            {
+              "run": 4,
+              "passed": false,
+              "reason": "Missing project name: mui-org/material-ui"
+            }
+          ],
+          "reason": "All project names found.",
+          "elapsed_s": 341.4,
+          "input_tokens": 24003,
+          "output_tokens": 13364
+        }
+      ],
+      "pass_at_1": 0.3,
+      "pass_at_1_pct": "30.0%",
+      "pass_at_k": 0.5,
+      "pass_at_k_pct": "50.0%"
+    },
+    "github_repos": {
+      "total": 4,
+      "pending": 0,
+      "evaluated": 4,
+      "run_slots": 20,
+      "passing_slots": 14,
+      "passed_atk": 4,
+      "queries": [
+        {
+          "query_id": "1",
+          "status": "evaluated",
+          "num_runs": 5,
+          "passing_runs": 5,
+          "passed_atk": true,
+          "runs": [
+            {
+              "run": 0,
+              "passed": true,
+              "reason": "Found matching value: 0.3333333333333333 \u2192 ~0.33"
+            },
+            {
+              "run": 1,
+              "passed": true,
+              "reason": "Found matching value: 0.3333333333333333 \u2192 ~0.33"
+            },
+            {
+              "run": 2,
+              "passed": true,
+              "reason": "Found matching value: 0.3333333333333333 \u2192 ~0.33"
+            },
+            {
+              "run": 3,
+              "passed": true,
+              "reason": "Found matching value: 0.3333333333333333 \u2192 ~0.33"
+            },
+            {
+              "run": 4,
+              "passed": true,
+              "reason": "Found matching value: 0.3333333333333333 \u2192 ~0.33"
+            }
+          ],
+          "reason": "Found matching value: 0.3333333333333333 \u2192 ~0.33",
+          "elapsed_s": 523.6,
+          "input_tokens": 81855,
+          "output_tokens": 15338
+        },
+        {
+          "query_id": "2",
+          "status": "evaluated",
+          "num_runs": 5,
+          "passing_runs": 2,
+          "passed_atk": true,
+          "runs": [
+            {
+              "run": 0,
+              "passed": false,
+              "reason": "No fuzzy match found for 'swiftandroid/swift' within 3-character distance"
+            },
+            {
+              "run": 1,
+              "passed": true,
+              "reason": "Fuzzy matched: 'swiftandroid/swift, 7' with distance 3"
+            },
+            {
+              "run": 2,
+              "passed": false,
+              "reason": "No fuzzy match found for 'swiftandroid/swift' within 3-character distance"
+            },
+            {
+              "run": 3,
+              "passed": false,
+              "reason": "No fuzzy match found for 'swiftandroid/swift' within 3-character distance"
+            },
+            {
+              "run": 4,
+              "passed": true,
+              "reason": "Fuzzy matched: 'swiftandroid/swift, 7' with distance 3"
+            }
+          ],
+          "reason": "No fuzzy match found for 'swiftandroid/swift' within 3-character distance",
+          "elapsed_s": 2561.4,
+          "input_tokens": 493057,
+          "output_tokens": 81183
+        },
+        {
+          "query_id": "3",
+          "status": "evaluated",
+          "num_runs": 5,
+          "passing_runs": 5,
+          "passed_atk": true,
+          "runs": [
+            {
+              "run": 0,
+              "passed": true,
+              "reason": "Found 1077 in LLM output."
+            },
+            {
+              "run": 1,
+              "passed": true,
+              "reason": "Found 1077 in LLM output."
+            },
+            {
+              "run": 2,
+              "passed": true,
+              "reason": "Found 1077 in LLM output."
+            },
+            {
+              "run": 3,
+              "passed": true,
+              "reason": "Found 1077 in LLM output."
+            },
+            {
+              "run": 4,
+              "passed": true,
+              "reason": "Found 1077 in LLM output."
+            }
+          ],
+          "reason": "Found 1077 in LLM output.",
+          "elapsed_s": 825.5,
+          "input_tokens": 203638,
+          "output_tokens": 40194
+        },
+        {
+          "query_id": "4",
+          "status": "evaluated",
+          "num_runs": 5,
+          "passing_runs": 2,
+          "passed_atk": true,
+          "runs": [
+            {
+              "run": 0,
+              "passed": true,
+              "reason": "All repo names matched with fuzzy tolerance."
+            },
+            {
+              "run": 1,
+              "passed": false,
+              "reason": "Could not match: 'apple/swift'"
+            },
+            {
+              "run": 2,
+              "passed": true,
+              "reason": "All repo names matched with fuzzy tolerance."
+            },
+            {
+              "run": 3,
+              "passed": false,
+              "reason": "Could not match: 'apple/swift'"
+            },
+            {
+              "run": 4,
+              "passed": false,
+              "reason": "Could not match: 'apple/swift'"
+            }
+          ],
+          "reason": "All repo names matched with fuzzy tolerance.",
+          "elapsed_s": 844.1,
+          "input_tokens": 165599,
+          "output_tokens": 38691
+        }
+      ],
+      "pass_at_1": 0.7,
+      "pass_at_1_pct": "70.0%",
+      "pass_at_k": 1.0,
+      "pass_at_k_pct": "100.0%"
+    },
+    "googlelocal": {
+      "total": 4,
+      "pending": 0,
+      "evaluated": 4,
+      "run_slots": 20,
+      "passing_slots": 14,
+      "passed_atk": 3,
+      "queries": [
+        {
+          "query_id": "1",
+          "status": "evaluated",
+          "num_runs": 5,
+          "passing_runs": 4,
+          "passed_atk": true,
+          "runs": [
+            {
+              "run": 0,
+              "passed": true,
+              "reason": "All names are present and in correct order."
+            },
+            {
+              "run": 1,
+              "passed": false,
+              "reason": "Missing name in LLM output: Widows Peak Salon"
+            },
+            {
+              "run": 2,
+              "passed": true,
+              "reason": "All names are present and in correct order."
+            },
+            {
+              "run": 3,
+              "passed": true,
+              "reason": "All names are present and in correct order."
+            },
+            {
+              "run": 4,
+              "passed": true,
+              "reason": "All names are present and in correct order."
+            }
+          ],
+          "reason": "All names are present and in correct order.",
+          "elapsed_s": 121.9,
+          "input_tokens": 23600,
+          "output_tokens": 9158
+        },
+        {
+          "query_id": "2",
+          "status": "evaluated",
+          "num_runs": 5,
+          "passing_runs": 5,
+          "passed_atk": true,
+          "runs": [
+            {
+              "run": 0,
+              "passed": true,
+              "reason": "All names and scores matched successfully."
+            },
+            {
+              "run": 1,
+              "passed": true,
+              "reason": "All names and scores matched successfully."
+            },
+            {
+              "run": 2,
+              "passed": true,
+              "reason": "All names and scores matched successfully."
+            },
+            {
+              "run": 3,
+              "passed": true,
+              "reason": "All names and scores matched successfully."
+            },
+            {
+              "run": 4,
+              "passed": true,
+              "reason": "All names and scores matched successfully."
+            }
+          ],
+          "reason": "All names and scores matched successfully.",
+          "elapsed_s": 83.1,
+          "input_tokens": 17168,
+          "output_tokens": 7944
+        },
+        {
+          "query_id": "3",
+          "status": "evaluated",
+          "num_runs": 5,
+          "passing_runs": 0,
+          "passed_atk": false,
+          "runs": [
+            {
+              "run": 0,
+              "passed": false,
+              "reason": "Missing business name: White Barn Candle Co"
+            },
+            {
+              "run": 1,
+              "passed": false,
+              "reason": "Missing business name: White Barn Candle Co"
+            },
+            {
+              "run": 2,
+              "passed": false,
+              "reason": "Missing business name: White Barn Candle Co"
+            },
+            {
+              "run": 3,
+              "passed": false,
+              "reason": "Missing business name: White Barn Candle Co"
+            },
+            {
+              "run": 4,
+              "passed": false,
+              "reason": "Missing business name: White Barn Candle Co"
+            }
+          ],
+          "reason": "Missing business name: White Barn Candle Co",
+          "elapsed_s": 125.0,
+          "input_tokens": 138355,
+          "output_tokens": 70047
+        },
+        {
+          "query_id": "4",
+          "status": "evaluated",
+          "num_runs": 5,
+          "passing_runs": 5,
+          "passed_atk": true,
+          "runs": [
+            {
+              "run": 0,
+              "passed": true,
+              "reason": "All names and numbers matched."
+            },
+            {
+              "run": 1,
+              "passed": true,
+              "reason": "All names and numbers matched."
+            },
+            {
+              "run": 2,
+              "passed": true,
+              "reason": "All names and numbers matched."
+            },
+            {
+              "run": 3,
+              "passed": true,
+              "reason": "All names and numbers matched."
+            },
+            {
+              "run": 4,
+              "passed": true,
+              "reason": "All names and numbers matched."
+            }
+          ],
+          "reason": "All names and numbers matched.",
+          "elapsed_s": 15.2,
+          "input_tokens": 16524,
+          "output_tokens": 10489
+        }
+      ],
+      "pass_at_1": 0.7,
+      "pass_at_1_pct": "70.0%",
+      "pass_at_k": 0.75,
+      "pass_at_k_pct": "75.0%"
+    },
+    "music_brainz_20k": {
+      "total": 3,
+      "pending": 0,
+      "evaluated": 3,
+      "run_slots": 15,
+      "passing_slots": 9,
+      "passed_atk": 2,
+      "queries": [
+        {
+          "query_id": "1",
+          "status": "evaluated",
+          "num_runs": 5,
+          "passing_runs": 5,
+          "passed_atk": true,
+          "runs": [
+            {
+              "run": 0,
+              "passed": true,
+              "reason": "Ground truth found in LLM output."
+            },
+            {
+              "run": 1,
+              "passed": true,
+              "reason": "Ground truth found in LLM output."
+            },
+            {
+              "run": 2,
+              "passed": true,
+              "reason": "Ground truth found in LLM output."
+            },
+            {
+              "run": 3,
+              "passed": true,
+              "reason": "Ground truth found in LLM output."
+            },
+            {
+              "run": 4,
+              "passed": true,
+              "reason": "Ground truth found in LLM output."
+            }
+          ],
+          "reason": "Ground truth found in LLM output.",
+          "elapsed_s": 385.8,
+          "input_tokens": 66393,
+          "output_tokens": 21272
+        },
+        {
+          "query_id": "2",
+          "status": "evaluated",
+          "num_runs": 5,
+          "passing_runs": 4,
+          "passed_atk": true,
+          "runs": [
+            {
+              "run": 0,
+              "passed": true,
+              "reason": "Ground truth found in LLM output."
+            },
+            {
+              "run": 1,
+              "passed": false,
+              "reason": "EXECUTION_FAILED (LLM Cheating Revoked)"
+            },
+            {
+              "run": 2,
+              "passed": true,
+              "reason": "Ground truth found in LLM output."
+            },
+            {
+              "run": 3,
+              "passed": true,
+              "reason": "Ground truth found in LLM output."
+            },
+            {
+              "run": 4,
+              "passed": true,
+              "reason": "Ground truth found in LLM output."
+            }
+          ],
+          "reason": "Ground truth found in LLM output.",
+          "elapsed_s": 1110.6,
+          "input_tokens": 132948,
+          "output_tokens": 44079
+        },
+        {
+          "query_id": "3",
+          "status": "evaluated",
+          "num_runs": 5,
+          "passing_runs": 0,
+          "passed_atk": false,
+          "runs": [
+            {
+              "run": 0,
+              "passed": false,
+              "reason": "No fuzzy match (Zo gaat het leven aan je voor) found in 61376.18000000003. Best score: 0.08"
+            },
+            {
+              "run": 1,
+              "passed": false,
+              "reason": "No fuzzy match (Zo gaat het leven aan je voor) found in Groovey, Rich Matteson, Groovey, 4128.59. Best score: 0.23"
+            },
+            {
+              "run": 2,
+              "passed": false,
+              "reason": "No fuzzy match (Zo gaat het leven aan je voor) found in Systemisch bled, 2522.82. Best score: 0.26"
+            },
+            {
+              "run": 3,
+              "passed": false,
+              "reason": "No fuzzy match (Zo gaat het leven aan je voor) found in Systemisch bled, 2522.82. Best score: 0.26"
+            },
+            {
+              "run": 4,
+              "passed": false,
+              "reason": "No fuzzy match (Zo gaat het leven aan je voor) found in Groovey, Rich Matteson, Groovey, 4128.59. Best score: 0.23"
+            }
+          ],
+          "reason": "No fuzzy match (Zo gaat het leven aan je voor) found in 61376.18000000003. Best score: 0.08",
+          "elapsed_s": 851.1,
+          "input_tokens": 127326,
+          "output_tokens": 36653
+        }
+      ],
+      "pass_at_1": 0.6,
+      "pass_at_1_pct": "60.0%",
+      "pass_at_k": 0.6667,
+      "pass_at_k_pct": "66.7%"
+    },
+    "pancancer_atlas": {
+      "total": 3,
+      "pending": 0,
+      "evaluated": 3,
+      "run_slots": 15,
+      "passing_slots": 1,
+      "passed_atk": 1,
+      "queries": [
+        {
+          "query_id": "1",
+          "status": "evaluated",
+          "num_runs": 5,
+          "passing_runs": 0,
+          "passed_atk": false,
+          "runs": [
+            {
+              "run": 0,
+              "passed": false,
+              "reason": "Missing histology type: 9382/3"
+            },
+            {
+              "run": 1,
+              "passed": false,
+              "reason": "Missing histology type: 9382/3"
+            },
+            {
+              "run": 2,
+              "passed": false,
+              "reason": "Missing histology type: 9400/3"
+            },
+            {
+              "run": 3,
+              "passed": false,
+              "reason": "Missing histology type: 9382/3"
+            },
+            {
+              "run": 4,
+              "passed": false,
+              "reason": "Missing histology type: 9382/3"
+            }
+          ],
+          "reason": "Missing histology type: 9382/3",
+          "elapsed_s": 2169.8,
+          "input_tokens": 440570,
+          "output_tokens": 143419
+        },
+        {
+          "query_id": "2",
+          "status": "evaluated",
+          "num_runs": 5,
+          "passing_runs": 1,
+          "passed_atk": true,
+          "runs": [
+            {
+              "run": 0,
+              "passed": true,
+              "reason": "All histological types matched (fuzzy)."
+            },
+            {
+              "run": 1,
+              "passed": false,
+              "reason": "Not matched (fuzzy) within 3 chars: 'Infiltrating Lobular Carcinoma'"
+            },
+            {
+              "run": 2,
+              "passed": false,
+              "reason": "Not matched (fuzzy) within 3 chars: 'Infiltrating Lobular Carcinoma'"
+            },
+            {
+              "run": 3,
+              "passed": false,
+              "reason": "Not matched (fuzzy) within 3 chars: 'Infiltrating Lobular Carcinoma'"
+            },
+            {
+              "run": 4,
+              "passed": false,
+              "reason": "Not matched (fuzzy) within 3 chars: 'Infiltrating Lobular Carcinoma'"
+            }
+          ],
+          "reason": "All histological types matched (fuzzy).",
+          "elapsed_s": 1492.0,
+          "input_tokens": 156762,
+          "output_tokens": 54399
+        },
+        {
+          "query_id": "3",
+          "status": "evaluated",
+          "num_runs": 5,
+          "passing_runs": 0,
+          "passed_atk": false,
+          "runs": [
+            {
+              "run": 0,
+              "passed": false,
+              "reason": "No value in LLM output matches 305.12, 305.1, or 305"
+            },
+            {
+              "run": 1,
+              "passed": false,
+              "reason": "No value in LLM output matches 305.12, 305.1, or 305"
+            },
+            {
+              "run": 2,
+              "passed": false,
+              "reason": "No value in LLM output matches 305.12, 305.1, or 305"
+            },
+            {
+              "run": 3,
+              "passed": false,
+              "reason": "No value in LLM output matches 305.12, 305.1, or 305"
+            },
+            {
+              "run": 4,
+              "passed": false,
+              "reason": "No value in LLM output matches 305.12, 305.1, or 305"
+            }
+          ],
+          "reason": "No value in LLM output matches 305.12, 305.1, or 305",
+          "elapsed_s": 1391.9,
+          "input_tokens": 354721,
+          "output_tokens": 78682
+        }
+      ],
+      "pass_at_1": 0.0667,
+      "pass_at_1_pct": "6.7%",
+      "pass_at_k": 0.3333,
+      "pass_at_k_pct": "33.3%"
+    },
+    "patents": {
+      "total": 3,
+      "pending": 0,
+      "evaluated": 3,
+      "run_slots": 15,
+      "passing_slots": 0,
+      "passed_atk": 0,
+      "queries": [
+        {
+          "query_id": "1",
+          "status": "evaluated",
+          "num_runs": 5,
+          "passing_runs": 0,
+          "passed_atk": false,
+          "runs": [
+            {
+              "run": 0,
+              "passed": false,
+              "reason": "Missing CPC code: A23J"
+            },
+            {
+              "run": 1,
+              "passed": false,
+              "reason": "Missing CPC code: A23J"
+            },
+            {
+              "run": 2,
+              "passed": false,
+              "reason": "Missing CPC code: A23J"
+            },
+            {
+              "run": 3,
+              "passed": false,
+              "reason": "Missing CPC code: A23J"
+            },
+            {
+              "run": 4,
+              "passed": false,
+              "reason": "Missing CPC code: A23J"
+            }
+          ],
+          "reason": "Missing CPC code: A23J",
+          "elapsed_s": 3427.1,
+          "input_tokens": 170727,
+          "output_tokens": 92620
+        },
+        {
+          "query_id": "2",
+          "status": "evaluated",
+          "num_runs": 5,
+          "passing_runs": 0,
+          "passed_atk": false,
+          "runs": [
+            {
+              "run": 0,
+              "passed": false,
+              "reason": "Name fuzzy match failed for 'BAKING; EDIBLE DOUGHS' (best match: 'orsqlgenerationfai', distance=15)"
+            },
+            {
+              "run": 1,
+              "passed": false,
+              "reason": "Name fuzzy match failed for 'BAKING; EDIBLE DOUGHS' (best match: 'orsqlgenerationfai', distance=15)"
+            },
+            {
+              "run": 2,
+              "passed": false,
+              "reason": "Name fuzzy match failed for 'BAKING; EDIBLE DOUGHS' (best match: 'orsqlgenerationfai', distance=15)"
+            },
+            {
+              "run": 3,
+              "passed": false,
+              "reason": "Name fuzzy match failed for 'BAKING; EDIBLE DOUGHS' (best match: 'orsqlgenerationfai', distance=15)"
+            },
+            {
+              "run": 4,
+              "passed": false,
+              "reason": "Name fuzzy match failed for 'BAKING; EDIBLE DOUGHS' (best match: 'orsqlgenerationfai', distance=15)"
+            }
+          ],
+          "reason": "Name fuzzy match failed for 'BAKING; EDIBLE DOUGHS' (best match: 'orsqlgenerationfai', distance=15)",
+          "elapsed_s": 2042.2,
+          "input_tokens": 231833,
+          "output_tokens": 89915
+        },
+        {
+          "query_id": "3",
+          "status": "evaluated",
+          "num_runs": 5,
+          "passing_runs": 0,
+          "passed_atk": false,
+          "runs": [
+            {
+              "run": 0,
+              "passed": false,
+              "reason": "No match for: ABBOTT RYAN + DIAGNOSIS; SURGERY; IDENTIFICATION"
+            },
+            {
+              "run": 1,
+              "passed": false,
+              "reason": "No match for: ABBOTT RYAN + DIAGNOSIS; SURGERY; IDENTIFICATION"
+            },
+            {
+              "run": 2,
+              "passed": false,
+              "reason": "No match for: ABBOTT RYAN + DIAGNOSIS; SURGERY; IDENTIFICATION"
+            },
+            {
+              "run": 3,
+              "passed": false,
+              "reason": "No match for: ABBOTT RYAN + DIAGNOSIS; SURGERY; IDENTIFICATION"
+            },
+            {
+              "run": 4,
+              "passed": false,
+              "reason": "No match for: ABBOTT RYAN + DIAGNOSIS; SURGERY; IDENTIFICATION"
+            }
+          ],
+          "reason": "No match for: ABBOTT RYAN + DIAGNOSIS; SURGERY; IDENTIFICATION",
+          "elapsed_s": 3418.5,
+          "input_tokens": 367563,
+          "output_tokens": 144076
+        }
+      ],
+      "pass_at_1": 0.0,
+      "pass_at_1_pct": "0.0%",
+      "pass_at_k": 0.0,
+      "pass_at_k_pct": "0.0%"
+    },
+    "stockindex": {
+      "total": 3,
+      "pending": 0,
+      "evaluated": 3,
+      "run_slots": 15,
+      "passing_slots": 13,
+      "passed_atk": 3,
+      "queries": [
+        {
+          "query_id": "1",
+          "status": "evaluated",
+          "num_runs": 5,
+          "passing_runs": 5,
+          "passed_atk": true,
+          "runs": [
+            {
+              "run": 0,
+              "passed": true,
+              "reason": "Target '399001.SZ' present as primary answer."
+            },
+            {
+              "run": 1,
+              "passed": true,
+              "reason": "Target '399001.SZ' present as primary answer."
+            },
+            {
+              "run": 2,
+              "passed": true,
+              "reason": "Target '399001.SZ' present as primary answer."
+            },
+            {
+              "run": 3,
+              "passed": true,
+              "reason": "Target '399001.SZ' present as primary answer."
+            },
+            {
+              "run": 4,
+              "passed": true,
+              "reason": "Target '399001.SZ' present as primary answer."
+            }
+          ],
+          "reason": "Target '399001.SZ' present as primary answer.",
+          "elapsed_s": 465.6,
+          "input_tokens": 90997,
+          "output_tokens": 26485
+        },
+        {
+          "query_id": "2",
+          "status": "evaluated",
+          "num_runs": 5,
+          "passing_runs": 5,
+          "passed_atk": true,
+          "runs": [
+            {
+              "run": 0,
+              "passed": true,
+              "reason": "Target 'IXIC' present as primary answer."
+            },
+            {
+              "run": 1,
+              "passed": true,
+              "reason": "Target 'IXIC' present as primary answer."
+            },
+            {
+              "run": 2,
+              "passed": true,
+              "reason": "Target 'IXIC' present as primary answer."
+            },
+            {
+              "run": 3,
+              "passed": true,
+              "reason": "Target 'IXIC' present as primary answer."
+            },
+            {
+              "run": 4,
+              "passed": true,
+              "reason": "Target 'IXIC' present as primary answer."
+            }
+          ],
+          "reason": "Target 'IXIC' present as primary answer.",
+          "elapsed_s": 912.6,
+          "input_tokens": 191126,
+          "output_tokens": 52882
+        },
+        {
+          "query_id": "3",
+          "status": "evaluated",
+          "num_runs": 5,
+          "passing_runs": 3,
+          "passed_atk": true,
+          "runs": [
+            {
+              "run": 0,
+              "passed": true,
+              "reason": "All name-country pairs matched."
+            },
+            {
+              "run": 1,
+              "passed": true,
+              "reason": "All name-country pairs matched."
+            },
+            {
+              "run": 2,
+              "passed": true,
+              "reason": "All name-country pairs matched."
+            },
+            {
+              "run": 3,
+              "passed": false,
+              "reason": "Neither candidate ranking matched: Missing name: 399001.SZ | Missing name: 399001.SZ"
+            },
+            {
+              "run": 4,
+              "passed": false,
+              "reason": "Neither candidate ranking matched: Missing name: 399001.SZ | Missing name: NSEI"
+            }
+          ],
+          "reason": "All name-country pairs matched.",
+          "elapsed_s": 630.5,
+          "input_tokens": 96358,
+          "output_tokens": 27749
+        }
+      ],
+      "pass_at_1": 0.8667,
+      "pass_at_1_pct": "86.7%",
+      "pass_at_k": 1.0,
+      "pass_at_k_pct": "100.0%"
+    },
+    "stockmarket": {
+      "total": 5,
+      "pending": 0,
+      "evaluated": 5,
+      "run_slots": 25,
+      "passing_slots": 15,
+      "passed_atk": 3,
+      "queries": [
+        {
+          "query_id": "1",
+          "status": "evaluated",
+          "num_runs": 5,
+          "passing_runs": 5,
+          "passed_atk": true,
+          "runs": [
+            {
+              "run": 0,
+              "passed": true,
+              "reason": "Found matching number: 18.440000534057617 \u2248 18.44"
+            },
+            {
+              "run": 1,
+              "passed": true,
+              "reason": "Found matching number: 18.440000534057617 \u2248 18.44"
+            },
+            {
+              "run": 2,
+              "passed": true,
+              "reason": "Found matching number: 18.440000534057617 \u2248 18.44"
+            },
+            {
+              "run": 3,
+              "passed": true,
+              "reason": "Found matching number: 18.440000534057617 \u2248 18.44"
+            },
+            {
+              "run": 4,
+              "passed": true,
+              "reason": "Found matching number: 18.440000534057617 \u2248 18.44"
+            }
+          ],
+          "reason": "Found matching number: 18.440000534057617 \u2248 18.44",
+          "elapsed_s": 481.7,
+          "input_tokens": 93217,
+          "output_tokens": 32605
+        },
+        {
+          "query_id": "2",
+          "status": "evaluated",
+          "num_runs": 5,
+          "passing_runs": 5,
+          "passed_atk": true,
+          "runs": [
+            {
+              "run": 0,
+              "passed": true,
+              "reason": "All 31 ticker symbols matched (equivalent to names)."
+            },
+            {
+              "run": 1,
+              "passed": true,
+              "reason": "All 31 ticker symbols matched (equivalent to names)."
+            },
+            {
+              "run": 2,
+              "passed": true,
+              "reason": "All 31 ticker symbols matched (equivalent to names)."
+            },
+            {
+              "run": 3,
+              "passed": true,
+              "reason": "All 31 ticker symbols matched (equivalent to names)."
+            },
+            {
+              "run": 4,
+              "passed": true,
+              "reason": "All 31 ticker symbols matched (equivalent to names)."
+            }
+          ],
+          "reason": "All 31 ticker symbols matched (equivalent to names).",
+          "elapsed_s": 671.3,
+          "input_tokens": 118425,
+          "output_tokens": 43526
+        },
+        {
+          "query_id": "3",
+          "status": "evaluated",
+          "num_runs": 5,
+          "passing_runs": 0,
+          "passed_atk": false,
+          "runs": [
+            {
+              "run": 0,
+              "passed": false,
+              "reason": "Name not found within 5 edits: 'Apex Global Brands Inc', closest: 'apex, ; bkyi' (distance=15)"
+            },
+            {
+              "run": 1,
+              "passed": false,
+              "reason": "Name not found within 5 edits: 'Ocean Power Technologies, Inc', closest: 'cbak energy technology, inc' (distance=11)"
+            },
+            {
+              "run": 2,
+              "passed": false,
+              "reason": "Name not found within 5 edits: 'Ocean Power Technologies, Inc', closest: 'cbak energy technology, inc' (distance=11)"
+            },
+            {
+              "run": 3,
+              "passed": false,
+              "reason": "Name not found within 5 edits: 'Ocean Power Technologies, Inc', closest: 'cbak energy technology, inc' (distance=11)"
+            },
+            {
+              "run": 4,
+              "passed": false,
+              "reason": "Name not found within 5 edits: 'Ocean Power Technologies, Inc', closest: 'cbak energy technology, inc' (distance=11)"
+            }
+          ],
+          "reason": "Name not found within 5 edits: 'Apex Global Brands Inc', closest: 'apex, ; bkyi' (distance=15)",
+          "elapsed_s": 649.2,
+          "input_tokens": 116402,
+          "output_tokens": 40204
+        },
+        {
+          "query_id": "4",
+          "status": "evaluated",
+          "num_runs": 5,
+          "passing_runs": 0,
+          "passed_atk": false,
+          "runs": [
+            {
+              "run": 0,
+              "passed": false,
+              "reason": "Name not found within 5 edits: 'Argo Group International Holdings, Ltd', closest: 'er-toledo international, inc, a' (dis"
+            },
+            {
+              "run": 1,
+              "passed": false,
+              "reason": "Name not found within 5 edits: 'HDFC Bank Limited Common Stock', closest: 'holdings, ltd, mfa f' (distance=23)"
+            },
+            {
+              "run": 2,
+              "passed": false,
+              "reason": "Name not found within 5 edits: 'Argo Group International Holdings, Ltd', closest: 'er-toledo international, inc, a' (dis"
+            },
+            {
+              "run": 3,
+              "passed": false,
+              "reason": "Name not found within 5 edits: 'Argo Group International Holdings, Ltd', closest: 'er-toledo international, inc, a' (dis"
+            },
+            {
+              "run": 4,
+              "passed": false,
+              "reason": "Name not found within 5 edits: 'Argo Group International Holdings, Ltd', closest: 'er-toledo international, inc, a' (dis"
+            }
+          ],
+          "reason": "Name not found within 5 edits: 'Argo Group International Holdings, Ltd', closest: 'er-toledo international, inc, a' (distance=18)",
+          "elapsed_s": 860.3,
+          "input_tokens": 99179,
+          "output_tokens": 34410
+        },
+        {
+          "query_id": "5",
+          "status": "evaluated",
+          "num_runs": 5,
+          "passing_runs": 5,
+          "passed_atk": true,
+          "runs": [
+            {
+              "run": 0,
+              "passed": true,
+              "reason": "All names (exact or \u22645 edits) matched."
+            },
+            {
+              "run": 1,
+              "passed": true,
+              "reason": "All names (exact or \u22645 edits) matched."
+            },
+            {
+              "run": 2,
+              "passed": true,
+              "reason": "All names (exact or \u22645 edits) matched."
+            },
+            {
+              "run": 3,
+              "passed": true,
+              "reason": "All names (exact or \u22645 edits) matched."
+            },
+            {
+              "run": 4,
+              "passed": true,
+              "reason": "All names (exact or \u22645 edits) matched."
+            }
+          ],
+          "reason": "All names (exact or \u22645 edits) matched.",
+          "elapsed_s": 320.4,
+          "input_tokens": 100146,
+          "output_tokens": 28943
+        }
+      ],
+      "pass_at_1": 0.6,
+      "pass_at_1_pct": "60.0%",
+      "pass_at_k": 0.6,
+      "pass_at_k_pct": "60.0%"
+    },
+    "yelp": {
+      "total": 7,
+      "pending": 0,
+      "evaluated": 7,
+      "run_slots": 35,
+      "passing_slots": 14,
+      "passed_atk": 4,
+      "queries": [
+        {
+          "query_id": "1",
+          "status": "evaluated",
+          "num_runs": 5,
+          "passing_runs": 5,
+          "passed_atk": true,
+          "runs": [
+            {
+              "run": 0,
+              "passed": true,
+              "reason": "Found matching number: 3.547008547008547 \u2248 3.55"
+            },
+            {
+              "run": 1,
+              "passed": true,
+              "reason": "Found matching number: 3.547008547008547 \u2248 3.55"
+            },
+            {
+              "run": 2,
+              "passed": true,
+              "reason": "Found matching number: 3.547008547008547 \u2248 3.55"
+            },
+            {
+              "run": 3,
+              "passed": true,
+              "reason": "Found matching number: 3.547008547008547 \u2248 3.55"
+            },
+            {
+              "run": 4,
+              "passed": true,
+              "reason": "Found matching number: 3.547008547008547 \u2248 3.55"
+            }
+          ],
+          "reason": "Found matching number: 3.547008547008547 \u2248 3.55",
+          "elapsed_s": 921.6,
+          "input_tokens": 253576,
+          "output_tokens": 56293
+        },
+        {
+          "query_id": "2",
+          "status": "evaluated",
+          "num_runs": 5,
+          "passing_runs": 4,
+          "passed_atk": true,
+          "runs": [
+            {
+              "run": 0,
+              "passed": true,
+              "reason": "Found: value\u22483.7 near PA/Pennsylvania"
+            },
+            {
+              "run": 1,
+              "passed": true,
+              "reason": "Found: value\u22483.7 near PA/Pennsylvania"
+            },
+            {
+              "run": 2,
+              "passed": false,
+              "reason": "No occurrence of 3.7 near PA/Pennsylvania."
+            },
+            {
+              "run": 3,
+              "passed": true,
+              "reason": "Found: value\u22483.7 near PA/Pennsylvania"
+            },
+            {
+              "run": 4,
+              "passed": true,
+              "reason": "Found: value\u22483.7 near PA/Pennsylvania"
+            }
+          ],
+          "reason": "Found: value\u22483.7 near PA/Pennsylvania",
+          "elapsed_s": 863.3,
+          "input_tokens": 342959,
+          "output_tokens": 72682
+        },
+        {
+          "query_id": "3",
+          "status": "evaluated",
+          "num_runs": 5,
+          "passing_runs": 2,
+          "passed_atk": true,
+          "runs": [
+            {
+              "run": 0,
+              "passed": false,
+              "reason": "Number 35 not found in LLM output."
+            },
+            {
+              "run": 1,
+              "passed": false,
+              "reason": "Number 35 not found in LLM output."
+            },
+            {
+              "run": 2,
+              "passed": true,
+              "reason": "Found number: 35"
+            },
+            {
+              "run": 3,
+              "passed": true,
+              "reason": "Found number: 35"
+            },
+            {
+              "run": 4,
+              "passed": false,
+              "reason": "Number 35 not found in LLM output."
+            }
+          ],
+          "reason": "Number 35 not found in LLM output.",
+          "elapsed_s": 534.2,
+          "input_tokens": 109937,
+          "output_tokens": 41220
+        },
+        {
+          "query_id": "4",
+          "status": "evaluated",
+          "num_runs": 5,
+          "passing_runs": 3,
+          "passed_atk": true,
+          "runs": [
+            {
+              "run": 0,
+              "passed": true,
+              "reason": "Found: Restaurant, 3.63"
+            },
+            {
+              "run": 1,
+              "passed": true,
+              "reason": "Found: Restaurant, 3.63"
+            },
+            {
+              "run": 2,
+              "passed": false,
+              "reason": "Category 'Restaurant' not found in LLM output."
+            },
+            {
+              "run": 3,
+              "passed": false,
+              "reason": "Category 'Restaurant' not found in LLM output."
+            },
+            {
+              "run": 4,
+              "passed": true,
+              "reason": "Found: Restaurant, 3.63"
+            }
+          ],
+          "reason": "Found: Restaurant, 3.63",
+          "elapsed_s": 712.4,
+          "input_tokens": 105300,
+          "output_tokens": 24888
+        },
+        {
+          "query_id": "5",
+          "status": "evaluated",
+          "num_runs": 5,
+          "passing_runs": 0,
+          "passed_atk": false,
+          "runs": [
+            {
+              "run": 0,
+              "passed": false,
+              "reason": "No occurrence of 3.48 near PA/Pennsylvania."
+            },
+            {
+              "run": 1,
+              "passed": false,
+              "reason": "No occurrence of 3.48 near PA/Pennsylvania."
+            },
+            {
+              "run": 2,
+              "passed": false,
+              "reason": "No occurrence of 3.48 near PA/Pennsylvania."
+            },
+            {
+              "run": 3,
+              "passed": false,
+              "reason": "No occurrence of 3.48 near PA/Pennsylvania."
+            },
+            {
+              "run": 4,
+              "passed": false,
+              "reason": "No occurrence of 3.48 near PA/Pennsylvania."
+            }
+          ],
+          "reason": "No occurrence of 3.48 near PA/Pennsylvania.",
+          "elapsed_s": 1116.0,
+          "input_tokens": 335608,
+          "output_tokens": 64922
+        },
+        {
+          "query_id": "6",
+          "status": "evaluated",
+          "num_runs": 5,
+          "passing_runs": 0,
+          "passed_atk": false,
+          "runs": [
+            {
+              "run": 0,
+              "passed": false,
+              "reason": "Missing category: restaurants"
+            },
+            {
+              "run": 1,
+              "passed": false,
+              "reason": "Missing name: Coffee House Too Cafe"
+            },
+            {
+              "run": 2,
+              "passed": false,
+              "reason": "Missing category: breakfast & brunch"
+            },
+            {
+              "run": 3,
+              "passed": false,
+              "reason": "Missing name: Coffee House Too Cafe"
+            },
+            {
+              "run": 4,
+              "passed": false,
+              "reason": "Missing name: Coffee House Too Cafe"
+            }
+          ],
+          "reason": "Missing category: restaurants",
+          "elapsed_s": 1346.7,
+          "input_tokens": 331944,
+          "output_tokens": 79261
+        },
+        {
+          "query_id": "7",
+          "status": "evaluated",
+          "num_runs": 5,
+          "passing_runs": 0,
+          "passed_atk": false,
+          "runs": [
+            {
+              "run": 0,
+              "passed": false,
+              "reason": "Missing category: Restaurants"
+            },
+            {
+              "run": 1,
+              "passed": false,
+              "reason": "Missing category: Restaurants"
+            },
+            {
+              "run": 2,
+              "passed": false,
+              "reason": "Missing category: Restaurants"
+            },
+            {
+              "run": 3,
+              "passed": false,
+              "reason": "Missing category: Restaurants"
+            },
+            {
+              "run": 4,
+              "passed": false,
+              "reason": "Missing category: Restaurants"
+            }
+          ],
+          "reason": "Missing category: Restaurants",
+          "elapsed_s": 712.4,
+          "input_tokens": 246441,
+          "output_tokens": 65092
+        }
+      ],
+      "pass_at_1": 0.4,
+      "pass_at_1_pct": "40.0%",
+      "pass_at_k": 0.5714,
+      "pass_at_k_pct": "57.1%"
+    }
+  },
+  "computed_at": "2026-06-13T06:42:39.094882"
+}

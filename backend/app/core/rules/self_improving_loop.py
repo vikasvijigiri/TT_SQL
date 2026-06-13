@@ -22,7 +22,7 @@ import time
 from datetime import datetime, date
 from typing import Any, Dict, List, Optional, Tuple
 
-from backend.app.core.config import MEMORY_DIR, DAB_REPO, RESULTS_DIR
+from backend.app.core.config import MEMORY_DIR, DAB_REPO, DAB_RESULTS_DIR
 from backend.app.utils.logger import logger
 
 # ------------------------------------------------------------------ constants
@@ -202,7 +202,7 @@ class SelfImprovingLoop:
 
                     # 1. Fetch full SQL generated if available
                     sql_generated = ev.get("agent_answer_snippet", "")
-                    sql_path = RESULTS_DIR / "dab" / dataset / f"query{query_id}.sql"
+                    sql_path = DAB_RESULTS_DIR / dataset / f"query{query_id}.sql"
                     if sql_path.exists():
                         try:
                             sql_generated = sql_path.read_text(
@@ -215,7 +215,7 @@ class SelfImprovingLoop:
 
                     # 2. Fetch log_tail from md file if available
                     log_tail = ""
-                    md_path = RESULTS_DIR / "dab" / dataset / f"query{query_id}.md"
+                    md_path = DAB_RESULTS_DIR / dataset / f"query{query_id}.md"
                     if md_path.exists():
                         try:
                             max_chars = 30000
@@ -241,7 +241,6 @@ class SelfImprovingLoop:
                         question=q.get("question", ""),
                         sql_generated=sql_generated,
                         error_or_mismatch=ev.get("reason", ""),
-                        ground_truth_hint=str(ev.get("ground_truth", ""))[:200],
                         dataset=dataset,
                         log_tail=log_tail,
                     )

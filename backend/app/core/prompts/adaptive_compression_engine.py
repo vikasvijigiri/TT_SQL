@@ -37,7 +37,7 @@ class AdaptiveCompressionEngine:
         )
         is_ambiguous = confidence.is_low_confidence
 
-        if is_ambiguous or (is_complex and budget_pressure_ratio < 0.8):
+        if is_ambiguous and budget_pressure_ratio < 0.5:
             # Preserve more guidance and examples when ambiguous or complex without extreme budget pressure
             policy = AdaptiveCompressionPolicy(
                 max_sample_values_per_col=5,

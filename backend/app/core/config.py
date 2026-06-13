@@ -26,6 +26,8 @@ CONFIG_DIR = BACKEND_DIR / "config"
 # Result Directory
 RESULTS_DIR = BACKEND_DIR / "results" / "evaluations"
 
+DAB_RESULTS_DIR = RESULTS_DIR / "dab"
+
 # DataAgentBench repository path — single source of truth for the entire codebase.
 # Set $DAB_REPO in your environment (or .env) to point to the cloned repo on any machine.
 # Default: sibling directory of the project root (e.g. Documents/DataAgentBench next to TT_SQL_V2).

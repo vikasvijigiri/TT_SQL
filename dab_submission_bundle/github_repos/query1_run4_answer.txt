@@ -1,0 +1,5 @@
+No data found for the query (Catalog Error: Table with name languages does not exist!
+Did you mean "repo_metadata_db.languages"?
+
+LINE 1: ... AS repo_name, c.content AS content FROM contents c JOIN languages l ON c.sample_repo_name = l.repo_name WHERE c...
+                                                                    ^). Cannot determine the answer.

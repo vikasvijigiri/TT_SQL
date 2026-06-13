@@ -7,13 +7,13 @@ export default {
   theme: {
     extend: {
       colors: {
-        background: "#0a0a0b",
-        card: "#111114",
-        border: "#1f1f23",
-        accent: "#3b82f6",
-        success: "#10b981",
-        warning: "#f59e0b",
-        danger: "#ef4444",
+        background: "#1b2738",
+        card: "#243448",
+        border: "#2c3e55",
+        accent: "#5fa8d8",
+        success: "#38b890",
+        warning: "#d4a44a",
+        danger: "#c85858",
       },
       fontFamily: {
         sans: ['Inter', 'sans-serif'],

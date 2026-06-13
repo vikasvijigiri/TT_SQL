@@ -8,8 +8,12 @@ import math
 import warnings
 import pandas as pd
 import numpy as np
-from fastapi import FastAPI, BackgroundTasks
+import asyncio
+import contextlib
+from fastapi import FastAPI, BackgroundTasks, Request
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.middleware.gzip import GZipMiddleware
+from fastapi.responses import StreamingResponse
 from pathlib import Path
 from pydantic import BaseModel
 from typing import List, Dict, Any, Optional
@@ -24,7 +28,7 @@ warnings.filterwarnings("ignore", category=UserWarning)
 warnings.filterwarnings("ignore", message=".*urllib3.*")
 warnings.filterwarnings("ignore", message=".*Pydantic.*")
 
-# ── LangSmith: set env vars before any langchain import so tracing is active ──
+# â”€â”€ LangSmith: set env vars before any langchain import so tracing is active â”€â”€
 from dotenv import load_dotenv
 
 load_dotenv(override=True)
@@ -40,6 +44,7 @@ for _ls_key in (
 
 import yaml
 from backend.app.core.config import (
+    DAB_RESULTS_DIR,
     RESULTS_DIR,
     DATABASES_DIR,
     INPUT_DIR,
@@ -47,14 +52,27 @@ from backend.app.core.config import (
     PROMPTS_DIR,
     MEMORY_DIR,
     CONFIG_DIR,
+    DAB_REPO
 )
 from backend.app.utils.llm import LLMClient
 from backend.app.repositories.db_executor import DatabaseExecutor
 
 # Track active background tasks to prevent UI flickering
+import threading
+from backend.app.core.dependencies import EXECUTION_POOL
 RUNNING_TASKS: set[str] = set()
+SPIDER_CANCEL_FLAG = False
 GLOBAL_AUDIT_RUNNING = False
-EXECUTION_POOL = ThreadPoolExecutor(max_workers=8)
+
+# Live run session — tracks progress of the current /api/run_all batch
+RUN_SESSION: dict = {
+    "running": False,
+    "total": 0,
+    "completed": 0,
+    "run_date": "",
+    "started_at": None,
+}
+_SESSION_LOCK = threading.Lock()
 
 # ---------------------------------------------------------------------------
 # Gold Evaluation & Benchmark Caching Helpers
@@ -233,6 +251,9 @@ def get_csv_info(csv_path: Path) -> tuple[bool, int]:
 
 app = FastAPI(title="Text2SQL Dashboard API")
 
+# Compress all responses â‰¥1KB â€” JSON/log payloads shrink 80-90%
+app.add_middleware(GZipMiddleware, minimum_size=1024)
+
 # Enable CORS for frontend development
 app.add_middleware(
     CORSMiddleware,
@@ -241,10 +262,8 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-# Prometheus metrics — exposes /prometheus/metrics endpoint
+# Prometheus metrics - exposes /prometheus/metrics endpoint
 from prometheus_fastapi_instrumentator import Instrumentator
-import contextlib
-
 Instrumentator().instrument(app).expose(app, endpoint="/prometheus/metrics")
 
 # Custom Project endpoints
@@ -479,21 +498,21 @@ def _cached_get_metrics(date: str, ttl_hash: int):
         "unknown": 0,
     }
 
-    if RESULTS_DIR.exists():
-        for md_file in RESULTS_DIR.glob("**/*.md"):
-            if "dab" in [p.name.lower() for p in md_file.parents]:
-                continue
+    from backend.app.utils.archive import get_target_dirs_for_date
+    target_dirs = get_target_dirs_for_date(RESULTS_DIR, date)
+
+    for t_dir in target_dirs:
+        if not t_dir.exists(): continue
+        
+        # Avoid recursing into _archive if t_dir is the base dir
+        if t_dir == RESULTS_DIR:
+            md_files = [f for f in t_dir.glob("**/*.md") if "_archive" not in [p.name for p in f.parents] and "dab" not in [p.name.lower() for p in f.parents]]
+        else:
+            md_files = [f for f in t_dir.glob("**/*.md") if "dab" not in [p.name.lower() for p in f.parents]]
+            
+        for md_file in md_files:
             instance_id = md_file.stem
             csv_file = md_file.parent / f"{instance_id}.csv"
-
-            # Date filter
-            if date != "all":
-                try:
-                    file_date = datetime.fromtimestamp(md_file.stat().st_mtime).strftime("%Y-%m-%d")
-                    if file_date != date:
-                        continue
-                except Exception:
-                    continue
 
             data = parse_md_log(md_file)
             total_instances += 1
@@ -602,7 +621,7 @@ def health_check():
         },
     )
 
-    # 4. Improvement log (optional — created after first self-improvement run)
+    # 4. Improvement log (optional â€” created after first self-improvement run)
     _check(
         "improvement_log",
         lambda: (
@@ -650,16 +669,16 @@ def health_check():
     _check(
         "dab_repo",
         lambda: {
-            "path": str(DAB_REPO_PATH_DEFAULT),
-            "exists": Path(DAB_REPO_PATH_DEFAULT).exists(),
+            "path": str(DAB_REPO),
+            "exists": Path(DAB_REPO).exists(),
             "dataset_dirs": len(
                 [
                     d
-                    for d in Path(DAB_REPO_PATH_DEFAULT).iterdir()
+                    for d in Path(DAB_REPO).iterdir()
                     if d.is_dir() and d.name.startswith("query_")
                 ]
             )
-            if Path(DAB_REPO_PATH_DEFAULT).exists()
+            if Path(DAB_REPO).exists()
             else 0,
         },
     )
@@ -668,10 +687,10 @@ def health_check():
     _check(
         "dab_results",
         lambda: {
-            "dir": str(RESULTS_DIR / "dab"),
-            "exists": (RESULTS_DIR / "dab").exists(),
-            "eval_count": len(list((RESULTS_DIR / "dab").glob("**/*_eval.json")))
-            if (RESULTS_DIR / "dab").exists()
+            "dir": str(DAB_RESULTS_DIR),
+            "exists": (DAB_RESULTS_DIR).exists(),
+            "eval_count": len(list((DAB_RESULTS_DIR).glob("**/*_eval.json")))
+            if (DAB_RESULTS_DIR).exists()
             else 0,
         },
     )
@@ -747,41 +766,36 @@ def _cached_get_databases(date: str, ttl_hash: int):
     databases = []
     input_counts = get_input_counts()
 
+    from backend.app.utils.archive import get_target_dirs_for_date
+    target_dirs = get_target_dirs_for_date(RESULTS_DIR, date)
+
     sf_db_dir = DATABASES_DIR / "snowflake"
     if sf_db_dir.exists():
         for db_dir in sf_db_dir.iterdir():
             if db_dir.is_dir():
                 db_name = db_dir.name
-                res_dir = RESULTS_DIR / db_name
 
                 success_count = 0
                 error_count = 0
                 empty_count = 0
 
-                if res_dir.exists():
-                    for md_file in res_dir.glob("*.md"):
-                        # Date filter
-                        if date != "all":
-                            try:
-                                file_date = datetime.fromtimestamp(md_file.stat().st_mtime).strftime("%Y-%m-%d")
-                                if file_date != date:
-                                    continue
-                            except Exception:
-                                continue
+                for t_dir in target_dirs:
+                    res_dir = t_dir / db_name
+                    if res_dir.exists():
+                        for md_file in res_dir.glob("*.md"):
+                            log_data = parse_md_log(md_file)
+                            csv_file = res_dir / f"{md_file.stem}.csv"
 
-                        log_data = parse_md_log(md_file)
-                        csv_file = res_dir / f"{md_file.stem}.csv"
-
-                        if log_data.get("error"):
-                            error_count += 1
-                        elif csv_file.exists():
-                            is_empty, _ = get_csv_info(csv_file)
-                            if is_empty:
-                                empty_count += 1
+                            if log_data.get("error"):
+                                error_count += 1
+                            elif csv_file.exists():
+                                is_empty, _ = get_csv_info(csv_file)
+                                if is_empty:
+                                    empty_count += 1
+                                else:
+                                    success_count += 1
                             else:
-                                success_count += 1
-                        else:
-                            empty_count += 1
+                                empty_count += 1
 
                 total_questions = input_counts.get(db_name.strip().upper(), 0)
                 processed = success_count + error_count + empty_count
@@ -812,22 +826,17 @@ def get_databases(date: str = "all"):
 
 @lru_cache(maxsize=128)
 def _cached_get_recent_results(limit: int, date: str, ttl_hash: int):
+    from backend.app.utils.archive import get_target_dirs_for_date
     recent_runs = []
-    if not RESULTS_DIR.exists():
-        return []
-
-    all_md_files = [
-        f
-        for f in RESULTS_DIR.glob("**/*.md")
-        if "dab" not in [p.name.lower() for p in f.parents]
-    ]
-
-    # Date filter
-    if date != "all":
-        all_md_files = [
-            f for f in all_md_files
-            if datetime.fromtimestamp(f.stat().st_mtime).strftime("%Y-%m-%d") == date
-        ]
+    
+    target_dirs = get_target_dirs_for_date(RESULTS_DIR, date)
+    all_md_files = []
+    for t_dir in target_dirs:
+        if not t_dir.exists(): continue
+        if t_dir == RESULTS_DIR:
+            all_md_files.extend([f for f in t_dir.glob("**/*.md") if "_archive" not in [p.name for p in f.parents] and "dab" not in [p.name.lower() for p in f.parents]])
+        else:
+            all_md_files.extend([f for f in t_dir.glob("**/*.md") if "dab" not in [p.name.lower() for p in f.parents]])
 
     all_md_files.sort(key=lambda x: x.stat().st_mtime, reverse=True)
 
@@ -875,61 +884,225 @@ def get_recent_results(limit: int = 10, date: str = "all"):
     return _cached_get_recent_results(limit, date, _get_ttl_hash(15))
 
 
-@lru_cache(maxsize=2)
-def _cached_get_all_results(ttl_hash: int):
+@app.get("/api/results/dates")
+def get_results_dates():
+    """Return unique execution dates for both Spider and DAB runs, including archives."""
+    spider_dates = set()
+    if RESULTS_DIR.exists():
+        archive_base = RESULTS_DIR / "_archive"
+        if archive_base.exists():
+            for d in archive_base.iterdir():
+                if d.is_dir():
+                    try:
+                        date_str = d.name.split('_')[1]
+                        spider_dates.add(f"{date_str[:4]}-{date_str[4:6]}-{date_str[6:8]}")
+                    except Exception:
+                        pass
+        
+        has_live = False
+        for f in RESULTS_DIR.glob("**/*.md"):
+            if "_archive" not in [p.name for p in f.parents] and "dab" not in [p.name.lower() for p in f.parents]:
+                has_live = True
+                break
+        if has_live:
+            spider_dates.add(datetime.now().strftime("%Y-%m-%d"))
+
+    dab_dates = set()
+    from backend.app.db.database import SessionLocal
+    from backend.app.db.models import Evaluation
+    from sqlalchemy import cast, Date
+    db = SessionLocal()
+    try:
+        dates = db.query(cast(Evaluation.timestamp, Date)).distinct().all()
+        for (dt,) in dates:
+            if dt:
+                dab_dates.add(dt.strftime("%Y-%m-%d"))
+    except Exception:
+        pass
+    finally:
+        db.close()
+        
+    dab_results_dir = DAB_RESULTS_DIR
+    if dab_results_dir.exists():
+        archive_base = dab_results_dir / "_archive"
+        if archive_base.exists():
+            for d in archive_base.iterdir():
+                if d.is_dir():
+                    try:
+                        date_str = d.name.split('_')[1]
+                        dab_dates.add(f"{date_str[:4]}-{date_str[4:6]}-{date_str[6:8]}")
+                    except Exception:
+                        pass
+        
+        has_live = False
+        for f in dab_results_dir.glob("**/*_eval.json"):
+            if "_archive" not in [p.name for p in f.parents]:
+                has_live = True
+                break
+        if has_live:
+            dab_dates.add(datetime.now().strftime("%Y-%m-%d"))
+
+    return {
+        "spider": sorted(list(spider_dates), reverse=True),
+        "dab": sorted(list(dab_dates), reverse=True)
+    }
+
+
+class DemoQueryRequest(BaseModel):
+    query: str
+
+
+@app.post("/api/demo/query")
+def run_demo_query(payload: DemoQueryRequest):
+    """
+    Live Demo NL-to-SQL on the IPL SQLite dataset.
+    Fully generic: uses LLM to translate any natural language question to SQL,
+    then executes it against the database. No hardcoded queries.
+    """
+    from backend.app.repositories.db_executor import DatabaseExecutor
+    from backend.app.utils.llm import LLMClient
+
+    query_text = payload.query.strip()
+
+    schema_desc = """SQLite database: IPL (Indian Premier League cricket)
+
+Tables and columns:
+- player(player_id INTEGER PK, player_name TEXT, dob TEXT, batting_hand TEXT, bowling_skill TEXT, country_name TEXT)
+- team(team_id INTEGER PK, name TEXT)
+- match(match_id INTEGER PK, team_1 INTEGER FK team, team_2 INTEGER FK team, match_date TEXT,
+        season_id INTEGER, venue TEXT, toss_winner INTEGER FK team, toss_decision TEXT,
+        win_type TEXT, win_margin INTEGER, outcome_type TEXT, match_winner INTEGER FK team,
+        man_of_the_match INTEGER FK player)
+- player_match(match_id INTEGER FK match, player_id INTEGER FK player, role TEXT, team_id INTEGER FK team)
+- ball_by_ball(match_id INTEGER FK match, over_id INTEGER, ball_id INTEGER, innings_no INTEGER,
+               team_batting INTEGER FK team, team_bowling INTEGER FK team,
+               striker_batting_position INTEGER, striker INTEGER FK player,
+               non_striker INTEGER FK player, bowler INTEGER FK player)
+- batsman_scored(match_id INTEGER FK match, over_id INTEGER, ball_id INTEGER,
+                 runs_scored INTEGER, innings_no INTEGER)
+- wicket_taken(match_id INTEGER FK match, over_id INTEGER, ball_id INTEGER,
+               player_out INTEGER FK player, kind_out TEXT, innings_no INTEGER)
+- extra_runs(match_id INTEGER FK match, over_id INTEGER, ball_id INTEGER,
+             extra_type TEXT, extra_runs INTEGER, innings_no INTEGER)
+
+Join keys: ball_by_ball â†” batsman_scored / wicket_taken / extra_runs via (match_id, over_id, ball_id, innings_no)
+"""
+
+    prompt = f"""You are an expert SQLite query translator. Translate the question below into a single valid SQLite SELECT statement.
+
+SCHEMA:
+{schema_desc}
+
+STRICT RULES â€” violating any rule makes the query wrong:
+1. Dialect: SQLite ONLY. No QUALIFY, SAMPLE, PIVOT, or Snowflake/BigQuery functions.
+2. Player names: ALWAYS join player table and SELECT player.player_name â€” never expose raw player_id.
+3. Team names: ALWAYS join team table and SELECT team.name â€” never expose raw team_id.
+4. Output columns: SELECT exactly one human-readable label column (text) AND one numeric metric column. No extra ID columns.
+5. Aggregations: use GROUP BY for every non-aggregated SELECT column; use COALESCE on nullable numbers.
+6. Ordering: ORDER BY the metric column DESC (or ASC if question asks for lowest/minimum).
+7. Limit: LIMIT 10 unless the question specifies a different count.
+8. Output: return ONLY the SQL inside a ```sql ... ``` block. Nothing else.
+
+EXAMPLE â€” "Who scored the most runs overall?":
+```sql
+SELECT p.player_name, SUM(bs.runs_scored) AS total_runs
+FROM batsman_scored bs
+JOIN ball_by_ball b ON bs.match_id = b.match_id AND bs.over_id = b.over_id AND bs.ball_id = b.ball_id AND bs.innings_no = b.innings_no
+JOIN player p ON p.player_id = b.striker
+GROUP BY p.player_id, p.player_name
+ORDER BY total_runs DESC
+LIMIT 10;
+```
+
+Question: {query_text}"""
+
+    try:
+        llm = LLMClient(temperature=0.1)
+        resp = llm.generate(prompt, "IPL NL-to-SQL")
+        import re as _re
+        m = _re.search(r"```sql\s*(.*?)\s*```", resp, _re.DOTALL | _re.IGNORECASE)
+        sql = m.group(1).strip() if m else resp.strip()
+    except Exception as e:
+        return {"success": False, "error": f"SQL generation failed: {e}", "sql": ""}
+
+    try:
+        executor = DatabaseExecutor(db_name="IPL", dialect="sqlite")
+        success, msg, rows = executor.execute_direct(sql)
+        if not success:
+            return {"success": False, "error": msg, "sql": sql}
+        columns = list(rows[0].keys()) if rows else []
+        return {"success": True, "sql": sql, "columns": columns, "results": rows[:20]}
+    except Exception as e:
+        return {"success": False, "error": str(e), "sql": sql or ""}
+
+
+@lru_cache(maxsize=4)
+def _cached_get_all_results(date: str, ttl_hash: int):
+    from backend.app.utils.archive import get_target_dirs_for_date
     all_runs = []
-    if not RESULTS_DIR.exists():
+    
+    target_dirs = get_target_dirs_for_date(RESULTS_DIR, date)
+    if not target_dirs:
         return []
 
-    for md_file in RESULTS_DIR.glob("**/*.md"):
-        if "dab" in [p.name.lower() for p in md_file.parents]:
-            continue
-        instance_id = md_file.stem
-        db_name = md_file.parent.name
-        csv_file = md_file.parent / f"{instance_id}.csv"
+    for t_dir in target_dirs:
+        if not t_dir.exists(): continue
+        if t_dir == RESULTS_DIR:
+            md_files = [f for f in t_dir.glob("**/*.md") if "_archive" not in [p.name for p in f.parents]]
+        else:
+            md_files = list(t_dir.glob("**/*.md"))
+            
+        for md_file in md_files:
+            if "dab" in [p.name.lower() for p in md_file.parents]:
+                continue
+            instance_id = md_file.stem
+            db_name = md_file.parent.name
+            csv_file = md_file.parent / f"{instance_id}.csv"
 
-        log_data = parse_md_log(md_file)
-        status = "error" if log_data.get("error") else "pending"
-        row_count = 0
+            log_data = parse_md_log(md_file)
+            status = "error" if log_data.get("error") else "pending"
+            row_count = 0
 
-        if csv_file.exists():
-            is_empty, rows = get_csv_info(csv_file)
-            status = "success" if not is_empty else "empty"
-            row_count = rows
-        elif log_data.get("success"):
-            status = "empty"
+            if csv_file.exists():
+                is_empty, rows = get_csv_info(csv_file)
+                status = "success" if not is_empty else "empty"
+                row_count = rows
+            elif log_data.get("success"):
+                status = "empty"
 
-        all_runs.append(
-            {
-                "id": instance_id,
-                "db": db_name,
-                "status": status,
-                "gold_status": None,
-                "latency": log_data.get("latency", 0),
-                "complexity": log_data.get("complexity", "unknown"),
-                "corrections": log_data.get("corrections", 0),
-                "critic_rounds": log_data.get("critic_rounds", 0),
-                "rows": row_count,
-                "timestamp": datetime.fromtimestamp(
-                    md_file.stat().st_mtime
-                ).isoformat(),
-            }
-        )
+            all_runs.append(
+                {
+                    "id": instance_id,
+                    "db": db_name,
+                    "status": status,
+                    "gold_status": None,
+                    "latency": log_data.get("latency", 0),
+                    "complexity": log_data.get("complexity", "unknown"),
+                    "corrections": log_data.get("corrections", 0),
+                    "critic_rounds": log_data.get("critic_rounds", 0),
+                    "rows": row_count,
+                    "timestamp": datetime.fromtimestamp(
+                        md_file.stat().st_mtime
+                    ).isoformat(),
+                }
+            )
     all_runs.sort(key=lambda x: x["timestamp"], reverse=True)
     return all_runs
 
 
 @app.get("/api/results/all")
-def get_all_results():
-    return _cached_get_all_results(_get_ttl_hash(60))
+def get_all_results(date: str = "all"):
+    return _cached_get_all_results(date, _get_ttl_hash(60))
 
 
 @app.get("/api/results/{db_name}")
-def get_db_results(db_name: str):
+def get_db_results(db_name: str, date: str = "all"):
     """Returns detailed results and questions for all instances in a specific database."""
+    from backend.app.utils.archive import get_target_dirs_for_date
     results = []
     db_name_upper = db_name.strip().upper()
-    res_dir = RESULTS_DIR / db_name_upper
+    
+    target_dirs = get_target_dirs_for_date(RESULTS_DIR, date)
 
     examples = get_all_examples_map()
     for instance_id, data in examples.items():
@@ -948,9 +1121,21 @@ def get_db_results(db_name: str):
             total_tokens = 0
             cost = 0.0
 
-            md_file = res_dir / f"{instance_id}.md"
-            csv_file = res_dir / f"{instance_id}.csv"
             clean_id = instance_id.strip()
+            
+            md_file = None
+            csv_file = None
+            for t_dir in target_dirs:
+                if (t_dir / db_name_upper / f"{clean_id}.md").exists():
+                    res_dir = t_dir / db_name_upper
+                    md_file = res_dir / f"{clean_id}.md"
+                    csv_file = res_dir / f"{clean_id}.csv"
+                    break
+                    
+            if md_file is None:
+                res_dir = RESULTS_DIR / db_name_upper
+                md_file = res_dir / f"{clean_id}.md"
+                csv_file = res_dir / f"{clean_id}.csv"
 
             if clean_id in RUNNING_TASKS:
                 status = "running"
@@ -999,10 +1184,17 @@ def get_db_results(db_name: str):
 
 
 @app.get("/api/details/{db_name}/{instance_id}")
-def get_instance_details(db_name: str, instance_id: str):
+def get_instance_details(db_name: str, instance_id: str, date: str = "all"):
     """Returns the raw log, extracted SQL, and CSV data for a specific instance."""
+    from backend.app.utils.archive import get_target_dirs_for_date
     db_name_upper = db_name.strip().upper()
+    
     res_dir = RESULTS_DIR / db_name_upper
+    target_dirs = get_target_dirs_for_date(RESULTS_DIR, date)
+    for t_dir in target_dirs:
+        if (t_dir / db_name_upper).exists():
+            res_dir = t_dir / db_name_upper
+            break
 
     md_file = res_dir / f"{instance_id}.md"
     csv_file = res_dir / f"{instance_id}.csv"
@@ -1293,6 +1485,125 @@ def get_live_execution_feed(db_name: str, instance_id: str):
     }
 
 
+@app.get("/api/stream/{db_name}/{instance_id}")
+async def stream_live_execution(db_name: str, instance_id: str, request: Request):
+    clean_id = instance_id.strip()
+    db_upper = db_name.strip().upper()
+    res_dir = RESULTS_DIR / db_upper
+    md_file = res_dir / f"{clean_id}.md"
+    csv_file = res_dir / f"{clean_id}.csv"
+
+    def _parse_state() -> dict:
+        is_running = clean_id in RUNNING_TASKS
+        status = "running" if is_running else "idle"
+        if not is_running and csv_file.exists():
+            is_empty, r_cnt = get_csv_info(csv_file)
+            status = "empty" if is_empty else "success"
+        elif not is_running and md_file.exists() and not csv_file.exists():
+            status = "error"
+
+        steps: list[dict] = [{"time": datetime.now().strftime("%H:%M:%S"), "type": "start",
+                               "text": f"Initializing autonomous pipeline for {clean_id} on {db_upper}"}]
+        current_phase = "Initializing Agent Orchestrator..."
+        corrections = 0
+        elapsed_seconds = 0.0
+
+        if md_file.exists():
+            try:
+                content = md_file.read_text(encoding="utf-8", errors="replace")
+                start_m = re.search(
+                    r"--- EXECUTION STARTED AT (\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2}) ---", content)
+                end_m = re.search(
+                    r"--- EXECUTION FINISHED AT (\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2}) ---", content)
+                if start_m:
+                    try:
+                        fmt = "%Y-%m-%d %H:%M:%S"
+                        s_time = datetime.strptime(start_m.group(1), fmt)
+                        e_time = datetime.strptime(end_m.group(1), fmt) if end_m else datetime.now()
+                        elapsed_seconds = round((e_time - s_time).total_seconds(), 1)
+                    except Exception:
+                        pass
+                else:
+                    try:
+                        s_time = datetime.fromtimestamp(md_file.stat().st_ctime)
+                        elapsed_seconds = round((datetime.now() - s_time).total_seconds(), 1)
+                    except Exception:
+                        pass
+
+                for line in content.split("\n"):
+                    l_s = line.strip()
+                    if "Executing SchemaLinker Module" in l_s or "SchemaLinker" in l_s:
+                        current_phase = "Surgical Schema Pruning & Column Linker"
+                        if not any(s["text"].startswith("SchemaLinker:") for s in steps):
+                            steps.append({"time": datetime.now().strftime("%H:%M:%S"), "type": "step",
+                                          "text": "SchemaLinker: Pruning full schema down to surgical candidate subset."})
+                    elif "Executing SQL Generator Module" in l_s:
+                        current_phase = "Adaptive FQN SQL Generation"
+                        if not any(s["text"].startswith("SQL Generator:") for s in steps):
+                            steps.append({"time": datetime.now().strftime("%H:%M:%S"), "type": "step",
+                                          "text": "SQL Generator: Assembling deterministic joins matching Snowflake casing."})
+                    elif "Executing Self-Correction Module" in l_s or "Self-Correction" in l_s:
+                        current_phase = "Closed-Loop Execution Corrector"
+                        corrections += 1
+                        steps.append({"time": datetime.now().strftime("%H:%M:%S"), "type": "warn",
+                                      "text": f"Self-Correction: Triggered automated SQL repair loop #{corrections}."})
+                    elif "Executing ResultValidator" in l_s or "Data IQ" in l_s:
+                        current_phase = "Data IQ Execution Auditor"
+                        if not any(s["text"].startswith("Data IQ Auditor:") for s in steps):
+                            steps.append({"time": datetime.now().strftime("%H:%M:%S"), "type": "step",
+                                          "text": "Data IQ Auditor: Probing result grain, NULL density, and unit scale."})
+            except Exception:
+                pass
+
+        if csv_file.exists():
+            _is_emp, r_cnt = get_csv_info(csv_file)
+            current_phase = "Execution Complete"
+            if r_cnt > 0:
+                steps.append({"time": datetime.now().strftime("%H:%M:%S"), "type": "success",
+                               "text": f"Execution Complete: Retrieved {r_cnt} verified gold-standard rows."})
+            else:
+                steps.append({"time": datetime.now().strftime("%H:%M:%S"), "type": "warn",
+                               "text": "Execution Complete: Query returned 0 rows after all correction cycles."})
+        elif not is_running and md_file.exists() and status == "error":
+            steps.append({"time": datetime.now().strftime("%H:%M:%S"), "type": "error",
+                           "text": "Execution Terminated: Unrecoverable syntax or connection failure."})
+
+        seen: set[str] = set()
+        clean_steps = [s for s in steps if s["text"] not in seen and not seen.add(s["text"])]
+
+        return {
+            "status": status,
+            "current_phase": "Execution Complete" if not is_running and csv_file.exists() else current_phase,
+            "elapsed_seconds": max(elapsed_seconds, 0.1),
+            "steps": clean_steps[-6:],
+            "is_running": is_running,
+        }
+
+    async def _event_stream():
+        last_steps_count = -1
+        while True:
+            if await request.is_disconnected():
+                break
+            state = _parse_state()
+            if len(state["steps"]) != last_steps_count:
+                last_steps_count = len(state["steps"])
+                yield f"data: {json.dumps(state)}\n\n"
+            if not state["is_running"]:
+                yield f"event: done\ndata: {json.dumps({'is_running': False, 'status': state['status']})}\n\n"
+                break
+            await asyncio.sleep(0.8)
+
+    return StreamingResponse(
+        _event_stream(),
+        media_type="text/event-stream",
+        headers={
+            "Cache-Control": "no-cache",
+            "X-Accel-Buffering": "no",
+            "Connection": "keep-alive",
+        },
+    )
+
+
 @app.post("/api/run/{db_name}")
 def run_pipeline(db_name: str, workers: int = 4):
     """Triggers in-process execution for a DB."""
@@ -1368,23 +1679,67 @@ def run_all_snowflake(
                     continue
             elif not md_file.exists():
                 continue
+        # scope="all" → include everything (fresh run, overwrites existing results)
 
         target_examples.append(ex)
+
+    # Isolated Run Architecture: Archive old results before starting global fresh run
+    import shutil
+    if scope == "all":
+        run_id = datetime.now().strftime("run_%Y%m%d_%H%M%S")
+        archive_dir = RESULTS_DIR / "_archive" / run_id
+        archive_dir.mkdir(parents=True, exist_ok=True)
+        
+        if RESULTS_DIR.exists():
+            for item in RESULTS_DIR.iterdir():
+                # Never archive dab or the archive folder itself
+                if item.name not in ("_archive", "dab"):
+                    try:
+                        shutil.move(str(item), str(archive_dir / item.name))
+                    except Exception:
+                        pass
+    
+    global SPIDER_CANCEL_FLAG
+    SPIDER_CANCEL_FLAG = False
+
+    total = len(target_examples)
+    run_date = datetime.now().strftime("%Y-%m-%d")
+    with _SESSION_LOCK:
+        RUN_SESSION.update({
+            "running": True,
+            "total": total,
+            "completed": 0,
+            "run_date": run_date,
+            "started_at": datetime.now().isoformat(),
+        })
 
     def execute_global_batch():
         from backend.scripts.run_batch import run_single_example
 
         for ex in target_examples:
+            if SPIDER_CANCEL_FLAG:
+                for remaining in target_examples:
+                    RUNNING_TASKS.discard(remaining["instance_id"].strip())
+                break
+                
             clean_id = ex["instance_id"].strip()
             RUNNING_TASKS.add(clean_id)
             try:
                 run_single_example(ex)
             finally:
                 RUNNING_TASKS.discard(clean_id)
+                with _SESSION_LOCK:
+                    RUN_SESSION["completed"] += 1
+
+        _cached_get_metrics.cache_clear()
+        with _SESSION_LOCK:
+            RUN_SESSION["running"] = False
 
     EXECUTION_POOL.submit(execute_global_batch)
     return {
-        "message": f"Global benchmark started with {len(target_examples)} instances in scope '{scope}'"
+        "message": f"Global benchmark started with {total} instances in scope '{scope}'",
+        "total": total,
+        "run_date": run_date,
     }
 
 
@@ -1425,12 +1780,69 @@ def get_audit_status():
     return {"running": GLOBAL_AUDIT_RUNNING}
 
 
-@app.get("/api/run/status")
+@app.get("/api/status")
 def get_run_status():
-    return {"running": len(RUNNING_TASKS) > 0, "tasks": list(RUNNING_TASKS)}
+    with _SESSION_LOCK:
+        session_info = dict(RUN_SESSION)
 
+    active_tasks = list(RUNNING_TASKS)
+    # The total completion tracking is natively handled by the RUN_SESSION dictionary
+    return {
+        "running": active_tasks,
+        "count": len(active_tasks),
+        "session": session_info,
+    }
 
+@app.post("/api/stop")
+def stop_spider_all():
+    """Cancel a running Spider batch job."""
+    global SPIDER_CANCEL_FLAG
+    SPIDER_CANCEL_FLAG = True
+    
+    RUNNING_TASKS.clear()
+    with _SESSION_LOCK:
+        RUN_SESSION["running"] = False
+        
+    return {"message": "Stop requested. Running queries will finish gracefully."}
 
+@app.delete("/api/runs/{date}")
+def delete_spider_run(date: str):
+    """Delete a historical Spider run by date."""
+    from datetime import datetime
+    
+    from backend.app.utils.archive import force_delete_dir, force_delete_file
+    
+    if date == "all":
+        return {"error": "Cannot delete 'all' dates."}
+        
+    today = datetime.now().strftime("%Y-%m-%d")
+    
+    # If the user tries to delete the current live run
+    if date == today:
+        if RESULTS_DIR.exists():
+            for item in RESULTS_DIR.iterdir():
+                if item.name not in ("_archive", "dab"):
+                    if item.is_dir():
+                        force_delete_dir(item)
+                    else:
+                        force_delete_file(item)
+        return {"message": f"Cleared live results for {date}"}
+        
+    # Search for the specific run folder in the archive that matches the date
+    archive_base = RESULTS_DIR / "_archive"
+    if archive_base.exists():
+        for run_folder in archive_base.iterdir():
+            if run_folder.is_dir():
+                try:
+                    date_str = run_folder.name.split('_')[1] # YYYYMMDD
+                    run_date = f"{date_str[:4]}-{date_str[4:6]}-{date_str[6:8]}"
+                    if run_date == date:
+                        force_delete_dir(run_folder)
+                except Exception:
+                    pass
+    
+    _cached_get_metrics.cache_clear()
+    return {"message": f"Run {date} deleted."}
 
 
 @app.get("/api/diagnose/{db_name}/{instance_id}")
@@ -1705,18 +2117,33 @@ def fix_issues_endpoint(db_name: str, instance_id: str):
 
     # 1. Look up user question
     question = "No question found"
-    input_file = INPUT_DIR / "spider2-lite-snowflake.jsonl"
-    if input_file.exists():
-        with open(input_file, "r", encoding="utf-8") as f:
-            for line in f:
-                if line.strip():
-                    try:
-                        data = json.loads(line)
-                        if data.get("instance_id") == instance_id:
-                            question = data.get("question", question)
-                            break
-                    except Exception:
-                        pass
+    if db_name_upper.startswith("DAB"):
+        try:
+            from backend.app.dab.benchmark_loader import load_all_queries
+            queries = load_all_queries(str(DAB_REPO))
+            dataset = db_name.split("/")[-1].strip()
+            q_id_match = re.search(r'\d+', instance_id)
+            if q_id_match:
+                q_id = int(q_id_match.group())
+                for q in queries:
+                    if q.get("dataset", "").lower() == dataset.lower() and q.get("query_id") == q_id:
+                        question = q.get("question", question)
+                        break
+        except Exception:
+            pass
+    else:
+        input_file = INPUT_DIR / "spider2-lite-snowflake.jsonl"
+        if input_file.exists():
+            with open(input_file, "r", encoding="utf-8") as f:
+                for line in f:
+                    if line.strip():
+                        try:
+                            data = json.loads(line)
+                            if data.get("instance_id") == instance_id:
+                                question = data.get("question", question)
+                                break
+                        except Exception:
+                            pass
 
     sql_file = RESULTS_DIR / db_name_upper / f"{instance_id}.sql"
     md_file = RESULTS_DIR / db_name_upper / f"{instance_id}.md"
@@ -1961,834 +2388,30 @@ def reject_fix_endpoint(db_name: str, instance_id: str, payload: Dict[str, Any])
     return {"success": True, "message": "Repair rejected and discarded."}
 
 
-# ===========================================================================
-# DAB (DataAgentBench) Endpoints — completely isolated from Spider2-Lite code
-# ===========================================================================
+@app.get("/api/diagnose/dab/{dataset}/{query_id}")
+def diagnose_dab_instance(dataset: str, query_id: str):
+    qid = query_id.lower().replace("query", "")
+    return diagnose_instance(f"DAB/{dataset}", f"query{qid}")
 
-from backend.app.core.config import DAB_REPO as _DAB_REPO
 
-DAB_REPO_PATH_DEFAULT = str(_DAB_REPO)
-DAB_RESULTS_BASE = RESULTS_DIR / "dab"
-DAB_RUNNING_TASKS: set = set()
-DAB_CANCEL_FLAG: bool = False
-_dab_queries_cache = None
+@app.post("/api/fix_issues/dab/{dataset}/{query_id}")
+def fix_issues_dab_endpoint(dataset: str, query_id: str):
+    qid = query_id.lower().replace("query", "")
+    return fix_issues_endpoint(f"DAB/{dataset}", f"query{qid}")
 
 
-def _get_dab_queries():
-    """Lazy-load and cache all DAB queries from the repo."""
-    global _dab_queries_cache
-    if _dab_queries_cache is not None:
-        return _dab_queries_cache
-    try:
-        from backend.app.dab.benchmark_loader import load_all_queries
+@app.post("/api/accept_fix/dab/{dataset}/{query_id}")
+def accept_fix_dab_endpoint(dataset: str, query_id: str, payload: AcceptFixPayload):
+    qid = query_id.lower().replace("query", "")
+    return accept_fix_endpoint(f"DAB/{dataset}", f"query{qid}", payload)
 
-        _dab_queries_cache = load_all_queries(DAB_REPO_PATH_DEFAULT)
-    except Exception:
-        _dab_queries_cache = []
-    return _dab_queries_cache
 
+@app.post("/api/reject_fix/dab/{dataset}/{query_id}")
+def reject_fix_dab_endpoint(dataset: str, query_id: str, payload: Dict[str, Any]):
+    qid = query_id.lower().replace("query", "")
+    return reject_fix_endpoint(f"DAB/{dataset}", f"query{qid}", payload)
 
-def _dab_query_status(dataset: str, query_id: str) -> dict:
-    """Get the current status of a single DAB query."""
-    from backend.app.dab.dab_evaluator import load_eval_result
+from backend.app.routes.dab_routes import router as dab_router
+app.include_router(dab_router)
 
-    qkey = f"{dataset}_q{query_id}"
 
-    if qkey in DAB_RUNNING_TASKS:
-        return {"status": "running", "passed": None, "reason": "", "evaluated": False, "latency": 0}
-
-    eval_result = load_eval_result(dataset, query_id)
-    if eval_result is None:
-        return {"status": "pending", "passed": None, "reason": "", "evaluated": False, "latency": 0}
-
-    return {
-        "status": "passed" if eval_result.get("passed") else "failed",
-        "passed": eval_result.get("passed"),
-        "reason": eval_result.get("reason", ""),
-        "method": eval_result.get("method", ""),
-        "timestamp": eval_result.get("timestamp", ""),
-        "agent_answer": eval_result.get("agent_answer_snippet", ""),
-        "ground_truth": eval_result.get("ground_truth", ""),
-        "evaluated": True,
-        "latency": eval_result.get("elapsed_s", 0),
-        "input_tokens": eval_result.get("input_tokens", 0),
-        "output_tokens": eval_result.get("output_tokens", 0),
-    }
-
-
-def get_dab_dataset_stats(dataset: str, db_clients: dict, db_description: str) -> tuple[int, int]:
-    """Calculate schema token count and tables count for a DAB dataset."""
-    tokens = len(db_description) // 4 if db_description else 0
-    tables_count = 0
-    
-    # Try counting from db_clients files
-    for client in db_clients.values():
-        db_type = client.get("db_type", "").lower()
-        db_path_str = client.get("db_path")
-        if not db_path_str:
-            continue
-        db_path = Path(db_path_str)
-        if not db_path.exists():
-            continue
-            
-        if db_type == "sqlite":
-            try:
-                import sqlite3
-                conn = sqlite3.connect(f"file:{db_path.as_posix()}?mode=ro", uri=True, timeout=1.0)
-                cursor = conn.cursor()
-                cursor.execute("SELECT count(*) FROM sqlite_master WHERE type='table';")
-                tables_count += cursor.fetchone()[0]
-                conn.close()
-            except Exception:
-                pass
-        elif db_type == "duckdb":
-            try:
-                import duckdb
-                conn = duckdb.connect(str(db_path), read_only=True)
-                tables_count += conn.execute("SELECT count(*) FROM information_schema.tables;").fetchone()[0]
-                conn.close()
-            except Exception:
-                pass
-        elif db_path.suffix.lower() == ".sql":
-            try:
-                with open(db_path, "r", encoding="utf-8", errors="ignore") as f:
-                    content = f.read()
-                tables_count += len(re.findall(r'create\s+table\s+(\w+|\"[^\"]+\"|\`[^\`]+\`)', content, re.IGNORECASE))
-            except Exception:
-                pass
-                
-    if tables_count > 0:
-        return tokens, tables_count
-        
-    # Heuristics fallback: parse from description text
-    if db_description:
-        word_to_num = {
-            "one": 1, "two": 2, "three": 3, "four": 4, "five": 5,
-            "six": 6, "seven": 7, "eight": 8, "nine": 9, "ten": 10,
-            "a": 1, "single": 1
-        }
-        matches = re.findall(r'consists\s+of\s+(\w+|\d+)\s+table', db_description, re.IGNORECASE)
-        for m in matches:
-            m = m.lower()
-            if m.isdigit():
-                tables_count += int(m)
-            elif m in word_to_num:
-                tables_count += word_to_num[m]
-                
-        if tables_count == 0:
-            tables_count = max(2, len(re.findall(r'table\b', db_description, re.IGNORECASE)) // 2)
-
-    return tokens, max(1, tables_count)
-
-
-@lru_cache(maxsize=128)
-def cached_dab_dataset_stats(dataset: str, db_clients_json: str, db_description: str) -> tuple[int, int]:
-    """LRU cache wrapper for get_dab_dataset_stats."""
-    db_clients = json.loads(db_clients_json)
-    return get_dab_dataset_stats(dataset, db_clients, db_description)
-
-
-@lru_cache(maxsize=128)
-def _cached_dab_metrics(date: str, ttl_hash: int):
-    """Compute DAB accuracy metrics with TTL caching."""
-    try:
-        from backend.app.dab.benchmark_loader import load_all_queries
-        from backend.app.dab.dab_evaluator import compute_accuracy
-
-        queries = load_all_queries(DAB_REPO_PATH_DEFAULT)
-        metrics = compute_accuracy(queries, date=date)
-        
-        # Format and attach additional fields to match Spider dashboard
-        evaluated = metrics.get("evaluated", 0)
-        total_time = metrics.get("total_elapsed_time_s", 0)
-        total_input_tokens = metrics.get("total_input_tokens", 0)
-        total_output_tokens = metrics.get("total_output_tokens", 0)
-        total_tokens = total_input_tokens + total_output_tokens
-        
-        # Bedrock pricing model cost estimate ($0.15/1M input, $0.60/1M output)
-        cost = (total_input_tokens * 0.15 / 1000000.0) + (total_output_tokens * 0.60 / 1000000.0)
-        
-        metrics["passed"] = metrics.get("queries_passed_atk", 0)
-        metrics["failed"] = evaluated - metrics["passed"]
-        metrics["avg_latency"] = f"{total_time / evaluated:.1f}s" if evaluated > 0 else "0.0s"
-        metrics["avg_tokens_per_agent"] = f"{int(total_tokens / evaluated):,} tokens" if evaluated > 0 else "0 tokens"
-        metrics["total_tokens"] = f"{total_tokens / 1000000:.2f}M" if total_tokens >= 1000000 else f"{total_tokens / 1000:.1f}K" if total_tokens > 0 else "0"
-        metrics["total_cost"] = f"${cost:.4f}"
-        metrics["avg_cost_per_query"] = f"${(cost / evaluated):.4f}" if evaluated > 0 else "$0.0000"
-        
-        return metrics
-    except Exception as e:
-        return {
-            "error": str(e),
-            "total_queries": 0,
-            "evaluated": 0,
-            "pending": 0,
-            "passed": 0,
-            "failed": 0,
-            "pass_at_1": 0.0,
-            "pass_at_1_pct": "0.0%",
-            "per_dataset": {},
-            "avg_latency": "0.0s",
-            "avg_tokens_per_agent": "0 tokens",
-            "total_cost": "$0.0000",
-            "avg_cost_per_query": "$0.0000",
-        }
-
-
-@app.get("/api/dab/databases")
-def get_dab_databases(date: str = "all"):
-    """Return DAB datasets formatted like Spider databases."""
-    metrics = _cached_dab_metrics(date, _get_ttl_hash(15))
-    per_dataset = metrics.get("per_dataset", {})
-    
-    # Retrieve DB schema / tokens info from the cached queries list
-    queries = _get_dab_queries()
-    dataset_info = {}
-    for q in queries:
-        ds = q["dataset"]
-        if ds not in dataset_info:
-            dataset_info[ds] = {
-                "db_clients": q.get("db_clients", {}),
-                "db_description": q.get("db_description", "")
-            }
-            
-    databases = []
-    for db_name, stats in per_dataset.items():
-        total = stats.get("total", 0)
-        pending = stats.get("pending", 0)
-        evaluated = stats.get("evaluated", 0)
-        passed = stats.get("passed_atk", 0)
-        failed = evaluated - passed
-        
-        info = dataset_info.get(db_name, {})
-        db_clients = info.get("db_clients", {})
-        db_description = info.get("db_description", "")
-        
-        # Serialize db_clients for caching key
-        db_clients_json = json.dumps(db_clients, sort_keys=True)
-        tokens, tables_count = cached_dab_dataset_stats(db_name, db_clients_json, db_description)
-        
-        databases.append({
-            "name": db_name,
-            "status": "completed" if pending == 0 and total > 0 else "pending",
-            "results_count": passed,
-            "error_count": failed,
-            "empty_count": 0,
-            "total_questions": total,
-            "tokens": tokens,
-            "tables_count": tables_count,
-        })
-    
-    return sorted(databases, key=lambda x: x["name"])
-
-
-@app.get("/api/dab/queries/db/{dataset}")
-def get_dab_queries_by_db(dataset: str):
-    """Return queries for a specific DAB dataset."""
-    queries = _get_dab_queries()
-    db_queries = [q for q in queries if q.get("dataset") == dataset]
-    
-    result = []
-    for q in db_queries:
-        status_info = _dab_query_status(q["dataset"], q["query_id"])
-        dbtypes = list({cfg.get("db_type", "?") for cfg in q.get("db_clients", {}).values()})
-        result.append(
-            {
-                "id": f"{q['dataset']}_q{q['query_id']}",
-                "question": q["question"],
-                "complexity": status_info.get("passed") is True, # using true/false just for UI
-                "db_id": q["dataset"],
-                "evidence": q.get("external_knowledge", ""),
-                "status": status_info["status"],
-                "spider_query": "",
-                "sql": "",
-                "error": status_info.get("reason", ""),
-                "latency": status_info.get("latency"),
-                "passed": status_info.get("passed"),
-                "dbtypes": dbtypes,
-            }
-        )
-    return result
-
-@app.get("/api/dab/queries")
-def get_dab_queries():
-    """List all 54 DAB queries with their current status."""
-    queries = _get_dab_queries()
-    result = []
-    for q in queries:
-        status_info = _dab_query_status(q["dataset"], q["query_id"])
-        dbtypes = list({cfg.get("db_type", "?") for cfg in q["db_clients"].values()})
-        result.append(
-            {
-                "instance_id": q["instance_id"],
-                "dataset": q["dataset"],
-                "query_id": q["query_id"],
-                "question": q["question"],
-                "ground_truth": q["ground_truth"],
-                "db_types": dbtypes,
-                "needs_docker": q["needs_docker"],
-                "has_hint": q["has_hint"],
-                **status_info,
-            }
-        )
-    return result
-
-
-@app.get("/api/dab/metrics")
-def get_dab_metrics():
-    """Get overall DAB accuracy metrics."""
-    return _cached_dab_metrics(_get_ttl_hash(5))
-
-
-@app.get("/api/dab/submissions")
-def get_dab_submissions():
-    """Get the parsed benchmark submission evaluation results."""
-    summary_path = Path(__file__).resolve().parent / "dab" / "submissions_summary.json"
-    if summary_path.exists():
-        try:
-            with open(summary_path, "r", encoding="utf-8") as f:
-                return json.load(f)
-        except Exception as e:
-            return {"error": f"Failed to load submissions summary: {e}"}
-    return []
-
-
-@app.get("/api/dab/results/{dataset}/{query_id}")
-def get_dab_result(dataset: str, query_id: str):
-    """Get full result details for a specific DAB query."""
-    from backend.app.dab.dab_evaluator import load_eval_result
-
-    result_dir = DAB_RESULTS_BASE / dataset
-    md_file = result_dir / f"query{query_id}.md"
-    sql_file = result_dir / f"query{query_id}.sql"
-    csv_file = result_dir / f"query{query_id}.csv"
-    answer_file = result_dir / f"query{query_id}_answer.txt"
-
-    log_content = ""
-    sql_content = ""
-    csv_headers = []
-    csv_data = []
-    agent_answer = ""
-
-    if md_file.exists():
-        with contextlib.suppress(Exception):
-            log_content = md_file.read_text(encoding="utf-8", errors="replace")[:10000]
-
-    if sql_file.exists():
-        with contextlib.suppress(Exception):
-            sql_content = sql_file.read_text(encoding="utf-8").strip()
-
-    if answer_file.exists():
-        with contextlib.suppress(Exception):
-            agent_answer = answer_file.read_text(encoding="utf-8").strip()
-
-    if csv_file.exists():
-        try:
-            df = pd.read_csv(csv_file)
-            csv_headers = df.columns.tolist()
-            raw = df.head(50).to_dict(orient="records")
-            clean = []
-            for row in raw:  # type: ignore
-                cr = {}
-                for k, v in row.items():
-                    if (isinstance(v, (float, np.floating)) and (
-                        np.isnan(v) or np.isinf(v)
-                    )) or pd.isna(v):
-                        cr[k] = None
-                    else:
-                        cr[k] = v
-                clean.append(cr)
-            csv_data = clean
-        except Exception:
-            pass
-
-    eval_result = load_eval_result(dataset, query_id)
-    status_info = _dab_query_status(dataset, query_id)
-
-    return {
-        **status_info,
-        "dataset": dataset,
-        "query_id": query_id,
-        "log_content": log_content,
-        "sql_content": sql_content,
-        "csv_headers": csv_headers,
-        "csv_data": csv_data,
-        "agent_answer": agent_answer,
-        "eval_detail": eval_result,
-    }
-
-
-@app.post("/api/dab/run/{dataset}/{query_id}")
-def run_dab_single(dataset: str, query_id: str):
-    """Run a single DAB query through the agent pipeline."""
-    from backend.app.dab.dab_orchestrator import run_dab_query
-
-    qkey = f"{dataset}_q{query_id}"
-    if qkey in DAB_RUNNING_TASKS:
-        return {"message": f"Query {qkey} is already running."}
-
-    queries = _get_dab_queries()
-    target = next(
-        (
-            q
-            for q in queries
-            if q["dataset"] == dataset and q["query_id"] == str(query_id)
-        ),
-        None,
-    )
-    if not target:
-        return {"error": f"Query {qkey} not found in DAB index."}
-
-    DAB_RUNNING_TASKS.add(qkey)
-
-    def _execute():
-        try:
-            run_dab_query(target)
-        finally:
-            DAB_RUNNING_TASKS.discard(qkey)
-            # Invalidate metrics cache
-            global _dab_queries_cache
-            _dab_queries_cache = None
-            _cached_dab_metrics.cache_clear()
-
-    EXECUTION_POOL.submit(_execute)
-    return {"message": f"Started DAB query {qkey}"}
-
-
-class DabRunAllPayload(BaseModel):
-    skip_docker: bool = False
-    force_rerun: bool = False
-
-
-@app.post("/api/dab/stop")
-def stop_dab_all():
-    """Cancel a running DAB batch job."""
-    global DAB_CANCEL_FLAG
-    DAB_CANCEL_FLAG = True
-    return {"message": "Stop requested. Running query will finish gracefully."}
-
-
-@app.post("/api/dab/run_all")
-def run_dab_all(payload: DabRunAllPayload = DabRunAllPayload()):
-    """Trigger a full DAB benchmark run (all pending queries)."""
-    from backend.app.dab.dab_evaluator import load_eval_result
-    
-    global DAB_CANCEL_FLAG
-    DAB_CANCEL_FLAG = False
-
-    queries = _get_dab_queries()
-    if not queries:
-        return {"error": "No queries found. Check DAB repo path."}
-
-    to_run = []
-    for q in queries:
-        if payload.skip_docker and q["needs_docker"]:
-            continue
-        if not payload.force_rerun:
-            if load_eval_result(q["dataset"], q["query_id"]):
-                continue  # already done
-        qkey = q["instance_id"]
-        if qkey not in DAB_RUNNING_TASKS:
-            to_run.append(q)
-            DAB_RUNNING_TASKS.add(qkey)
-
-    if not to_run:
-        return {
-            "message": "All queries already evaluated. Use force_rerun=true to re-run.",
-            "count": 0,
-        }
-
-    def _run_batch():
-        from backend.app.dab.dab_orchestrator import run_dab_query
-        global DAB_CANCEL_FLAG
-
-        for q in to_run:
-            if DAB_CANCEL_FLAG:
-                # Discard remaining queued items
-                for remaining_q in to_run:
-                    DAB_RUNNING_TASKS.discard(remaining_q["instance_id"])
-                break
-                
-            qkey = q["instance_id"]
-            try:
-                run_dab_query(q)
-            except Exception:
-                pass
-            finally:
-                DAB_RUNNING_TASKS.discard(qkey)
-        # Invalidate caches
-        global _dab_queries_cache
-        _dab_queries_cache = None
-        _cached_dab_metrics.cache_clear()
-
-    EXECUTION_POOL.submit(_run_batch)
-    return {
-        "message": f"Started DAB batch run: {len(to_run)} queries queued",
-        "count": len(to_run),
-        "skip_docker": payload.skip_docker,
-    }
-
-
-@app.get("/api/dab/results/recent")
-def get_dab_recent_results(limit: int = 15):
-    """Return recent DAB eval results formatted like Spider's /api/results/recent."""
-    dab_results_dir = RESULTS_DIR / "dab"
-    if not dab_results_dir.exists():
-        return []
-
-    eval_files = list(dab_results_dir.glob("**/*_eval.json"))
-    eval_files.sort(key=lambda f: f.stat().st_mtime, reverse=True)
-
-    recent: List[Dict[str, Any]] = []
-    for ef in eval_files[:limit]:
-        try:
-            with open(ef, "r", encoding="utf-8") as fp:
-                ev = json.load(fp)
-        except Exception:
-            continue
-
-        passed = ev.get("passed", False)
-        in_t = ev.get("input_tokens", 0)
-        out_t = ev.get("output_tokens", 0)
-        total_tokens = in_t + out_t
-        recent.append(
-            {
-                "id": ev.get("instance_id", ef.stem.replace("_eval", "")),
-                "db": ev.get("dataset", ef.parent.name),
-                "status": "success" if passed else "error",
-                "gold_status": "gold_pass" if passed else "gold_fail",
-                "latency": round(ev.get("elapsed_s", 0), 1),
-                "complexity": "medium",
-                "complexity_type": "Unclassified",
-                "complexity_score": 0.0,
-                "corrections": 0,
-                "critic_rounds": 0,
-                "rows": 0,
-                "timestamp": ev.get(
-                    "timestamp", datetime.fromtimestamp(ef.stat().st_mtime).isoformat()
-                ),
-                "total_tokens": total_tokens,
-                "cost": round(total_tokens * 0.000003, 6),
-                "reason": ev.get("reason", ""),
-            }
-        )
-    return recent
-
-
-@app.get("/api/dab/status")
-def get_dab_run_status():
-    """Get which DAB queries are currently running."""
-    return {
-        "running": list(DAB_RUNNING_TASKS),
-        "count": len(DAB_RUNNING_TASKS),
-    }
-
-
-@app.get("/api/dab/repo_check")
-def check_dab_repo():
-    """Check if the DataAgentBench repo is available and cloned."""
-    from pathlib import Path
-
-    repo_path = Path(DAB_REPO_PATH_DEFAULT)
-    exists = repo_path.exists()
-    query_dirs = []
-    if exists:
-        query_dirs = [
-            d.name
-            for d in repo_path.iterdir()
-            if d.is_dir() and d.name.startswith("query_")
-        ]
-    return {
-        "repo_path": DAB_REPO_PATH_DEFAULT,
-        "exists": exists,
-        "query_datasets_found": len(query_dirs),
-        "datasets": sorted(query_dirs),
-    }
-
-
-@app.get("/api/improvement/status")
-def get_improvement_status():
-    """Return self-improvement pipeline history and current rule counts."""
-    log_path = MEMORY_DIR / "improvement_log.json"
-    lessons_path = MEMORY_DIR / "dynamic_lessons.json"
-
-    log: Dict[str, Any] = {}
-    if log_path.exists():
-        try:
-            with open(log_path, "r", encoding="utf-8") as f:
-                log = json.load(f)
-        except Exception:
-            log = {}
-
-    rule_counts: Dict[str, int] = {
-        "ACTIVE": 0,
-        "CANDIDATE": 0,
-        "REJECTED": 0,
-        "INACTIVE": 0,
-    }
-    if lessons_path.exists():
-        try:
-            with open(lessons_path, "r", encoding="utf-8") as f:
-                rules = json.load(f)
-            for r in rules:
-                s = r.get("status", "UNKNOWN")
-                rule_counts[s] = rule_counts.get(s, 0) + 1
-        except Exception:
-            pass
-
-    # Build accuracy trend: one point per daily run entry
-    accuracy_trend = []
-    for run in log.get("runs", []):
-        accuracy_trend.append(
-            {
-                "date": run.get("date", ""),
-                "pass_rate": run.get("pass_rate", 0),
-                "final_passes": run.get("final_passes", 0),
-                "total": run.get("total", 0),
-            }
-        )
-
-    # Flatten all rounds across all runs for recent_runs table
-    recent_rounds = []
-    for run in log.get("runs", []):
-        for r in run.get("rounds", []):
-            recent_rounds.append(
-                {
-                    "date": r.get("date", run.get("date", "")),
-                    "round": r.get("round", 1),
-                    "status": r.get("status", ""),
-                    "delta": r.get("delta", 0),
-                    "passes_before": r.get("passes_before", 0),
-                    "passes_after": r.get("passes_after", 0),
-                    "pass_rate": r.get("pass_rate", 0),
-                    "new_rules_added": r.get("new_rules_added", 0),
-                    "elapsed_s": r.get("elapsed_s", 0),
-                    "total": r.get("total", 0),
-                }
-            )
-
-    return {
-        "saturated": log.get("saturated", False),
-        "last_run": log.get("last_run"),
-        "total_rounds": log.get("total_rounds", 0),
-        "baseline_pass_rate": log.get("baseline_pass_rate"),
-        "rule_counts": rule_counts,
-        "accuracy_trend": accuracy_trend[-30:],
-        "recent_runs": recent_rounds[-15:],
-    }
-
-
-@app.post("/api/improvement/run")
-async def trigger_improvement_run(background_tasks: BackgroundTasks):
-    """Trigger a self-improvement run in the background (respects daily cap)."""
-    from backend.app.core.config import DAB_REPO as DAB_REPO_PATH
-
-    def _run():
-        try:
-            from backend.app.core.rules.self_improving_loop import SelfImprovingLoop
-
-            loop = SelfImprovingLoop(dab_repo=str(DAB_REPO_PATH))
-            loop.run_daily()
-        except Exception as e:
-            import traceback as tb
-
-            logger.error(f"Improvement run failed: {e}\n{tb.format_exc()}")
-
-    background_tasks.add_task(_run)
-    return {
-        "message": "Self-improvement run started in background. Check /api/improvement/status for results."
-    }
-
-
-# ---------------------------------------------------------------------------
-# LangSmith Evaluators API
-# ---------------------------------------------------------------------------
-
-DAB_RESULTS_PATH = (
-    Path(__file__).resolve().parent.parent.parent / "backend" / "results" / "dab"
-)
-
-_langsmith_eval_running = False
-
-
-@app.get("/api/langsmith/status")
-async def langsmith_status():
-    """
-    Return LangSmith connection status, project info, and dataset stats.
-    Also shows per-evaluator aggregate scores from stored DAB eval results.
-    """
-    from backend.app.core.langsmith_evaluators import (
-        _client,
-        DATASET_NAME,
-        run_all_evaluators,
-    )
-
-    status = {
-        "connected": False,
-        "project": os.getenv("LANGCHAIN_PROJECT", "TT_SQL_V2"),
-        "tracing_enabled": os.getenv("LANGCHAIN_TRACING_V2", "false").lower() == "true",
-        "dataset_name": DATASET_NAME,
-        "dataset_examples": 0,
-        "eval_running": _langsmith_eval_running,
-        "evaluator_summaries": {},
-    }
-
-    try:
-        projects = {p.name: str(p.id) for p in _client.list_projects()}
-        status["connected"] = True
-        status["project_id"] = projects.get(status["project"])
-        status["all_projects"] = list(projects.keys())
-
-        # Dataset count
-        try:
-            dataset = _client.read_dataset(dataset_name=DATASET_NAME)
-            status["dataset_examples"] = sum(
-                1 for _ in _client.list_examples(dataset_id=str(dataset.id))
-            )
-        except Exception:
-            status["dataset_examples"] = 0
-
-    except Exception as e:
-        status["error"] = str(e)
-
-    # Aggregate evaluator scores over stored eval JSON records
-    agg: dict[str, list] = {}
-    if DAB_RESULTS_PATH.exists():
-        for eval_file in DAB_RESULTS_PATH.glob("**/*.json"):
-            try:
-                rec = json.loads(eval_file.read_text(encoding="utf-8"))
-                feedbacks = run_all_evaluators(rec)
-                for fb in feedbacks:
-                    key = fb["key"]
-                    score = fb.get("score")
-                    if score is not None:
-                        agg.setdefault(key, []).append(score)
-            except Exception:
-                continue
-
-    for key, scores in agg.items():
-        if scores:
-            status["evaluator_summaries"][key] = {
-                "mean": round(sum(scores) / len(scores), 3),
-                "n": len(scores),
-                "flagged": sum(1 for s in scores if s > 0.5),
-            }
-
-    return status
-
-
-@app.post("/api/langsmith/build_dataset")
-async def build_langsmith_dataset(background_tasks: BackgroundTasks):
-    """Create/update the 'DAB Benchmark' LangSmith dataset with all 54 queries."""
-
-    def _build():
-        try:
-            from backend.app.core.langsmith_evaluators import build_dab_dataset
-
-            dataset_id = build_dab_dataset()
-            logger.info(f"LangSmith dataset built: {dataset_id}")
-        except Exception as e:
-            logger.error(f"LangSmith dataset build failed: {e}")
-
-    background_tasks.add_task(_build)
-    return {
-        "message": "Building DAB Benchmark dataset in LangSmith. Check /api/langsmith/status for progress."
-    }
-
-
-@app.post("/api/langsmith/run_eval")
-async def run_langsmith_eval(background_tasks: BackgroundTasks):
-    """
-    Run a full offline LangSmith experiment over the DAB Benchmark dataset
-    applying all 8 evaluators. Results appear in LangSmith under TT_SQL_V2 project.
-    """
-    global _langsmith_eval_running
-    if _langsmith_eval_running:
-        return {
-            "message": "Evaluation already running. Check LangSmith dashboard for progress."
-        }
-
-    def _run():
-        global _langsmith_eval_running
-        _langsmith_eval_running = True
-        try:
-            from backend.app.core.langsmith_evaluators import run_langsmith_experiment
-
-            summary = run_langsmith_experiment(experiment_prefix="TT_SQL_V2")
-            logger.info(f"LangSmith experiment complete: {summary}")
-        except Exception as e:
-            import traceback as tb
-
-            logger.error(f"LangSmith eval failed: {e}\n{tb.format_exc()}")
-        finally:
-            _langsmith_eval_running = False
-
-    background_tasks.add_task(_run)
-    return {
-        "message": "LangSmith evaluation started. All 8 evaluators running over 54 DAB queries.",
-        "evaluators": [
-            "correctness",
-            "hallucination",
-            "pii_leakage",
-            "prompt_injection",
-            "toxicity",
-            "bias_fairness",
-            "perceived_error",
-            "user_satisfaction",
-        ],
-        "view_at": "https://smith.langchain.com",
-    }
-
-
-@app.get("/api/langsmith/scores")
-async def get_langsmith_scores():
-    """
-    Return per-query evaluator scores from stored DAB eval JSON records.
-    Used by the UI to show the evaluator scorecard.
-    """
-    rows = []
-    if not DAB_RESULTS_PATH.exists():
-        return {"scores": rows}
-
-    from backend.app.core.langsmith_evaluators import run_all_evaluators
-
-    for eval_file in sorted(DAB_RESULTS_PATH.glob("**/*.json")):
-        try:
-            rec = json.loads(eval_file.read_text(encoding="utf-8"))
-        except Exception:
-            continue
-
-        feedbacks = run_all_evaluators(rec)
-        row = {
-            "instance_id": rec.get("instance_id", ""),
-            "dataset": rec.get("dataset", ""),
-            "query_id": rec.get("query_id", 0),
-            "passed": rec.get("passed", False),
-        }
-        for fb in feedbacks:
-            row[fb["key"]] = fb.get("score")
-        rows.append(row)
-
-    return {"scores": rows, "total": len(rows)}
-
-
-
-
-
-@app.get("/api/pipeline/run/{instance_id}")
-def get_pipeline_run_telemetry(instance_id: str):
-    """Return per-stage telemetry for a specific run."""
-    from backend.app.core.config import MEMORY_DIR
-    tel_file = MEMORY_DIR / "run_telemetry" / f"{instance_id}.json"
-    if not tel_file.exists():
-        return {"stages": [], "query": "", "ts": 0}
-    try:
-        return json.loads(tel_file.read_text(encoding="utf-8"))
-    except Exception:
-        return {"stages": [], "query": "", "ts": 0}
-
-
-if __name__ == "__main__":
-    import uvicorn
-
-    uvicorn.run(app, host="0.0.0.0", port=8001)

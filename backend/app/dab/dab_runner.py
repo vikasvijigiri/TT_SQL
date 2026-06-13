@@ -26,6 +26,9 @@ from backend.app.dab.dab_orchestrator import run_dab_query, DAB_RESULTS_DIR
 from backend.app.dab.dab_evaluator import compute_accuracy
 from backend.app.utils.llm import LLMClient
 from backend.app.core.config import DAB_REPO
+from backend.app.db.database import SessionLocal
+from backend.app.db.models import TaskRun
+import uuid
 import contextlib
 
 DAB_REPO_DEFAULT = str(DAB_REPO)
@@ -48,6 +51,7 @@ def run_all(
     query_id_filter: Optional[str] = None,
     force_rerun: bool = False,
     num_runs: int = 1,
+    enqueue_only: bool = False,
 ) -> List[Dict[str, Any]]:
     """Run all (or filtered) queries and return results.
 
@@ -95,6 +99,31 @@ def run_all(
     print("-" * 60)
 
     results = []
+    
+    if enqueue_only:
+        db = SessionLocal()
+        try:
+            print(f"\\n[ENQUEUE] Pushing {total_slots} items to TaskManager Queue...")
+            for q, r in work:
+                task_id = f"dab_{uuid.uuid4().hex[:8]}"
+                target_id = f"{q['dataset']}_{q['query_id']}_run{r}"
+                
+                # Upsert to prevent duplicates if someone runs enqueue twice
+                existing = db.query(TaskRun).filter(TaskRun.target_id == target_id, TaskRun.status == "PENDING").first()
+                if not existing:
+                    tr = TaskRun(
+                        id=task_id,
+                        task_type="dab_query",
+                        status="PENDING",
+                        target_id=target_id
+                    )
+                    db.add(tr)
+            db.commit()
+            print("[ENQUEUE] Finished enqueuing. Start workers via: python backend/app/workers/dab_worker.py")
+        finally:
+            db.close()
+        return []
+
     llm_client = LLMClient()
 
     if workers == 1:
@@ -217,6 +246,9 @@ def main():
         "--report_only", action="store_true", help="Only print accuracy report"
     )
     parser.add_argument(
+        "--enqueue", action="store_true", help="Enqueue queries to the SQLite Task Queue instead of running them"
+    )
+    parser.add_argument(
         "--self_improve",
         action="store_true",
         help="Run the self-improving loop (extract rules from failures, activate, re-run, compare)",
@@ -289,7 +321,11 @@ def main():
         query_id_filter=args.query_id,
         force_rerun=args.force,
         num_runs=args.runs,
+        enqueue_only=args.enqueue,
     )
+
+    if args.enqueue:
+        return
 
     print_summary(results, all_queries)
 

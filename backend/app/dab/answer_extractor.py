@@ -30,7 +30,6 @@ ANSWER_EXTRACTION_SYSTEM = (
     "INSTRUCTIONS:\n"
     "- CRITICAL: Begin your answer with the key value(s) from the result — no preamble, "
     "no 'Based on...', no 'The answer is'. Lead with the raw value immediately.\n"
-    "- If any column value contains a long description sentence (e.g., 'Company Name specializes in/is a...', 'Brand Name operates as...'), clean it by extracting only the clean name (e.g., 'Company Name') before the descriptive verb/text to make the answer concise.\n"
     "- Include the specific value(s) from the result that answer the question.\n"
     "- Include contextual labels if relevant (e.g. country, category, unit, decade notation like '1990s').\n"
     "- Do not explain the SQL or methodology, just answer the question.\n"
@@ -44,8 +43,6 @@ ANSWER_EXTRACTION_USER = """\
 
 SQL RESULT:
 {csv_preview}
-
-GROUND TRUTH HINT (format only, not the answer): {ground_truth_hint}
 
 CONCISE ANSWER:"""
 
@@ -186,7 +183,6 @@ def _deterministic_csv_answer(csv_path: str) -> Optional[str]:
 def extract_answer(
     question: str,
     csv_path: str,
-    ground_truth: str,
     llm_client,
     instance_id: str = "",
 ) -> str:
@@ -197,7 +193,7 @@ def extract_answer(
     1. Single null/empty value → fall through (don't return empty string).
     2. Single concrete value → return directly, no LLM.
     3. Multi-row results → deterministic table + LLM enrichment for context.
-    4. Missing CSV → LLM synthesis from prompt alone.
+    4. Missing CSV → Immediate failure (EXECUTION_FAILED).
     """
     # Try direct extraction first (no LLM cost)
     direct = _raw_csv_answer(csv_path)
@@ -229,34 +225,10 @@ def extract_answer(
 
     # LLM-based answer synthesis
     csv_preview = _csv_to_preview(csv_path, max_rows=15)
-
-    # Don't reveal exact ground truth to avoid cheating, just hint at format
-    gt_hint = "Not provided"
-    if ground_truth:
-        gt_stripped = ground_truth.strip()
-        if gt_stripped.endswith("s") and gt_stripped[:-1].isdigit():
-            gt_hint = f"A decade notation (e.g., '{gt_stripped}')"
-        elif gt_stripped.replace(".", "").replace("-", "").isdigit():
-            gt_hint = "A numeric value"
-        elif "\n" in gt_stripped:
-            # CSV format: show column headers + row count so the LLM knows the shape
-            lines = gt_stripped.splitlines()
-            header = lines[0]
-            data_rows = [line for line in lines[1:] if line.strip()]
-            row_count = len(data_rows)
-            sample = data_rows[0][:80] if data_rows else ""
-            gt_hint = (
-                f"A CSV result with columns [{header}], "
-                f"{row_count} row(s). "
-                f"First data row looks like: {sample}"
-            )
-        else:
-            # Single scalar: show up to 80 chars (enough to not mislead)
-            gt_hint = (
-                f"A text value: '{gt_stripped[:80]}'"
-                if len(gt_stripped) > 80
-                else f"'{gt_stripped}'"
-            )
+    
+    # Short-circuit if execution failed and no CSV exists
+    if csv_preview == "No CSV result available.":
+        return "EXECUTION_FAILED"
 
     # When enriching a short multi-row result, prepend the deterministic answer
     # so the LLM has the exact values and can only add context, not replace them.
@@ -270,7 +242,6 @@ def extract_answer(
         enrichment_prefix=enrichment_prefix,
         question=question,
         csv_preview=csv_preview,
-        ground_truth_hint=gt_hint,
     )
 
     try:

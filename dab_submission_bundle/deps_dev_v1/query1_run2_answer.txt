@@ -1,0 +1,12 @@
+@ec-nordbund/leaflet,1.7.1-build-81dc2489
+@dongjiang/textmate-grammars,0.0.5
+@dpoineau/react-scripts>1.0.0>node-sass,3.10.1
+@dollarshaveclub/cli>1.13.1>qs,6.5.2
+
+@ec-nordbund/leaflet, 1.7.1-build-81dc2489, 38715
+
+﻿PackageName: @ec-nordbund/leaflet | PackageVersion: 1.7.1-build-81dc2489 | GithubStars: 38715
+﻿PackageName: @dongjiang/textmate-grammars | PackageVersion: 0.0.5 | GithubStars: 18526
+﻿PackageName: @dpoineau/react-scripts>1.0.0>node-sass | PackageVersion: 3.10.1 | GithubStars: 8498
+﻿PackageName: @dollarshaveclub/cli>1.11.0>qs | PackageVersion: 6.5.1 | GithubStars: 8073
+﻿PackageName: @dollarshaveclub/cli>1.13.1>qs | PackageVersion: 6.5.2 | GithubStars: 8073

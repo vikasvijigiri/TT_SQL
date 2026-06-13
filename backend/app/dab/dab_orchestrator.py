@@ -60,8 +60,7 @@ def _push_evaluator_feedback(run_id: str, eval_json: dict) -> None:
     t = threading.Thread(target=_worker, daemon=False)
     t.start()
 
-
-DAB_RESULTS_DIR = RESULTS_DIR / "dab"
+from backend.app.core.config import DAB_RESULTS_DIR
 DAB_REPO_PATH = str(DAB_REPO)  # backward-compat alias; prefer DAB_REPO from config
 
 
@@ -558,7 +557,6 @@ def run_dab_query(
             agent_answer = extract_answer(
                 question=question,
                 csv_path=str(csv_path),
-                ground_truth=ground_truth,
                 llm_client=llm_client,
                 instance_id=instance_id,
             )
@@ -614,7 +612,6 @@ def run_dab_query(
                     retry_answer = extract_answer(
                         question=question,
                         csv_path=str(csv_path),
-                        ground_truth=ground_truth,
                         llm_client=llm_client,
                         instance_id=instance_id,
                     )
@@ -656,6 +653,11 @@ def run_dab_query(
 
         status = "passed" if eval_result["passed"] else "failed"
         logger.success(f"DAB Evaluation: {status.upper()} | {eval_result['reason']}")
+        
+        # SOTA World-Class RAG Trigger: Save successful queries to memory
+        if eval_result["passed"] and is_sql and final_sql:
+            from backend.app.services.rag_service import DynamicRAGService
+            DynamicRAGService().save_success(question, final_sql, db_name)
 
         # Attach all 8 evaluator scores to the LangSmith trace (non-blocking)
         run_tree = get_current_run_tree()
@@ -761,7 +763,6 @@ def run_dab_query(
                 question=question,
                 sql_generated=res.get("agent_answer", "") or res.get("reason", ""),
                 error_or_mismatch=res.get("reason", ""),
-                ground_truth_hint=str(ground_truth)[:200],
                 dataset=dataset,
                 log_tail=log_tail,
             )

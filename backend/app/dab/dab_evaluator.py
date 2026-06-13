@@ -16,26 +16,20 @@ from pathlib import Path
 from typing import Dict, Any, Optional, Tuple, List
 from datetime import datetime
 
-from backend.app.core.config import DAB_REPO
+from backend.app.core.config import DAB_REPO, RESULTS_DIR
 import contextlib
 
-DAB_RESULTS_DIR = Path(__file__).resolve().parent.parent.parent / "results" / "dab"
+from backend.app.core.config import DAB_RESULTS_DIR
+from backend.app.db.database import SessionLocal
+from backend.app.db.models import Evaluation
 
 
-def _run_dynamic_validate(
-    validate_src: str, agent_answer: str, filepath: str | None = None
-) -> Tuple[bool, str]:
-    """
-    Execute the validate.py source in a sandboxed namespace and call validate(agent_answer).
-    Returns (passed: bool, reason: str).
-    """
+def _validation_worker(validate_src: str, agent_answer: str, filepath: str | None, return_dict: dict):
     import sys
-
+    from backend.app.core.config import DAB_REPO
     dab_path = str(DAB_REPO)
-    added_to_path = False
     if dab_path not in sys.path:
         sys.path.insert(0, dab_path)
-        added_to_path = True
     try:
         namespace = {}
         if filepath:
@@ -45,16 +39,45 @@ def _run_dynamic_validate(
         if callable(validate_fn):
             result = validate_fn(agent_answer)
             if isinstance(result, tuple) and len(result) == 2:
-                passed, reason = result
-                return bool(passed), str(reason)
-            return bool(result), "OK" if result else "FAIL"
+                return_dict["passed"] = bool(result[0])
+                return_dict["reason"] = str(result[1])
+            else:
+                return_dict["passed"] = bool(result)
+                return_dict["reason"] = "OK" if result else "FAIL"
+        else:
+            return_dict["passed"] = False
+            return_dict["reason"] = "No validate_fn found"
     except Exception as e:
-        return False, f"validate.py execution error: {e}"
-    finally:
-        if added_to_path and dab_path in sys.path:
-            with contextlib.suppress(ValueError):
-                sys.path.remove(dab_path)
-    return False, "No validate() function found"
+        return_dict["passed"] = False
+        return_dict["reason"] = f"Exception: {str(e)}"
+
+def _run_dynamic_validate(
+    validate_src: str, agent_answer: str, filepath: str | None = None
+) -> Tuple[bool, str]:
+    """
+    Execute the validate.py source in an isolated child process to forcefully 
+    prevent LLM-generated SQL from crashing/hanging the host machine.
+    """
+    import multiprocessing
+    
+    manager = multiprocessing.Manager()
+    return_dict = manager.dict()
+    # Default state if process is killed or fails
+    return_dict["passed"] = False
+    return_dict["reason"] = "Timeout Error: Query execution exceeded 30 seconds (KILLED)."
+    
+    p = multiprocessing.Process(
+        target=_validation_worker,
+        args=(validate_src, agent_answer, filepath, return_dict)
+    )
+    p.start()
+    p.join(timeout=30)
+    
+    if p.is_alive():
+        p.terminate()
+        p.join()
+        
+    return return_dict["passed"], return_dict["reason"]
 
 
 def _run_static_validate(ground_truth: str, agent_answer: str) -> Tuple[bool, str]:
@@ -125,27 +148,73 @@ def evaluate_answer(
     }
 
     if save:
-        save_dir = DAB_RESULTS_DIR / dataset
-        save_dir.mkdir(parents=True, exist_ok=True)
-        eval_path = save_dir / f"query{query_id}{run_suffix}_eval.json"
-        with open(eval_path, "w", encoding="utf-8") as f:
-            json.dump(result, f, indent=2)
+        db = SessionLocal()
+        try:
+            ts_str = result.get("timestamp")
+            eval_record = Evaluation(
+                dataset=dataset,
+                query_id=query_id,
+                instance_id=f"{dataset}_q{query_id}",
+                run_suffix=run_suffix,
+                passed=passed,
+                reason=reason,
+                method=method,
+                ground_truth=ground_truth,
+                agent_answer_snippet=agent_answer[:500] if agent_answer else "",
+                elapsed_s=elapsed_s,
+                input_tokens=input_tokens,
+                output_tokens=output_tokens,
+                timestamp=datetime.fromisoformat(ts_str) if ts_str else datetime.utcnow()
+            )
+            db.add(eval_record)
+            db.commit()
+        except Exception as e:
+            print(f"Failed to save evaluation to DB: {e}")
+        finally:
+            db.close()
 
     return result
 
 
 def load_eval_result(
-    dataset: str, query_id: str, run_suffix: str = ""
+    dataset: str, query_id: str, run_suffix: str = "", date: str = "all"
 ) -> Optional[Dict[str, Any]]:
-    """Load a previously saved evaluation result."""
-    eval_path = DAB_RESULTS_DIR / dataset / f"query{query_id}{run_suffix}_eval.json"
-    if not eval_path.exists():
-        return None
+    """Load a previously saved evaluation result from the database."""
+    db = SessionLocal()
     try:
-        with open(eval_path, "r", encoding="utf-8") as f:
-            return json.load(f)
-    except Exception:
+        query = db.query(Evaluation).filter(
+            Evaluation.dataset == dataset,
+            Evaluation.query_id == str(query_id),
+            Evaluation.run_suffix == run_suffix
+        )
+        
+        if date != "all":
+            query = query.filter(Evaluation.timestamp.like(f"{date}%"))
+            
+        record = query.order_by(Evaluation.timestamp.desc()).first()
+        
+        if not record:
+            return None
+            
+        return {
+            "dataset": record.dataset,
+            "query_id": record.query_id,
+            "instance_id": record.instance_id,
+            "passed": record.passed,
+            "reason": record.reason,
+            "method": record.method,
+            "ground_truth": record.ground_truth,
+            "agent_answer_snippet": record.agent_answer_snippet,
+            "elapsed_s": record.elapsed_s,
+            "input_tokens": record.input_tokens,
+            "output_tokens": record.output_tokens,
+            "timestamp": record.timestamp.isoformat() if record.timestamp else ""
+        }
+    except Exception as e:
+        print(f"Failed to load eval result from DB: {e}")
         return None
+    finally:
+        db.close()
 
 
 def load_agent_answer(dataset: str, query_id: str) -> Optional[str]:
@@ -223,14 +292,12 @@ def compute_accuracy(
         total_queries += 1
 
         # Load run 0 (canonical)
-        run0 = load_eval_result(dataset, qid, run_suffix="")
+        run0 = load_eval_result(dataset, qid, run_suffix="", date=date)
 
         if run0 is not None and date != "all":
-            eval_path = DAB_RESULTS_DIR / dataset / f"query{qid}_eval.json"
-            if eval_path.exists():
-                file_date = datetime.fromtimestamp(eval_path.stat().st_mtime).strftime("%Y-%m-%d")
-                if file_date != date:
-                    run0 = None
+            file_date = run0.get("timestamp", "")[:10]
+            if file_date != date:
+                run0 = None
 
         if run0 is None:
             per_dataset[dataset]["pending"] += 1
@@ -247,7 +314,7 @@ def compute_accuracy(
         # Collect all runs: run0 + _run1 ... _run{max_runs-1}
         run_results = [run0]
         for r in range(1, max_runs):
-            extra = load_eval_result(dataset, qid, run_suffix=f"_run{r}")
+            extra = load_eval_result(dataset, qid, run_suffix=f"_run{r}", date=date)
             if extra is None:
                 break
             run_results.append(extra)

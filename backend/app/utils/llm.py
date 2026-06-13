@@ -7,7 +7,16 @@ from typing import Type, TypeVar, Dict, Any, Optional
 from pydantic import BaseModel
 from langchain_aws import ChatBedrockConverse
 from langchain_core.messages import SystemMessage, HumanMessage
+from langchain_community.cache import SQLiteCache
+from langchain_core.globals import set_llm_cache
 from dotenv import load_dotenv
+
+# Force python to use the certifi CA bundle, preventing Windows-specific SSL cert lookup failures
+import certifi
+import urllib3
+os.environ["SSL_CERT_FILE"] = certifi.where()
+os.environ["REQUESTS_CA_BUNDLE"] = certifi.where()
+urllib3.disable_warnings(urllib3.exceptions.InsecureRequestWarning)
 
 # Clean up invalid OpenSSL configuration on Windows if pointing to a non-existent file
 if os.environ.get("OPENSSL_CONF") and not os.path.exists(os.environ["OPENSSL_CONF"]):
@@ -23,6 +32,10 @@ from backend.app.core.prompts.schema_compactor import SchemaCompactor
 # Load environment variables from .env
 load_dotenv()
 
+# Initialize global LLM cache if enabled
+if os.getenv("USE_LLM_CACHE", "true").lower() == "true":
+    set_llm_cache(SQLiteCache(database_path=str(CONFIG_DIR.parent / ".langchain_cache.db")))
+
 import threading
 
 # Bedrock transient errors that are safe to retry
@@ -32,6 +45,13 @@ _RETRYABLE_ERRORS = (
     "ServiceUnavailableException",
     "InternalServerException",
     "RequestTimeoutException",
+    "ReadTimeoutError",
+    "TimeoutError",
+    "ReadTimeout",
+    "EndpointConnectionError",
+    "ConnectionError",
+    "ConnectTimeoutError",
+    "NewConnectionError",
 )
 
 thread_local = threading.local()
@@ -362,8 +382,38 @@ class LLMClient:
                     time.sleep(delay)
                 else:
                     break
+        if last_exc:
+            logger.error(f"Bedrock generation failed after {self._max_retries} retries: {last_exc}")
+        return ""
 
-        logger.error(
-            f"LLM Generation Failed after {self._max_retries + 1} attempts: {last_exc}"
-        )
-        raise last_exc  # type: ignore
+    async def agenerate(self, system_prompt: str, user_prompt: str) -> str:
+        """Asynchronous text completion with exponential-backoff retry."""
+        import asyncio
+        logger.debug(f"LLM Prompt lengths | System: {len(system_prompt)} | User: {len(user_prompt)}")
+        messages = [
+            SystemMessage(content=system_prompt),
+            HumanMessage(content=user_prompt),
+        ]
+
+        last_exc: Optional[Exception] = None
+        for attempt in range(self._max_retries + 1):
+            try:
+                response = await self.llm.ainvoke(messages)
+                final_str, in_t, out_t = self._parse_response(response)
+                add_tokens(in_t, out_t)
+                metrics = {"input_tokens": in_t, "output_tokens": out_t}
+                full_prompt = f"=== SYSTEM PROMPT ===\n{system_prompt}\n\n=== USER PROMPT ===\n{user_prompt}"
+                agent_name = getattr(logger.logger, "name", "AGENT")
+                logger.log_agent_call(agent_name, full_prompt, final_str, metrics)
+                return final_str
+            except Exception as e:
+                last_exc = e
+                if self._is_retryable(e) and attempt < self._max_retries:
+                    delay = self._retry_base_delay * (2**attempt)
+                    logger.warning(f"Transient Bedrock error (attempt {attempt + 1}/{self._max_retries}): {e}. Retrying in {delay:.1f}s…")
+                    await asyncio.sleep(delay)
+                else:
+                    break
+        if last_exc:
+            logger.error(f"Bedrock async generation failed after {self._max_retries} retries: {last_exc}")
+        return ""

@@ -130,7 +130,9 @@ class SemanticDINOrchestrator:
             md = md[:4000] + "\n...[TRUNCATED]"
         return md
 
-    def _get_base_lessons(self, intent, external_knowledge: str | None = None) -> str:
+    def _get_base_lessons(self, intent, user_query: str, external_knowledge: str | None = None) -> str:
+        from backend.app.services.rag_service import DynamicRAGService
+        rag_service = DynamicRAGService()
         rule_retriever = DialectRuleRetriever(self.executor.dialect)
         # Use adaptive in-code rule families — works for every dialect without requiring a YAML handbook.
         # retrieve_relevant_rules() is YAML-only and returns "not found" for DuckDB, Postgres, etc.
@@ -192,6 +194,12 @@ class SemanticDINOrchestrator:
                     logger.warning(
                         f"Failed to read external knowledge file {external_knowledge}: {e}"
                     )
+        
+        # Inject SOTA World-Class RAG Few-Shot Examples
+        few_shot_context = rag_service.retrieve_few_shot(user_query, self.db_name)
+        if few_shot_context:
+            lessons += few_shot_context
+            
         return lessons
 
     def execute_query(
@@ -233,7 +241,7 @@ class SemanticDINOrchestrator:
 
         retriever = HierarchicalRetriever()
         intent = retriever.analyze_intent(user_query)
-        lessons_context = self._get_base_lessons(intent, external_knowledge)
+        lessons_context = self._get_base_lessons(intent, user_query, external_knowledge)
 
         # Estimate full schema size to decide on pruning
         full_schema_str = self.semantic_engine.format_for_prompt()
@@ -666,11 +674,17 @@ class SemanticDINOrchestrator:
                 if linked_schema and linked_schema.selected_tables
                 else 0
             )
+            # Minimize LLM calls: Only route to expensive 4-call Diverse Generation 
+            # if the query is highly complex. Standard JOINs should be handled in a single pass.
+            complexity_score = sum([
+                profile.requires_joins,
+                profile.requires_windows,
+                profile.requires_variants,
+                profile.requires_flatten
+            ])
             is_simple_query = (
-                not profile.requires_joins
-                and not profile.requires_windows
-                and not profile.requires_variants
-                and not profile.requires_flatten
+                complexity_score < 2 
+                and not profile.requires_windows  # Windows are notoriously hard, always require diverse generation
             )
 
             # Module 3.5: Knowledge Acquisition (Web Search if needed) — runs before generation for all queries
@@ -734,6 +748,7 @@ class SemanticDINOrchestrator:
                         critic_schema_context,
                         combined_lessons,
                         self.executor.dialect,
+                        executor=self.executor,
                         relevant_tables=linked_schema.selected_tables,
                         table_columns=None,
                         intent=intent,
