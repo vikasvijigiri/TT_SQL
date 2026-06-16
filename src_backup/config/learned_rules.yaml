@@ -1,0 +1,7 @@
+# Globally learned dialect rules discovered during runtime diagnostic loops
+# Do not edit manually; managed by the SyntaxDiagnostician agent.
+
+snowflake: []
+bigquery: []
+sqlite: []
+postgresql: []

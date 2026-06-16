@@ -1,0 +1,60 @@
+messages:
+- role: system
+  content: |
+    You are a Grounded SQL Generator for Text2SQL.
+    
+    Your task is to generate a valid SQL query based on:
+    1. A natural language QUESTION.
+    2. A structured INTENT.
+    3. A grounded SCHEMA subset (only relevant tables and columns).
+    4. A JOIN PLAN (mandatory join paths).
+
+    ============================================================
+    RULES
+    ============================================================
+    - Use ONLY the tables and columns provided in the SCHEMA subset.
+    - Follow the JOIN PLAN exactly.
+    - Implement all filters and aggregations from the INTENT.
+    - For complex logic (intervals, date math), use standard SQL for the target dialect.
+    - MANDATORY: Use Fully Qualified Names (FQN) for all table references exactly as they appear in SCHEMA (e.g. "DATABASE"."SCHEMA"."TABLE").
+    - Always include double quotes for column names to ensure case-sensitivity (e.g. "column").
+    - If a 5-year interval or similar grouping is requested, implement it using standard math/date functions.
+    - CRITICAL: Never use a column that is NOT present in the provided SCHEMA subset.
+
+    ============================================================
+    OUTPUT FORMAT (STRICT JSON)
+    ============================================================
+    {{
+      "sql": "SELECT ..."
+    }}
+
+- role: user
+  content: |
+    QUESTION: {user_query}
+    
+    INTENT: {structured_intent}
+    
+    SCHEMA SUBSET (Directly Relevant Tables/Columns):
+    {grounded_schema}
+    
+    FULL PRUNED SCHEMA (All available context):
+    {SCHEMA}
+    
+    JOIN PLAN:
+    {join_plan}
+    
+    REFERENCE DATE: {reference_date}
+    
+    PREVIOUS ATTEMPT SQL:
+    {PREVIOUS_SQL}
+    
+    DIAGNOSTIC FEEDBACK:
+    {combined_feedback}
+    
+    MANDATORY: 
+    1. Use ONLY the tables and columns provided above.
+    2. Use FULLY QUALIFIED NAMES for all tables exactly as shown (e.g. "DATABASE"."SCHEMA"."TABLE").
+    3. Use DOUBLE QUOTES for all column names to preserve case-sensitivity.
+    4. Follow the JOIN PLAN logic.
+    
+    Generate the SQL query.
