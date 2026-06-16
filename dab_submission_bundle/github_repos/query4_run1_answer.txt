@@ -1,0 +1,5 @@
+No data found for the query (Catalog Error: Table with name languages does not exist!
+Did you mean "repo_metadata_db.languages"?
+
+LINE 1: SELECT repo_name, language_description FROM languages
+                                                    ^). Cannot determine the answer.

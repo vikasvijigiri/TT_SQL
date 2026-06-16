@@ -1,24 +1,67 @@
-# Local execution results and logs
-results/
-gold/
-logs/
-data/
-results_databao/
-schema_cache/
-scratch/
-tests/
-failed_ids.csv
-*.log
-
-# Sensitive configs
-config/*.json
-
-# Environment and Virtual Env
+# Environment & Virtual Environments
 .env
-venv_stable/
+venv*/
+.venv/
+
+# Python Cache & Artifacts
 __pycache__/
-*.pyc
-
-
+*.py[cod]
+*$py.class
+*.so
 .pytest_cache/
 .ruff_cache/
+htmlcov/
+.coverage
+build/
+*.egg-info/
+.eggs/
+
+# Node.js & Frontend
+node_modules/
+dist/
+dist-ssr/
+*.local
+
+# IDEs & System
+.vscode/
+.idea/
+.DS_Store
+Thumbs.db
+.claude/
+
+# Project Specific (Backend)
+backend/agent/agent/results/
+backend/agent/agent/scratch/
+backend/agent/agent/resources/logs/
+backend/agent/agent/resources/memory/
+backend/agent/agent/resources/metadata/
+backend/agent/agent/resources/gold/
+backend/agent/agent/resources/input_data/
+backend/agent/agent/resources/databases/
+backend/agent/agent/resources/documents/
+backend/agent/agent/resources/interface/
+backend/agent/agent/resources/syntax/
+backend/agent/agent/config/*.json
+backend/agent/agent/*.db
+
+# Submission — zip too large for git; uploaded as GitHub Release asset
+submission/*.zip
+
+# Root Artifacts & Logs
+*.log
+log.txt
+benchmark_report.md
+failed_ids.csv
+
+# Legacy/Backup (Scoping specifically to avoid ignoring actual code)
+old_src/
+old_resources/
+src_backup/
+src_backup1/
+schema_cache/
+media/
+dab_submission_bundle/
+dab_submission_bundle.zip
+backend/.langchain_cache.db
+*.zip
+*.db

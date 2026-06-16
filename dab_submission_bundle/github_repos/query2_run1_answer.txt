@@ -1,0 +1,1 @@
+After classifying a sample of 24286 rows, no rows matched the 'non-binary Swift' category. Cannot determine the answer.

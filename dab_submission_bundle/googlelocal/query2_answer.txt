@@ -1,0 +1,8 @@
+Elite Massage: 5.0; Angel-A Massage: 4.333333333333333; Aurora Massage: 4.178571428571429; J B Oriental Inc: 4.166666666666667
+
+Elite Massage, 5.0
+
+﻿name: Elite Massage | avg_rating: 5.0
+﻿name: Angel-A Massage | avg_rating: 4.333333333333333
+﻿name: Aurora Massage | avg_rating: 4.178571428571429
+﻿name: J B Oriental Inc | avg_rating: 4.166666666666667

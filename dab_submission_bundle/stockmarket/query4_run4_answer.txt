@@ -1,0 +1,9 @@
+HDFC Bank Limited, Albany International Corporation, Getty Realty Corporation, Mettler-Toledo International, Inc, Ameriprise Financial, Inc
+
+HDFC Bank Limited
+
+﻿company_name: HDFC Bank Limited
+﻿company_name: Albany International Corporation
+﻿company_name: Getty Realty Corporation
+﻿company_name: Mettler-Toledo International, Inc
+﻿company_name: Ameriprise Financial, Inc

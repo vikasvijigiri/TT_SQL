@@ -1,0 +1,75 @@
+Adenosquamous, 2.7783
+
+﻿histological_type: Adenosquamous | avg_log10_expression: 2.7783
+﻿histological_type: Adrenocortical carcinoma- Usual Type | avg_log10_expression: 5.5917
+﻿histological_type: Astrocytoma | avg_log10_expression: 2.5713
+﻿histological_type: Biphasic mesothelioma | avg_log10_expression: 4.074
+﻿histological_type: Cervical Squamous Cell Carcinoma | avg_log10_expression: 2.6864
+﻿histological_type: Cholangiocarcinoma; hilar/perihilar | avg_log10_expression: 3.123
+﻿histological_type: Cholangiocarcinoma; intrahepatic | avg_log10_expression: 3.1097
+﻿histological_type: Colon Adenocarcinoma | avg_log10_expression: 2.9387
+﻿histological_type: Colon Mucinous Adenocarcinoma | avg_log10_expression: 3.6584
+﻿histological_type: Diffuse large B-cell lymphoma (DLBCL) NOS (any anatomic site nodal or extranodal) | avg_log10_expression: 1.948
+﻿histological_type: Endocervical Adenocarcinoma of the Usual Type | avg_log10_expression: 2.3271
+﻿histological_type: Endocervical Type of Adenocarcinoma | avg_log10_expression: 2.4124
+﻿histological_type: Endometrioid endometrial adenocarcinoma | avg_log10_expression: 3.1771
+﻿histological_type: Epithelioid mesothelioma | avg_log10_expression: 2.9035
+﻿histological_type: Esophagus Adenocarcinoma  NOS | avg_log10_expression: 2.615
+﻿histological_type: Esophagus Squamous Cell Carcinoma | avg_log10_expression: 2.5701
+﻿histological_type: Head and Neck Squamous Cell Carcinoma | avg_log10_expression: 3.0467
+﻿histological_type: Head and Neck Squamous Cell Carcinoma Basaloid Type | avg_log10_expression: 2.1982
+﻿histological_type: Hepatocellular Carcinoma | avg_log10_expression: 3.5475
+﻿histological_type: Infiltrating Ductal Carcinoma | avg_log10_expression: 3.0533
+﻿histological_type: Infiltrating Lobular Carcinoma | avg_log10_expression: 3.6445
+﻿histological_type: Kidney Chromophobe | avg_log10_expression: 2.4343
+﻿histological_type: Kidney Clear Cell Renal Carcinoma | avg_log10_expression: 3.0571
+﻿histological_type: Kidney Papillary Renal Cell Carcinoma | avg_log10_expression: 1.9926
+﻿histological_type: Leiomyosarcoma (LMS) | avg_log10_expression: 2.7602
+﻿histological_type: Lung Acinar Adenocarcinoma | avg_log10_expression: 3.6275
+﻿histological_type: Lung Adenocarcinoma Mixed Subtype | avg_log10_expression: 2.7716
+﻿histological_type: Lung Adenocarcinoma- Not Otherwise Specified (NOS) | avg_log10_expression: 2.7123
+﻿histological_type: Lung Bronchioloalveolar Carcinoma Mucinous | avg_log10_expression: 2.9188
+﻿histological_type: Lung Bronchioloalveolar Carcinoma Nonmucinous | avg_log10_expression: 2.6583
+﻿histological_type: Lung Papillary Adenocarcinoma | avg_log10_expression: 2.613
+﻿histological_type: Lung Squamous Cell Carcinoma- Not Otherwise Specified (NOS) | avg_log10_expression: 2.6266
+﻿histological_type: Medullary Carcinoma | avg_log10_expression: 2.9644
+﻿histological_type: Metaplastic Carcinoma | avg_log10_expression: 3.59
+﻿histological_type: Mixed Histology (please specify) | avg_log10_expression: 3.1059
+﻿histological_type: Mixed serous and endometrioid | avg_log10_expression: 3.3732
+﻿histological_type: Mucinous Adenocarcinoma of Endocervical Type | avg_log10_expression: 4.3214
+﻿histological_type: Mucinous Carcinoma | avg_log10_expression: 3.1168
+﻿histological_type: Muscle invasive urothelial carcinoma (pT2 or above) | avg_log10_expression: 3.7117
+﻿histological_type: Myxofibrosarcoma | avg_log10_expression: 5.6198
+﻿histological_type: Non-Seminoma; Teratoma (Mature)|Seminoma; NOS|Non-Seminoma; Embryonal Carcinoma|Non-Seminoma; Yolk Sac Tumor | avg_log10_expression: 2.7912
+﻿histological_type: Oligoastrocytoma | avg_log10_expression: 2.7136
+﻿histological_type: Oligodendroglioma | avg_log10_expression: 2.6825
+﻿histological_type: Other  specify | avg_log10_expression: 3.1575
+﻿histological_type: Pancreas-Adenocarcinoma Ductal Type | avg_log10_expression: 3.1672
+﻿histological_type: Pancreas-Adenocarcinoma-Other Subtype | avg_log10_expression: 2.8487
+﻿histological_type: Pancreas-Colloid (mucinous non-cystic) Carcinoma | avg_log10_expression: 2.443
+﻿histological_type: Paraganglioma; Extra-adrenal Pheochromocytoma | avg_log10_expression: 5.5571
+﻿histological_type: Pheochromocytoma | avg_log10_expression: 5.0117
+﻿histological_type: Pleomorphic 'MFH'/ Undifferentiated pleomorphic sarcoma | avg_log10_expression: 5.3136
+﻿histological_type: Primary mediastinal (thymic) DLBCL | avg_log10_expression: 2.2267
+﻿histological_type: Prostate Adenocarcinoma  Other Subtype | avg_log10_expression: 2.6433
+﻿histological_type: Prostate Adenocarcinoma Acinar Type | avg_log10_expression: 2.466
+﻿histological_type: Rectal Adenocarcinoma | avg_log10_expression: 2.78
+﻿histological_type: Rectal Mucinous Adenocarcinoma | avg_log10_expression: 2.8965
+﻿histological_type: Seminoma; NOS | avg_log10_expression: 2.4484
+﻿histological_type: Serous Cystadenocarcinoma | avg_log10_expression: 4.021
+﻿histological_type: Serous endometrial adenocarcinoma | avg_log10_expression: 4.2146
+﻿histological_type: Stomach  Adenocarcinoma  Diffuse Type | avg_log10_expression: 3.4967
+﻿histological_type: Stomach  Adenocarcinoma  Not Otherwise Specified (NOS) | avg_log10_expression: 3.2691
+﻿histological_type: Stomach  Intestinal Adenocarcinoma  Not Otherwise Specified (NOS) | avg_log10_expression: 3.4463
+﻿histological_type: Stomach  Intestinal Adenocarcinoma  Tubular Type | avg_log10_expression: 3.4655
+﻿histological_type: Stomach Adenocarcinoma  Signet Ring Type | avg_log10_expression: 3.4951
+﻿histological_type: Stomach Intestinal Adenocarcinoma Papillary Type | avg_log10_expression: 3.0038
+﻿histological_type: Thymoma; Type A | avg_log10_expression: 2.4479
+﻿histological_type: Thymoma; Type AB | avg_log10_expression: 2.9033
+﻿histological_type: Thymoma; Type B2 | avg_log10_expression: 2.5829
+﻿histological_type: Thymoma; Type B2|Thymoma; Type B3 | avg_log10_expression: 3.0513
+﻿histological_type: Thymoma; Type B3 | avg_log10_expression: 1.7825
+﻿histological_type: Thyroid Papillary Carcinoma - Classical/usual | avg_log10_expression: 2.5876
+﻿histological_type: Thyroid Papillary Carcinoma - Follicular (>= 99% follicular patterned) | avg_log10_expression: 1.6498
+﻿histological_type: Untreated primary (de novo) GBM | avg_log10_expression: 2.6608
+﻿histological_type: Uterine Carcinosarcoma/ Malignant Mixed Mullerian Tumor (MMMT): NOS | avg_log10_expression: 5.3265

@@ -1,242 +1,200 @@
-# TT_SQL: nQuiry Text2SQL Agent
+# Semantic DIN-SQL: Deterministic, Reasoning-First Text2SQL Microservices
 
-nQuiry is an industry-grade Text-to-SQL engine that converts natural language questions into executable SQL queries with high precision. It uses a **layered multi-agent architecture** to analyze, plan, generate, critique, and refine SQL queries iteratively.
+Semantic DIN-SQL is a high-precision, domain-agnostic Text2SQL pipeline designed for Snowflake and SQLite database analysis. It replaces fragile, hardcoded heuristics with a **Reasoning-First** architecture that prioritizes data fidelity, relational depth, and automated quality validation. 
 
-## ✨ Key Features
-
-- **Layered Architecture**: 4-layer pipeline (Input → Planning → Generation → Execution) with structured agents.
-- **Self-Correction Loop**: A Critic agent validates SQL logic and schema mapping; the Builder auto-refines on failure (up to 5 retries).
-- **Schema-Agnostic Planning**: Uses bottom-up natural language reasoning for planning, independent of database schema context to prevent early filtering errors.
-- **Sliding Window Selector**: Handles very large schemas by processing tables in iterative windows, bypassing LLM context limits.
-- **Unified Batch Processing**: High-performance parallel batch runner (`run_batch.py`) replacing fragmented scripts, featuring powerful filtering by dialect, database name, and specific task IDs.
-- **Dynamic Metadata Expansion**: The execution pipeline automatically requests missing metadata from the cache rather than failing out immediately.
-- **Centralized Metadata Cache**: Employs a 'Read-Once' structural metadata cache scoped to the DB-level, dramatically reducing API calls across large multi-task datasets like Spider 2.0.
-- **Flattened Output Structure**: Lean, DB-scoped hierarchy structure to maintain cleanly partitioned multi-database outputs.
-- **Safe Execution**: Only executes `SELECT` statements by design.
+Now refactored into a high-performance **Microservices monorepo**, the project features a compiled Go API Gateway, a Python LLM Reasoning Worker, a modern React/Vite dashboard, and a pre-configured Prometheus/Grafana observability stack.
 
 ---
 
-## 🏗️ Architecture Overview
+## 🏗️ Repository Reorganization
 
-```text
-User Query
-    │
-    ▼
-┌──────────────────────────────────────────────┐
-│  📥 INPUT LAYER (Context & Pruning)           │
-│  ContextEnrichmentAgent (Centralized Cache)   │
-│  └→ TableSelectorAgent (🤖 LLM Pruning)       │
-│                                               │
-│  Outputs: schema_info, relevant_tables,       │
-│           query_intent, complexity            │
-└────────────────────┬─────────────────────────┘
-                     │
-                     ▼
-┌──────────────────────────────────────────────┐
-│  📋 PLANNING LAYER (Strategy)                 │
-│  StepByStepPlannerAgent (🤖 LLM Planning)     │
-│  └→ Bottom-Up Reasoning (Schema-Agnostic)     │
-│                                               │
-│  Outputs: execution_roadmap, sub_tasks        │
-└────────────────────┬─────────────────────────┘
-                     │
-                     ▼
-┌──────────────────────────────────────────────┐
-│  ⚡ GENERATION LAYER (RefinementLoop)         │
-│                                               │
-│  ┌────────────┐ feedback ┌────────────┐      │
-│  │ SQLBuilder  │◄────────┤ SQLCritic  │      │
-│  │    (🤖)     │────────►│    (🤖)     │      │
-│  └────────────┘   SQL    └────────────┘      │
-│        ▲                      │ ✅ PASS      │
-│        └─── retry (max 5) ────┘              │
-└────────────────────┬─────────────────────────┘
-                     │
-                     ▼
-┌──────────────────────────────────────────────┐
-│  🚀 EXECUTION LAYER (Dialect-Specific)        │
-│  SQLite / BigQuery / Snowflake / Postgres     │
-│  └→ .sql + .csv results                       │
-└──────────────────────────────────────────────┘
+The workspace is organized into separate, highly-focused microservices:
+
+```
+TT_SQL_V2/
+├── backend/
+│   ├── gateway/          # [Go] API Gateway (port 8002) - CRUD, SQLite DB stats, Prometheus exporter & LLM proxying.
+│   └── agent/            # [Python] AI/ML worker (port 8001) - LLM reasoning, schema linkers, self-improving agent loop.
+│       ├── agent/        # Python source package (app/, config/, resources/, results/)
+│       ├── venv_new/     # Python local virtual environment
+│       └── requirements.txt
+├── frontend/             # [React/Vite] UI dashboard (interacts with gateway via port 8002)
+├── monitoring/           # Prometheus and Grafana service telemetry configurations
+└── .env                  # Global environment configuration (port overrides, credentials)
 ```
 
-> 🤖 = LLM call
+---
 
-### Agent Summary
+## 🧠 Core Architecture
 
-| # | Agent Class | Layer | LLM? | Purpose |
-|---|-------------|-------|------|---------|
-| 1 | `ContextEnrichmentAgent` | Input | No | Leverages centralized metadata cache or dynamically fetches full schema for (SQLite/BQ/SF/Postgres). |
-| 2 | `TableSelectorAgent` | Input | **Yes** | Uses **Sliding Window** LLM selection to safely prune massive database schemas into relevant active contexts. |
-| 3 | `StepByStepPlannerAgent` | Planning | **Yes** | Generates a **Schema-Agnostic** step-by-step roadmap serving as a SQL generation strategy guide. |
-| 4 | `RefinementLoopAgent` | Generation| No | Orchestrates the vital Builder-Critic retry cycle. Detects missing metadata triggers for schema fallback. |
-| 5 | `SQLCriticAgent` | Generation | **Yes** | Validates generated SQL logic against the actual database schema via structural checks (no execution). |
-| 6 | `ExecutorAgent` | Execution | No | Dialect-specific executions handling execution faults and generating final flat DB outputs. |
+The generation flow follows a modular, iterative reasoning paradigm designed to eliminate hallucinations:
+
+```mermaid
+graph TD
+    User([User Query]) --> Gateway[Go API Gateway :8002]
+    Gateway -->|Proxies AI Requests| PythonWorker[Python AI Worker :8001]
+    
+    PythonWorker --> GovernedEngine[Governed Semantic Engine]
+    GovernedEngine --> Context[(Governed Semantic Context)]
+    
+    PythonWorker --> Classifier[Strategic Query Classifier]
+    Classifier --> Strategy{Strategy Selection}
+    
+    PythonWorker --> Linker[Reasoning-Based Schema Linker]
+    Linker --> LinkedSchema[Linked Schema & Value Mappings]
+    
+    PythonWorker --> Generator[Adaptive SQL Generator]
+    Generator --> SQL[Snowflake/SQLite SQL]
+    
+    SQL --> Executor[Database Executor]
+    Executor --> Results[(CSV Results)]
+    
+    Results --> Validator[Data IQ Auditor]
+    Validator --> Feedback{Plausible?}
+    
+    Feedback -- No --> Corrector[Self-Correction Loop]
+    Corrector --> Generator
+    
+    Feedback -- Yes --> Done([Final Result])
+    Gateway -->|Saves Results & telemetry| SQLiteDB[(nquire.db)]
+```
+
+1. **Governed Semantic Engine**: Automatically extracts metadata and matches values from SQLite or Snowflake databases.
+2. **Reasoning-Based Schema Linker**: Binds query terms to precise database columns using real value-lookup matches.
+3. **Strategic Query Classifier**: Categorizes user questions into `easy`, `non_nested_complex`, or `nested_complex` to select the optimal LLM generation prompt/strategy.
+4. **Adaptive SQL Generator**: Formulates compliant SQL, hardened for complex joins, window functions, and JSON/VARIANT flattened attributes.
+5. **Data IQ Auditor**: Conducts execution-based exploratory analysis (mini-EDA) checking for null ratios, row limits, schema mismatches, and empty outputs.
+6. **Self-Correction Loop**: Catches execution or logic errors and feeds traceback reports back to the generator for automated self-healing.
 
 ---
 
 ## 🚀 Getting Started
 
-### 1. Prerequisites
-- **Python 3.10+**
-- **Git**
-- An API key for **AWS Bedrock** (e.g., Claude 3.5 Sonnet or Custom Safeguard models)
+Ensure you have the following runtimes installed:
+- **Go** (v1.22+)
+- **Python** (v3.10+)
+- **Node.js** (v18+)
+- **Docker** & **Docker Compose** (optional, for monitoring)
 
-### 2. Clone the Repository
-```bash
-git clone https://github.com/NG-VikasV/git
-cd TT_SQL
+### 1. Global Configuration
+
+Create a `.env` file in the project root:
+```env
+# Amazon Bedrock LLM Credentials
+BEDROCK_ACCESS_KEY_ID="your_access_key"
+BEDROCK_SECRET_ACCESS_KEY="your_secret_key"
+BEDROCK_REGION="us-east-1"
+LLM_PROVIDER="bedrock"
+LLM_MODEL="bedrock/openai.gpt-oss-safeguard-120b"
+
+# LangSmith Tracing (Optional)
+LANGCHAIN_TRACING_V2="true"
+LANGCHAIN_API_KEY="your_langchain_key"
+LANGCHAIN_PROJECT="TT_SQL_V2"
+
+# Microservices Ports Setup
+GO_PORT=8002
+PYTHON_PORT=8001
+PYTHON_API_URL=http://localhost:8001
 ```
 
-### 3. Set Up Virtual Environment
-**Windows:**
-```powershell
-python -m venv venv
-.\venv\Scripts\activate
-```
+### 2. Python AI/ML Worker Setup
 
-**Mac/Linux:**
 ```bash
-python3 -m venv venv
-source venv/bin/activate
-```
+# Navigate to the Python agent workspace
+cd backend/agent
 
-### 4. Install Dependencies
-```bash
+# Create and activate virtual environment
+python -m venv venv_new
+venv_new\Scripts\activate      # On Windows PowerShell/CMD
+source venv_new/bin/activate    # On Linux/macOS
+
+# Install agent dependencies
 pip install -r requirements.txt
 ```
 
-### 5. Environment Setup (Critical)
-To ensure the code runs reliably from the project root, configure your `PYTHONPATH` to the `src` directory:
-
-**Windows (PowerShell):**
-```powershell
-$env:PYTHONPATH="src"
-```
-
-**Mac/Linux:**
+Start the Python service:
 ```bash
-export PYTHONPATH=src
+# Run from backend/agent directory with PYTHONPATH=.
+$env:PYTHONPATH="."
+venv_new\Scripts\python.exe agent/app/api.py
 ```
+The server will start on port `8001` (by default).
 
----
-
-## ⚙️ Configuration (.env)
-
-Create a `.env` file in the project root:
-
-### 🔒 LLM Configuration (Bedrock)
-
-```ini
-AWS_ACCESS_KEY_ID=AKIAxxxxxxxxxxxx
-AWS_SECRET_ACCESS_KEY=xxxxxxxxxxxxxxxxxxxxxxxxxxxx
-AWS_DEFAULT_REGION=us-east-1
-LLM_MODEL=bedrock/openai.gpt-oss-safeguard-120b
-# No LLM_API_BASE needed for serverless
-```
-
-### 🔓 Database Path Targets
-By default, the pipeline searches for DB files like `.sqlite` in the `resources` directory unless otherwise specified:
-```ini
-SQLITE_DB_PATH=resources/
-```
-
----
-
-## 🏃‍♂️ Running the Application
-
-
-### Unified Batch Processing (CLI)
-Unlike legacy implementations with fragmented shell scripts, `run_batch.py` handles all execution workflows across BigQuery, Snowflake, and SQLite while intelligently skipping cached results.
+### 3. Go API Gateway Setup
 
 ```bash
-# 1. Run All SQLite tasks (Implicitly selects spider2-lite-sqlite dataset)
-python src/cli/run_batch.py --type sqlite --workers 4
+# Navigate to the Go gateway directory
+cd backend/gateway
 
-# 2. Filter Batch by Database (Runs only task blocks targeting 'IPL')
-python src/cli/run_batch.py --type sqlite --db IPL --workers 2
+# Run directly
+go run cmd/server/main.go
 
-# 3. Target Specific IDs (Great for re-trying failures)
-python src/cli/run_batch.py --type sqlite --ids local023 local088
-
-# 4. Snowflake execution
-python src/cli/run_batch.py --type snowflake --workers 4
-
-# 5. BigQuery execution targeting specific domains
-python src/cli/run_batch.py --type bigquery --db google_analytics
+# Or compile and build executable
+go build -o gateway.exe cmd/server/main.go
+.\gateway.exe
 ```
+The gateway will start on port `8002` (by default) and auto-detect your `.env` ports. It connects to the local database at `backend/agent/agent/results/evaluations/nquire.db` for storing session metadata and evaluation diagnostics.
 
-**Batch Runner Options:**
-| Flag | Default | Description |
-|------|---------|-------------|
-| `--type` | `sqlite` | Targeted backend connection (`sqlite`, `snowflake`, `bigquery`) |
-| `--db` | `None` | Filters batch to only process tasks interacting with this Database. |
-| `--ids` | `None` | Restricts batch execution strictly to this space-separated list of IDs. |
-| `--dataset` | *Auto-detected*| Explicit string target to a specific JSONL Dataset path. |
-| `--model` | `.env LLM_MODEL` | Specific LLM proxy model block. |
-| `--workers` | `4` | Parallelized batch threads limit. |
-| `--limit` | `0` (all) | Constrain total batch queries to cap runtimes. |
-| `--overwrite` | `false` | Ignore occupancy caches and overwrite existing output payload. |
-
----
-
-## 📂 Project Output Structure
-
-The application natively generates a flattened configuration logic nested solely by the target Database. Metadata is isolated strictly into the global resource pool preventing redundant generation overheads.
-
-```text
-old_txt_sql_spider2.0/
-├── config/                 # External configuration (secrets, global configs)
-├── input_data/             # Dataset management (raw and processed)
-├── docs/                   # Documentation and Architecture
-├── resources/              
-│   ├── metadata/           # Cached schemas loaded via Context Enrichment
-│   └── spider2-localdb/    # Target databases
-├── results/                # Organized analytical payload structure
-│   └── <db_name>/          # Flattened output hierarchy avoids subfolder drift
-│       ├── <id>.csv        # Generated data
-│       ├── <id>.md         # Agent reasoning log
-│       ├── <id>_plan.md    # Agent plan log
-│       └── <id>.sql        # Validated query
-├── src/                    # Source code
-│   └── agents/             # Agent logic layers
-│   ├── cli/                # Consolidated CLI workflows
-│   ├── core/               # Infrastructure, Paths, Logger, Coordinators
-│   └── prompts/            # Centralized YAML Dialect templates
-├── .env                    
-└── requirements.txt         
-```
-
----
-
-## 📊 Result Analysis / Evaluation
-
-After running a batch, you can evaluate the accuracy of the generated queries against the gold truth using the official Spider 2.0 evaluation script:
+### 4. Frontend Dashboard Setup
 
 ```bash
-# Evaluate SQL execution accuracy for a specific database using exec_result mode
-python gold/evaluate.py --mode exec_result --result_dir results/IPL --gold_dir gold
+# Navigate to the frontend directory
+cd frontend
+
+# Install Node dependencies
+npm install
+
+# Run the development server
+npm run dev
+```
+Open [http://localhost:5173](http://localhost:5173) in your browser to view the interactive dashboard.
+
+### 5. Prometheus & Grafana Monitoring
+
+To view Go API endpoints, latency statistics, and error rates:
+```bash
+# Start the monitoring stack
+cd monitoring
+docker-compose up -d
+```
+- **Prometheus**: Accessible at `http://localhost:9090` (polls the Gateway's `/metrics` endpoint).
+- **Grafana**: Accessible at `http://localhost:3000` (pre-configured with dashboards).
+
+---
+
+## 🛠️ Running the Pipeline & Scripts
+
+Core scripts should be run from the python agent root directory (`backend/agent`) with the virtual environment activated:
+
+```bash
+cd backend/agent
+$env:PYTHONPATH="."
 ```
 
-*This compares generated `.csv` outputs directly against the gold evaluations and will print out line-by-line validation states (PASS/FAIL) and an accuracy summary.*
+#### Run Batch Processing
+Executes a batch of Text2SQL evaluation queries against a specific target benchmark database.
+```bash
+venv_new\Scripts\python.exe agent/scripts/run_batch.py --instance sf_bq070
+```
+
+#### Run Self-Improvement Loop
+Iterates over SQL compilation and data quality failures, refining SQL generator rules dynamically based on execution results.
+```bash
+venv_new\Scripts\python.exe agent/scripts/run_self_improve.py
+```
+
+#### Compile Evaluation Submissions
+Compiles generated SQL structures and extracts answers into a consolidated zip bundle.
+```bash
+venv_new\Scripts\python.exe agent/scripts/compile_submission.py
+```
 
 ---
 
-## 📊 LLM Call Count Overview
+## 💎 Design Philosophy: "NO Hardcoding"
 
-The architecture maximizes strict validation by sacrificing 1-shot API savings for high-precision accuracy. RAG elements have been fully decoupled to streamline context resolution directly derived from source schemas.
-
-| Pipeline Stage | LLM Calls |
-|---|---|
-| `TableSelectorAgent` (Sliding Window Config) | Variable dependent on Schema Scope |
-| `StepByStepPlannerAgent` (Strategy Roadmap) | 1 |
-| `SQLBuilderAgent` (SQL Syntax Synthesis) | 1 per attempt |
-| `SQLCriticAgent` (Analysis / Validation) | 1 per attempt |
-| **Minimum (1 attempt)** | ~4 |
-| **Maximum (5 retries)** | ~12+ |
-
----
-
-## 📄 License
-
-This project is developed for continuous analytical reporting research purposes.
+Every prompt, link, and agent logic in Semantic DIN-SQL is decoupled from domain-specific rules. It supports multi-tenant datasets (clinical, financials, patent metrics, yelp queries) out-of-the-box by relying on:
+- **Evidence-Based Grounding**: Scanning actual database profiles and samples rather than guessing.
+- **Structural Strategy**: Mapping queries via complexity templates rather than hardcoded columns.
+- **Execution Validation**: Query results are dynamically profiled by the Data IQ Layer to ensure logical validation before completion.

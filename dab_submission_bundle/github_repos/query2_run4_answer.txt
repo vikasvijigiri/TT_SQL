@@ -1,0 +1,1 @@
+After classifying a sample of 24286 rows, no rows matched the 'swift_nonbinary' category. Cannot determine the answer.
