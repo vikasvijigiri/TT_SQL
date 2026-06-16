@@ -8,7 +8,7 @@ import DabStudio from './components/DabStudio';
 import CustomWorkspace from './components/CustomWorkspace';
 import NQuireLogo from './components/NQuireLogo';
 
-const API_BASE = "http://localhost:8002/api";
+const API_BASE = import.meta.env.VITE_API_BASE_URL || '/api';
 
 const GlobalRunningPanel = ({ runningSpiderTasks, runningDabTasks, onNavigateTask }) => {
   const [isCollapsed, setIsCollapsed] = useState(false);
@@ -104,6 +104,16 @@ const App = () => {
   const [user, setUser] = useState(() => {
     try { return JSON.parse(localStorage.getItem('nquire_user') || 'null'); } catch { return null; }
   });
+
+  // Attach JWT to every axios request automatically.
+  useEffect(() => {
+    const id = axios.interceptors.request.use((config) => {
+      const token = localStorage.getItem('nquire_token');
+      if (token) config.headers['Authorization'] = `Bearer ${token}`;
+      return config;
+    });
+    return () => axios.interceptors.request.eject(id);
+  }, []);
   const [autoOpenDetails, setAutoOpenDetails] = useState(null); // { project: 'spider' | 'dab', db: string, id: string }
 
   // Sync state with URL hash (Browser back/forward history support)
@@ -177,14 +187,16 @@ const App = () => {
 
   let activeScreen = null;
 
-  const handleLogin = (userData) => {
+  const handleLogin = (userData, token?: string) => {
     setUser(userData);
     localStorage.setItem('nquire_user', JSON.stringify(userData));
+    if (token) localStorage.setItem('nquire_token', token);
   };
 
   const handleLogout = () => {
     setUser(null);
     localStorage.removeItem('nquire_user');
+    localStorage.removeItem('nquire_token');
   };
 
   if (currentView === 'landing') {
@@ -198,27 +210,33 @@ const App = () => {
     );
   } else if (selectedProject === 'spider') {
     activeScreen = (
-      <SpiderStudio 
-        onBack={() => setSelectedProject(null)} 
-        onHome={() => { setSelectedProject(null); setCurrentView('landing'); }} 
+      <SpiderStudio
+        onBack={() => setSelectedProject(null)}
+        onHome={() => { setSelectedProject(null); setCurrentView('landing'); }}
         autoOpenDetails={autoOpenDetails}
         clearAutoOpenDetails={() => setAutoOpenDetails(null)}
+        user={user}
+        onLogout={handleLogout}
       />
     );
   } else if (selectedProject === 'dab') {
     activeScreen = (
-      <DabStudio 
-        onBack={() => setSelectedProject(null)} 
-        onHome={() => { setSelectedProject(null); setCurrentView('landing'); }} 
+      <DabStudio
+        onBack={() => setSelectedProject(null)}
+        onHome={() => { setSelectedProject(null); setCurrentView('landing'); }}
         autoOpenDetails={autoOpenDetails}
         clearAutoOpenDetails={() => setAutoOpenDetails(null)}
+        user={user}
+        onLogout={handleLogout}
       />
     );
   } else if (selectedProject === 'custom') {
     activeScreen = (
-      <CustomWorkspace 
-        onBack={() => setSelectedProject(null)} 
-        onHome={() => { setSelectedProject(null); setCurrentView('landing'); }} 
+      <CustomWorkspace
+        onBack={() => setSelectedProject(null)}
+        onHome={() => { setSelectedProject(null); setCurrentView('landing'); }}
+        user={user}
+        onLogout={handleLogout}
       />
     );
   }

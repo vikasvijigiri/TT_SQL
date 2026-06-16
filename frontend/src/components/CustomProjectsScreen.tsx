@@ -8,8 +8,7 @@ import {
   Lock, Unlock, RotateCcw, Triangle, Settings
 } from 'lucide-react';
 
-const API_BASE = 'http://localhost:8002';
-const CUSTOM = `${API_BASE}/api/custom`;
+const CUSTOM = `${import.meta.env.VITE_API_BASE_URL || '/api'}/custom`;
 
 const inp =
   'w-full px-3 py-2 rounded-lg bg-[#12121a] border border-[#2a2a3a] text-slate-200 text-sm placeholder-slate-600 outline-none focus:border-emerald-500/60 focus:ring-1 focus:ring-emerald-500/20 transition-all';

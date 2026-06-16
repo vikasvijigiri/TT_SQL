@@ -1,10 +1,10 @@
 import { useState } from 'react';
-import { Database, MessageSquare, ArrowLeft, CheckCircle2 } from 'lucide-react';
+import { Database, MessageSquare, ArrowLeft, CheckCircle2, LogOut } from 'lucide-react';
 import CustomProjectsScreen from './CustomProjectsScreen';
 import CustomChatView from './CustomChatView';
 import NQuireLogo from './NQuireLogo';
 
-const CustomWorkspace = ({ onBack, onHome }) => {
+const CustomWorkspace = ({ onBack, onHome, user, onLogout }) => {
   const [currentView, setCurrentView] = useState('projects');
   const [activeProject, setActiveProject] = useState(null);
 
@@ -57,6 +57,32 @@ const CustomWorkspace = ({ onBack, onHome }) => {
           <span className="text-slate-500">CustomSQL Engine</span>
           <span className="text-emerald-500/60">v1.0 · NL-to-SQL</span>
         </div>
+
+        {/* User Profile */}
+        {user && (
+          <div className="mt-auto pt-3 border-t border-[#2c3e55]">
+            <div className="flex items-center gap-2.5 px-1 py-2 rounded-xl hover:bg-white/[0.04] transition-all group">
+              {user.picture ? (
+                <img src={user.picture} alt={user.name} className="w-7 h-7 rounded-full shrink-0 ring-1 ring-emerald-500/40" referrerPolicy="no-referrer" />
+              ) : (
+                <div className="w-7 h-7 rounded-full bg-emerald-500/20 border border-emerald-500/30 shrink-0 flex items-center justify-center text-[11px] font-bold text-emerald-400">
+                  {(user.name || user.email || '?')[0].toUpperCase()}
+                </div>
+              )}
+              <div className="hidden lg:flex flex-col min-w-0 flex-1">
+                <span className="text-[11px] font-bold text-slate-200 truncate leading-tight">{user.name || 'User'}</span>
+                <span className="text-[10px] text-slate-500 truncate leading-tight">{user.email}</span>
+              </div>
+              <button
+                onClick={onLogout}
+                title="Sign out"
+                className="hidden lg:flex shrink-0 p-1 rounded-lg text-slate-500 hover:text-red-400 hover:bg-red-400/10 transition-all"
+              >
+                <LogOut className="w-3.5 h-3.5" />
+              </button>
+            </div>
+          </div>
+        )}
       </aside>
 
       {/* Main Content */}

@@ -7,7 +7,7 @@ import {
 } from 'lucide-react';
 import axios from 'axios';
 
-const API_BASE = 'http://localhost:8002/api';
+const API_BASE = import.meta.env.VITE_API_BASE_URL || '/api';
 
 const STAGE_META = {
   schema_linking:  { label: 'Schema Linking',       Icon: Link2,        color: '#6366f1' },

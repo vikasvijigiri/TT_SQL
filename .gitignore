@@ -30,18 +30,22 @@ Thumbs.db
 .claude/
 
 # Project Specific (Backend)
-backend/results/
-backend/scratch/
-backend/resources/logs/
-backend/resources/memory/
-backend/resources/metadata/
-backend/resources/gold/
-backend/resources/input_data/
-backend/resources/databases/
-backend/resources/documents/
-backend/resources/interface/
-backend/resources/syntax/
-backend/config/*.json
+backend/agent/agent/results/
+backend/agent/agent/scratch/
+backend/agent/agent/resources/logs/
+backend/agent/agent/resources/memory/
+backend/agent/agent/resources/metadata/
+backend/agent/agent/resources/gold/
+backend/agent/agent/resources/input_data/
+backend/agent/agent/resources/databases/
+backend/agent/agent/resources/documents/
+backend/agent/agent/resources/interface/
+backend/agent/agent/resources/syntax/
+backend/agent/agent/config/*.json
+backend/agent/agent/*.db
+
+# Submission — zip too large for git; uploaded as GitHub Release asset
+submission/*.zip
 
 # Root Artifacts & Logs
 *.log
@@ -56,3 +60,6 @@ src_backup/
 src_backup1/
 schema_cache/
 media/
+dab_submission_bundle/
+dab_submission_bundle.zip
+backend/.langchain_cache.db

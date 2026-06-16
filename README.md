@@ -1,32 +1,50 @@
-# Semantic DIN-SQL: Deterministic, Reasoning-First Text2SQL
+# Semantic DIN-SQL: Deterministic, Reasoning-First Text2SQL Microservices
 
-Semantic DIN-SQL is a high-precision, domain-agnostic Text2SQL pipeline designed for Snowflake. It replaces fragile, hardcoded heuristics with a "Reasoning-First" architecture that prioritizes data fidelity, relational depth, and automated quality validation.
+Semantic DIN-SQL is a high-precision, domain-agnostic Text2SQL pipeline designed for Snowflake and SQLite database analysis. It replaces fragile, hardcoded heuristics with a **Reasoning-First** architecture that prioritizes data fidelity, relational depth, and automated quality validation. 
 
-## 🏗️ Project Structure
+Now refactored into a high-performance **Microservices monorepo**, the project features a compiled Go API Gateway, a Python LLM Reasoning Worker, a modern React/Vite dashboard, and a pre-configured Prometheus/Grafana observability stack.
 
-This repository is built as a full-stack application with a Python multi-agent backend and a modern React/Vite frontend.
+---
 
-- **`backend/`**: Contains the core Python multi-agent pipeline, orchestration rules, and database execution logic.
-- **`frontend/`**: Contains a modern React, Vite, and Tailwind CSS dashboard for interacting with the semantic engine and exploring schema mappings.
+## 🏗️ Repository Reorganization
+
+The workspace is organized into separate, highly-focused microservices:
+
+```
+TT_SQL_V2/
+├── backend/
+│   ├── gateway/          # [Go] API Gateway (port 8002) - CRUD, SQLite DB stats, Prometheus exporter & LLM proxying.
+│   └── agent/            # [Python] AI/ML worker (port 8001) - LLM reasoning, schema linkers, self-improving agent loop.
+│       ├── agent/        # Python source package (app/, config/, resources/, results/)
+│       ├── venv_new/     # Python local virtual environment
+│       └── requirements.txt
+├── frontend/             # [React/Vite] UI dashboard (interacts with gateway via port 8002)
+├── monitoring/           # Prometheus and Grafana service telemetry configurations
+└── .env                  # Global environment configuration (port overrides, credentials)
+```
+
+---
 
 ## 🧠 Core Architecture
 
-The pipeline follows a modular, iterative flow designed to eliminate hallucinations and ensure execution success:
+The generation flow follows a modular, iterative reasoning paradigm designed to eliminate hallucinations:
 
 ```mermaid
 graph TD
-    User([User Query]) --> Orchestrator[Semantic DIN Orchestrator]
-    Orchestrator --> Engine[Governed Semantic Engine]
-    Engine --> Context[(Governed Semantic Context)]
+    User([User Query]) --> Gateway[Go API Gateway :8002]
+    Gateway -->|Proxies AI Requests| PythonWorker[Python AI Worker :8001]
     
-    Orchestrator --> Classifier[Strategic Query Classifier]
+    PythonWorker --> GovernedEngine[Governed Semantic Engine]
+    GovernedEngine --> Context[(Governed Semantic Context)]
+    
+    PythonWorker --> Classifier[Strategic Query Classifier]
     Classifier --> Strategy{Strategy Selection}
     
-    Orchestrator --> Linker[Reasoning-Based Schema Linker]
+    PythonWorker --> Linker[Reasoning-Based Schema Linker]
     Linker --> LinkedSchema[Linked Schema & Value Mappings]
     
-    Orchestrator --> Generator[Adaptive SQL Generator]
-    Generator --> SQL[Snowflake SQL]
+    PythonWorker --> Generator[Adaptive SQL Generator]
+    Generator --> SQL[Snowflake/SQLite SQL]
     
     SQL --> Executor[Database Executor]
     Executor --> Results[(CSV Results)]
@@ -38,82 +56,145 @@ graph TD
     Corrector --> Generator
     
     Feedback -- Yes --> Done([Final Result])
+    Gateway -->|Saves Results & telemetry| SQLiteDB[(nquire.db)]
 ```
 
-1. **Governed Semantic Engine**: Automatically extracts and builds a "Semantic Context" from database metadata, including descriptions and actual data samples.
-2. **Reasoning-Based Schema Linker**: Maps terms to columns based on exact sample matches and automatically identifies complex categorical filters.
-3. **Strategic Query Classifier**: Classifies query complexity (`easy`, `non_nested_complex`, `nested_complex`) to select the optimal generation strategy.
-4. **Adaptive SQL Generator**: Snowflake-native generator hardened for `VARIANT`/`JSON` handling using `LATERAL FLATTEN`. Ensures FQN compliance.
-5. **Data IQ Layer (EDA Validation)**: Analyzes execution results using mini-EDA (duplicate counts, null percentages, empty-string detection).
-6. **Self-Correction Loop**: An iterative feedback loop that repairs both compilation errors (syntax) and data quality failures (logic).
+1. **Governed Semantic Engine**: Automatically extracts metadata and matches values from SQLite or Snowflake databases.
+2. **Reasoning-Based Schema Linker**: Binds query terms to precise database columns using real value-lookup matches.
+3. **Strategic Query Classifier**: Categorizes user questions into `easy`, `non_nested_complex`, or `nested_complex` to select the optimal LLM generation prompt/strategy.
+4. **Adaptive SQL Generator**: Formulates compliant SQL, hardened for complex joins, window functions, and JSON/VARIANT flattened attributes.
+5. **Data IQ Auditor**: Conducts execution-based exploratory analysis (mini-EDA) checking for null ratios, row limits, schema mismatches, and empty outputs.
+6. **Self-Correction Loop**: Catches execution or logic errors and feeds traceback reports back to the generator for automated self-healing.
+
+---
 
 ## 🚀 Getting Started
 
-### 1. Backend Setup (Python)
+Ensure you have the following runtimes installed:
+- **Go** (v1.22+)
+- **Python** (v3.10+)
+- **Node.js** (v18+)
+- **Docker** & **Docker Compose** (optional, for monitoring)
 
-Ensure you have a modern Python environment installed.
+### 1. Global Configuration
+
+Create a `.env` file in the project root:
+```env
+# Amazon Bedrock LLM Credentials
+BEDROCK_ACCESS_KEY_ID="your_access_key"
+BEDROCK_SECRET_ACCESS_KEY="your_secret_key"
+BEDROCK_REGION="us-east-1"
+LLM_PROVIDER="bedrock"
+LLM_MODEL="bedrock/openai.gpt-oss-safeguard-120b"
+
+# LangSmith Tracing (Optional)
+LANGCHAIN_TRACING_V2="true"
+LANGCHAIN_API_KEY="your_langchain_key"
+LANGCHAIN_PROJECT="TT_SQL_V2"
+
+# Microservices Ports Setup
+GO_PORT=8002
+PYTHON_PORT=8001
+PYTHON_API_URL=http://localhost:8001
+```
+
+### 2. Python AI/ML Worker Setup
 
 ```bash
-# Create and activate your virtual environment
-python -m venv venv_new
-venv_new\Scripts\activate  # On Windows
+# Navigate to the Python agent workspace
+cd backend/agent
 
-# Install dependencies
+# Create and activate virtual environment
+python -m venv venv_new
+venv_new\Scripts\activate      # On Windows PowerShell/CMD
+source venv_new/bin/activate    # On Linux/macOS
+
+# Install agent dependencies
 pip install -r requirements.txt
 ```
 
-**Configuration:**
-Create a `.env` file at the root of the project with your Bedrock credentials:
-```env
-BEDROCK_REGION=us-east-1
-BEDROCK_SECRET_ACCESS_KEY=your_key
-LLM_MODEL=bedrock/openai.gpt-oss-safeguard-120b
+Start the Python service:
+```bash
+# Run from backend/agent directory with PYTHONPATH=.
+$env:PYTHONPATH="."
+venv_new\Scripts\python.exe agent/app/api.py
 ```
+The server will start on port `8001` (by default).
 
-### 2. Frontend Setup (React/Vite)
-
-Navigate to the frontend directory to install dependencies and run the UI.
+### 3. Go API Gateway Setup
 
 ```bash
+# Navigate to the Go gateway directory
+cd backend/gateway
+
+# Run directly
+go run cmd/server/main.go
+
+# Or compile and build executable
+go build -o gateway.exe cmd/server/main.go
+.\gateway.exe
+```
+The gateway will start on port `8002` (by default) and auto-detect your `.env` ports. It connects to the local database at `backend/agent/agent/results/evaluations/nquire.db` for storing session metadata and evaluation diagnostics.
+
+### 4. Frontend Dashboard Setup
+
+```bash
+# Navigate to the frontend directory
 cd frontend
+
+# Install Node dependencies
 npm install
+
+# Run the development server
 npm run dev
 ```
+Open [http://localhost:5173](http://localhost:5173) in your browser to view the interactive dashboard.
 
-## 🛠️ Running the Pipeline
+### 5. Prometheus & Grafana Monitoring
 
-You can run the core pipeline scripts from the project root using the `backend/scripts` path. Ensure you set your `PYTHONPATH` first.
-
+To view Go API endpoints, latency statistics, and error rates:
 ```bash
-# Set PYTHONPATH to root for imports (Windows PowerShell)
-$env:PYTHONPATH = ".;" + $env:PYTHONPATH
+# Start the monitoring stack
+cd monitoring
+docker-compose up -d
 ```
-
-**Core Execution Scripts:**
-
-- **Run Batch Processing:**
-  Execute a batch of queries against the database instance.
-  ```bash
-  python backend/scripts/run_batch.py --instance sf_bq070
-  ```
-
-- **Compile Submissions:**
-  Compile final SQL outputs for evaluation/submission.
-  ```bash
-  python backend/scripts/compile_submission.py
-  ```
-
-- **Run Self-Improvement Loop:**
-  Execute the iterative self-improving pipeline to refine generated SQL logic based on execution failures.
-  ```bash
-  python backend/scripts/run_self_improve.py
-  ```
-
-## 💎 Design Philosophy: "NO Hardcoding"
-Every prompt and module in this repository is strictly decoupled from domain-specific terminology. Whether processing Clinical (IDC), Intellectual Property (Patents), or Financial data, the system relies on:
-- **Evidence-Based Grounding**: Using actual database samples to justify mapping.
-- **Architectural Principles**: Using structural rules rather than hardcoded column lists.
-- **Automated IQ**: Using the Data IQ layer to "feel" if a result is correct, mimicking human data validation.
+- **Prometheus**: Accessible at `http://localhost:9090` (polls the Gateway's `/metrics` endpoint).
+- **Grafana**: Accessible at `http://localhost:3000` (pre-configured with dashboards).
 
 ---
-*Built for high-precision Snowflake benchmarks (Spider2.0).*
+
+## 🛠️ Running the Pipeline & Scripts
+
+Core scripts should be run from the python agent root directory (`backend/agent`) with the virtual environment activated:
+
+```bash
+cd backend/agent
+$env:PYTHONPATH="."
+```
+
+#### Run Batch Processing
+Executes a batch of Text2SQL evaluation queries against a specific target benchmark database.
+```bash
+venv_new\Scripts\python.exe agent/scripts/run_batch.py --instance sf_bq070
+```
+
+#### Run Self-Improvement Loop
+Iterates over SQL compilation and data quality failures, refining SQL generator rules dynamically based on execution results.
+```bash
+venv_new\Scripts\python.exe agent/scripts/run_self_improve.py
+```
+
+#### Compile Evaluation Submissions
+Compiles generated SQL structures and extracts answers into a consolidated zip bundle.
+```bash
+venv_new\Scripts\python.exe agent/scripts/compile_submission.py
+```
+
+---
+
+## 💎 Design Philosophy: "NO Hardcoding"
+
+Every prompt, link, and agent logic in Semantic DIN-SQL is decoupled from domain-specific rules. It supports multi-tenant datasets (clinical, financials, patent metrics, yelp queries) out-of-the-box by relying on:
+- **Evidence-Based Grounding**: Scanning actual database profiles and samples rather than guessing.
+- **Structural Strategy**: Mapping queries via complexity templates rather than hardcoded columns.
+- **Execution Validation**: Query results are dynamically profiled by the Data IQ Layer to ensure logical validation before completion.

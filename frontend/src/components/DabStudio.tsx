@@ -36,12 +36,13 @@ import {
   ShieldCheck,
   Lightbulb,
   Download,
-  MessageSquare
+  MessageSquare,
+  LogOut
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import NQuireLogo from './NQuireLogo';
 
-const API_BASE = "http://localhost:3030/api";
+const API_BASE = import.meta.env.VITE_API_BASE_URL || '/api';
 
 const generateInsights = (headers, data) => {
   if (!headers?.length || !data?.length) return [];
@@ -520,7 +521,7 @@ const parseLiveStepsFromMd = (content) => {
   return { currentPhase, steps: cleanSteps };
 };
 
-const DabStudio = ({ onBack, onHome, autoOpenDetails, clearAutoOpenDetails }) => {
+const DabStudio = ({ onBack, onHome, autoOpenDetails, clearAutoOpenDetails, user, onLogout }) => {
   const [currentView, setCurrentView] = useState('dashboard'); // 'dashboard' | 'database' | 'leaderboard'
   const [metrics, setMetrics] = useState(null);
   const [databases, setDatabases] = useState([]);
@@ -592,9 +593,15 @@ const DabStudio = ({ onBack, onHome, autoOpenDetails, clearAutoOpenDetails }) =>
 
   // Sync run/evaluate tickers — runs every 5 s to keep frontend in sync with backend
   useEffect(() => {
-    checkGlobalRunStatus();
-    const interval = setInterval(checkGlobalRunStatus, 5000);
-    return () => clearInterval(interval);
+    let isMounted = true;
+    let timer: any;
+    const loop = async () => {
+      if (!isMounted) return;
+      await checkGlobalRunStatus();
+      if (isMounted) timer = setTimeout(loop, 5000);
+    };
+    loop();
+    return () => { isMounted = false; clearTimeout(timer); };
   }, [dateFilter]);
 
   // Auto-open details when navigated deep-link from global tasks panel
@@ -614,8 +621,8 @@ const DabStudio = ({ onBack, onHome, autoOpenDetails, clearAutoOpenDetails }) =>
       liveEsRef.current?.close();
       clearInterval(animTimerRef.current);
       clearTimeout(safetyTimeoutRef.current);
-      clearInterval(logPollRef.current);
-      clearInterval(rtPollRef.current);
+      clearTimeout(logPollRef.current);
+      clearTimeout(rtPollRef.current);
     };
   }, []);
 
@@ -626,10 +633,13 @@ const DabStudio = ({ onBack, onHome, autoOpenDetails, clearAutoOpenDetails }) =>
 
   // Real-time probe card + metrics refresh while any instance is running
   useEffect(() => {
-    clearInterval(rtPollRef.current);
+    clearTimeout(rtPollRef.current);
     const hasRunning = Object.keys(runningInstances).length > 0 || isGlobalRunning;
     if (!hasRunning) return;
+    
+    let isMounted = true;
     const tick = async () => {
+      if (!isMounted) return;
       const db = selectedDbRef.current;
       if (db) {
         try {
@@ -638,24 +648,28 @@ const DabStudio = ({ onBack, onHome, autoOpenDetails, clearAutoOpenDetails }) =>
         } catch (_) {}
       }
       try {
-        const m = await axios.get(`${API_BASE}/dab/metrics?date=all`, { timeout: 5000 });
+        const m = await axios.get(`${API_BASE}/dab/metrics?date=all`, { timeout: 60000 });
         setMetrics(m.data);
-        const dbs = await axios.get(`${API_BASE}/dab/databases?date=all`, { timeout: 5000 });
+        const dbs = await axios.get(`${API_BASE}/dab/databases?date=all`, { timeout: 60000 });
         setDatabases(dbs.data);
       } catch (_) {}
+      
+      if (isMounted) rtPollRef.current = setTimeout(tick, 3000) as any;
     };
     tick();
-    rtPollRef.current = setInterval(tick, 3000);
-    return () => clearInterval(rtPollRef.current);
+    return () => { isMounted = false; clearTimeout(rtPollRef.current); };
   }, [Object.keys(runningInstances).length, isGlobalRunning]);
 
   // Poll /dab/results for live log content when the log tab is open during a run
   useEffect(() => {
-    clearInterval(logPollRef.current);
+    clearTimeout(logPollRef.current);
     if (detailsTab !== 'log' || !selectedDetails || selectedDetails.status !== 'running') return;
     const { db, id } = selectedDetails;
     const qNum = id.replace(/\D/g, '');
+    
+    let isMounted = true;
     const poll = async () => {
+      if (!isMounted) return;
       try {
         const res = await axios.get(`${API_BASE}/dab/results/${db}/${qNum}`);
         if (res.data?.log_content) {
@@ -665,10 +679,10 @@ const DabStudio = ({ onBack, onHome, autoOpenDetails, clearAutoOpenDetails }) =>
           });
         }
       } catch (_) {}
+      if (isMounted) logPollRef.current = setTimeout(poll, 2500) as any;
     };
     poll();
-    logPollRef.current = setInterval(poll, 2500);
-    return () => clearInterval(logPollRef.current);
+    return () => { isMounted = false; clearTimeout(logPollRef.current); };
   }, [detailsTab, selectedDetails?.id, selectedDetails?.status]);
 
   // Auto-scroll log to bottom when content updates during a run
@@ -738,18 +752,19 @@ const DabStudio = ({ onBack, onHome, autoOpenDetails, clearAutoOpenDetails }) =>
 
   const fetchDabSubmissions = async () => { /* leaderboard removed */ };
 
-  const fetchInitialData = async (showSpinner = true, force = false) => {
-    if (!dateFilter) return; // Don't fetch until date filter is determined
+  const fetchInitialData = async (showSpinner = true, force = false, forceDate?: string) => {
+    const activeDate = forceDate || dateFilter;
+    if (!activeDate) return; // Don't fetch until date filter is determined
     
     if (showSpinner) setLoading(true);
     // Hard timeout — if any call hangs longer than 16 s, clear the spinner anyway
-    const safetyTimer = showSpinner ? setTimeout(() => setLoading(false), 16000) : null;
+    const safetyTimer = showSpinner ? setTimeout(() => setLoading(false), 65000) : null;
     try {
-      const OPT = { timeout: 15000 };
+      const OPT = { timeout: 60000 };
       const [metricsRes, dbsRes, recentRes] = await Promise.all([
-        axios.get(`${API_BASE}/dab/metrics?date=${dateFilter}${force ? '&force=true' : ''}`, OPT).catch(() => ({ data: null })),
-        axios.get(`${API_BASE}/dab/databases?date=${dateFilter}`, OPT).catch(() => ({ data: [] })),
-        axios.get(`${API_BASE}/dab/results/recent?limit=12&date=${dateFilter}`, OPT).catch(() => ({ data: [] })),
+        axios.get(`${API_BASE}/dab/metrics?date=${activeDate}${force ? '&force=true' : ''}`, OPT).catch(() => ({ data: null })),
+        axios.get(`${API_BASE}/dab/databases?date=${activeDate}`, OPT).catch(() => ({ data: [] })),
+        axios.get(`${API_BASE}/dab/results/recent?limit=12&date=${activeDate}`, OPT).catch(() => ({ data: [] })),
       ]);
       if (metricsRes.data) setMetrics(metricsRes.data);
       if (dbsRes.data) setDatabases(dbsRes.data);
@@ -824,13 +839,14 @@ const DabStudio = ({ onBack, onHome, autoOpenDetails, clearAutoOpenDetails }) =>
     }
   };
 
-  const handleRefresh = async (db?: any) => {
+  const handleRefresh = async (db?: any, forceDate?: string) => {
     const target = typeof db === 'string' ? db : selectedDbRef.current;
+    const activeDate = forceDate || dateFilter;
     await fetchDates();
-    await fetchInitialData(false, true);
+    await fetchInitialData(false, true, forceDate);
     if (target) {
       try {
-        const res = await axios.get(`${API_BASE}/dab/queries/db/${target}?date=${dateFilter}`);
+        const res = await axios.get(`${API_BASE}/dab/queries/db/${target}?date=${activeDate}`);
         setDbResults(res.data);
         setRunningInstances(prev => {
           const next = { ...prev };
@@ -850,10 +866,22 @@ const DabStudio = ({ onBack, onHome, autoOpenDetails, clearAutoOpenDetails }) =>
 
   const confirmDeleteRun = async () => {
     try {
-      const res = await axios.delete(`${API_BASE}/dab/runs/${dateFilter}`);
-      setDateFilter('all');
+      await axios.delete(`${API_BASE}/dab/runs/${dateFilter}`);
+      
+      const res = await axios.get(`${API_BASE}/results/dates`);
+      const newDates = res.data.dab || [];
+      setAllDates(newDates);
+      
+      let fallbackDate = 'all';
+      if (newDates.length > 0) {
+        fallbackDate = [...newDates].sort().reverse()[0];
+      }
+      
+      setDateFilter(fallbackDate);
       setShowDeleteModal(false);
-      await handleRefresh();
+      
+      // Manually trigger handleRefresh with the explicit new date
+      await handleRefresh(selectedDbRef.current, fallbackDate);
     } catch (err) {
       console.error("Failed to delete DAB run", err);
       alert(err.response?.data?.error || 'Failed to delete DAB run');
@@ -1299,6 +1327,32 @@ const DabStudio = ({ onBack, onHome, autoOpenDetails, clearAutoOpenDetails }) =>
             <Sparkles className="w-6 h-6 text-purple-400 animate-pulse" />
           </div>
         </div>
+
+        {/* User Profile */}
+        {user && (
+          <div className="mt-auto pt-3 border-t border-[#1a1a22]">
+            <div className="flex items-center gap-2.5 px-1 py-2 rounded-xl hover:bg-white/[0.04] transition-all group">
+              {user.picture ? (
+                <img src={user.picture} alt={user.name} className="w-7 h-7 rounded-full shrink-0 ring-1 ring-purple-500/40" referrerPolicy="no-referrer" />
+              ) : (
+                <div className="w-7 h-7 rounded-full bg-purple-500/20 border border-purple-500/30 shrink-0 flex items-center justify-center text-[11px] font-bold text-purple-400">
+                  {(user.name || user.email || '?')[0].toUpperCase()}
+                </div>
+              )}
+              <div className="hidden lg:flex flex-col min-w-0 flex-1">
+                <span className="text-[11px] font-bold text-slate-200 truncate leading-tight">{user.name || 'User'}</span>
+                <span className="text-[10px] text-slate-500 truncate leading-tight">{user.email}</span>
+              </div>
+              <button
+                onClick={onLogout}
+                title="Sign out"
+                className="hidden lg:flex shrink-0 p-1 rounded-lg text-slate-500 hover:text-red-400 hover:bg-red-400/10 transition-all"
+              >
+                <LogOut className="w-3.5 h-3.5" />
+              </button>
+            </div>
+          </div>
+        )}
       </aside>
 
       {/* Main Panel */}
@@ -1368,6 +1422,47 @@ const DabStudio = ({ onBack, onHome, autoOpenDetails, clearAutoOpenDetails }) =>
             )}
           </div>
         </header>
+
+        {/* ── News Ticker — last run summary ─────────────────────────────── */}
+        {currentView === 'dashboard' && metrics && !isGlobalRunning && (metrics.evaluated ?? 0) > 0 && (
+          <div className="shrink-0 overflow-hidden border-b border-purple-500/20 bg-gradient-to-r from-[#0d0b18] via-purple-950/20 to-[#0d0b18] h-7 flex items-center relative select-none">
+            <style>{`
+              @keyframes dab-ticker {
+                0%   { transform: translateX(0); }
+                100% { transform: translateX(-50%); }
+              }
+            `}</style>
+            <div className="flex whitespace-nowrap" style={{ animation: 'dab-ticker 45s linear infinite' }}>
+              {[0, 1].map(i => {
+                const runDate = dateFilter && dateFilter !== 'all'
+                  ? (() => { try { return new Date(dateFilter + 'T00:00:00').toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' }); } catch { return dateFilter; } })()
+                  : 'All Dates';
+                return (
+                  <span key={i} className="inline-flex items-center gap-3 px-8 text-[11px] font-mono font-bold text-purple-300/80">
+                    <span className="text-purple-500">◈</span>
+                    <span className="text-purple-400 uppercase tracking-widest text-[10px]">Last Run</span>
+                    <span className="text-slate-300">{runDate}</span>
+                    <span className="text-purple-700">·</span>
+                    <span className="text-emerald-400">{metrics.evaluated} queries evaluated</span>
+                    <span className="text-purple-700">·</span>
+                    <span>Pass@1: <span className="text-purple-200 font-black">{metrics.pass_at_1_pct}</span></span>
+                    <span className="text-purple-700">·</span>
+                    <span>Pass@K: <span className="text-indigo-300 font-black">{metrics.pass_at_k_pct}</span></span>
+                    <span className="text-purple-700">·</span>
+                    <span><span className="text-purple-200">{metrics.num_runs}</span> runs/query</span>
+                    <span className="text-purple-700">·</span>
+                    <span>Tokens: <span className="text-cyan-400">{metrics.total_tokens}</span></span>
+                    <span className="text-purple-700">·</span>
+                    <span>Est. Cost: <span className="text-amber-400 font-black">{metrics.total_cost}</span></span>
+                    <span className="text-purple-700">·</span>
+                    <span>Avg Latency: <span className="text-sky-400">{metrics.avg_latency}</span></span>
+                    <span className="text-purple-500">◈</span>
+                  </span>
+                );
+              })}
+            </div>
+          </div>
+        )}
 
         {/* Global Progress Bar */}
         {isGlobalRunning && globalProgress.total > 0 && currentView === 'dashboard' && (

@@ -35,13 +35,14 @@ import {
   ShieldCheck,
   Lightbulb,
   Download,
-  MessageSquare
+  MessageSquare,
+  LogOut
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import PipelinePulse from './PipelinePulse';
 import NQuireLogo from './NQuireLogo';
 
-const API_BASE = "http://localhost:3030/api";
+const API_BASE = import.meta.env.VITE_API_BASE_URL || '/api';
 
 /* ── Derive up to 5 crisp, deterministic insights from result data ── */
 const generateInsights = (headers, data) => {
@@ -533,7 +534,7 @@ const parseLiveStepsFromMd = (content) => {
   return { currentPhase, steps: cleanSteps };
 };
 
-const SpiderStudio = ({ onBack, onHome, autoOpenDetails, clearAutoOpenDetails }) => {
+const SpiderStudio = ({ onBack, onHome, autoOpenDetails, clearAutoOpenDetails, user, onLogout }) => {
   const [currentView, setCurrentView] = useState('dashboard'); // 'dashboard' | 'database'
   const [metrics, setMetrics] = useState(null);
   const [databases, setDatabases] = useState([]);
@@ -604,9 +605,15 @@ const SpiderStudio = ({ onBack, onHome, autoOpenDetails, clearAutoOpenDetails })
 
   // Sync run/evaluate tickers
   useEffect(() => {
-    checkGlobalRunStatus();
-    const interval = setInterval(checkGlobalRunStatus, 5000);
-    return () => { clearInterval(interval); stopSessionPoll(); };
+    let isMounted = true;
+    let timer: any;
+    const loop = async () => {
+      if (!isMounted) return;
+      await checkGlobalRunStatus();
+      if (isMounted) timer = setTimeout(loop, 5000);
+    };
+    loop();
+    return () => { isMounted = false; clearTimeout(timer); stopSessionPoll(); };
   }, [dateFilter]);
 
   // Auto-open details when navigated deep-link from global tasks panel
@@ -672,13 +679,14 @@ const SpiderStudio = ({ onBack, onHome, autoOpenDetails, clearAutoOpenDetails })
     }
   };
 
-  const fetchInitialData = async () => {
+  const fetchInitialData = async (forceDate?: string) => {
+    const activeDate = forceDate || dateFilter;
     setLoading(true);
     try {
       const [metricsRes, dbsRes, recentRes] = await Promise.all([
-        axios.get(`${API_BASE}/metrics?date=${dateFilter}`),
-        axios.get(`${API_BASE}/databases?date=${dateFilter}`),
-        axios.get(`${API_BASE}/results/recent?limit=12&date=${dateFilter}`)
+        axios.get(`${API_BASE}/metrics?date=${activeDate}`),
+        axios.get(`${API_BASE}/databases?date=${activeDate}`),
+        axios.get(`${API_BASE}/results/recent?limit=12&date=${activeDate}`)
       ]);
       setMetrics(metricsRes.data);
       setDatabases(dbsRes.data);
@@ -746,10 +754,28 @@ const SpiderStudio = ({ onBack, onHome, autoOpenDetails, clearAutoOpenDetails })
 
   const confirmDeleteRun = async () => {
     try {
-      const res = await axios.delete(`${API_BASE}/runs/${dateFilter}`);
-      setDateFilter('all');
+      await axios.delete(`${API_BASE}/runs/${dateFilter}`);
+      
+      const res = await axios.get(`${API_BASE}/results/dates`);
+      const newDates = res.data.spider || [];
+      setAllDates(newDates);
+      
+      let fallbackDate = 'all';
+      if (newDates.length > 0) {
+        fallbackDate = [...newDates].sort().reverse()[0];
+      }
+      
+      setDateFilter(fallbackDate);
       setShowDeleteModal(false);
-      await handleRefresh();
+      
+      // Manually refresh data to instantly reflect the new active date since state update is asynchronous
+      await fetchInitialData(fallbackDate);
+      if (selectedDb) {
+        try {
+          const resDb = await axios.get(`${API_BASE}/results/${selectedDb}?date=${fallbackDate}`);
+          setDbResults(resDb.data);
+        } catch (_) {}
+      }
     } catch (err) {
       console.error("Failed to delete run", err);
       alert(err.response?.data?.error || 'Failed to delete run');
@@ -795,14 +821,14 @@ const SpiderStudio = ({ onBack, onHome, autoOpenDetails, clearAutoOpenDetails })
 
   const stopSessionPoll = () => {
     if (sessionPollRef.current) {
-      clearInterval(sessionPollRef.current);
+      clearTimeout(sessionPollRef.current as any);
       sessionPollRef.current = null;
     }
   };
 
   const startSessionPoll = () => {
     stopSessionPoll();
-    sessionPollRef.current = setInterval(async () => {
+    const poll = async () => {
       try {
         const res = await axios.get(`${API_BASE}/run/session`);
         setActiveSession(res.data);
@@ -810,11 +836,14 @@ const SpiderStudio = ({ onBack, onHome, autoOpenDetails, clearAutoOpenDetails })
           stopSessionPoll();
           setIsGlobalRunning(false);
           setTimeout(handleRefresh, 800);
+          return;
         }
       } catch (err) {
         console.error("Session poll error", err);
       }
-    }, 2000);
+      sessionPollRef.current = setTimeout(poll, 2000) as any;
+    };
+    poll();
   };
 
   const triggerGlobalRun = async () => {
@@ -1093,6 +1122,32 @@ const SpiderStudio = ({ onBack, onHome, autoOpenDetails, clearAutoOpenDetails })
             <Sparkles className="w-6 h-6 text-blue-400 animate-pulse" />
           </div>
         </div>
+
+        {/* User Profile */}
+        {user && (
+          <div className="mt-auto pt-3 border-t border-[#1a1a22]">
+            <div className="flex items-center gap-2.5 px-1 py-2 rounded-xl hover:bg-white/[0.04] transition-all group">
+              {user.picture ? (
+                <img src={user.picture} alt={user.name} className="w-7 h-7 rounded-full shrink-0 ring-1 ring-blue-500/40" referrerPolicy="no-referrer" />
+              ) : (
+                <div className="w-7 h-7 rounded-full bg-blue-500/20 border border-blue-500/30 shrink-0 flex items-center justify-center text-[11px] font-bold text-blue-400">
+                  {(user.name || user.email || '?')[0].toUpperCase()}
+                </div>
+              )}
+              <div className="hidden lg:flex flex-col min-w-0 flex-1">
+                <span className="text-[11px] font-bold text-slate-200 truncate leading-tight">{user.name || 'User'}</span>
+                <span className="text-[10px] text-slate-500 truncate leading-tight">{user.email}</span>
+              </div>
+              <button
+                onClick={onLogout}
+                title="Sign out"
+                className="hidden lg:flex shrink-0 p-1 rounded-lg text-slate-500 hover:text-red-400 hover:bg-red-400/10 transition-all"
+              >
+                <LogOut className="w-3.5 h-3.5" />
+              </button>
+            </div>
+          </div>
+        )}
       </aside>
 
       {/* Main Panel */}

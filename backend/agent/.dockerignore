@@ -1,0 +1,13 @@
+venv_new/
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+.Python
+.env
+.langchain_cache.db
+agent/results/
+agent/__pycache__/
+agent/tests/
+*.db
+*.sqlite

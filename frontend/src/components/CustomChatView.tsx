@@ -5,8 +5,7 @@ import {
 } from 'lucide-react';
 import PipelineFlow from './PipelineFlow';
 
-const API_BASE = 'http://localhost:8002';
-const CUSTOM_STREAM = `${API_BASE}/api/custom/stream`;
+const CUSTOM_STREAM = `${import.meta.env.VITE_API_BASE_URL || '/api'}/custom/stream`;
 
 const SAMPLE_QUESTIONS = [
   'Show me the top 10 records from the main table',

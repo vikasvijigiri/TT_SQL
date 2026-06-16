@@ -855,15 +855,21 @@ const LandingPage = ({ onEnter, user, onLogin, onLogout }) => {
     onSuccess: async (tokenResponse) => {
       setLoginLoading(true);
       try {
-        const res = await fetch('https://www.googleapis.com/oauth2/v3/userinfo', {
-          headers: { Authorization: `Bearer ${tokenResponse.access_token}` }
+        // Send the Google access token to our backend for verification + JWT issuance.
+        const res = await fetch('/api/auth/google', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ access_token: tokenResponse.access_token }),
         });
-        const profile = await res.json();
-        const userData = { name: profile.name, email: profile.email, picture: profile.picture };
-        onLogin(userData);
+        if (!res.ok) {
+          const err = await res.json().catch(() => ({}));
+          throw new Error(err.error || 'Auth failed');
+        }
+        const { token, user } = await res.json();
+        onLogin(user, token);
         if (loginIntentRef.current) onEnter();
       } catch (err) {
-        console.error('Failed to fetch Google profile', err);
+        console.error('Google auth failed:', err);
       } finally {
         setLoginLoading(false);
         loginIntentRef.current = false;
