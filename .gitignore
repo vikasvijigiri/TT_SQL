@@ -63,3 +63,5 @@ media/
 dab_submission_bundle/
 dab_submission_bundle.zip
 backend/.langchain_cache.db
+*.zip
+*.db
