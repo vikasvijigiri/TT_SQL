@@ -404,6 +404,8 @@ def run_dab_query(
     query: Dict[str, Any],
     llm_client: Optional[LLMClient] = None,
     run_number: int = 0,
+    model: Optional[str] = None,
+    temperature: Optional[float] = None,
 ) -> Dict[str, Any]:
     """
     Run a single DAB query through the SpiderDIN pipeline.
@@ -434,7 +436,14 @@ def run_dab_query(
     start_time = time.time()
 
     # Setup results directory
-    result_dir = DAB_RESULTS_DIR / dataset
+    import agent.app.dab.dab_evaluator as de
+    from agent.app.core.config import get_user_dab_results_dir
+    
+    current_results_dir = get_user_dab_results_dir(de.DAB_RUN_USERNAME) if de.DAB_RUN_USERNAME else DAB_RESULTS_DIR
+    if de.DAB_RUN_ID and de.DAB_RUN_ID != "live":
+        result_dir = current_results_dir / "_archive" / de.DAB_RUN_ID / dataset
+    else:
+        result_dir = current_results_dir / dataset
     result_dir.mkdir(parents=True, exist_ok=True)
 
     # run_number=0 Ã¢â€ â€™ canonical files (query1.md); run_number>0 Ã¢â€ â€™ query1_run2.md
@@ -449,7 +458,7 @@ def run_dab_query(
                 p.unlink()
 
     if llm_client is None:
-        llm_client = LLMClient()
+        llm_client = LLMClient(model=model, temperature=temperature)
 
     reset_token_counters()
     logger.start_live_task_log(str(md_path))
@@ -631,7 +640,7 @@ def run_dab_query(
                     )
 
         save_answer(
-            agent_answer, dataset, query_id, DAB_RESULTS_DIR, run_suffix=_run_sfx
+            agent_answer, dataset, query_id, result_dir.parent, run_suffix=_run_sfx
         )
         logger.info(f"AGENT ANSWER: {agent_answer}")
 

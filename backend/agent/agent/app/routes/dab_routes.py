@@ -31,6 +31,7 @@ from agent.app.core.config import DAB_REPO as _DAB_REPO
 DAB_REPO_PATH_DEFAULT = str(_DAB_REPO)
 DAB_RESULTS_BASE = DAB_RESULTS_DIR
 DAB_RUNNING_TASKS: set = set()
+DAB_EXECUTING_TASKS: set = set()
 DAB_CANCEL_FLAG: bool = False
 _dab_queries_cache = None
 
@@ -604,19 +605,31 @@ def run_dab_single(dataset: str, query_id: str, request: Request, payload: DabRu
 
 
 @router.get("/api/dab/livelog/{dataset}/{query_id}")
-def get_dab_live_log(dataset: str, query_id: str):
+def get_dab_live_log(dataset: str, query_id: str, request: Request):
     """
     Tail the live log file for a running DAB query.
     Returns parsed milestone steps from the log even while it's being written.
     """
     query_id = query_id.lower().replace("query", "")
     import re as _re
+    from agent.app.core.config import get_user_dab_results_dir
+
+    username = _get_username_from_request(request)
+    user_dab_dir = get_user_dab_results_dir(username)
 
     qkey = f"{dataset}_q{query_id}"
     is_running = qkey in DAB_RUNNING_TASKS
 
-    # Try all possible casing and directory structures for the markdown log file
-    md_file = DAB_RESULTS_DIR / dataset.lower() / f"query{query_id}.md"
+    # Try user-scoped directories first
+    md_file = user_dab_dir / dataset.lower() / f"query{query_id}.md"
+    if not md_file.exists():
+        md_file = user_dab_dir / dataset.upper() / f"query{query_id}.md"
+    if not md_file.exists():
+        md_file = user_dab_dir / dataset / f"query{query_id}.md"
+        
+    # Legacy / shared directories fallback
+    if not md_file.exists():
+        md_file = DAB_RESULTS_DIR / dataset.lower() / f"query{query_id}.md"
     if not md_file.exists():
         md_file = DAB_RESULTS_DIR / dataset.upper() / f"query{query_id}.md"
     if not md_file.exists():
@@ -717,10 +730,15 @@ async def stream_dab_live_log(dataset: str, query_id: str, request: Request):
     """
     import re as _re
 
-    qkey = f"{dataset}_q{query_id}"
+    username = _get_username_from_request(request)
+    from agent.app.core.config import get_user_dab_results_dir
+    user_dab_dir = get_user_dab_results_dir(username)
 
     def _resolve_md() -> Path | None:
         for p in (
+            user_dab_dir / dataset.lower() / f"query{query_id}.md",
+            user_dab_dir / dataset.upper() / f"query{query_id}.md",
+            user_dab_dir / dataset / f"query{query_id}.md",
             DAB_RESULTS_DIR / dataset.lower() / f"query{query_id}.md",
             DAB_RESULTS_DIR / dataset.upper() / f"query{query_id}.md",
             DAB_RESULTS_DIR / dataset / f"query{query_id}.md",
@@ -892,6 +910,7 @@ def stop_dab_all():
 
     # Clear the running tasks set so the UI instantly stops polling
     DAB_RUNNING_TASKS.clear()
+    DAB_EXECUTING_TASKS.clear()
     
     return {"message": "Stop requested. Running queries will finish gracefully."}
 
@@ -1114,25 +1133,32 @@ def get_dab_runs(request: Request):
         db.close()
 
 @router.delete("/api/dab/runs/{date}")
-def delete_dab_run(date: str):
+def delete_dab_run(date: str, request: Request):
     """Delete a historical run by date or run_id."""
     from datetime import datetime
     from agent.app.utils.archive import force_delete_dir, force_delete_file
     from agent.app.db.database import SessionLocal
     from agent.app.db.models import Evaluation
     from sqlalchemy import cast, Date
+    from agent.app.core.config import get_user_dab_results_dir
     import shutil
     
+    username = _get_username_from_request(request)
+    user_dab_dir = get_user_dab_results_dir(username)
+    
     if date == "all":
-        return {"error": "Cannot delete 'all' dates."}
+        raise HTTPException(status_code=400, detail="Cannot delete 'all' dates.")
         
     db = SessionLocal()
     try:
         if date.startswith("run_"):
-            db.query(Evaluation).filter(Evaluation.run_id == date).delete(synchronize_session=False)
+            db.query(Evaluation).filter(
+                Evaluation.run_id == date,
+                Evaluation.username == username
+            ).delete(synchronize_session=False)
             db.commit()
             
-            archive_base = DAB_RESULTS_DIR / "_archive"
+            archive_base = user_dab_dir / "_archive"
             run_folder = archive_base / date
             if run_folder.exists() and run_folder.is_dir():
                 force_delete_dir(run_folder)
@@ -1144,18 +1170,19 @@ def delete_dab_run(date: str):
             
         elif date == "live":
             db.query(Evaluation).filter(
-                (Evaluation.run_id == "live") | (Evaluation.run_id == None)
+                Evaluation.username == username,
+                ((Evaluation.run_id == "live") | (Evaluation.run_id == None))
             ).delete(synchronize_session=False)
             db.commit()
             
-            if DAB_RESULTS_DIR.exists():
-                for item in DAB_RESULTS_DIR.iterdir():
+            if user_dab_dir.exists():
+                for item in user_dab_dir.iterdir():
                     if item.name != "_archive":
                         if item.is_dir():
                             force_delete_dir(item)
                         else:
                             force_delete_file(item)
-                            
+                             
             _cached_dab_metrics.cache_clear()
             _dab_queries_cache = None
             return {"message": "Cleared live results."}
@@ -1166,6 +1193,7 @@ def delete_dab_run(date: str):
             end_dt = start_dt + timedelta(days=1)
             
             db.query(Evaluation).filter(
+                Evaluation.username == username,
                 Evaluation.timestamp >= start_dt,
                 Evaluation.timestamp < end_dt
             ).delete(synchronize_session=False)
@@ -1173,15 +1201,15 @@ def delete_dab_run(date: str):
             
             today = datetime.now().strftime("%Y-%m-%d")
             if date == today:
-                if DAB_RESULTS_DIR.exists():
-                    for item in DAB_RESULTS_DIR.iterdir():
+                if user_dab_dir.exists():
+                    for item in user_dab_dir.iterdir():
                         if item.name != "_archive":
                             if item.is_dir():
                                 force_delete_dir(item)
                             else:
                                 force_delete_file(item)
             else:
-                archive_base = DAB_RESULTS_DIR / "_archive"
+                archive_base = user_dab_dir / "_archive"
                 if archive_base.exists():
                     for run_folder in archive_base.iterdir():
                         if run_folder.is_dir():
@@ -1197,8 +1225,8 @@ def delete_dab_run(date: str):
             _dab_queries_cache = None
             return {"message": f"Run {date} deleted."}
     except Exception as e:
-        logger.error(f"Failed to delete DAB run/date {date}: {e}")
-        return {"error": str(e)}
+        logger.error(f"Failed to delete DAB run/date {date} for user {username}: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
     finally:
         db.close()
 
@@ -1332,6 +1360,7 @@ def run_dab_all(request: Request, payload: DabRunAllPayload = DabRunAllPayload()
             DAB_RUNNING_TASKS.discard(q["instance_id"])
             return
         qkey = q["instance_id"]
+        DAB_EXECUTING_TASKS.add(qkey)
         try:
             from agent.app.dab.dab_orchestrator import run_dab_query
             run_dab_query(
@@ -1343,6 +1372,7 @@ def run_dab_all(request: Request, payload: DabRunAllPayload = DabRunAllPayload()
         except Exception:
             pass
         finally:
+            DAB_EXECUTING_TASKS.discard(qkey)
             DAB_RUNNING_TASKS.discard(qkey)
 
     def _run_batch():
@@ -1464,9 +1494,14 @@ def get_dab_run_status():
         completed_queries = max(0, total_queries - running_count)
     else:
         completed_queries = 0
+        
+    executing = list(DAB_EXECUTING_TASKS)
+    if not executing and all_running:
+        executing = all_running[:1]
     
     return {
         "running": all_running,
+        "executing": executing,
         "count": len(all_running),
         "runner_active": len(running_tasks) > 0,
         "total": total_queries,

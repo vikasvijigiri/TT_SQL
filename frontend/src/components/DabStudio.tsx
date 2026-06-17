@@ -522,6 +522,22 @@ const parseLiveStepsFromMd = (content) => {
 };
 
 const DabStudio = ({ onBack, onHome, autoOpenDetails, clearAutoOpenDetails, user, onLogout }) => {
+  const [selectedModel, setSelectedModel] = useState(() => localStorage.getItem('dab_settings_model') || 'bedrock/openai.gpt-oss-safeguard-120b');
+  const [temperature, setTemperature] = useState(() => Number(localStorage.getItem('dab_settings_temp') || '0.0'));
+  const [workers, setWorkers] = useState(() => Number(localStorage.getItem('dab_settings_workers') || '3'));
+
+  useEffect(() => {
+    localStorage.setItem('dab_settings_model', selectedModel);
+  }, [selectedModel]);
+
+  useEffect(() => {
+    localStorage.setItem('dab_settings_temp', String(temperature));
+  }, [temperature]);
+
+  useEffect(() => {
+    localStorage.setItem('dab_settings_workers', String(workers));
+  }, [workers]);
+
   const [currentView, setCurrentView] = useState('dashboard'); // 'dashboard' | 'database' | 'leaderboard'
   const [metrics, setMetrics] = useState(null);
   const [databases, setDatabases] = useState([]);
@@ -535,6 +551,15 @@ const DabStudio = ({ onBack, onHome, autoOpenDetails, clearAutoOpenDetails, user
   const [recentRuns, setRecentRuns] = useState([]);
   const [runningInstances, setRunningInstances] = useState({});
   const [runningDbs, setRunningDbs] = useState({});
+  const [toast, setToast] = useState<{ message: string; type: 'success' | 'error' } | null>(null);
+  const [isDeleting, setIsDeleting] = useState(false);
+
+  useEffect(() => {
+    if (toast) {
+      const timer = setTimeout(() => setToast(null), 4000);
+      return () => clearTimeout(timer);
+    }
+  }, [toast]);
 
   // Modals & Drawers
   const [selectedDetails, setSelectedDetails] = useState(null);
@@ -884,7 +909,9 @@ const DabStudio = ({ onBack, onHome, autoOpenDetails, clearAutoOpenDetails, user
   };
 
   const confirmDeleteRun = async () => {
+    setIsDeleting(true);
     try {
+      const currentRunLabel = allDates.find(r => r.id === dateFilter)?.label || dateFilter;
       await axios.delete(`${API_BASE}/dab/runs/${dateFilter}`);
       
       const res = await axios.get(`${API_BASE}/dab/runs`);
@@ -897,14 +924,23 @@ const DabStudio = ({ onBack, onHome, autoOpenDetails, clearAutoOpenDetails, user
         fallbackDate = hasLive ? 'live' : newDates[0].id;
       }
       
+      // Optimistically clear current state to prevent flashing stale data
+      setMetrics(null);
+      setDbResults([]);
+      setRecentRuns([]);
+      
       setDateFilter(fallbackDate);
       setShowDeleteModal(false);
       
       // Manually trigger handleRefresh with the explicit new date
       await handleRefresh(selectedDbRef.current, fallbackDate);
-    } catch (err) {
+      setToast({ message: `Run "${currentRunLabel}" deleted successfully.`, type: 'success' });
+    } catch (err: any) {
       console.error("Failed to delete DAB run", err);
-      alert(err.response?.data?.error || 'Failed to delete DAB run');
+      const errMsg = err.response?.data?.detail || err.message || 'Failed to delete DAB run';
+      setToast({ message: `Failed to delete run: ${errMsg}`, type: 'error' });
+    } finally {
+      setIsDeleting(false);
     }
   };
 
@@ -924,7 +960,10 @@ const DabStudio = ({ onBack, onHome, autoOpenDetails, clearAutoOpenDetails, user
 
     // Fire the run — backend returns immediately (async thread pool)
     const runStart = Date.now();
-    axios.post(`${API_BASE}/dab/run/${dataset}/${instanceId}`)
+    axios.post(`${API_BASE}/dab/run/${dataset}/${instanceId}`, {
+      model: selectedModel,
+      temperature: temperature
+    })
       .catch(err => {
         console.error("Failed to trigger single DAB run", err);
         setRunningInstances(prev => { const next = { ...prev }; delete next[qkey]; return next; });
@@ -1064,7 +1103,16 @@ const DabStudio = ({ onBack, onHome, autoOpenDetails, clearAutoOpenDetails, user
       };
       const targetDate = getRunDateStr(dateFilter);
       
-      const payload = { force_rerun: true, workers: 3, mode, date: targetDate };
+      const runIdToPass = dateFilter && dateFilter.startsWith('run_') ? dateFilter : undefined;
+      const payload = { 
+        force_rerun: true, 
+        workers: workers, 
+        mode, 
+        date: targetDate,
+        run_id: runIdToPass,
+        model: selectedModel,
+        temperature: temperature
+      };
       await axios.post(`${API_BASE}/dab/run_all`, payload);
       
       if (mode === 'fresh') {
@@ -1306,6 +1354,31 @@ const DabStudio = ({ onBack, onHome, autoOpenDetails, clearAutoOpenDetails, user
 
   return (
     <div className="flex h-screen w-full overflow-hidden bg-[#050508] text-slate-200 font-sans selection:bg-purple-500/30 selection:text-white">
+      {/* Toast Notification System */}
+      <AnimatePresence>
+        {toast && (
+          <motion.div
+            initial={{ opacity: 0, y: -20, scale: 0.95 }}
+            animate={{ opacity: 1, y: 0, scale: 1 }}
+            exit={{ opacity: 0, y: -20, scale: 0.95 }}
+            className="fixed top-6 right-6 z-[999] pointer-events-none"
+          >
+            <div className={`flex items-center gap-2.5 px-4.5 py-3 rounded-xl border shadow-2xl font-mono text-xs font-bold ${
+              toast.type === 'success' 
+                ? 'bg-emerald-950/95 text-emerald-400 border-emerald-500/35 shadow-emerald-950/30' 
+                : 'bg-rose-950/95 text-rose-400 border-rose-500/35 shadow-rose-950/30'
+            }`}>
+              {toast.type === 'success' ? (
+                <CheckCircle2 className="w-4 h-4 text-emerald-400 shrink-0" />
+              ) : (
+                <AlertTriangle className="w-4 h-4 text-rose-400 shrink-0" />
+              )}
+              <span>{toast.message}</span>
+            </div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
       {/* Sidebar Navigation */}
       <aside className="w-16 lg:w-56 border-r border-[#1a1a22] bg-[#090812] flex flex-col p-4 gap-6 shrink-0 z-20 shadow-2xl animate-fadeIn">
         <div className="flex flex-col gap-3">
@@ -1387,21 +1460,86 @@ const DabStudio = ({ onBack, onHome, autoOpenDetails, clearAutoOpenDetails, user
           </div>
         </div>
 
-        {/* User Profile */}
-        {user && (
-          <div className="mt-auto pt-3 border-t border-[#1a1a22]">
-            <div className="flex items-center gap-2.5 px-1 py-2 rounded-xl hover:bg-white/[0.04] transition-all group">
-              {user.picture ? (
-                <img src={user.picture} alt={user.name} className="w-7 h-7 rounded-full shrink-0 ring-1 ring-purple-500/40" referrerPolicy="no-referrer" />
-              ) : (
-                <div className="w-7 h-7 rounded-full bg-purple-500/20 border border-purple-500/30 shrink-0 flex items-center justify-center text-[11px] font-bold text-purple-400">
-                  {(user.name || user.email || '?')[0].toUpperCase()}
-                </div>
-              )}
-              <div className="hidden lg:flex flex-col min-w-0 flex-1">
-                <span className="text-[11px] font-bold text-slate-200 truncate leading-tight">{user.name || 'User'}</span>
-                <span className="text-[10px] text-slate-500 truncate leading-tight">{user.email}</span>
+        {/* DIN Pipeline Settings */}
+        <div className="hidden lg:flex flex-col p-3.5 bg-[#0b0a14] rounded-2xl border border-[#1d1933] shadow-md relative overflow-hidden group select-none transition-all hover:border-purple-500/40 mt-4">
+          <div className="absolute top-0 left-0 right-0 h-[2px] bg-gradient-to-r from-purple-500 to-indigo-500" />
+          <div className="flex items-center gap-2 mb-3">
+            <Sliders className="w-3.5 h-3.5 text-purple-400" />
+            <span className="text-[10px] font-mono font-bold text-slate-300 uppercase tracking-widest">Pipeline Settings</span>
+          </div>
+          
+          <div className="space-y-2.5">
+            {/* Model selection */}
+            <div className="flex flex-col gap-1">
+              <label className="text-[8px] font-mono font-bold text-slate-500 uppercase tracking-wider">Model</label>
+              <select
+                value={selectedModel}
+                onChange={e => setSelectedModel(e.target.value)}
+                className="w-full bg-[#121020] border border-[#231d36] rounded px-2 py-1 text-[11px] font-mono text-slate-200 focus:outline-none focus:border-purple-500 cursor-pointer"
+              >
+                <option value="bedrock/openai.gpt-oss-safeguard-120b">GPT-OSS Safeguard 120B</option>
+                <option value="bedrock/anthropic.claude-3-5-sonnet-20241022-v2:0">Claude 3.5 Sonnet v2</option>
+                <option value="bedrock/anthropic.claude-3-5-haiku-20241022-v1:0">Claude 3.5 Haiku</option>
+                <option value="bedrock/meta.llama3-1-70b-instruct-v1:0">Llama 3.1 70B</option>
+                <option value="bedrock/meta.llama3-1-405b-instruct-v1:0">Llama 3.1 405B</option>
+              </select>
+            </div>
+
+            {/* Temperature selection */}
+            <div className="flex flex-col gap-1">
+              <div className="flex justify-between items-center">
+                <label className="text-[8px] font-mono font-bold text-slate-500 uppercase tracking-wider">Temperature</label>
+                <span className="text-[9px] font-mono text-purple-400 font-bold">{temperature.toFixed(1)}</span>
               </div>
+              <input
+                type="range"
+                min="0.0"
+                max="1.0"
+                step="0.1"
+                value={temperature}
+                onChange={e => setTemperature(Number(e.target.value))}
+                className="w-full h-1 bg-[#121020] rounded-lg appearance-none cursor-pointer accent-purple-500"
+              />
+            </div>
+
+            {/* Workers selection */}
+            <div className="flex flex-col gap-1">
+              <div className="flex justify-between items-center">
+                <label className="text-[8px] font-mono font-bold text-slate-500 uppercase tracking-wider">Workers</label>
+                <span className="text-[9px] font-mono text-purple-400 font-bold">{workers} Parallel</span>
+              </div>
+              <input
+                type="range"
+                min="1"
+                max="5"
+                step="1"
+                value={workers}
+                onChange={e => setWorkers(Number(e.target.value))}
+                className="w-full h-1 bg-[#121020] rounded-lg appearance-none cursor-pointer accent-purple-500"
+              />
+            </div>
+          </div>
+        </div>
+
+        {/* User Profile */}
+        <div className="mt-auto pt-3 border-t border-[#1a1a22]">
+          <div className="flex items-center gap-2.5 px-1 py-2 rounded-xl hover:bg-white/[0.04] transition-all group">
+            {user && user.picture ? (
+              <img src={user.picture} alt={user.name} className="w-7 h-7 rounded-full shrink-0 ring-1 ring-purple-500/40" referrerPolicy="no-referrer" />
+            ) : (
+              <div className="w-7 h-7 rounded-full bg-purple-500/20 border border-purple-500/30 shrink-0 flex items-center justify-center text-[11px] font-bold text-purple-400">
+                {(user ? (user.name || user.email || '?') : '?')[0].toUpperCase()}
+              </div>
+            )}
+            <div className="hidden lg:flex flex-col min-w-0 flex-1">
+              <span className="text-[11px] font-bold text-slate-200 truncate leading-tight">
+                {user ? (user.name || 'User') : 'User (Guest)'}
+              </span>
+              <span className="text-[10px] text-slate-500 truncate leading-tight">
+                {user ? user.email : 'guest@nquire.ai'}
+              </span>
+            </div>
+            {user && onLogout && (
               <button
                 onClick={onLogout}
                 title="Sign out"
@@ -1409,9 +1547,9 @@ const DabStudio = ({ onBack, onHome, autoOpenDetails, clearAutoOpenDetails, user
               >
                 <LogOut className="w-3.5 h-3.5" />
               </button>
-            </div>
+            )}
           </div>
-        )}
+        </div>
       </aside>
 
       {/* Main Panel */}
@@ -1482,42 +1620,42 @@ const DabStudio = ({ onBack, onHome, autoOpenDetails, clearAutoOpenDetails, user
           </div>
         </header>
 
-        {/* ── News Ticker — last run summary ─────────────────────────────── */}
-        {currentView === 'dashboard' && metrics && !isGlobalRunning && (metrics.evaluated ?? 0) > 0 && (
-          <div className="shrink-0 overflow-hidden border-b border-purple-500/20 bg-gradient-to-r from-[#0d0b18] via-purple-950/20 to-[#0d0b18] h-7 flex items-center relative select-none">
-            <style>{`
-              @keyframes dab-ticker {
-                0%   { transform: translateX(0); }
-                100% { transform: translateX(-50%); }
-              }
-            `}</style>
-            <div className="flex whitespace-nowrap" style={{ animation: 'dab-ticker 45s linear infinite' }}>
-              {[0, 1].map(i => {
-                const selectedRun = allDates.find(r => r.id === dateFilter);
-                const runDate = selectedRun ? selectedRun.label : (dateFilter === 'all' ? 'All Runs' : dateFilter);
-                return (
-                  <span key={i} className="inline-flex items-center gap-3 px-8 text-[11px] font-mono font-bold text-purple-300/80">
-                    <span className="text-purple-500">◈</span>
-                    <span className="text-purple-400 uppercase tracking-widest text-[10px]">Last Run</span>
-                    <span className="text-slate-300">{runDate}</span>
-                    <span className="text-purple-700">·</span>
-                    <span className="text-emerald-400">{metrics.evaluated} queries evaluated</span>
-                    <span className="text-purple-700">·</span>
-                    <span>Pass@1: <span className="text-purple-200 font-black">{metrics.pass_at_1_pct}</span></span>
-                    <span className="text-purple-700">·</span>
-                    <span>Pass@K: <span className="text-indigo-300 font-black">{metrics.pass_at_k_pct}</span></span>
-                    <span className="text-purple-700">·</span>
-                    <span><span className="text-purple-200">{metrics.num_runs}</span> runs/query</span>
-                    <span className="text-purple-700">·</span>
-                    <span>Tokens: <span className="text-cyan-400">{metrics.total_tokens}</span></span>
-                    <span className="text-purple-700">·</span>
-                    <span>Est. Cost: <span className="text-amber-400 font-black">{metrics.total_cost}</span></span>
-                    <span className="text-purple-700">·</span>
-                    <span>Avg Latency: <span className="text-sky-400">{metrics.avg_latency}</span></span>
-                    <span className="text-purple-500">◈</span>
-                  </span>
-                );
-              })}
+        {/* ── Run Progress Bar instead of News Ticker ─────────────────────────────── */}
+        {currentView === 'dashboard' && metrics && !isGlobalRunning && (
+          <div className="shrink-0 border-b border-purple-500/20 bg-gradient-to-r from-[#0d0b18] via-purple-950/20 to-[#0d0b18] px-6 py-2.5 flex items-center justify-between select-none gap-6 animate-fadeIn">
+            <div className="flex items-center gap-2 text-xs font-mono font-bold text-slate-300">
+              <span className="text-purple-500">◈</span>
+              <span className="text-purple-400 uppercase tracking-widest text-[10px]">Active Run</span>
+              <span className="text-slate-200">
+                {allDates.find(r => r.id === dateFilter)?.label || (dateFilter === 'all' ? 'All Runs' : dateFilter)}
+              </span>
+            </div>
+            
+            {(() => {
+              const totalQueries = metrics.total_queries || 54;
+              const totalSlots = totalQueries * 5;
+              const completedSlots = metrics.total_run_slots || 0;
+              const pct = totalSlots > 0 ? Math.round((completedSlots / totalSlots) * 100) : 0;
+              
+              return (
+                <div className="flex-1 max-w-xl flex items-center gap-3">
+                  <div className="flex-1 h-2 bg-[#050508] rounded-full overflow-hidden border border-purple-950/50 relative">
+                    <div 
+                      className="h-full bg-gradient-to-r from-purple-500 to-indigo-500 shadow-[0_0_8px_rgba(167,139,250,0.4)] transition-all duration-700 ease-out"
+                      style={{ width: `${pct}%` }}
+                    />
+                  </div>
+                  <span className="text-xs font-mono font-black text-purple-300 min-w-[36px] text-right">{pct}%</span>
+                </div>
+              );
+            })()}
+
+            <div className="flex items-center gap-3 text-xs font-mono text-slate-400">
+              <span>
+                <span className="text-purple-200 font-bold">{metrics.total_run_slots || 0}</span>
+                <span className="text-slate-500"> / </span>
+                <span className="text-purple-400 font-bold">{(metrics.total_queries || 54) * 5}</span> evaluations done
+              </span>
             </div>
           </div>
         )}
@@ -2368,12 +2506,12 @@ const DabStudio = ({ onBack, onHome, autoOpenDetails, clearAutoOpenDetails, user
                 <div>
                   <h3 className="text-lg font-bold text-slate-100 font-mono">Delete Forensic Data</h3>
                   <p className="text-sm text-slate-400 font-mono mt-1">
-                    Date: <span className="text-rose-400">{dateFilter}</span>
+                    Target: <span className="text-rose-400">{allDates.find(r => r.id === dateFilter)?.label || dateFilter}</span>
                   </p>
                 </div>
               </div>
               <p className="text-sm text-slate-300 leading-relaxed">
-                You are about to permanently delete all archived DAB metrics, baseline benchmark evaluations, and execution logs for this specific date.
+                You are about to permanently delete all archived DAB metrics, baseline benchmark evaluations, and execution logs for this specific date/run.
                 <br /><br />
                 <span className="font-bold text-rose-400">This action is completely irreversible.</span> Do you wish to proceed?
               </p>
@@ -2381,16 +2519,27 @@ const DabStudio = ({ onBack, onHome, autoOpenDetails, clearAutoOpenDetails, user
             <div className="flex items-center justify-end gap-3 px-6 py-4 bg-[#0e0d18] border-t border-[#1c1a2d]">
               <button
                 onClick={() => setShowDeleteModal(false)}
-                className="px-4 py-2 rounded-lg font-mono text-xs font-bold text-slate-400 hover:text-slate-200 hover:bg-white/5 transition-all"
+                disabled={isDeleting}
+                className="px-4 py-2 rounded-lg font-mono text-xs font-bold text-slate-400 hover:text-slate-200 hover:bg-white/5 transition-all disabled:opacity-50 disabled:cursor-not-allowed"
               >
                 CANCEL
               </button>
               <button
                 onClick={confirmDeleteRun}
-                className="px-4 py-2 rounded-lg font-mono text-xs font-bold text-white bg-rose-600 hover:bg-rose-500 transition-all shadow-lg shadow-rose-600/20 flex items-center gap-2"
+                disabled={isDeleting}
+                className="px-4 py-2 rounded-lg font-mono text-xs font-bold text-white bg-rose-600 hover:bg-rose-500 transition-all shadow-lg shadow-rose-600/20 flex items-center gap-2 disabled:bg-rose-800 disabled:cursor-not-allowed"
               >
-                <X className="w-4 h-4" />
-                CONFIRM DELETION
+                {isDeleting ? (
+                  <>
+                    <Activity className="w-4 h-4 animate-spin" />
+                    DELETING RUN...
+                  </>
+                ) : (
+                  <>
+                    <X className="w-4 h-4" />
+                    CONFIRM DELETION
+                  </>
+                )}
               </button>
             </div>
           </div>

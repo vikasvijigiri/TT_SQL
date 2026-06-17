@@ -1,5 +1,9 @@
 import os
 from pathlib import Path
+from dotenv import load_dotenv
+
+# Load environment variables from .env file
+load_dotenv()
 
 # ── Root resolution ─────────────────────────────────────────────────────────
 # BACKEND_DATA_DIR env var is the single source of truth for all runtime paths.
