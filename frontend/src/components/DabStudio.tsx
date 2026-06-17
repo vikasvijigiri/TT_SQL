@@ -589,6 +589,9 @@ const DabStudio = ({ onBack, onHome, autoOpenDetails, clearAutoOpenDetails, user
   // Fetch metrics and databases when date filter changes
   useEffect(() => {
     fetchInitialData();
+    if (selectedDbRef.current) {
+      handleRefresh(selectedDbRef.current);
+    }
   }, [dateFilter]);
 
   // Sync run/evaluate tickers — runs every 5 s to keep frontend in sync with backend
@@ -643,14 +646,14 @@ const DabStudio = ({ onBack, onHome, autoOpenDetails, clearAutoOpenDetails, user
       const db = selectedDbRef.current;
       if (db) {
         try {
-          const res = await axios.get(`${API_BASE}/dab/queries/db/${db}`, { timeout: 5000 });
+          const res = await axios.get(`${API_BASE}/dab/queries/db/${db}?date=${dateFilter}`, { timeout: 5000 });
           setDbResults(res.data);
         } catch (_) {}
       }
       try {
-        const m = await axios.get(`${API_BASE}/dab/metrics?date=all`, { timeout: 60000 });
+        const m = await axios.get(`${API_BASE}/dab/metrics?date=${dateFilter}`, { timeout: 60000 });
         setMetrics(m.data);
-        const dbs = await axios.get(`${API_BASE}/dab/databases?date=all`, { timeout: 60000 });
+        const dbs = await axios.get(`${API_BASE}/dab/databases?date=${dateFilter}`, { timeout: 60000 });
         setDatabases(dbs.data);
       } catch (_) {}
       
@@ -658,7 +661,7 @@ const DabStudio = ({ onBack, onHome, autoOpenDetails, clearAutoOpenDetails, user
     };
     tick();
     return () => { isMounted = false; clearTimeout(rtPollRef.current); };
-  }, [Object.keys(runningInstances).length, isGlobalRunning]);
+  }, [Object.keys(runningInstances).length, isGlobalRunning, dateFilter]);
 
   // Poll /dab/results for live log content when the log tab is open during a run
   useEffect(() => {
@@ -671,7 +674,7 @@ const DabStudio = ({ onBack, onHome, autoOpenDetails, clearAutoOpenDetails, user
     const poll = async () => {
       if (!isMounted) return;
       try {
-        const res = await axios.get(`${API_BASE}/dab/results/${db}/${qNum}`);
+        const res = await axios.get(`${API_BASE}/dab/results/${db}/${qNum}?date=${dateFilter}`);
         if (res.data?.log_content) {
           setSelectedDetails(prev => {
             if (!prev || prev.id !== id) return prev;
@@ -683,7 +686,7 @@ const DabStudio = ({ onBack, onHome, autoOpenDetails, clearAutoOpenDetails, user
     };
     poll();
     return () => { isMounted = false; clearTimeout(logPollRef.current); };
-  }, [detailsTab, selectedDetails?.id, selectedDetails?.status]);
+  }, [detailsTab, selectedDetails?.id, selectedDetails?.status, dateFilter]);
 
   // Auto-scroll log to bottom when content updates during a run
   useEffect(() => {
@@ -974,7 +977,7 @@ const DabStudio = ({ onBack, onHome, autoOpenDetails, clearAutoOpenDetails, user
       try {
         const [finalDiag, finalResult] = await Promise.all([
           axios.get(`${API_BASE}/diagnose/dab/${dataset}/query${instanceId}`).catch(() => ({ data: null })),
-          axios.get(`${API_BASE}/dab/results/${dataset}/${instanceId}`).catch(() => ({ data: null })),
+          axios.get(`${API_BASE}/dab/results/${dataset}/${instanceId}?date=${dateFilter}`).catch(() => ({ data: null })),
         ]);
         setSelectedDetails(prev => prev && prev.id === `query${instanceId}`
           ? {
@@ -1063,7 +1066,7 @@ const DabStudio = ({ onBack, onHome, autoOpenDetails, clearAutoOpenDetails, user
     setShowMetricModal(true);
     setLoadingMetricInstances(true);
     try {
-      const res = await axios.get(`${API_BASE}/dab/queries`);
+      const res = await axios.get(`${API_BASE}/dab/queries?date=${dateFilter}`);
       setAllInstanceResults(res.data.map(inst => ({
         id: inst.instance_id,
         db: inst.dataset,

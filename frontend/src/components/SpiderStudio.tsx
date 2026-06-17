@@ -601,6 +601,9 @@ const SpiderStudio = ({ onBack, onHome, autoOpenDetails, clearAutoOpenDetails, u
   // Fetch metrics and databases when date filter changes
   useEffect(() => {
     fetchInitialData();
+    if (selectedDb) {
+      fetchResults(selectedDb);
+    }
   }, [dateFilter]);
 
   // Sync run/evaluate tickers
@@ -892,7 +895,7 @@ const SpiderStudio = ({ onBack, onHome, autoOpenDetails, clearAutoOpenDetails, u
     setShowMetricModal(true);
     setLoadingMetricInstances(true);
     try {
-      const res = await axios.get(`${API_BASE}/results/all`);
+      const res = await axios.get(`${API_BASE}/results/all?date=${dateFilter}`);
       setAllInstanceResults(res.data);
     } catch (err) {
       console.error("Failed to load instance list", err);
