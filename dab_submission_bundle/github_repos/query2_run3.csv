@@ -1,6 +1,0 @@
-result
-"No data found for the query (Catalog Error: Table with name languages does not exist!
-Did you mean "repo_metadata_db.languages"?
-
-LINE 1: ...scription FROM files f JOIN contents c ON f.id = c.id JOIN languages l ON f.repo_name = l.repo_name WHERE f.path LIKE...
-                                                                      ^). Cannot determine the answer."

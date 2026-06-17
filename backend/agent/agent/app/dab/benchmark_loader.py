@@ -188,7 +188,9 @@ def load_all_queries(dab_repo_path: str) -> List[Dict[str, Any]]:
         db_clients = _resolve_db_paths(db_clients_raw, dataset_dir)
         any_docker = any(v.get("needs_docker", False) for v in db_clients.values())
 
-        # Load schema description
+        # Load schema description — use only the hint-free description.
+        # db_description_withhint.txt contains ground-truth hints and MUST NOT
+        # be fed into the inference pipeline.
         desc_file = dataset_dir / "db_description.txt"
         hint_file = dataset_dir / "db_description_withhint.txt"
         db_description = ""
@@ -196,14 +198,6 @@ def load_all_queries(dab_repo_path: str) -> List[Dict[str, Any]]:
             with contextlib.suppress(Exception):
                 db_description = desc_file.read_text(encoding="utf-8").strip()
 
-        # Load and append hints if they exist
-        if hint_file.exists():
-            try:
-                hint_text = hint_file.read_text(encoding="utf-8").strip()
-                if hint_text:
-                    db_description += "\n\n" + hint_text
-            except Exception:
-                pass
         has_hint = hint_file.exists()
 
         # Find all query subdirectories (query1, query2, ...)

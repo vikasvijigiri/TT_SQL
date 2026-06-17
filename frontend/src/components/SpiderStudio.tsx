@@ -682,14 +682,14 @@ const SpiderStudio = ({ onBack, onHome, autoOpenDetails, clearAutoOpenDetails, u
     }
   };
 
-  const fetchInitialData = async (forceDate?: string) => {
+  const fetchInitialData = async (force: boolean = false, forceDate?: string) => {
     const activeDate = forceDate || dateFilter;
     setLoading(true);
     try {
       const [metricsRes, dbsRes, recentRes] = await Promise.all([
-        axios.get(`${API_BASE}/metrics?date=${activeDate}`),
-        axios.get(`${API_BASE}/databases?date=${activeDate}`),
-        axios.get(`${API_BASE}/results/recent?limit=12&date=${activeDate}`)
+        axios.get(`${API_BASE}/metrics?date=${activeDate}${force ? '&force=true' : ''}`),
+        axios.get(`${API_BASE}/databases?date=${activeDate}${force ? '&force=true' : ''}`),
+        axios.get(`${API_BASE}/results/recent?limit=12&date=${activeDate}${force ? '&force=true' : ''}`)
       ]);
       setMetrics(metricsRes.data);
       setDatabases(dbsRes.data);
@@ -745,7 +745,7 @@ const SpiderStudio = ({ onBack, onHome, autoOpenDetails, clearAutoOpenDetails, u
 
   const handleRefresh = async () => {
     await fetchDates();
-    await fetchInitialData();
+    await fetchInitialData(true);
     if (selectedDb) {
       await fetchResults(selectedDb);
     }
@@ -772,7 +772,7 @@ const SpiderStudio = ({ onBack, onHome, autoOpenDetails, clearAutoOpenDetails, u
       setShowDeleteModal(false);
       
       // Manually refresh data to instantly reflect the new active date since state update is asynchronous
-      await fetchInitialData(fallbackDate);
+      await fetchInitialData(true, fallbackDate);
       if (selectedDb) {
         try {
           const resDb = await axios.get(`${API_BASE}/results/${selectedDb}?date=${fallbackDate}`);

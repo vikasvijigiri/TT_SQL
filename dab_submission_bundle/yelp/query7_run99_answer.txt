@@ -1,9 +1,0 @@
-Restaurants 8; including Wine Bars 4; American (Traditional) 4; Cocktail Bars 4; experiences 4.
-
-Restaurants, 8
-
-﻿category: Restaurants | total_reviews: 8
-﻿category: including Wine Bars | total_reviews: 4
-﻿category: American (Traditional) | total_reviews: 4
-﻿category: Cocktail Bars | total_reviews: 4
-﻿category: experiences | total_reviews: 4

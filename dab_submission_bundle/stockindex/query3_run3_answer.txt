@@ -1,9 +1,0 @@
-IXIC – United States; GDAXI – Germany; NSEI – India; TWII – Taiwan; N225 – Japan.
-
-IXIC, 4.823825724585455, United States
-
-﻿Index: IXIC | overall_return_factor: 4.823825724585455 | country: United States
-﻿Index: GDAXI | overall_return_factor: 2.3492850291452316 | country: Germany
-﻿Index: NSEI | overall_return_factor: 2.348656180782166 | country: India
-﻿Index: TWII | overall_return_factor: 2.2964516961009886 | country: Taiwan
-﻿Index: N225 | overall_return_factor: 2.1701847441755486 | country: Japan

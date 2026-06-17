@@ -752,7 +752,9 @@ def health_check():
 
 
 @app.get("/api/metrics")
-def get_metrics(date: str = "all"):
+def get_metrics(date: str = "all", force: bool = False):
+    if force:
+        _cached_get_metrics.cache_clear()
     return _cached_get_metrics(date, _get_ttl_hash(15))
 
 
@@ -830,7 +832,9 @@ def _cached_get_databases(date: str, ttl_hash: int):
 
 
 @app.get("/api/databases")
-def get_databases(date: str = "all"):
+def get_databases(date: str = "all", force: bool = False):
+    if force:
+        _cached_get_databases.cache_clear()
     return _cached_get_databases(date, _get_ttl_hash(15))
 
 
@@ -890,7 +894,9 @@ def _cached_get_recent_results(limit: int, date: str, ttl_hash: int):
 
 
 @app.get("/api/results/recent")
-def get_recent_results(limit: int = 10, date: str = "all"):
+def get_recent_results(limit: int = 15, date: str = "all", force: bool = False):
+    if force:
+        _cached_get_recent_results.cache_clear()
     return _cached_get_recent_results(limit, date, _get_ttl_hash(15))
 
 

@@ -1,9 +1,0 @@
-Widows Peak Salon – 4.857; City Textile – 4.5; Nobel Textile Co – 4.286; San Soo Dang – 4.278; Nova Fabrics – 3.333.
-
-Widows Peak Salon, 4.857142857142857, 35
-
-﻿business_name: Widows Peak Salon | avg_rating: 4.857142857142857 | review_count: 35
-﻿business_name: City Textile | avg_rating: 4.5 | review_count: 6
-﻿business_name: Nobel Textile Co | avg_rating: 4.285714285714286 | review_count: 7
-﻿business_name: San Soo Dang | avg_rating: 4.277777777777778 | review_count: 18
-﻿business_name: Nova Fabrics | avg_rating: 3.3333333333333335 | review_count: 6

@@ -10,31 +10,44 @@ import NQuireLogo from './components/NQuireLogo';
 
 const API_BASE = import.meta.env.VITE_API_BASE_URL || '/api';
 
-const GlobalRunningPanel = ({ runningSpiderTasks, runningDabTasks, onNavigateTask }) => {
+const GlobalRunningPanel = ({ runningSpiderTasks, runningDabTasks, dabProgress, dabMetrics, onNavigateTask }) => {
   const [isCollapsed, setIsCollapsed] = useState(false);
-  const totalTasks = runningSpiderTasks.length + runningDabTasks.length;
+  const hasSpider = runningSpiderTasks.length > 0;
+  const hasDab = runningDabTasks.length > 0;
+  const totalTasks = runningSpiderTasks.length + (hasDab ? 1 : 0);
 
-  if (totalTasks === 0) return null;
+  if (!hasSpider && !hasDab) return null;
+
+  const dabPct = dabProgress.total > 0
+    ? Math.round((dabProgress.completed / dabProgress.total) * 100)
+    : 0;
+
+  const accuracy = dabMetrics.evaluated > 0
+    ? ((dabMetrics.passed / dabMetrics.evaluated) * 100).toFixed(1)
+    : '—';
+
+  // Show up to 3 currently-executing queries (last in the remaining queue = newest workers)
+  const activeWorkers = runningDabTasks.slice(-3);
 
   return (
     <motion.div
       initial={{ opacity: 0, y: 50, scale: 0.95 }}
       animate={{ opacity: 1, y: 0, scale: 1 }}
       exit={{ opacity: 0, y: 50, scale: 0.95 }}
-      className="fixed bottom-6 right-6 z-50 w-80 bg-[#1b2738]/95 backdrop-blur-md border border-[#2c3e55]/80 rounded-2xl shadow-2xl overflow-hidden font-mono text-left"
+      className="fixed bottom-6 right-6 z-50 w-80 bg-[#0f0d1a]/95 backdrop-blur-md border border-purple-500/20 rounded-2xl shadow-2xl overflow-hidden font-mono text-left"
     >
       {/* Header */}
-      <div 
+      <div
         onClick={() => setIsCollapsed(!isCollapsed)}
-        className="px-4 py-3 bg-[#243448] border-b border-[#2c3e55]/80 flex items-center justify-between cursor-pointer select-none"
+        className="px-4 py-3 bg-[#1a1528] border-b border-purple-500/10 flex items-center justify-between cursor-pointer select-none"
       >
         <div className="flex items-center gap-2">
           <span className="relative flex h-2 w-2">
-            <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
-            <span className="relative inline-flex rounded-full h-2 w-2 bg-emerald-500"></span>
+            <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-purple-400 opacity-75"></span>
+            <span className="relative inline-flex rounded-full h-2 w-2 bg-purple-500"></span>
           </span>
           <span className="text-[10px] font-bold text-slate-300 uppercase tracking-wider">
-            Active Pipelines ({totalTasks})
+            {hasDab ? `Batch Running · ${dabPct}%` : `Active Pipelines (${totalTasks})`}
           </span>
         </div>
         <div className="text-slate-400 hover:text-white transition-colors">
@@ -49,9 +62,68 @@ const GlobalRunningPanel = ({ runningSpiderTasks, runningDabTasks, onNavigateTas
             initial={{ height: 0 }}
             animate={{ height: 'auto' }}
             exit={{ height: 0 }}
-            className="overflow-hidden bg-[#1b2738]/60 max-h-60 overflow-y-auto"
+            className="overflow-hidden"
           >
-            <div className="p-3 space-y-2">
+            <div className="p-3 space-y-3">
+
+              {/* DAB Batch Progress */}
+              {hasDab && (
+                <div className="space-y-2.5">
+                  {/* Progress counts */}
+                  <div className="flex justify-between text-[10px] text-slate-400 px-0.5">
+                    <span><span className="text-slate-200 font-bold">{dabProgress.completed}</span> / {dabProgress.total} finished</span>
+                    <span className="text-purple-400 font-bold">{dabPct}%</span>
+                  </div>
+
+                  {/* Progress bar */}
+                  <div className="w-full h-2 bg-[#0b0916] rounded-full overflow-hidden border border-purple-500/20">
+                    <div
+                      className="h-full bg-gradient-to-r from-purple-500 to-indigo-400 transition-all duration-700 shadow-[0_0_8px_rgba(167,139,250,0.5)]"
+                      style={{ width: `${dabPct}%` }}
+                    />
+                  </div>
+
+                  {/* Live metrics grid */}
+                  <div className="grid grid-cols-4 gap-1 pt-0.5">
+                    {[
+                      { label: 'Eval\'d', value: dabMetrics.evaluated, color: 'text-slate-300' },
+                      { label: 'Pass', value: dabMetrics.passed, color: 'text-emerald-400' },
+                      { label: 'Fail', value: dabMetrics.failed, color: 'text-red-400' },
+                      { label: 'Acc', value: `${accuracy}%`, color: 'text-purple-400' },
+                    ].map(({ label, value, color }) => (
+                      <div key={label} className="flex flex-col items-center bg-[#0f0d1a] border border-purple-500/10 rounded-lg py-1.5 px-1">
+                        <span className={`text-[13px] font-bold font-mono ${color}`}>{value}</span>
+                        <span className="text-[8px] text-slate-500 uppercase tracking-wide mt-0.5">{label}</span>
+                      </div>
+                    ))}
+                  </div>
+
+                  {/* Currently executing workers */}
+                  <div className="space-y-1">
+                    <span className="text-[9px] text-slate-500 uppercase tracking-widest px-0.5">Executing now</span>
+                    {activeWorkers.map(task => {
+                      const parts = task.split('_q');
+                      const dataset = parts[0];
+                      const qId = parts[1] || task;
+                      return (
+                        <div
+                          key={task}
+                          onClick={() => onNavigateTask('dab', dataset, task)}
+                          className="flex items-center gap-2 p-1.5 rounded-lg bg-[#12101e] border border-purple-500/10 hover:border-purple-400/30 transition-all cursor-pointer"
+                        >
+                          <Activity className="w-3 h-3 text-purple-400 animate-spin shrink-0" />
+                          <div className="flex flex-col min-w-0">
+                            <span className="text-[9px] text-purple-400 uppercase tracking-wide leading-none">{dataset}</span>
+                            <span className="text-[10px] text-slate-200 truncate">Query {qId}</span>
+                          </div>
+                        </div>
+                      );
+                    })}
+                  </div>
+                </div>
+              )}
+
+              {/* Spider tasks — shown individually as before */}
               {runningSpiderTasks.map(task => {
                 const parts = task.split('_');
                 const dbName = parts.length > 1 ? parts.slice(0, -1).join('_') : task;
@@ -59,35 +131,17 @@ const GlobalRunningPanel = ({ runningSpiderTasks, runningDabTasks, onNavigateTas
                   <div
                     key={task}
                     onClick={() => onNavigateTask('spider', dbName, task)}
-                    className="group p-2.5 rounded-xl bg-[#131820]/90 border border-blue-500/10 hover:border-blue-400/30 hover:bg-blue-950/10 transition-all cursor-pointer flex items-center justify-between"
+                    className="flex items-center justify-between p-2.5 rounded-xl bg-[#131820]/90 border border-blue-500/10 hover:border-blue-400/30 transition-all cursor-pointer"
                   >
                     <div className="flex flex-col gap-0.5 truncate pr-2">
-                      <span className="text-[10px] text-blue-400 font-bold uppercase tracking-wide">Spider Studio</span>
-                      <span className="text-[11px] text-slate-200 font-bold truncate">{task}</span>
+                      <span className="text-[9px] text-blue-400 uppercase tracking-wide">Spider Studio</span>
+                      <span className="text-[11px] text-slate-200 truncate">{task}</span>
                     </div>
                     <Loader2 className="w-3.5 h-3.5 text-blue-400 animate-spin shrink-0" />
                   </div>
                 );
               })}
 
-              {runningDabTasks.map(task => {
-                const parts = task.split('_q');
-                const dataset = parts[0];
-                const qId = parts[1] || task;
-                return (
-                  <div
-                    key={task}
-                    onClick={() => onNavigateTask('dab', dataset, task)}
-                    className="group p-2.5 rounded-xl bg-[#131820]/90 border border-violet-500/10 hover:border-violet-400/30 hover:bg-violet-950/10 transition-all cursor-pointer flex items-center justify-between"
-                  >
-                    <div className="flex flex-col gap-0.5 truncate pr-2">
-                      <span className="text-[10px] text-purple-400 font-bold uppercase tracking-wide">DAB Studio</span>
-                      <span className="text-[11px] text-slate-200 font-bold truncate">Query {qId} ({dataset})</span>
-                    </div>
-                    <Loader2 className="w-3.5 h-3.5 text-purple-400 animate-spin shrink-0" />
-                  </div>
-                );
-              })}
             </div>
           </motion.div>
         )}
@@ -101,6 +155,8 @@ const App = () => {
   const [selectedProject, setSelectedProject] = useState(null); // null | 'spider' | 'dab' | 'custom'
   const [runningSpiderTasks, setRunningSpiderTasks] = useState([]);
   const [runningDabTasks, setRunningDabTasks] = useState([]);
+  const [dabProgress, setDabProgress] = useState({ total: 0, completed: 0 });
+  const [dabMetrics, setDabMetrics] = useState({ evaluated: 0, passed: 0, failed: 0, pass_at_1: 0 });
   const [user, setUser] = useState(() => {
     try { return JSON.parse(localStorage.getItem('nquire_user') || 'null'); } catch { return null; }
   });
@@ -171,11 +227,30 @@ const App = () => {
     const checkStatus = async () => {
       try {
         const [spiderStatus, dabStatus] = await Promise.all([
-          axios.get(`${API_BASE}/run/status`).catch(() => ({ data: { tasks: [] } })),
+          axios.get(`${API_BASE}/status`).catch(() => ({ data: { tasks: [] } })),
           axios.get(`${API_BASE}/dab/status`).catch(() => ({ data: { running: [] } }))
         ]);
         setRunningSpiderTasks(spiderStatus.data?.tasks || []);
-        setRunningDabTasks(dabStatus.data?.running || []);
+        const dab = dabStatus.data || {};
+        const isRunning = (dab.running?.length || 0) > 0;
+        setRunningDabTasks(dab.running || []);
+        if (isRunning) {
+          setDabProgress({ total: dab.total || 0, completed: dab.completed || 0 });
+          // Fetch live metrics for today only (runs are date-isolated)
+          try {
+            const today = new Date().toISOString().split('T')[0];
+            const m = await axios.get(`${API_BASE}/dab/metrics?date=${today}`, { timeout: 10000 });
+            const md = m.data || {};
+            setDabMetrics({
+              evaluated: md.evaluated || 0,
+              passed: md.passed || 0,
+              failed: md.failed || 0,
+              pass_at_1: md.pass_at_1 || 0,
+            });
+          } catch { /* metrics best-effort */ }
+        } else {
+          setDabProgress({ total: 0, completed: 0 });
+        }
       } catch (err) {
         console.error("Failed to query background tasks", err);
       }
@@ -404,6 +479,8 @@ const App = () => {
         <GlobalRunningPanel
           runningSpiderTasks={runningSpiderTasks}
           runningDabTasks={runningDabTasks}
+          dabProgress={dabProgress}
+          dabMetrics={dabMetrics}
           onNavigateTask={(project, db, id) => {
             setSelectedProject(project);
             setCurrentView('dashboard');

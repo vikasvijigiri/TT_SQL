@@ -1,9 +1,0 @@
-Synthesis Energy Systems, Inc, TD Holdings, Inc, TMSR Holding Company Limited, Verb Technology Company, Inc, Sunesis Pharmaceuticals, Inc
-
-Synthesis Energy Systems, Inc, 51
-
-﻿company_name: Synthesis Energy Systems, Inc | days_exceeding_range: 51
-﻿company_name: TD Holdings, Inc | days_exceeding_range: 42
-﻿company_name: TMSR Holding Company Limited | days_exceeding_range: 40
-﻿company_name: Verb Technology Company, Inc | days_exceeding_range: 38
-﻿company_name: Sunesis Pharmaceuticals, Inc | days_exceeding_range: 32

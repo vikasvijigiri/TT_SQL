@@ -1,9 +1,0 @@
-IXIC – USA; NSEI – India; GDAXI – Germany; 399001.SZ – China; TWII – Taiwan.
-
-IXIC, 4.81620503618427
-
-﻿Index: IXIC | overall_return_factor: 4.81620503618427
-﻿Index: NSEI | overall_return_factor: 2.356409177742646
-﻿Index: GDAXI | overall_return_factor: 2.3537005565588847
-﻿Index: 399001.SZ | overall_return_factor: 2.3383811889670953
-﻿Index: TWII | overall_return_factor: 2.2447368452852596

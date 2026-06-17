@@ -35,6 +35,19 @@ DAB_CANCEL_FLAG: bool = False
 _dab_queries_cache = None
 
 
+def _get_username_from_request(request: Request) -> str:
+    """Extract sanitised username from X-Username header (injected by Go gateway from JWT).
+    Falls back to 'vikasvijigiri' for requests without auth or in local dev mode."""
+    raw = request.headers.get("X-Username", "").strip()
+    if not raw:
+        raw = request.headers.get("X-User-Email", "").strip()
+        # Derive local-part of email as username
+        if "@" in raw:
+            raw = raw.split("@")[0]
+    safe = re.sub(r'[^a-z0-9_\-]', '', raw.lower()) if raw else ""
+    return safe or "vikasvijigiri"
+
+
 def _get_dab_queries():
     """Lazy-load and cache all DAB queries from the repo."""
     global _dab_queries_cache
@@ -49,7 +62,7 @@ def _get_dab_queries():
     return _dab_queries_cache
 
 
-def _dab_query_status(dataset: str, query_id: str, date: str = "all") -> Dict[str, Any]:
+def _dab_query_status(dataset: str, query_id: str, date: str = "all", run_id: Optional[str] = None) -> Dict[str, Any]:
     """Get the live status of a specific DAB query execution."""
     query_id = query_id.lower().replace("query", "")
     from agent.app.dab.dab_evaluator import load_eval_result
@@ -58,7 +71,7 @@ def _dab_query_status(dataset: str, query_id: str, date: str = "all") -> Dict[st
     if qkey in DAB_RUNNING_TASKS:
         return {"status": "running", "passed": None, "reason": "", "evaluated": False, "latency": 0}
 
-    eval_result = load_eval_result(dataset, query_id, date=date)
+    eval_result = load_eval_result(dataset, query_id, date=date, run_id=run_id)
     if eval_result is None:
         return {"status": "pending", "passed": None, "reason": "", "evaluated": False, "latency": 0}
 
@@ -153,13 +166,13 @@ def _get_ttl_hash(seconds=3):
     return round(time.time() / seconds)
 
 @lru_cache(maxsize=128)
-def _cached_dab_metrics(date: str, ttl_hash: int):
-    """Compute DAB accuracy metrics with TTL caching."""
+def _cached_dab_metrics(date: str, run_id: Optional[str], username: str, ttl_hash: int):
+    """Compute DAB accuracy metrics with TTL caching, scoped per user."""
     try:
         from agent.app.dab.dab_evaluator import compute_accuracy
 
         queries = _get_dab_queries()
-        metrics = compute_accuracy(queries, date=date)
+        metrics = compute_accuracy(queries, date=date, run_id=run_id, username=username)
         
         # Format and attach additional fields to match Spider dashboard
         evaluated = metrics.get("evaluated", 0)
@@ -199,9 +212,14 @@ def _cached_dab_metrics(date: str, ttl_hash: int):
 
 
 @router.get("/api/dab/databases")
-def get_dab_databases(date: str = "all"):
+def get_dab_databases(request: Request, date: str = "all", run_id: Optional[str] = None, force: bool = False):
     """Return DAB datasets formatted like Spider databases."""
-    metrics = _cached_dab_metrics(date, _get_ttl_hash(15))
+    username = _get_username_from_request(request)
+    if force:
+        from agent.app.dab.benchmark_loader import load_all_queries
+        from agent.app.dab.dab_evaluator import evaluate_answer
+        _cached_dab_metrics.cache_clear()
+    metrics = _cached_dab_metrics(date, run_id, username, _get_ttl_hash(15))
     per_dataset = metrics.get("per_dataset", {})
     
     # Retrieve DB schema / tokens info from the cached queries list
@@ -300,14 +318,14 @@ def _get_md_corrections_cached(md_file: Path) -> int:
 
 
 @router.get("/api/dab/queries/db/{dataset}")
-def get_dab_queries_by_db(dataset: str, date: str = "all"):
+def get_dab_queries_by_db(dataset: str, date: str = "all", run_id: Optional[str] = None):
     """Return queries for a specific DAB dataset."""
     queries = _get_dab_queries()
     db_queries = [q for q in queries if q.get("dataset") == dataset]
     
     result = []
     for q in db_queries:
-        status_info = _dab_query_status(q["dataset"], q["query_id"], date=date)
+        status_info = _dab_query_status(q["dataset"], q["query_id"], date=date, run_id=run_id)
         dbtypes = list({cfg.get("db_type", "?") for cfg in q.get("db_clients", {}).values()})
         
         # Calculate tokens and cost
@@ -379,39 +397,12 @@ def get_dab_queries(date: str = "all"):
 
 
 @router.get("/api/dab/metrics")
-def get_dab_metrics(date: str = "all", force: bool = False):
+def get_dab_metrics(request: Request, date: str = "all", run_id: Optional[str] = None, force: bool = False):
     """Get overall DAB accuracy metrics."""
     if force:
-        from agent.app.dab.benchmark_loader import load_all_queries
-        from agent.app.dab.dab_evaluator import evaluate_answer
         _cached_dab_metrics.cache_clear()
-        _DAB_FILE_CACHE.clear()
-        cached_dab_dataset_stats.cache_clear()
-        
-        queries = load_all_queries(DAB_REPO_PATH_DEFAULT)
-        for q in queries:
-            dataset = q["dataset"]
-            qid = str(q["query_id"])
-            gt = q["ground_truth"]
-            save_dir = DAB_RESULTS_BASE / dataset
-            if not save_dir.exists(): continue
-            
-            val_path = Path(DAB_REPO_PATH_DEFAULT) / f"query_{dataset}" / f"query{qid}" / "validate.py"
-            validate_src = val_path.read_text(encoding="utf-8") if val_path.exists() else ""
-            
-            for ans_file in save_dir.glob(f"query{qid}*_answer.txt"):
-                fname = ans_file.stem
-                base_part = f"query{qid}"
-                if not fname.startswith(base_part): continue
-                rest = fname[len(base_part):]
-                run_sfx = rest.replace("_answer", "")
-                
-                eval_path = save_dir / f"query{qid}{run_sfx}_eval.json"
-                if not eval_path.exists():
-                    agent_ans = ans_file.read_text(encoding="utf-8", errors="ignore").strip()
-                    evaluate_answer(dataset, qid, agent_ans, gt, validate_src, save=True, run_suffix=run_sfx)
-
-    return _cached_dab_metrics(date, _get_ttl_hash(5))
+    username = _get_username_from_request(request)
+    return _cached_dab_metrics(date, run_id, username, _get_ttl_hash(5))
 
 
 @router.get("/api/dab/submissions")
@@ -428,13 +419,16 @@ def get_dab_submissions():
 
 
 @router.get("/api/dab/results/{dataset}/{query_id}")
-def get_dab_result(dataset: str, query_id: str, date: str = "all"):
+def get_dab_result(dataset: str, query_id: str, date: str = "all", run_id: Optional[str] = None):
     """Get full result details for a specific DAB query."""
     query_id = query_id.lower().replace("query", "")
     from agent.app.dab.dab_evaluator import load_eval_result
     from agent.app.utils.archive import get_target_dirs_for_date
 
-    target_dirs = get_target_dirs_for_date(DAB_RESULTS_BASE, date)
+    if run_id and run_id != "live" and run_id != "all":
+        target_dirs = [DAB_RESULTS_BASE / "_archive" / run_id]
+    else:
+        target_dirs = get_target_dirs_for_date(DAB_RESULTS_BASE, date)
     
     md_file = None
     sql_file = None
@@ -495,8 +489,8 @@ def get_dab_result(dataset: str, query_id: str, date: str = "all"):
         except Exception:
             pass
 
-    eval_result = load_eval_result(dataset, query_id)
-    status_info = _dab_query_status(dataset, query_id)
+    eval_result = load_eval_result(dataset, query_id, date=date, run_id=run_id)
+    status_info = _dab_query_status(dataset, query_id, date=date, run_id=run_id)
 
     return {
         **status_info,
@@ -761,6 +755,22 @@ async def stream_dab_live_log(dataset: str, query_id: str, request: Request):
 class DabRunAllPayload(BaseModel):
     skip_docker: bool = False
     force_rerun: bool = False
+    workers: int = 3  # parallel query workers (keep ≤ 3 to avoid SSL/rate-limit errors)
+    mode: str = "fresh"  # "fresh" or "continue"
+    date: Optional[str] = None  # YYYY-MM-DD
+
+
+def _parse_qkey(qkey: str):
+    parts = qkey.split("_q")
+    if len(parts) == 2:
+        dataset = parts[0]
+        rest = parts[1]
+        if "_run" in rest:
+            q_id, run_idx = rest.split("_run")
+            return dataset, q_id, f"_run{run_idx}"
+        else:
+            return dataset, rest, ""
+    return None
 
 
 @router.post("/api/dab/stop")
@@ -776,10 +786,245 @@ def stop_dab_all():
     except Exception:
         pass
         
+    # Log any interrupted running tasks before clearing
+    running_queries = list(DAB_RUNNING_TASKS)
+    if running_queries:
+        logger.warning(f"DAB Run stopped by user. The following queries were interrupted and will remain incomplete: {', '.join(running_queries)}")
+        
+        from agent.app.db.database import SessionLocal
+        from agent.app.db.models import Evaluation
+        from datetime import datetime
+        
+        db = SessionLocal()
+        try:
+            for qkey in running_queries:
+                parsed = _parse_qkey(qkey)
+                if parsed:
+                    dataset, query_id, run_suffix = parsed
+                    existing = db.query(Evaluation).filter(
+                        Evaluation.dataset == dataset,
+                        Evaluation.query_id == query_id,
+                        Evaluation.run_suffix == run_suffix,
+                        Evaluation.run_id == "live"
+                    ).first()
+                    if not existing:
+                        eval_record = Evaluation(
+                            dataset=dataset,
+                            query_id=query_id,
+                            instance_id=f"{dataset}_q{query_id}",
+                            run_suffix=run_suffix,
+                            passed=None,
+                            reason="Incomplete / stopped abruptly",
+                            method="dynamic_validate_py",
+                            ground_truth="",
+                            agent_answer_snippet="Interrupted by user",
+                            elapsed_s=None,
+                            input_tokens=0,
+                            output_tokens=0,
+                            timestamp=datetime.now(),
+                            run_id="live"
+                        )
+                        db.add(eval_record)
+            db.commit()
+        except Exception as e:
+            logger.error(f"Failed to log interrupted queries: {e}")
+        finally:
+            db.close()
+    else:
+        logger.info("DAB Run stopped by user. No queries were active.")
+
     # Clear the running tasks set so the UI instantly stops polling
     DAB_RUNNING_TASKS.clear()
     
     return {"message": "Stop requested. Running queries will finish gracefully."}
+
+# Helper functions for dynamic database recovery from archive folders
+def parse_evaluation_from_md(md_path: Path) -> dict:
+    content = md_path.read_text(encoding="utf-8", errors="replace")
+    
+    passed = False
+    reason = "Incomplete / stopped abruptly"
+    
+    match = re.search(r"DAB Evaluation:\s*(PASSED|FAILED)(?:\s*\|\s*(.*))?", content)
+    if match:
+        passed = (match.group(1) == "PASSED")
+        reason = match.group(2).strip() if match.group(2) else ("Passed" if passed else "Failed")
+    else:
+        err_match = re.search(r"DAB query failed:\s*(.*)", content)
+        if err_match:
+            passed = False
+            reason = err_match.group(1).strip()
+            
+    elapsed_s = 0.0
+    lat_match = re.search(r"Latency:\s*(\d+\.?\d*)s", content)
+    if lat_match:
+        elapsed_s = float(lat_match.group(1))
+    else:
+        lat_match = re.search(r"elapsed_s:\s*(\d+\.?\d*)", content)
+        if lat_match:
+            elapsed_s = float(lat_match.group(1))
+            
+    input_tokens = 0
+    output_tokens = 0
+    token_matches = re.findall(r"Tokens:\s*(\d+)\s*In\s*/\s*(\d+)\s*Out", content, re.IGNORECASE)
+    sum_in = 0
+    sum_out = 0
+    for match in token_matches:
+        sum_in += int(match[0])
+        sum_out += int(match[1])
+        
+    if sum_in > 0 or sum_out > 0:
+        input_tokens = sum_in
+        output_tokens = sum_out
+    else:
+        in_match = re.search(r"Input Tokens:\s*(\d+)", content, re.IGNORECASE)
+        if in_match:
+            input_tokens = int(in_match.group(1))
+        out_match = re.search(r"Output Tokens:\s*(\d+)", content, re.IGNORECASE)
+        if out_match:
+            output_tokens = int(out_match.group(1))
+        
+    mtime = os.path.getmtime(md_path)
+    dt = datetime.fromtimestamp(mtime)
+    
+    return {
+        "passed": passed,
+        "reason": reason,
+        "elapsed_s": elapsed_s,
+        "input_tokens": input_tokens,
+        "output_tokens": output_tokens,
+        "timestamp": dt
+    }
+
+def rebuild_run_database_records(db, run_id: str):
+    logger.info(f"Rebuilding database records for archived run: {run_id}")
+    archive_dir = DAB_RESULTS_DIR / "_archive" / run_id
+    if not archive_dir.exists():
+        return
+        
+    queries = _get_dab_queries()
+    q_map = {(q["dataset"].lower(), str(q["query_id"])): q for q in queries}
+    
+    try:
+        parts = run_id.split('_')
+        ds, ts = parts[1], parts[2]
+        run_dt = datetime.strptime(f"{ds} {ts}", "%Y%m%d %H%M%S")
+    except Exception:
+        run_dt = datetime.fromtimestamp(archive_dir.stat().st_mtime)
+        
+    from agent.app.db.models import Evaluation
+    
+    for root, dirs, files in os.walk(archive_dir):
+        for f in files:
+            if f.endswith(".md"):
+                md_path = Path(root) / f
+                dataset = md_path.parent.name
+                name = md_path.stem
+                
+                run_suffix = ""
+                if "_run" in name:
+                    parts = name.split("_run")
+                    q_name = parts[0]
+                    run_suffix = f"_run{parts[1]}"
+                else:
+                    q_name = name
+                    
+                query_id = q_name.lower().replace("query", "")
+                
+                try:
+                    res = parse_evaluation_from_md(md_path)
+                except Exception as e:
+                    logger.error(f"Failed to parse {md_path}: {e}")
+                    continue
+                    
+                q_info = q_map.get((dataset.lower(), query_id), {})
+                ground_truth = q_info.get("ground_truth", "")
+                
+                ans_file = md_path.parent / f"{name}_answer.txt"
+                agent_answer = ""
+                if ans_file.exists():
+                    try:
+                        agent_answer = ans_file.read_text(encoding="utf-8").strip()
+                    except Exception:
+                        pass
+                if not agent_answer and res.get("passed") is False:
+                    agent_answer = f"ERROR: {res['reason']}"
+                    
+                ts_val = res.get("timestamp") or run_dt
+                
+                eval_record = Evaluation(
+                    dataset=dataset,
+                    query_id=query_id,
+                    instance_id=f"{dataset}_q{query_id}",
+                    run_suffix=run_suffix,
+                    passed=res["passed"],
+                    reason=res["reason"],
+                    method="dynamic_validate_py",
+                    ground_truth=ground_truth,
+                    agent_answer_snippet=agent_answer[:500] if agent_answer else "",
+                    elapsed_s=res["elapsed_s"],
+                    input_tokens=res["input_tokens"],
+                    output_tokens=res["output_tokens"],
+                    timestamp=ts_val,
+                    run_id=run_id
+                )
+                db.add(eval_record)
+                
+    try:
+        db.commit()
+        logger.info(f"Successfully rebuilt database records for {run_id}.")
+    except Exception as e:
+        db.rollback()
+        logger.error(f"Failed to save rebuilt database records for {run_id}: {e}")
+
+@router.get("/api/dab/runs")
+def get_dab_runs():
+    """Return the list of last 5 runs, with auto-rebuild of SQLite records."""
+    from agent.app.db.database import SessionLocal
+    from agent.app.db.models import Evaluation
+    
+    archive_base = DAB_RESULTS_DIR / "_archive"
+    archive_runs = []
+    if archive_base.exists():
+        for item in archive_base.iterdir():
+            if item.is_dir() and item.name.startswith("run_"):
+                archive_runs.append(item.name)
+                
+    archive_runs = sorted(archive_runs, reverse=True)
+    last_5_runs = archive_runs[:5]
+    
+    db = SessionLocal()
+    try:
+        for run_id in last_5_runs:
+            count = db.query(Evaluation).filter(Evaluation.run_id == run_id).count()
+            if count == 0:
+                rebuild_run_database_records(db, run_id)
+                
+        runs = [
+            {"id": "all", "label": "All Runs", "date": "All"},
+            {"id": "live", "label": "Current Run (Active)", "date": "Active"}
+        ]
+        
+        for run_id in last_5_runs:
+            label = run_id
+            date_str = ""
+            try:
+                parts = run_id.split('_')
+                if len(parts) >= 3:
+                    ds, ts = parts[1], parts[2]
+                    date_str = f"{ds[:4]}-{ds[4:6]}-{ds[6:8]}"
+                    time_str = f"{ts[:2]}:{ts[2:4]}:{ts[4:6]}"
+                    label = f"{date_str} {time_str}"
+            except Exception:
+                pass
+            runs.append({"id": run_id, "label": label, "date": date_str})
+            
+        return runs
+    except Exception as e:
+        logger.error(f"Failed to fetch DAB runs: {e}")
+        return []
+    finally:
+        db.close()
 
 @router.delete("/api/dab/runs/{date}")
 def delete_dab_run(date: str):
@@ -794,55 +1039,85 @@ def delete_dab_run(date: str):
     if date == "all":
         return {"error": "Cannot delete 'all' dates."}
         
-    today = datetime.now().strftime("%Y-%m-%d")
-    
-    # 1. Delete from Database
     db = SessionLocal()
     try:
-        # Use cast to Date for robust cross-database timestamp matching (PostgreSQL)
-        records_to_delete = db.query(Evaluation).filter(
-            cast(Evaluation.timestamp, Date) == date
-        ).all()
-        for r in records_to_delete:
-            db.delete(r)
-        db.commit()
+        if date.startswith("run_"):
+            db.query(Evaluation).filter(Evaluation.run_id == date).delete(synchronize_session=False)
+            db.commit()
+            
+            archive_base = DAB_RESULTS_DIR / "_archive"
+            run_folder = archive_base / date
+            if run_folder.exists() and run_folder.is_dir():
+                force_delete_dir(run_folder)
+                
+            _cached_dab_metrics.cache_clear()
+            global _dab_queries_cache
+            _dab_queries_cache = None
+            return {"message": f"Run {date} deleted."}
+            
+        elif date == "live":
+            db.query(Evaluation).filter(
+                (Evaluation.run_id == "live") | (Evaluation.run_id == None)
+            ).delete(synchronize_session=False)
+            db.commit()
+            
+            if DAB_RESULTS_DIR.exists():
+                for item in DAB_RESULTS_DIR.iterdir():
+                    if item.name != "_archive":
+                        if item.is_dir():
+                            force_delete_dir(item)
+                        else:
+                            force_delete_file(item)
+                            
+            _cached_dab_metrics.cache_clear()
+            _dab_queries_cache = None
+            return {"message": "Cleared live results."}
+            
+        else:
+            from datetime import datetime, timedelta
+            start_dt = datetime.strptime(date, "%Y-%m-%d")
+            end_dt = start_dt + timedelta(days=1)
+            
+            db.query(Evaluation).filter(
+                Evaluation.timestamp >= start_dt,
+                Evaluation.timestamp < end_dt
+            ).delete(synchronize_session=False)
+            db.commit()
+            
+            today = datetime.now().strftime("%Y-%m-%d")
+            if date == today:
+                if DAB_RESULTS_DIR.exists():
+                    for item in DAB_RESULTS_DIR.iterdir():
+                        if item.name != "_archive":
+                            if item.is_dir():
+                                force_delete_dir(item)
+                            else:
+                                force_delete_file(item)
+            else:
+                archive_base = DAB_RESULTS_DIR / "_archive"
+                if archive_base.exists():
+                    for run_folder in archive_base.iterdir():
+                        if run_folder.is_dir():
+                            try:
+                                date_str = run_folder.name.split('_')[1]
+                                run_date = f"{date_str[:4]}-{date_str[4:6]}-{date_str[6:8]}"
+                                if run_date == date:
+                                    force_delete_dir(run_folder)
+                            except Exception:
+                                pass
+                                
+            _cached_dab_metrics.cache_clear()
+            _dab_queries_cache = None
+            return {"message": f"Run {date} deleted."}
     except Exception as e:
-        logger.error(f"Failed to delete Evaluation records for {date}: {e}")
+        logger.error(f"Failed to delete DAB run/date {date}: {e}")
+        return {"error": str(e)}
     finally:
         db.close()
-    
-    # 2. Delete from Filesystem
-    if date == today:
-        if DAB_RESULTS_DIR.exists():
-            for item in DAB_RESULTS_DIR.iterdir():
-                if item.name != "_archive":
-                    if item.is_dir():
-                        force_delete_dir(item)
-                    else:
-                        force_delete_file(item)
-        return {"message": f"Cleared live results for {date}"}
-        
-    archive_base = DAB_RESULTS_DIR / "_archive"
-    if archive_base.exists():
-        for run_folder in archive_base.iterdir():
-            if run_folder.is_dir():
-                try:
-                    date_str = run_folder.name.split('_')[1] # YYYYMMDD
-                    run_date = f"{date_str[:4]}-{date_str[4:6]}-{date_str[6:8]}"
-                    if run_date == date:
-                        force_delete_dir(run_folder)
-                except Exception:
-                    pass
-    
-    _cached_dab_metrics.cache_clear()
-    global _dab_queries_cache
-    _dab_queries_cache = None
-    
-    return {"message": f"Run {date} deleted."}
 
 
 @router.post("/api/dab/run_all")
-def run_dab_all(payload: DabRunAllPayload = DabRunAllPayload()):
+def run_dab_all(request: Request, payload: DabRunAllPayload = DabRunAllPayload()):
     """Trigger a full DAB benchmark run (all pending queries)."""
     from agent.app.dab.dab_evaluator import load_eval_result
     import shutil
@@ -851,30 +1126,84 @@ def run_dab_all(payload: DabRunAllPayload = DabRunAllPayload()):
     global DAB_CANCEL_FLAG
     DAB_CANCEL_FLAG = False
 
-    # Create isolated fresh run folder by archiving current DAB_RESULTS_DIR
-    run_id = datetime.now().strftime("run_%Y%m%d_%H%M%S")
-    archive_dir = DAB_RESULTS_DIR / "_archive" / run_id
-    archive_dir.mkdir(parents=True, exist_ok=True)
-    
-    # Move all items to archive, except the _archive folder itself
-    if DAB_RESULTS_DIR.exists():
-        for item in DAB_RESULTS_DIR.iterdir():
-            if item.name != "_archive":
-                try:
-                    shutil.move(str(item), str(archive_dir / item.name))
-                except Exception:
-                    pass
-
-    # Wipe today's database records to ensure the dashboard resets to 0
     from agent.app.db.models import Evaluation
     from agent.app.db.database import SessionLocal
+    from datetime import datetime, timedelta
+
+    # Determine the user making the request
+    username = _get_username_from_request(request)
+
     db = SessionLocal()
+    completed_keys = set()
+    
+    # Target date parsing (timezone agnostic matching rest of app)
+    run_date_str = payload.date or datetime.now().strftime("%Y-%m-%d")
+    start_dt = datetime.strptime(run_date_str, "%Y-%m-%d")
+    end_dt = start_dt + timedelta(days=1)
+
+    # Set run date + username override in dab_evaluator module so all new evals
+    # are timestamped correctly and attributed to this user.
+    import agent.app.dab.dab_evaluator as de
+    de.DAB_RUN_DATE = run_date_str
+    de.DAB_RUN_ID = "live"
+    de.DAB_RUN_USERNAME = username
+
     try:
-        today_str = datetime.now().strftime("%Y-%m-%d")
-        db.query(Evaluation).filter(cast(Evaluation.timestamp, Date) == today_str).delete(synchronize_session=False)
+        # 1. Purge any incomplete/corrupted evaluations for the target date (user-scoped)
+        deleted_count = db.query(Evaluation).filter(
+            Evaluation.timestamp >= start_dt,
+            Evaluation.timestamp < end_dt,
+            Evaluation.username == username,
+            (Evaluation.passed == None) | (Evaluation.elapsed_s == None)
+        ).delete(synchronize_session=False)
         db.commit()
+        if deleted_count > 0:
+            logger.info(f"Purged {deleted_count} incomplete/aborted evaluation records for {run_date_str} (user={username}).")
+
+        if payload.mode == "continue":
+            logger.info(f"DAB run_all: Continuing previous incomplete run for {run_date_str} (user={username}).")
+            # Retrieve already completed runs for this user to skip them.
+            # Check both live records AND archived run_id records (for when a run_ id was selected).
+            completed_records = db.query(Evaluation).filter(
+                Evaluation.username == username,
+                Evaluation.passed != None,
+                Evaluation.elapsed_s != None
+            ).filter(
+                # Match either by date range OR by specific run_id
+                (
+                    (Evaluation.timestamp >= start_dt) & (Evaluation.timestamp < end_dt)
+                ) | (
+                    (payload.run_id != None) & (Evaluation.run_id == payload.run_id)
+                )
+            ).all()
+            for rec in completed_records:
+                completed_keys.add((rec.dataset, str(rec.query_id), rec.run_suffix or ""))
+            logger.info(f"Continue mode: {len(completed_keys)} already-completed slots found for user={username}.")
+        else:
+            logger.info(f"DAB run_all: Starting a fresh run for {run_date_str} (user={username}).")
+            # Fresh run: archive files on disk and update database records
+            run_id = datetime.now().strftime("run_%Y%m%d_%H%M%S")
+            archive_dir = DAB_RESULTS_DIR / "_archive" / run_id
+            archive_dir.mkdir(parents=True, exist_ok=True)
+            
+            # Move all items to archive, except the _archive folder itself
+            if DAB_RESULTS_DIR.exists():
+                for item in DAB_RESULTS_DIR.iterdir():
+                    if item.name != "_archive":
+                        try:
+                            shutil.move(str(item), str(archive_dir / item.name))
+                        except Exception:
+                            pass
+
+            # Update this user's live records to have the archived run_id
+            db.query(Evaluation).filter(
+                Evaluation.username == username,
+                (Evaluation.run_id == "live") | (Evaluation.run_id == None)
+            ).update({Evaluation.run_id: run_id}, synchronize_session=False)
+            db.commit()
+            
     except Exception as e:
-        logger.error(f"Failed to clear today's DB records for fresh run: {e}")
+        logger.error(f"Failed to setup DAB run (mode={payload.mode}, date={run_date_str}, user={username}): {e}")
     finally:
         db.close()
 
@@ -888,7 +1217,10 @@ def run_dab_all(payload: DabRunAllPayload = DabRunAllPayload()):
             continue
         # Global runs always queue 5 passes for each question
         for i in range(5):
-            # We track each run individually. We'll append run_number to instance_id for tracking
+            run_sfx = "" if i == 0 else f"_run{i}"
+            if payload.mode == "continue" and (q["dataset"], str(q["query_id"]), run_sfx) in completed_keys:
+                continue
+
             run_instance = q.copy()
             if i > 0:
                 run_instance["instance_id"] = f"{q['instance_id']}_run{i}"
@@ -905,28 +1237,49 @@ def run_dab_all(payload: DabRunAllPayload = DabRunAllPayload()):
             "count": 0,
         }
 
+    num_workers = max(1, min(payload.workers, 5))  # clamp to [1, 5] for safety
+
+    def _run_one(q):
+        global DAB_CANCEL_FLAG
+        if DAB_CANCEL_FLAG:
+            DAB_RUNNING_TASKS.discard(q["instance_id"])
+            return
+        qkey = q["instance_id"]
+        try:
+            from agent.app.dab.dab_orchestrator import run_dab_query
+            run_dab_query(q, run_number=q.get("run_number", 0))
+        except Exception:
+            pass
+        finally:
+            DAB_RUNNING_TASKS.discard(qkey)
+
     def _run_batch():
-        from agent.app.dab.dab_orchestrator import run_dab_query
+        from concurrent.futures import ThreadPoolExecutor as _Pool, as_completed as _done
         global DAB_CANCEL_FLAG
 
-        for q in to_run:
-            if DAB_CANCEL_FLAG:
-                # Discard remaining queued items
-                for remaining_q in to_run:
-                    DAB_RUNNING_TASKS.discard(remaining_q["instance_id"])
-                break
-                
-            qkey = q["instance_id"]
-            try:
-                run_dab_query(q, run_number=q.get("run_number", 0))
-            except Exception:
-                pass
-            finally:
-                DAB_RUNNING_TASKS.discard(qkey)
-        # Invalidate caches
+        with _Pool(max_workers=num_workers) as pool:
+            futures = {pool.submit(_run_one, q): q for q in to_run}
+            for fut in _done(futures):
+                if DAB_CANCEL_FLAG:
+                    for remaining in futures:
+                        remaining.cancel()
+                    # Discard any still-queued keys
+                    for q in futures.values():
+                        DAB_RUNNING_TASKS.discard(q["instance_id"])
+                    break
+                try:
+                    fut.result()
+                except Exception:
+                    pass
+
         global _dab_queries_cache
         _dab_queries_cache = None
         _cached_dab_metrics.cache_clear()
+        
+        # Reset run date override
+        import agent.app.dab.dab_evaluator as de
+        de.DAB_RUN_DATE = None
+        de.DAB_RUN_ID = None
 
     EXECUTION_POOL.submit(_run_batch)
     return {
@@ -937,7 +1290,7 @@ def run_dab_all(payload: DabRunAllPayload = DabRunAllPayload()):
 
 
 @router.get("/api/dab/results/recent")
-def get_dab_recent_results(limit: int = 15, date: str = "all"):
+def get_dab_recent_results(limit: int = 15, date: str = "all", run_id: Optional[str] = None):
     from agent.app.db.database import SessionLocal
     from agent.app.db.models import Evaluation
     from datetime import datetime
@@ -945,8 +1298,21 @@ def get_dab_recent_results(limit: int = 15, date: str = "all"):
     db = SessionLocal()
     try:
         query = db.query(Evaluation)
-        if date != "all":
-            query = query.filter(cast(Evaluation.timestamp, Date) == date)
+        if run_id is not None:
+            if run_id == "all":
+                pass
+            elif run_id == "live":
+                query = query.filter((Evaluation.run_id == "live") | (Evaluation.run_id == None))
+            else:
+                query = query.filter(Evaluation.run_id == run_id)
+        elif date != "all":
+            from datetime import datetime, timedelta
+            start_dt = datetime.strptime(date, "%Y-%m-%d")
+            end_dt = start_dt + timedelta(days=1)
+            query = query.filter(
+                Evaluation.timestamp >= start_dt,
+                Evaluation.timestamp < end_dt
+            )
             
         records = query.order_by(Evaluation.timestamp.desc()).limit(limit).all()
         
@@ -997,24 +1363,14 @@ def get_dab_run_status():
     queries = _get_dab_queries()
     total_queries = len(queries) * 5
     
-    # Calculate how many of the 5 runs are complete for each query
-    completed_queries = 0
-    from agent.app.core.config import DAB_RESULTS_DIR
-    
-    try:
-        from agent.app.db.database import SessionLocal
-        from agent.app.db.models import Evaluation
-        from datetime import datetime
-        db = SessionLocal()
-        try:
-            today_str = datetime.now().strftime("%Y-%m-%d")
-            completed_queries = db.query(Evaluation).filter(cast(Evaluation.timestamp, Date) == today_str).count()
-        except Exception:
-            pass
-        finally:
-            db.close()
-    except Exception:
-        pass
+    # Completed = total queued minus what's still in the running set.
+    # This is accurate because run_all adds ALL slots to DAB_RUNNING_TASKS upfront
+    # and removes each slot as it finishes, so the difference is exact.
+    running_count = len(all_running)
+    if running_count > 0:
+        completed_queries = max(0, total_queries - running_count)
+    else:
+        completed_queries = 0
     
     return {
         "running": all_running,

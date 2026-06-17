@@ -1,9 +1,0 @@
-IXIC (United States), GDAXI (Germany), TWII (Taiwan), N225 (Japan), NYA (United States)
-
-IXIC, 1239.723211218462, United States
-
-﻿Index: IXIC | overall_return_factor: 1239.723211218462 | country: United States
-﻿Index: GDAXI | overall_return_factor: 603.7662524903245 | country: Germany
-﻿Index: TWII | overall_return_factor: 590.1880858979541 | country: Taiwan
-﻿Index: N225 | overall_return_factor: 559.9076639972916 | country: Japan
-﻿Index: NYA | overall_return_factor: 517.2928068459968 | country: United States

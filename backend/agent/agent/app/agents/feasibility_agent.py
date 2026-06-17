@@ -1,10 +1,10 @@
-"""
+﻿"""
 feasibility_agent.py
 --------------------
 Diagnoses whether the schema can directly answer a question.
 
 For every FILTER, GROUP-BY, and AGGREGATE concept extracted from the question,
-it maps the concept to a schema column Ã¢â‚¬â€ or flags it as a GAP.
+it maps the concept to a schema column ÃƒÂ¢Ã¢â€šÂ¬Ã¢â‚¬Â or flags it as a GAP.
 
 A gap means the question asks for something (e.g. "World category", "sentiment",
 "genre") that has no direct column but may be inferrable from text content.
@@ -32,23 +32,23 @@ Schema feasibility analyst. Determine whether each concept in the question maps 
 
 ## Task
 Extract every FILTER, GROUP-BY, and AGGREGATE concept. For each:
-- **DIRECT** Ã¢â€ â€™ column values ARE the concept. `gap: false`
-- **PROXY / GAP** Ã¢â€ â€™ concept must be inferred from free-text with no queryable structure. `gap: true`
+- **DIRECT** ÃƒÂ¢Ã¢â‚¬Â Ã¢â‚¬â„¢ column values ARE the concept. `gap: false`
+- **PROXY / GAP** ÃƒÂ¢Ã¢â‚¬Â Ã¢â‚¬â„¢ concept must be inferred from free-text with no queryable structure. `gap: true`
 
-## Direct vs Proxy Ã¢â‚¬â€ the hard rule
-| Direct Ã¢Å“â€œ | Gap Ã¢Å“â€” |
+## Direct vs Proxy ÃƒÂ¢Ã¢â€šÂ¬Ã¢â‚¬Â the hard rule
+| Direct ÃƒÂ¢Ã…â€œÃ¢â‚¬Å“ | Gap ÃƒÂ¢Ã…â€œÃ¢â‚¬â€ |
 |---|---|
-| `status IN ('active')` Ã¢â‚¬â€ column stores the label | Extracting sentiment/implicit intent from free text |
-| `date >= '2024'` Ã¢â‚¬â€ column stores the date | Deriving an industry from a prose description |
-| `language = 'Python'` Ã¢â‚¬â€ dedicated column | Cultural/semantic inference with no keyword |
-| JSON/serialized attr column Ã¢â‚¬â€ key detectable via `json_extract` or `LIKE '%key%'` | Completely unstructured blob with no pattern |
+| `status IN ('active')` ÃƒÂ¢Ã¢â€šÂ¬Ã¢â‚¬Â column stores the label | Extracting sentiment/implicit intent from free text |
+| `date >= '2024'` ÃƒÂ¢Ã¢â€šÂ¬Ã¢â‚¬Â column stores the date | Deriving an industry from a prose description |
+| `language = 'Python'` ÃƒÂ¢Ã¢â€šÂ¬Ã¢â‚¬Â dedicated column | Cultural/semantic inference with no keyword |
+| JSON/serialized attr column ÃƒÂ¢Ã¢â€šÂ¬Ã¢â‚¬Â key detectable via `json_extract` or `LIKE '%key%'` | Completely unstructured blob with no pattern |
 
-**Hint files override ambiguity** Ã¢â‚¬â€ if a hint maps a concept to a column, that column IS the direct mapping.
+**Hint files override ambiguity** ÃƒÂ¢Ã¢â€šÂ¬Ã¢â‚¬Â if a hint maps a concept to a column, that column IS the direct mapping.
 
 ## CRITICAL: Structured JSON / Serialized-Text columns are NOT semantic gaps
 If a column stores JSON strings or Python-serialized dicts (e.g. `{"key": "value"}` or `{'key': True}`),
 its keys ARE queryable via `json_extract()`, `LIKE '%Key%value%'`, or `regexp_extract()`.
-These are **enriched_sql** candidates Ã¢â‚¬â€ mark `gap: false`.
+These are **enriched_sql** candidates ÃƒÂ¢Ã¢â€šÂ¬Ã¢â‚¬Â mark `gap: false`.
 
 **Mark `gap: false`** (queryable) when:
 - A concept maps to a JSON key that can be extracted with `json_extract()` or `LIKE '%key%'`
@@ -62,10 +62,10 @@ These are **enriched_sql** candidates Ã¢â‚¬â€ mark `gap: false`.
 ## CRITICAL: Entity-level vs Event-level metric disambiguation
 When the question asks for a "rating", "score", or "average" of an entity (e.g. "average rating of businesses"):
 - Prefer the **entity's own rating column** (e.g. `business.stars`, `product.rating`) over aggregating from a child event table (e.g. `review.rating`, `order.score`)
-- Entity-level ratings are pre-aggregated; event-level ratings are raw per-event values Ã¢â‚¬â€ they produce **different numbers**
+- Entity-level ratings are pre-aggregated; event-level ratings are raw per-event values ÃƒÂ¢Ã¢â€šÂ¬Ã¢â‚¬Â they produce **different numbers**
 - Only use an event-table rating column when the question explicitly references events (e.g. "average rating *given in* reviews")
 
-## Output Ã¢â‚¬â€ JSON only, no markdown
+## Output ÃƒÂ¢Ã¢â€šÂ¬Ã¢â‚¬Â JSON only, no markdown
 ```
 {
   "concepts": [
@@ -88,7 +88,7 @@ _USER_TMPL = """**Question:** {question}
 **Schema:**
 {schema_text}
 
-{hints_section}Map every concept. Remember: JSON/serialized-text extraction via json_extract() or LIKE is NOT a gap Ã¢â‚¬â€ it is enriched_sql."""
+{hints_section}Map every concept. Remember: JSON/serialized-text extraction via json_extract() or LIKE is NOT a gap ÃƒÂ¢Ã¢â€šÂ¬Ã¢â‚¬Â it is enriched_sql."""
 
 
 class FeasibilityAgent:
@@ -105,8 +105,8 @@ class FeasibilityAgent:
         Map question concepts to schema columns.
 
         Args:
-          hints: optional hint/description file content (e.g. db_description_withhint.txt)
-                 Ã¢â‚¬â€ if provided, fed to the LLM so it knows about implicit encodings
+          hints: optional schema description content (db_description.txt only)
+                 — if provided, fed to the LLM so it knows about implicit encodings
 
         Returns a dict with keys:
           concepts      list of {term, role, mapped_column, gap, gap_reason}
@@ -139,7 +139,7 @@ class FeasibilityAgent:
         except Exception as e:  # noqa: BLE001
             logger.debug(f"[FeasibilityAgent] failed (non-fatal): {e}")
 
-        # Safe default Ã¢â‚¬â€ assume no gaps, continue with standard pipeline
+        # Safe default ÃƒÂ¢Ã¢â€šÂ¬Ã¢â‚¬Â assume no gaps, continue with standard pipeline
         return {"concepts": [], "has_gaps": False, "gap_summary": ""}
 
     # ------------------------------------------------------------------

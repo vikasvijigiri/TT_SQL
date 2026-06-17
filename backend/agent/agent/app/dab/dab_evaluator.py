@@ -24,6 +24,10 @@ from agent.app.db.database import SessionLocal
 from agent.app.db.models import Evaluation
 from sqlalchemy import cast, Date
 
+DAB_RUN_DATE: Optional[str] = None
+DAB_RUN_ID: Optional[str] = None
+DAB_RUN_USERNAME: Optional[str] = None  # set by run_all to scope results per user
+
 
 def _validation_worker(validate_src: str, agent_answer: str, filepath: str | None, return_dict: dict):
     import sys
@@ -133,6 +137,14 @@ def evaluate_answer(
         passed, reason = _run_static_validate(ground_truth, agent_answer)
         method = "static_contains_check"
 
+    now_time = datetime.now()
+    if DAB_RUN_DATE:
+        try:
+            target_d = datetime.strptime(DAB_RUN_DATE, "%Y-%m-%d")
+            now_time = now_time.replace(year=target_d.year, month=target_d.month, day=target_d.day)
+        except Exception:
+            pass
+
     result = {
         "dataset": dataset,
         "query_id": query_id,
@@ -145,7 +157,7 @@ def evaluate_answer(
         "elapsed_s": elapsed_s,
         "input_tokens": input_tokens,
         "output_tokens": output_tokens,
-        "timestamp": datetime.now().isoformat(),
+        "timestamp": now_time.isoformat(),
     }
 
     if save:
@@ -165,7 +177,9 @@ def evaluate_answer(
                 elapsed_s=elapsed_s,
                 input_tokens=input_tokens,
                 output_tokens=output_tokens,
-                timestamp=datetime.fromisoformat(ts_str) if ts_str else datetime.utcnow()
+                timestamp=datetime.fromisoformat(ts_str) if ts_str else datetime.utcnow(),
+                run_id=DAB_RUN_ID or "live",
+                username=DAB_RUN_USERNAME or "vikasvijigiri"
             )
             db.add(eval_record)
             db.commit()
@@ -178,9 +192,10 @@ def evaluate_answer(
 
 
 def load_eval_result(
-    dataset: str, query_id: str, run_suffix: str = "", date: str = "all"
+    dataset: str, query_id: str, run_suffix: str = "", date: str = "all", run_id: Optional[str] = None,
+    username: Optional[str] = None
 ) -> Optional[Dict[str, Any]]:
-    """Load a previously saved evaluation result from the database."""
+    """Load a previously saved evaluation result from the database, optionally scoped by username."""
     db = SessionLocal()
     try:
         query = db.query(Evaluation).filter(
@@ -189,8 +204,22 @@ def load_eval_result(
             Evaluation.run_suffix == run_suffix
         )
         
-        if date != "all":
-            query = query.filter(cast(Evaluation.timestamp, Date) == date)
+        # Filter by username when provided (isolates user data)
+        if username:
+            query = query.filter(Evaluation.username == username)
+
+        if run_id is not None:
+            if run_id == "all":
+                pass
+            elif run_id == "live":
+                query = query.filter((Evaluation.run_id == "live") | (Evaluation.run_id == None))
+            else:
+                query = query.filter(Evaluation.run_id == run_id)
+        elif date != "all":
+            from datetime import datetime, timedelta
+            start_dt = datetime.strptime(date, "%Y-%m-%d")
+            end_dt = start_dt + timedelta(days=1)
+            query = query.filter(Evaluation.timestamp >= start_dt, Evaluation.timestamp < end_dt)
             
         record = query.order_by(Evaluation.timestamp.desc()).first()
         
@@ -241,7 +270,8 @@ def load_agent_answer(dataset: str, query_id: str) -> Optional[str]:
 
 
 def compute_accuracy(
-    queries: List[Dict[str, Any]], max_runs: int = 5, date: str = "all"
+    queries: List[Dict[str, Any]], max_runs: int = 5, date: str = "all", run_id: Optional[str] = None,
+    username: Optional[str] = None
 ) -> Dict[str, Any]:
     """
     Compute Pass@1 and Pass@K accuracy across all evaluated queries.
@@ -292,15 +322,19 @@ def compute_accuracy(
         per_dataset[dataset]["total"] += 1
         total_queries += 1
 
-        # Load run 0 (canonical)
-        run0 = load_eval_result(dataset, qid, run_suffix="", date=date)
+        # Collect any completed runs (0 to max_runs-1) for today
+        run_results = []
+        for r in range(max_runs):
+            sfx = "" if r == 0 else f"_run{r}"
+            rv = load_eval_result(dataset, qid, run_suffix=sfx, date=date, run_id=run_id, username=username)
+            if rv is not None:
+                if run_id is None and date != "all":
+                    file_date = rv.get("timestamp", "")[:10]
+                    if file_date != date:
+                        continue
+                run_results.append(rv)
 
-        if run0 is not None and date != "all":
-            file_date = run0.get("timestamp", "")[:10]
-            if file_date != date:
-                run0 = None
-
-        if run0 is None:
+        if not run_results:
             per_dataset[dataset]["pending"] += 1
             pending += 1
             per_dataset[dataset]["queries"].append(
@@ -312,14 +346,7 @@ def compute_accuracy(
             )
             continue
 
-        # Collect all runs: run0 + _run1 ... _run{max_runs-1}
-        run_results = [run0]
-        for r in range(1, max_runs):
-            extra = load_eval_result(dataset, qid, run_suffix=f"_run{r}", date=date)
-            if extra is None:
-                break
-            run_results.append(extra)
-
+        run0 = run_results[0]
         k = len(run_results)
         passing = sum(1 for rv in run_results if rv.get("passed", False))
         any_pass = passing > 0

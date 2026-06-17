@@ -56,9 +56,27 @@ def get_db_path(db_name: str, dialect: str = "snowflake") -> str:
     return str(db_root)
 
 
-def ensure_dirs() -> None:
+def get_user_results_dir(username: str) -> "Path":
+    """Return the user-specific Spider results directory, creating it if needed."""
+    import re
+    safe = re.sub(r'[^a-z0-9_\-]', '', username.lower()) or "anonymous"
+    d = RESULTS_DIR / "users" / safe
+    d.mkdir(parents=True, exist_ok=True)
+    return d
+
+
+def get_user_dab_results_dir(username: str) -> "Path":
+    """Return the user-specific DAB results directory (with _archive subdir), creating if needed."""
+    import re
+    safe = re.sub(r'[^a-z0-9_\-]', '', username.lower()) or "anonymous"
+    d = RESULTS_DIR / "users" / safe / "dab"
+    (d / "_archive").mkdir(parents=True, exist_ok=True)
+    return d
+
+
+def ensure_dirs(username: str = "") -> None:
     """Create all runtime-writable directories if they don't exist."""
-    for d in [
+    base_dirs = [
         RESULTS_DIR,
         DAB_RESULTS_DIR,
         DAB_RESULTS_DIR / "_archive",
@@ -66,8 +84,13 @@ def ensure_dirs() -> None:
         MEMORY_DIR,
         MEMORY_DIR / "dialects",
         MEMORY_DIR / "reasoning",
-    ]:
+    ]
+    for d in base_dirs:
         d.mkdir(parents=True, exist_ok=True)
+    # Also create user-scoped directories if a username is given
+    if username:
+        get_user_dab_results_dir(username)
+        get_user_results_dir(username)
 
 
 ensure_dirs()

@@ -1,5 +1,0 @@
-No data found for the query (Catalog Error: Table with name packageinfo does not exist!
-Did you mean "package_query_db.packageinfo"?
-
-LINE 1: ..., pi.Project_Information, pi.Licenses, pp.ProjectName FROM packageinfo p JOIN project_packageversion pp ON p.System...
-                                                                      ^). Cannot determine the answer.

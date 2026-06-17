@@ -40,7 +40,7 @@ func Load() *Config {
 	c := &Config{
 		Port:         envOr("GO_PORT", "3030"),
 		GinMode:      envOr("GIN_MODE", "release"),
-		PythonAPIURL: envOr("PYTHON_API_URL", "http://localhost:8001"),
+		PythonAPIURL: envOr("PYTHON_API_URL", "http://localhost:8010"),
 
 		GoogleClientID: envOr("GOOGLE_CLIENT_ID", ""),
 		JWTSecret:      envOr("JWT_SECRET", "change-me-in-production"),

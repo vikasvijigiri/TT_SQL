@@ -1,4 +1,4 @@
-import typing
+﻿import typing
 from agent.app.utils.logger import logger
 from agent.app.utils.llm import LLMClient
 from agent.app.services.semantic_engine import SemanticContextEngine
@@ -19,7 +19,7 @@ from agent.app.core.dialects.rule_retriever import DialectRuleRetriever
 from agent.app.core.retrieval.hierarchical_retriever import HierarchicalRetriever
 from agent.app.core.query_analysis.capability_detector import QueryCapabilityDetector
 
-# Diagnostic reasoning layer: feasibility Ã¢â€ â€™ exploration Ã¢â€ â€™ strategy Ã¢â€ â€™ (classify if needed)
+# Diagnostic reasoning layer: feasibility ÃƒÂ¢Ã¢â‚¬Â Ã¢â‚¬â„¢ exploration ÃƒÂ¢Ã¢â‚¬Â Ã¢â‚¬â„¢ strategy ÃƒÂ¢Ã¢â‚¬Â Ã¢â‚¬â„¢ (classify if needed)
 from agent.app.agents.feasibility_agent import FeasibilityAgent
 from agent.app.agents.schema_explorer import SchemaExplorer
 from agent.app.agents.strategy_router import StrategyRouter
@@ -55,7 +55,7 @@ class SemanticDINOrchestrator:
         db_name            : Database / catalog name (derived from connection_string if omitted).
         dialect            : SQL dialect keyword (derived from connection_string if omitted).
                              Falls back to "snowflake" only when nothing else is available.
-        connection_string  : Any supported URI (sqlite:// / postgresql:// / mysql:// / Ã¢â‚¬Â¦).
+        connection_string  : Any supported URI (sqlite:// / postgresql:// / mysql:// / ÃƒÂ¢Ã¢â€šÂ¬Ã‚Â¦).
                              When provided, dialect and db_name are derived from it automatically.
         max_retries        : Correction loop limit (overridden by system_params.yaml if present).
         """
@@ -67,7 +67,7 @@ class SemanticDINOrchestrator:
             if not db_name:
                 db_name = conn_cfg.db_name
 
-        # Final fallback Ã¢â‚¬â€ only if nothing else supplied
+        # Final fallback ÃƒÂ¢Ã¢â€šÂ¬Ã¢â‚¬Â only if nothing else supplied
         dialect = dialect or "snowflake"
         db_name = db_name or "UNKNOWN"
 
@@ -134,7 +134,7 @@ class SemanticDINOrchestrator:
         from agent.app.services.rag_service import DynamicRAGService
         rag_service = DynamicRAGService()
         rule_retriever = DialectRuleRetriever(self.executor.dialect)
-        # Use adaptive in-code rule families Ã¢â‚¬â€ works for every dialect without requiring a YAML handbook.
+        # Use adaptive in-code rule families ÃƒÂ¢Ã¢â€šÂ¬Ã¢â‚¬Â works for every dialect without requiring a YAML handbook.
         # retrieve_relevant_rules() is YAML-only and returns "not found" for DuckDB, Postgres, etc.
         _query_str = intent.filter_conditions[0] if intent.filter_conditions else ""
         profile = QueryCapabilityDetector.detect(_query_str, intent)
@@ -260,7 +260,7 @@ class SemanticDINOrchestrator:
         )
         _emit("schema_linking", "success")
 
-        # FK/PK join graph Ã¢â‚¬â€ computed over already-pruned tables only, always O(small)
+        # FK/PK join graph ÃƒÂ¢Ã¢â€šÂ¬Ã¢â‚¬Â computed over already-pruned tables only, always O(small)
         join_graph = self.semantic_engine.extract_join_graph(
             linked_schema.selected_tables
         )
@@ -270,7 +270,7 @@ class SemanticDINOrchestrator:
             )
             lessons_context += f"\n\n{join_graph}"
 
-        # Cross-table join probe Ã¢â‚¬â€ discover live join sizes across ALL schema tables,
+        # Cross-table join probe ÃƒÂ¢Ã¢â€šÂ¬Ã¢â‚¬Â discover live join sizes across ALL schema tables,
         # not just selected ones.  SchemaLinker may have excluded a table that turns
         # out to be the correct join anchor (e.g. a narrow join reveals the real data
         # universe).  Probe all tables so we can add missing ones to linked_schema
@@ -367,7 +367,7 @@ class SemanticDINOrchestrator:
 
         telemetry.end_stage("schema_linking")
 
-        # Ã¢â€â‚¬Ã¢â€â‚¬ Diagnostic Reasoning Layer Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬
+        # ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ Diagnostic Reasoning Layer ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬
         # Before writing any SQL, check whether the schema actually supports the
         # question. If gaps are found, explore the live data, decide on a strategy,
         # and either enrich the SQL generation context or execute an alternative path.
@@ -387,15 +387,8 @@ class SemanticDINOrchestrator:
                 hint_candidate = RESOURCES_DIR / "documents" / external_knowledge
                 if hint_candidate.exists():
                     hint_files.append(str(hint_candidate))
-            dab_hint = (
-                Path(self.executor.explicit_db_path).parent.parent
-                / "db_description_withhint.txt"
-                if hasattr(self.executor, "explicit_db_path")
-                and self.executor.explicit_db_path
-                else None
-            )
-            if dab_hint and dab_hint.exists():
-                hint_files.append(str(dab_hint))
+            # db_description_withhint.txt is excluded from inference â€” it contains
+            # ground-truth hints which must never reach the model during a benchmark run.
             for _hf in hint_files:
                 with contextlib.suppress(Exception):
                     _hints_text += (
@@ -403,7 +396,7 @@ class SemanticDINOrchestrator:
                         + "\n"
                     )
 
-            # 1. Map question concepts Ã¢â€ â€™ schema columns, flag any gaps
+            # 1. Map question concepts ÃƒÂ¢Ã¢â‚¬Â Ã¢â‚¬â„¢ schema columns, flag any gaps
             _emit("feasibility", "running")
             feasibility = self.feasibility_agent.analyze(
                 user_query, _schema_text_for_diag, hints=_hints_text
@@ -504,8 +497,8 @@ class SemanticDINOrchestrator:
                                 "\n\n## PRE-ROUTING PROFILING: Structured Category List in Description Column\n"
                                 f"The 'description' column embeds categories using a STRUCTURED pattern: {_cat_info['label']}\n"
                                 f"Sample categories detected: {', '.join(_cat_info['top_categories'][:5])}\n"
-                                "CRITICAL: This is structured text extraction via regex Ã¢â‚¬â€ NOT semantic classification.\n"
-                                "USE `enriched_sql` with regexp_extract Ã¢â‚¬â€ do NOT use `text_classify_aggregate`.\n"
+                                "CRITICAL: This is structured text extraction via regex ÃƒÂ¢Ã¢â€šÂ¬Ã¢â‚¬Â NOT semantic classification.\n"
+                                "USE `enriched_sql` with regexp_extract ÃƒÂ¢Ã¢â€šÂ¬Ã¢â‚¬Â do NOT use `text_classify_aggregate`.\n"
                                 "Extraction: COALESCE of multiple patterns with char class [A-Za-z, /&()''-]+? (includes parens and apostrophes, NO .*):\n"
                                 "  - regexp_extract(description, 'in the (?:categor(?:y|ies)|fields?|areas?) of ([A-Za-z, /&()''-]+?)[.]', 1)\n"
                                 "  - regexp_extract(description, ', including ([A-Za-z, /&()''-]+?)[.]', 1)\n"
@@ -515,7 +508,7 @@ class SemanticDINOrchestrator:
                             )
                             exploration = (exploration or "") + _pre_hint
                             logger.info(
-                                "[PreRoutingProbe] Embedded category pattern detected in description column Ã¢â‚¬â€ "
+                                "[PreRoutingProbe] Embedded category pattern detected in description column ÃƒÂ¢Ã¢â€šÂ¬Ã¢â‚¬Â "
                                 "appended enriched_sql hint to exploration context."
                             )
 
@@ -532,7 +525,7 @@ class SemanticDINOrchestrator:
 
                 # 3b. If narrow joins were detected, mandate their use in enriched_context.
                 # The StrategyRouter LLM may output guidance that contradicts the narrow join
-                # (e.g. "use contents.sample_path") Ã¢â‚¬â€ override here so the SQL Generator
+                # (e.g. "use contents.sample_path") ÃƒÂ¢Ã¢â€šÂ¬Ã¢â‚¬Â override here so the SQL Generator
                 # cannot miss the correct join anchor.
                 _nj_for_override = _narrow_joins or _unconditional_narrow_joins
                 if _nj_for_override and strategy.get("strategy") in (
@@ -593,7 +586,7 @@ class SemanticDINOrchestrator:
                         )
 
                 else:
-                    # enriched_sql or fallback direct_sql Ã¢â‚¬â€ inject context.
+                    # enriched_sql or fallback direct_sql ÃƒÂ¢Ã¢â€šÂ¬Ã¢â‚¬Â inject context.
                     # Always inject exploration when it exists so schema-gap queries see live
                     # sample data even when enriched_context is empty.
                     enriched = strategy.get("enriched_context", "")
@@ -610,7 +603,7 @@ class SemanticDINOrchestrator:
                 _emit("exploration", "skipped")
                 _emit("routing", "skipped")
                 logger.info(
-                    "[DiagnosticLayer] Schema fully supports the question Ã¢â‚¬â€ proceeding directly."
+                    "[DiagnosticLayer] Schema fully supports the question ÃƒÂ¢Ã¢â€šÂ¬Ã¢â‚¬Â proceeding directly."
                 )
 
         except Exception as _diag_err:
@@ -652,7 +645,7 @@ class SemanticDINOrchestrator:
             )
             current_sql = curated_sql
         else:
-            # Query Decomposition Ã¢â‚¬â€ inject CTE blueprint for multi-hop questions (zero LLM cost for simple queries)
+            # Query Decomposition ÃƒÂ¢Ã¢â€šÂ¬Ã¢â‚¬Â inject CTE blueprint for multi-hop questions (zero LLM cost for simple queries)
             decomp_plan = self.decomposer.decompose(
                 user_query, linked_schema.selected_tables
             )
@@ -663,7 +656,7 @@ class SemanticDINOrchestrator:
                 )
                 lessons_context += f"\n\n{decomp_section}"
 
-            # Module 3: SQL Generation Ã¢â‚¬â€ simple single-pass or complex diverse-candidates
+            # Module 3: SQL Generation ÃƒÂ¢Ã¢â€šÂ¬Ã¢â‚¬Â simple single-pass or complex diverse-candidates
             _emit("sql_generation", "running")
             lessons_context = self._safeguard_lessons(lessons_context)
             profile = QueryCapabilityDetector.detect(
@@ -687,7 +680,7 @@ class SemanticDINOrchestrator:
                 and not profile.requires_windows  # Windows are notoriously hard, always require diverse generation
             )
 
-            # Module 3.5: Knowledge Acquisition (Web Search if needed) Ã¢â‚¬â€ runs before generation for all queries
+            # Module 3.5: Knowledge Acquisition (Web Search if needed) ÃƒÂ¢Ã¢â€šÂ¬Ã¢â‚¬Â runs before generation for all queries
             unclear_terms = [
                 m.user_term
                 for m in (linked_schema.value_mappings or [])
@@ -796,7 +789,7 @@ class SemanticDINOrchestrator:
 
             # Empty-SQL guard: generation produced nothing (LLM refused due to schema gaps).
             # Expand selected_tables to the full DB schema and try one recovery pass before
-            # entering the correction loop Ã¢â‚¬â€ avoids burning all retry budget on an empty string.
+            # entering the correction loop ÃƒÂ¢Ã¢â€šÂ¬Ã¢â‚¬Â avoids burning all retry budget on an empty string.
             if not current_sql or not current_sql.strip():
                 logger.warning(
                     "[Generation] All generation paths returned empty SQL. "
@@ -1053,7 +1046,7 @@ class SemanticDINOrchestrator:
                             probe_data = "Probe returned no readable data."
                     else:
                         logger.warning(
-                            "Exploration probe failed Ã¢â‚¬â€ reusing cached lessons context."
+                            "Exploration probe failed ÃƒÂ¢Ã¢â€šÂ¬Ã¢â‚¬Â reusing cached lessons context."
                         )
 
                     logger.info(f"Probe Result:\n{probe_data}")
@@ -1240,17 +1233,7 @@ class SemanticDINOrchestrator:
                     logger.info(
                         "[SelfDiagnosis] Hot-reloaded dynamic lessons injected into corrector context."
                     )
-                # Prepend dataset-specific hints (db_description_withhint.txt) at highest priority
-                # into the corrector context. Placed BEFORE existing lessons so the authoritative
-                # data-format guidance takes priority over any conflicting patterns in lessons.
-                if _hints_text:
-                    enriched_lessons = (
-                        f"=== DATASET-SPECIFIC HINTS (HIGHEST PRIORITY Ã¢â‚¬â€ OVERRIDES ALL BELOW) ===\n{_hints_text}\n\n"
-                        + enriched_lessons
-                    )
-                    logger.info(
-                        "[HintInjection] Dataset-specific hints PREPENDED to self-corrector context at highest priority."
-                    )
+                # db_description_withhint.txt hint injection removed — ground-truth hints must not enter the self-corrector context.
 
                 correction_lessons = self._safeguard_lessons(
                     f"{enriched_lessons}\n\n{strategy}"
@@ -1390,7 +1373,7 @@ class SemanticDINOrchestrator:
         if not feedback:
             return ""
         return (
-            "=== SELF-DIAGNOSED ROOT CAUSE Ã¢â‚¬â€ APPLY THIS FIX IMMEDIATELY ===\n"
+            "=== SELF-DIAGNOSED ROOT CAUSE ÃƒÂ¢Ã¢â€šÂ¬Ã¢â‚¬Â APPLY THIS FIX IMMEDIATELY ===\n"
             f"{feedback}\n"
             "The corrected SQL MUST address the issue above before anything else.\n"
             "=== END SELF-DIAGNOSIS ==="
@@ -1435,9 +1418,9 @@ class SemanticDINOrchestrator:
                 or "invalid identifier" in err_lower
                 or "object" in err_lower
             ):
-                return "[CORRECTION STRATEGY]: A table or column reference was invalid. Check the exact fully-qualified names in the schema. Only use names visible in the schema context Ã¢â‚¬â€ do not guess."
+                return "[CORRECTION STRATEGY]: A table or column reference was invalid. Check the exact fully-qualified names in the schema. Only use names visible in the schema context ÃƒÂ¢Ã¢â€šÂ¬Ã¢â‚¬Â do not guess."
             if "syntax" in err_lower or "parse" in err_lower:
-                return "[CORRECTION STRATEGY]: There is a SQL syntax error. Rewrite only the broken portion Ã¢â‚¬â€ do not restructure the entire query."
+                return "[CORRECTION STRATEGY]: There is a SQL syntax error. Rewrite only the broken portion ÃƒÂ¢Ã¢â€šÂ¬Ã¢â‚¬Â do not restructure the entire query."
             if "exclusion fan-out" in err_lower or "anti-join" in err_lower:
                 return "[CORRECTION STRATEGY]: Exclusion fan-out detected. Replace WHERE child.col NOT LIKE with WHERE parent_key NOT IN (SELECT parent_key FROM child WHERE condition)."
             if (
@@ -1445,15 +1428,15 @@ class SemanticDINOrchestrator:
                 or "narrow join" in err_lower
                 or "data universe" in err_lower
             ):
-                return "[CORRECTION STRATEGY]: Join anchor violation. Rebuild FROM clause starting with the anchor join Ã¢â‚¬â€ do not scan the base table alone via a proxy column."
+                return "[CORRECTION STRATEGY]: Join anchor violation. Rebuild FROM clause starting with the anchor join ÃƒÂ¢Ã¢â€šÂ¬Ã¢â‚¬Â do not scan the base table alone via a proxy column."
             if "data quality" in err_lower or "zero variance" in err_lower:
                 return "[CORRECTION STRATEGY]: The query returned suspicious results. Re-examine every WHERE clause, JOIN condition, and GROUP BY grain."
             return "[CORRECTION STRATEGY]: Apply a minimal targeted fix for the specific error. Do not restructure the entire query."
         if attempt == 1:
-            return "[CORRECTION STRATEGY]: Expand your approach Ã¢â‚¬â€ reconsider which tables are relevant, check for bridge/junction tables, and verify the join path uses the correct key columns."
+            return "[CORRECTION STRATEGY]: Expand your approach ÃƒÂ¢Ã¢â€šÂ¬Ã¢â‚¬Â reconsider which tables are relevant, check for bridge/junction tables, and verify the join path uses the correct key columns."
         if attempt == 2:
             return "[CORRECTION STRATEGY]: Previous corrections failed. Loosen WHERE filters, remove aggressive predicates, and validate that filter values actually exist in the data."
-        return "[CORRECTION STRATEGY]: All targeted corrections have failed. Completely rewrite the SQL from scratch using the most minimal approach possible Ã¢â‚¬â€ fewest JOINs and filters first."
+        return "[CORRECTION STRATEGY]: All targeted corrections have failed. Completely rewrite the SQL from scratch using the most minimal approach possible ÃƒÂ¢Ã¢â€šÂ¬Ã¢â‚¬Â fewest JOINs and filters first."
 
     def _safeguard_lessons(self, lessons_context: str) -> str:
         if len(lessons_context) <= 80000:

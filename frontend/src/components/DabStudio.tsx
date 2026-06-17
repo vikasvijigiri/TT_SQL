@@ -542,6 +542,8 @@ const DabStudio = ({ onBack, onHome, autoOpenDetails, clearAutoOpenDetails, user
   const [copiedType, setCopiedType] = useState(null);
   const [showMetricModal, setShowMetricModal] = useState(false);
   const [showDeleteModal, setShowDeleteModal] = useState(false);
+  const [showRunOptionsModal, setShowRunOptionsModal] = useState(false);
+  const [completedSlots, setCompletedSlots] = useState(0);
   const [activeMetricFilter, setActiveMetricFilter] = useState('total');
   const [allInstanceResults, setAllInstanceResults] = useState([]);
   const [loadingMetricInstances, setLoadingMetricInstances] = useState(false);
@@ -556,6 +558,7 @@ const DabStudio = ({ onBack, onHome, autoOpenDetails, clearAutoOpenDetails, user
   // Tickers
   const [isGlobalRunning, setIsGlobalRunning] = useState(false);
   const [globalProgress, setGlobalProgress] = useState({ total: 0, completed: 0 });
+  const [isRefreshing, setIsRefreshing] = useState(false);
   const [dabQuip, setDabQuip] = useState("Resolving DBMS environments... 🔬");
 
   const liveEsRef = useRef(null);
@@ -646,15 +649,19 @@ const DabStudio = ({ onBack, onHome, autoOpenDetails, clearAutoOpenDetails, user
       const db = selectedDbRef.current;
       if (db) {
         try {
-          const res = await axios.get(`${API_BASE}/dab/queries/db/${db}?date=${dateFilter}`, { timeout: 5000 });
+          const res = await axios.get(`${API_BASE}/dab/queries/db/${db}?run_id=${dateFilter}`, { timeout: 5000 });
           setDbResults(res.data);
         } catch (_) {}
       }
       try {
-        const m = await axios.get(`${API_BASE}/dab/metrics?date=${dateFilter}`, { timeout: 60000 });
+        const [m, dbs, recent] = await Promise.all([
+          axios.get(`${API_BASE}/dab/metrics?run_id=${dateFilter}`, { timeout: 15000 }),
+          axios.get(`${API_BASE}/dab/databases?run_id=${dateFilter}`, { timeout: 15000 }),
+          axios.get(`${API_BASE}/dab/results/recent?limit=12&run_id=${dateFilter}`, { timeout: 15000 }),
+        ]);
         setMetrics(m.data);
-        const dbs = await axios.get(`${API_BASE}/dab/databases?date=${dateFilter}`, { timeout: 60000 });
         setDatabases(dbs.data);
+        setRecentRuns(recent.data);
       } catch (_) {}
       
       if (isMounted) rtPollRef.current = setTimeout(tick, 3000) as any;
@@ -674,7 +681,7 @@ const DabStudio = ({ onBack, onHome, autoOpenDetails, clearAutoOpenDetails, user
     const poll = async () => {
       if (!isMounted) return;
       try {
-        const res = await axios.get(`${API_BASE}/dab/results/${db}/${qNum}?date=${dateFilter}`);
+        const res = await axios.get(`${API_BASE}/dab/results/${db}/${qNum}?run_id=${dateFilter}`);
         if (res.data?.log_content) {
           setSelectedDetails(prev => {
             if (!prev || prev.id !== id) return prev;
@@ -736,20 +743,23 @@ const DabStudio = ({ onBack, onHome, autoOpenDetails, clearAutoOpenDetails, user
 
   const fetchDates = async () => {
     try {
-      const res = await axios.get(`${API_BASE}/results/dates`);
-      const dates = res.data.dab || [];
+      const res = await axios.get(`${API_BASE}/dab/runs`);
+      const dates = res.data || [];
       setAllDates(dates);
       
-      // Auto-select latest date if we haven't selected one yet
-      if (dateFilter === '' && dates.length > 0) {
-        const sortedDates = [...dates].sort().reverse();
-        setDateFilter(sortedDates[0]);
-      } else if (dateFilter === '' && dates.length === 0) {
-        setDateFilter('all');
+      if (dateFilter === '') {
+        const hasLive = dates.some(r => r.id === 'live');
+        if (hasLive) {
+          setDateFilter('live');
+        } else if (dates.length > 0) {
+          setDateFilter(dates[0].id);
+        } else {
+          setDateFilter('all');
+        }
       }
     } catch (err) {
       console.error("Failed to load execution dates", err);
-      if (dateFilter === '') setDateFilter('all');
+      if (dateFilter === '') setDateFilter('live');
     }
   };
 
@@ -765,9 +775,9 @@ const DabStudio = ({ onBack, onHome, autoOpenDetails, clearAutoOpenDetails, user
     try {
       const OPT = { timeout: 60000 };
       const [metricsRes, dbsRes, recentRes] = await Promise.all([
-        axios.get(`${API_BASE}/dab/metrics?date=${activeDate}${force ? '&force=true' : ''}`, OPT).catch(() => ({ data: null })),
-        axios.get(`${API_BASE}/dab/databases?date=${activeDate}`, OPT).catch(() => ({ data: [] })),
-        axios.get(`${API_BASE}/dab/results/recent?limit=12&date=${activeDate}`, OPT).catch(() => ({ data: [] })),
+        axios.get(`${API_BASE}/dab/metrics?run_id=${activeDate}${force ? '&force=true' : ''}`, OPT).catch(() => ({ data: null })),
+        axios.get(`${API_BASE}/dab/databases?run_id=${activeDate}${force ? '&force=true' : ''}`, OPT).catch(() => ({ data: [] })),
+        axios.get(`${API_BASE}/dab/results/recent?limit=12&run_id=${activeDate}${force ? '&force=true' : ''}`, OPT).catch(() => ({ data: [] })),
       ]);
       if (metricsRes.data) setMetrics(metricsRes.data);
       if (dbsRes.data) setDatabases(dbsRes.data);
@@ -784,7 +794,7 @@ const DabStudio = ({ onBack, onHome, autoOpenDetails, clearAutoOpenDetails, user
     // If looking at a historical run, it should be completely static (no active polling)
     const today = new Date().toISOString().split('T')[0];
     // Don't early exit if dateFilter is still loading (empty string)
-    if (dateFilter && dateFilter !== 'all' && dateFilter !== today) {
+    if (dateFilter && dateFilter.startsWith('run_')) {
         setIsGlobalRunning(false);
         setRunningInstances({});
         return;
@@ -809,8 +819,8 @@ const DabStudio = ({ onBack, onHome, autoOpenDetails, clearAutoOpenDetails, user
 
       setIsGlobalRunning(prev => {
         if (prev && count === 0) {
-          // Tasks just completed — do a full silent refresh
-          setTimeout(() => handleRefresh(selectedDbRef.current), 300);
+          // Tasks just completed — give eval files 2 s to flush, then full refresh
+          setTimeout(() => handleRefresh(selectedDbRef.current), 2000);
         }
         return count > 0;
       });
@@ -822,7 +832,7 @@ const DabStudio = ({ onBack, onHome, autoOpenDetails, clearAutoOpenDetails, user
     setSelectedDb(dbName);
     setCurrentView('database');
     try {
-      const res = await axios.get(`${API_BASE}/dab/queries/db/${dbName}?date=${dateFilter}`, { timeout: 8000 });
+      const res = await axios.get(`${API_BASE}/dab/queries/db/${dbName}?run_id=${dateFilter}`, { timeout: 8000 });
       setDbResults(res.data);
       
       // Auto-populate and sync runningInstances from backend statuses
@@ -845,11 +855,14 @@ const DabStudio = ({ onBack, onHome, autoOpenDetails, clearAutoOpenDetails, user
   const handleRefresh = async (db?: any, forceDate?: string) => {
     const target = typeof db === 'string' ? db : selectedDbRef.current;
     const activeDate = forceDate || dateFilter;
+    setIsRefreshing(true);
+    try {
+    await checkGlobalRunStatus();
     await fetchDates();
     await fetchInitialData(false, true, forceDate);
     if (target) {
       try {
-        const res = await axios.get(`${API_BASE}/dab/queries/db/${target}?date=${activeDate}`);
+        const res = await axios.get(`${API_BASE}/dab/queries/db/${target}?run_id=${activeDate}`);
         setDbResults(res.data);
         setRunningInstances(prev => {
           const next = { ...prev };
@@ -861,6 +874,9 @@ const DabStudio = ({ onBack, onHome, autoOpenDetails, clearAutoOpenDetails, user
         });
       } catch (_) {}
     }
+    } finally {
+      setIsRefreshing(false);
+    }
   };
 
   const handleDeleteRun = () => {
@@ -871,13 +887,14 @@ const DabStudio = ({ onBack, onHome, autoOpenDetails, clearAutoOpenDetails, user
     try {
       await axios.delete(`${API_BASE}/dab/runs/${dateFilter}`);
       
-      const res = await axios.get(`${API_BASE}/results/dates`);
-      const newDates = res.data.dab || [];
+      const res = await axios.get(`${API_BASE}/dab/runs`);
+      const newDates = res.data || [];
       setAllDates(newDates);
       
       let fallbackDate = 'all';
       if (newDates.length > 0) {
-        fallbackDate = [...newDates].sort().reverse()[0];
+        const hasLive = newDates.some(r => r.id === 'live');
+        fallbackDate = hasLive ? 'live' : newDates[0].id;
       }
       
       setDateFilter(fallbackDate);
@@ -977,7 +994,7 @@ const DabStudio = ({ onBack, onHome, autoOpenDetails, clearAutoOpenDetails, user
       try {
         const [finalDiag, finalResult] = await Promise.all([
           axios.get(`${API_BASE}/diagnose/dab/${dataset}/query${instanceId}`).catch(() => ({ data: null })),
-          axios.get(`${API_BASE}/dab/results/${dataset}/${instanceId}?date=${dateFilter}`).catch(() => ({ data: null })),
+          axios.get(`${API_BASE}/dab/results/${dataset}/${instanceId}?run_id=${dateFilter}`).catch(() => ({ data: null })),
         ]);
         setSelectedDetails(prev => prev && prev.id === `query${instanceId}`
           ? {
@@ -1026,28 +1043,54 @@ const DabStudio = ({ onBack, onHome, autoOpenDetails, clearAutoOpenDetails, user
     }
   };
 
-  const triggerGlobalRun = async () => {
+  const triggerGlobalRun = async (mode: 'fresh' | 'continue' = 'fresh') => {
     try {
       setIsGlobalRunning(true);
-      // Optimistically wipe dashboard metrics and database progress
-      setMetrics({ total_queries: 0, evaluated: 0, passed: 0, failed: 0, pass_at_1_pct: '0.0%', avg_latency: '0.0s', avg_tokens_per_agent: '0 tokens', total_cost: '$0.0000' });
-      setDbResults([]);
-      setAllInstanceResults([]);
-      setDatabases(prev => prev.map(db => ({ ...db, results_count: 0, error_count: 0, status: 'pending' })));
+      if (mode === 'fresh') {
+        // Optimistically wipe dashboard metrics and database progress
+        setMetrics({ total_queries: 0, evaluated: 0, passed: 0, failed: 0, pass_at_1_pct: '0.0%', avg_latency: '0.0s', avg_tokens_per_agent: '0 tokens', total_cost: '$0.0000' });
+        setDbResults([]);
+        setAllInstanceResults([]);
+        setDatabases(prev => prev.map(db => ({ ...db, results_count: 0, error_count: 0, status: 'pending' })));
+      }
       
-      const payload = { force_rerun: true };
+      const today = new Date().toISOString().split('T')[0];
+      const getRunDateStr = (f) => {
+        if (f && f.startsWith('run_')) {
+          const parts = f.split('_')[1];
+          return `${parts.slice(0, 4)}-${parts.slice(4, 6)}-${parts.slice(6, 8)}`;
+        }
+        return today;
+      };
+      const targetDate = getRunDateStr(dateFilter);
+      
+      const payload = { force_rerun: true, workers: 3, mode, date: targetDate };
       await axios.post(`${API_BASE}/dab/run_all`, payload);
       
-      // Auto-filter to the newly generated today's date
-      const today = new Date().toISOString().split('T')[0];
-      setDateFilter(today);
-      if (!allDates.includes(today)) {
-        setAllDates(prev => [today, ...prev]);
+      if (mode === 'fresh') {
+        setDateFilter('live');
+        fetchDates();
       }
       
       setTimeout(handleRefresh, 1500);
     } catch (err) {
       console.error("Failed to trigger global DAB run", err);
+    }
+  };
+
+  const handleRunAllClick = async () => {
+    try {
+      const res = await axios.get(`${API_BASE}/dab/metrics?run_id=live`);
+      const completedSlotsCount = res.data?.total_run_slots || 0;
+      if (completedSlotsCount > 0) {
+        setCompletedSlots(completedSlotsCount);
+        setShowRunOptionsModal(true);
+      } else {
+        triggerGlobalRun('fresh');
+      }
+    } catch (err) {
+      console.error("Failed to check existing runs", err);
+      triggerGlobalRun('fresh');
     }
   };
 
@@ -1066,7 +1109,7 @@ const DabStudio = ({ onBack, onHome, autoOpenDetails, clearAutoOpenDetails, user
     setShowMetricModal(true);
     setLoadingMetricInstances(true);
     try {
-      const res = await axios.get(`${API_BASE}/dab/queries?date=${dateFilter}`);
+      const res = await axios.get(`${API_BASE}/dab/queries?run_id=${dateFilter}`);
       setAllInstanceResults(res.data.map(inst => ({
         id: inst.instance_id,
         db: inst.dataset,
@@ -1108,8 +1151,8 @@ const DabStudio = ({ onBack, onHome, autoOpenDetails, clearAutoOpenDetails, user
     setLoadingDetails(true);
     try {
       const [detailsRes, diagnoseRes] = await Promise.all([
-        axios.get(`${API_BASE}/dab/results/${dbName}/${queryId}?date=${dateFilter}`),
-        axios.get(`${API_BASE}/diagnose/dab/${dbName}/query${queryId}?date=${dateFilter}`).catch(err => {
+        axios.get(`${API_BASE}/dab/results/${dbName}/${queryId}?run_id=${dateFilter}`),
+        axios.get(`${API_BASE}/diagnose/dab/${dbName}/query${queryId}?run_id=${dateFilter}`).catch(err => {
           console.error("Failed to fetch diagnostics for details", err);
           return { data: null };
         })
@@ -1165,7 +1208,7 @@ const DabStudio = ({ onBack, onHome, autoOpenDetails, clearAutoOpenDetails, user
     setFixResult(null);
     setFixFeedback('');
     try {
-      const res = await axios.get(`${API_BASE}/diagnose/dab/${dbName}/query${queryId}`);
+      const res = await axios.get(`${API_BASE}/diagnose/dab/${dbName}/query${queryId}?run_id=${dateFilter}`);
       setDiagnoseData(res.data);
     } catch (err) {
       console.error("Failed to run diagnosis", err);
@@ -1298,16 +1341,29 @@ const DabStudio = ({ onBack, onHome, autoOpenDetails, clearAutoOpenDetails, user
             <span className="hidden lg:block truncate">Execution Probes</span>
           </button>
 
-          {/* Active Runs Widget */}
-          {Object.keys(runningInstances).length > 0 && (
+          {/* Batch Progress Widget */}
+          {isGlobalRunning && (
             <div className="hidden lg:block mt-6 pt-6 border-t border-[#1a1a22] animate-fadeIn">
               <div className="text-[10px] font-mono font-bold text-slate-500 uppercase tracking-widest mb-3 px-3 flex items-center justify-between">
-                <span>Active Runs</span>
-                <span className="bg-purple-500/20 text-purple-400 px-1.5 py-0.5 rounded animate-pulse">{Object.keys(runningInstances).length}</span>
+                <span>Batch Running</span>
+                <span className="bg-purple-500/20 text-purple-400 px-1.5 py-0.5 rounded animate-pulse">
+                  {globalProgress.total > 0 ? `${Math.round((globalProgress.completed / globalProgress.total) * 100)}%` : '0%'}
+                </span>
               </div>
-              <div className="space-y-1.5 px-2 max-h-[200px] overflow-y-auto no-scrollbar">
-                {Object.keys(runningInstances).map(qkey => (
-                  <div key={qkey} className="flex items-center gap-2 text-[10px] font-mono text-slate-300 bg-[#12101e] border border-[#231d36] rounded p-1.5 shadow">
+              <div className="px-2 space-y-2">
+                <div className="flex justify-between text-[10px] font-mono text-slate-500">
+                  <span>{globalProgress.completed} done</span>
+                  <span>{globalProgress.total} total</span>
+                </div>
+                <div className="w-full h-1.5 bg-[#0b0916] rounded-full overflow-hidden border border-[#231d36]">
+                  <div
+                    className="h-full bg-gradient-to-r from-purple-500 to-indigo-500 transition-all duration-500 shadow-[0_0_6px_rgba(167,139,250,0.5)]"
+                    style={{ width: `${globalProgress.total > 0 ? (globalProgress.completed / globalProgress.total) * 100 : 0}%` }}
+                  />
+                </div>
+                {/* Show the single currently-executing query */}
+                {Object.keys(runningInstances).slice(0, 1).map(qkey => (
+                  <div key={qkey} className="flex items-center gap-2 text-[10px] font-mono text-slate-300 bg-[#12101e] border border-[#231d36] rounded p-1.5 shadow mt-1">
                     <Activity className="w-3 h-3 text-purple-400 animate-spin shrink-0" />
                     <span className="truncate" title={qkey}>{qkey}</span>
                   </div>
@@ -1378,19 +1434,19 @@ const DabStudio = ({ onBack, onHome, autoOpenDetails, clearAutoOpenDetails, user
                 onChange={e => setDateFilter(e.target.value)}
                 className="bg-transparent border-none text-slate-200 font-bold focus:outline-none cursor-pointer"
               >
-                <option value="all">All Dates</option>
-                {allDates.map(d => (
-                  <option key={d} value={d}>{d}</option>
+                {allDates.map(run => (
+                  <option key={run.id} value={run.id}>{run.label}</option>
                 ))}
               </select>
             </div>
 
             <button
               onClick={handleRefresh}
-              className="p-1.5 rounded-lg bg-[#0a0914] border border-[#1e1932] hover:bg-[#131024] text-slate-400 hover:text-white transition-all shadow-sm"
+              disabled={isRefreshing}
+              className="p-1.5 rounded-lg bg-[#0a0914] border border-[#1e1932] hover:bg-[#131024] text-slate-400 hover:text-white transition-all shadow-sm disabled:opacity-60"
               title="Refresh Current Dashboard"
             >
-              <RefreshCw className="w-4 h-4" />
+              <RefreshCw className={`w-4 h-4 ${isRefreshing ? 'animate-spin' : ''}`} />
             </button>
 
             {currentView === 'dashboard' && dateFilter !== 'all' && (
@@ -1415,7 +1471,7 @@ const DabStudio = ({ onBack, onHome, autoOpenDetails, clearAutoOpenDetails, user
                 </button>
               ) : (
                 <button
-                  onClick={() => triggerGlobalRun()}
+                  onClick={handleRunAllClick}
                   className="px-3 py-1.5 rounded-lg font-mono font-bold text-xs shadow-lg transition-all border flex items-center gap-1.5 bg-purple-600/10 text-purple-400 border-purple-500/30 hover:bg-purple-600/20"
                 >
                   <Trophy size={14} className="mr-2" />
@@ -1437,9 +1493,8 @@ const DabStudio = ({ onBack, onHome, autoOpenDetails, clearAutoOpenDetails, user
             `}</style>
             <div className="flex whitespace-nowrap" style={{ animation: 'dab-ticker 45s linear infinite' }}>
               {[0, 1].map(i => {
-                const runDate = dateFilter && dateFilter !== 'all'
-                  ? (() => { try { return new Date(dateFilter + 'T00:00:00').toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' }); } catch { return dateFilter; } })()
-                  : 'All Dates';
+                const selectedRun = allDates.find(r => r.id === dateFilter);
+                const runDate = selectedRun ? selectedRun.label : (dateFilter === 'all' ? 'All Runs' : dateFilter);
                 return (
                   <span key={i} className="inline-flex items-center gap-3 px-8 text-[11px] font-mono font-bold text-purple-300/80">
                     <span className="text-purple-500">◈</span>
@@ -1593,13 +1648,15 @@ const DabStudio = ({ onBack, onHome, autoOpenDetails, clearAutoOpenDetails, user
                               </div>
                             </div>
 
-                            <button
-                              className={`p-2 shrink-0 rounded-md bg-[#1d1b32] border border-[#2d284a] hover:bg-purple-600 hover:text-white transition-all ${runningDbs[db.name] ? 'animate-spin bg-purple-500 text-white' : 'text-slate-300'}`}
-                              onClick={(e) => { e.stopPropagation(); handleRunDb(db.name); }}
-                              title="Execute Batch Run"
-                            >
-                              {runningDbs[db.name] ? <Activity className="w-3.5 h-3.5 animate-pulse" /> : <Play className="w-3.5 h-3.5" />}
-                            </button>
+                            {dateFilter === 'live' && (
+                              <button
+                                className={`p-2 shrink-0 rounded-md bg-[#1d1b32] border border-[#2d284a] hover:bg-purple-600 hover:text-white transition-all ${runningDbs[db.name] ? 'animate-spin bg-purple-500 text-white' : 'text-slate-300'}`}
+                                onClick={(e) => { e.stopPropagation(); handleRunDb(db.name); }}
+                                title="Execute Batch Run"
+                              >
+                                {runningDbs[db.name] ? <Activity className="w-3.5 h-3.5 animate-pulse" /> : <Play className="w-3.5 h-3.5" />}
+                              </button>
+                            )}
                           </div>
                         );
                       })}
@@ -1670,15 +1727,17 @@ const DabStudio = ({ onBack, onHome, autoOpenDetails, clearAutoOpenDetails, user
                     </h1>
                   </div>
 
-                  <div className="flex items-center gap-2 font-mono text-xs shrink-0">
-                    <button
-                      onClick={() => handleRunDb(selectedDb)}
-                      disabled={runningDbs[selectedDb]}
-                      className="px-3 py-1.5 rounded-lg bg-purple-600/10 text-purple-400 border border-purple-500/20 hover:bg-purple-600/20 font-bold transition-all shadow"
-                    >
-                      {runningDbs[selectedDb] ? 'RUNNING...' : 'RUN ALL PROBES'}
-                    </button>
-                  </div>
+                  {dateFilter === 'live' && (
+                    <div className="flex items-center gap-2 font-mono text-xs shrink-0">
+                      <button
+                        onClick={() => handleRunDb(selectedDb)}
+                        disabled={runningDbs[selectedDb]}
+                        className="px-3 py-1.5 rounded-lg bg-purple-600/10 text-purple-400 border border-purple-500/20 hover:bg-purple-600/20 font-bold transition-all shadow"
+                      >
+                        {runningDbs[selectedDb] ? 'RUNNING...' : 'RUN ALL PROBES'}
+                      </button>
+                    </div>
+                  )}
                 </header>
 
                 {/* Probe List Grid */}
@@ -1745,14 +1804,16 @@ const DabStudio = ({ onBack, onHome, autoOpenDetails, clearAutoOpenDetails, user
                             >
                               <Activity className="w-3.5 h-3.5 text-purple-400 animate-pulse" />
                             </button>
-                            <button
-                              className={`p-1.5 rounded bg-[#181820] border border-[#262632] hover:bg-emerald-600 hover:text-white transition-all ${runningInstances[res.id] ? 'animate-spin bg-purple-500 text-white' : 'text-slate-300'}`}
-                              onClick={(e) => { e.stopPropagation(); handleRunSingle(res.db_id, res.id.split('_q')[1]); }}
-                              disabled={runningInstances[res.id]}
-                              title="Execute Single Instance"
-                            >
-                              {runningInstances[res.id] ? <Activity className="w-3.5 h-3.5 animate-pulse" /> : <Play className="w-3.5 h-3.5" />}
-                            </button>
+                            {dateFilter === 'live' && (
+                              <button
+                                className={`p-1.5 rounded bg-[#181820] border border-[#262632] hover:bg-emerald-600 hover:text-white transition-all ${runningInstances[res.id] ? 'animate-spin bg-purple-500 text-white' : 'text-slate-300'}`}
+                                onClick={(e) => { e.stopPropagation(); handleRunSingle(res.db_id, res.id.split('_q')[1]); }}
+                                disabled={runningInstances[res.id]}
+                                title="Execute Single Instance"
+                              >
+                                {runningInstances[res.id] ? <Activity className="w-3.5 h-3.5 animate-pulse" /> : <Play className="w-3.5 h-3.5" />}
+                              </button>
+                            )}
                           </div>
                         </div>
 
@@ -2234,57 +2295,59 @@ const DabStudio = ({ onBack, onHome, autoOpenDetails, clearAutoOpenDetails, user
                     </div>
 
                     {/* Repair Sandbox */}
-                    <div className="pt-4 border-t border-[#1a1a24] space-y-4 font-mono text-xs">
-                      <div className="flex justify-between items-center">
-                        <span className="text-[10px] font-mono text-slate-500 uppercase tracking-wider">Autonomous Repair Sandbox</span>
-                        <button
-                          onClick={triggerFixIssues}
-                          disabled={applyingFix}
-                          className="px-3 py-1.5 rounded-lg bg-amber-600/10 text-amber-400 border border-amber-500/20 hover:bg-amber-600/20 font-bold transition-all shadow"
-                        >
-                          {applyingFix ? 'COMPUTING REPAIR...' : 'TRIGGER AUTO-REPAIR'}
-                        </button>
-                      </div>
-
-                      {fixFeedback && (
-                        <div className="p-3.5 rounded-lg bg-emerald-950/20 text-emerald-400 border border-emerald-500/20 leading-relaxed text-[11px]">
-                          {fixFeedback}
+                    {dateFilter === 'live' && (
+                      <div className="pt-4 border-t border-[#1a1a24] space-y-4 font-mono text-xs">
+                        <div className="flex justify-between items-center">
+                          <span className="text-[10px] font-mono text-slate-500 uppercase tracking-wider">Autonomous Repair Sandbox</span>
+                          <button
+                            onClick={triggerFixIssues}
+                            disabled={applyingFix}
+                            className="px-3 py-1.5 rounded-lg bg-amber-600/10 text-amber-400 border border-amber-500/20 hover:bg-amber-600/20 font-bold transition-all shadow"
+                          >
+                            {applyingFix ? 'COMPUTING REPAIR...' : 'TRIGGER AUTO-REPAIR'}
+                          </button>
                         </div>
-                      )}
 
-                      {fixResult && (
-                        <div className="space-y-4 p-4 bg-black/40 border border-[#1b1b26] rounded-xl relative">
-                          <div>
-                            <span className="text-slate-500 text-[10px] uppercase">Reasoning Steps:</span>
-                            <div className="text-slate-400 text-[11px] leading-relaxed mt-1 space-y-1">
-                              {fixResult.reasoning.map((r, i) => <div key={i}>• {r}</div>)}
+                        {fixFeedback && (
+                          <div className="p-3.5 rounded-lg bg-emerald-950/20 text-emerald-400 border border-emerald-500/20 leading-relaxed text-[11px]">
+                            {fixFeedback}
+                          </div>
+                        )}
+
+                        {fixResult && (
+                          <div className="space-y-4 p-4 bg-black/40 border border-[#1b1b26] rounded-xl relative">
+                            <div>
+                              <span className="text-slate-500 text-[10px] uppercase">Reasoning Steps:</span>
+                              <div className="text-slate-400 text-[11px] leading-relaxed mt-1 space-y-1">
+                                {fixResult.reasoning.map((r, i) => <div key={i}>• {r}</div>)}
+                              </div>
+                            </div>
+
+                            <div className="border-t border-[#1b1b26] pt-3">
+                              <span className="text-slate-500 text-[10px] uppercase block mb-1">Proposed corrected SQL:</span>
+                              <pre className="p-3 bg-black/50 border border-[#1f1f2d] text-purple-300 text-xs overflow-x-auto rounded-lg">
+                                {fixResult.corrected_sql}
+                              </pre>
+                            </div>
+
+                            <div className="flex items-center gap-3 justify-end pt-2">
+                              <button
+                                onClick={rejectFix}
+                                className="px-3 py-1.5 rounded bg-rose-600/10 border border-rose-500/20 text-rose-500 hover:bg-rose-600/20 text-xs font-bold"
+                              >
+                                REJECT
+                              </button>
+                              <button
+                                onClick={acceptFix}
+                                className="px-3 py-1.5 rounded bg-emerald-600/15 border border-emerald-500/20 text-emerald-400 hover:bg-emerald-600/30 text-xs font-bold"
+                              >
+                                ACCEPT & WRITE
+                              </button>
                             </div>
                           </div>
-
-                          <div className="border-t border-[#1b1b26] pt-3">
-                            <span className="text-slate-500 text-[10px] uppercase block mb-1">Proposed corrected SQL:</span>
-                            <pre className="p-3 bg-black/50 border border-[#1f1f2d] text-purple-300 text-xs overflow-x-auto rounded-lg">
-                              {fixResult.corrected_sql}
-                            </pre>
-                          </div>
-
-                          <div className="flex items-center gap-3 justify-end pt-2">
-                            <button
-                              onClick={rejectFix}
-                              className="px-3 py-1.5 rounded bg-rose-600/10 border border-rose-500/20 text-rose-500 hover:bg-rose-600/20 text-xs font-bold"
-                            >
-                              REJECT
-                            </button>
-                            <button
-                              onClick={acceptFix}
-                              className="px-3 py-1.5 rounded bg-emerald-600/15 border border-emerald-500/20 text-emerald-400 hover:bg-emerald-600/30 text-xs font-bold"
-                            >
-                              ACCEPT & WRITE
-                            </button>
-                          </div>
-                        </div>
-                      )}
-                    </div>
+                        )}
+                      </div>
+                    )}
                   </>
                 )}
               </div>
@@ -2328,6 +2391,69 @@ const DabStudio = ({ onBack, onHome, autoOpenDetails, clearAutoOpenDetails, user
               >
                 <X className="w-4 h-4" />
                 CONFIRM DELETION
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+      {/* Run Options Confirmation Modal */}
+      {showRunOptionsModal && (
+        <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm animate-fadeIn">
+          <div className="bg-[#0b0a14] border border-purple-500/30 rounded-2xl w-full max-w-lg shadow-2xl shadow-purple-900/20 overflow-hidden flex flex-col relative animate-slideUp">
+            <div className="absolute top-0 left-0 right-0 h-1 bg-gradient-to-r from-purple-600 to-indigo-400" />
+            <div className="p-6">
+              <div className="flex items-center gap-4 mb-4">
+                <div className="w-12 h-12 rounded-full bg-purple-500/10 border border-purple-500/20 flex items-center justify-center shrink-0">
+                  <Play className="w-6 h-6 text-purple-400" />
+                </div>
+                <div>
+                  <h3 className="text-lg font-bold text-slate-100 font-mono">DAB Execution Setup</h3>
+                  <p className="text-sm text-slate-400 font-mono mt-1">
+                    Today's Run Status: <span className="text-purple-400">{completedSlots} / 270 evaluations completed</span>
+                  </p>
+                </div>
+              </div>
+              
+              <div className="space-y-4 my-4">
+                <button
+                  onClick={() => {
+                    setShowRunOptionsModal(false);
+                    triggerGlobalRun('continue');
+                  }}
+                  className="w-full p-4 rounded-xl border border-purple-500/20 bg-[#121020] hover:bg-[#1a1730] transition-all text-left flex flex-col gap-1 cursor-pointer group"
+                >
+                  <div className="flex items-center justify-between">
+                    <span className="font-mono font-bold text-purple-400 text-sm group-hover:text-purple-300">CONTINUE INCOMPLETE RUN</span>
+                    <ChevronRight className="w-4 h-4 text-purple-500 transition-transform group-hover:translate-x-1" />
+                  </div>
+                  <p className="text-xs text-slate-400 font-mono">
+                    Resume the existing run, executing only the remaining {270 - completedSlots} pending queries. This preserves your completed evaluations and metrics.
+                  </p>
+                </button>
+
+                <button
+                  onClick={() => {
+                    setShowRunOptionsModal(false);
+                    triggerGlobalRun('fresh');
+                  }}
+                  className="w-full p-4 rounded-xl border border-rose-500/20 bg-[#171015] hover:bg-[#251820] transition-all text-left flex flex-col gap-1 cursor-pointer group"
+                >
+                  <div className="flex items-center justify-between">
+                    <span className="font-mono font-bold text-rose-400 text-sm group-hover:text-rose-300">START A FRESH RUN</span>
+                    <ChevronRight className="w-4 h-4 text-rose-500 transition-transform group-hover:translate-x-1" />
+                  </div>
+                  <p className="text-xs text-slate-400 font-mono">
+                    Archive all of today's evaluations to the disk log history, clear the database, and start a completely new evaluation process from scratch.
+                  </p>
+                </button>
+              </div>
+            </div>
+            <div className="flex items-center justify-end gap-3 px-6 py-4 bg-[#0e0d18] border-t border-[#1c1a2d]">
+              <button
+                onClick={() => setShowRunOptionsModal(false)}
+                className="px-4 py-2 rounded-lg font-mono text-xs font-bold text-slate-400 hover:text-slate-200 hover:bg-white/5 transition-all"
+              >
+                CANCEL
               </button>
             </div>
           </div>

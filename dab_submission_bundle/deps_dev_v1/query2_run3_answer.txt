@@ -1,9 +1,0 @@
-semantic-org/semantic-ui, 4955; react-native-community/react-native-webview, 2962; react-native-device-info/react-native-device-info, 1449; sass/node-sass, 1326; mbrn/material-table, 1035
-
-semantic-org/semantic-ui, 4955
-
-﻿project_name: semantic-org/semantic-ui | forks: 4955
-﻿project_name: react-native-community/react-native-webview | forks: 2962
-﻿project_name: react-native-device-info/react-native-device-info | forks: 1449
-﻿project_name: sass/node-sass | forks: 1326
-﻿project_name: mbrn/material-table | forks: 1035

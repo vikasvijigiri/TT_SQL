@@ -31,7 +31,7 @@ func DiagnoseHandler(cfg *config.Config) gin.HandlerFunc {
 	return func(c *gin.Context) {
 		dbName := strings.TrimSpace(c.Param("db_name"))
 		instanceID := strings.TrimSpace(c.Param("instance_id"))
-		c.JSON(http.StatusOK, diagnose(cfg, dbName, instanceID))
+		c.JSON(http.StatusOK, diagnose(cfg, dbName, instanceID, ""))
 	}
 }
 
@@ -41,15 +41,24 @@ func DiagnoseDABHandler(cfg *config.Config) gin.HandlerFunc {
 		dataset := strings.TrimSpace(c.Param("dataset"))
 		queryID := strings.TrimSpace(c.Param("query_id"))
 		qid := strings.ToLower(strings.ReplaceAll(queryID, "query", ""))
-		c.JSON(http.StatusOK, diagnose(cfg, "DAB/"+dataset, "query"+qid))
+		runID := strings.TrimSpace(c.Query("run_id"))
+		c.JSON(http.StatusOK, diagnose(cfg, "DAB/"+dataset, "query"+qid, runID))
 	}
 }
 
-func diagnose(cfg *config.Config, dbName, instanceID string) map[string]any {
+func diagnose(cfg *config.Config, dbName, instanceID, runID string) map[string]any {
 	dbNameUpper := strings.ToUpper(strings.TrimSpace(dbName))
 	instanceID = strings.TrimSpace(instanceID)
-	mdFile := filepath.Join(cfg.ResultsDir, dbNameUpper, instanceID+".md")
-	csvFile := filepath.Join(cfg.ResultsDir, dbNameUpper, instanceID+".csv")
+	
+	var mdFile, csvFile string
+	if strings.HasPrefix(dbNameUpper, "DAB/") && runID != "" && runID != "live" && runID != "all" {
+		dataset := strings.TrimPrefix(dbName, "DAB/")
+		mdFile = filepath.Join(cfg.ResultsDir, "dab", "_archive", runID, dataset, instanceID+".md")
+		csvFile = filepath.Join(cfg.ResultsDir, "dab", "_archive", runID, dataset, instanceID+".csv")
+	} else {
+		mdFile = filepath.Join(cfg.ResultsDir, dbNameUpper, instanceID+".md")
+		csvFile = filepath.Join(cfg.ResultsDir, dbNameUpper, instanceID+".csv")
+	}
 
 	if _, err := os.Stat(mdFile); err != nil {
 		return map[string]any{

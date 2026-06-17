@@ -19,6 +19,9 @@ class Evaluation(Base):
     input_tokens = Column(Integer, nullable=True)
     output_tokens = Column(Integer, nullable=True)
     timestamp = Column(DateTime, default=datetime.utcnow)
+    run_id = Column(String, index=True, nullable=True)
+    username = Column(String, index=True, nullable=True, default="vikasvijigiri")
+
 
 class TaskRun(Base):
     __tablename__ = "task_runs"

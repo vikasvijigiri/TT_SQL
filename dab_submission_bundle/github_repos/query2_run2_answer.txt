@@ -1,5 +1,0 @@
-No data found for the query (Catalog Error: Table with name languages does not exist!
-Did you mean "repo_metadata_db.languages"?
-
-LINE 8: LEFT JOIN languages l ON f.repo_name = l.repo_name
-                  ^). Cannot determine the answer.
