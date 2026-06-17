@@ -62,7 +62,7 @@ def _get_dab_queries():
     return _dab_queries_cache
 
 
-def _dab_query_status(dataset: str, query_id: str, date: str = "all", run_id: Optional[str] = None) -> Dict[str, Any]:
+def _dab_query_status(dataset: str, query_id: str, date: str = "all", run_id: Optional[str] = None, username: Optional[str] = None) -> Dict[str, Any]:
     """Get the live status of a specific DAB query execution."""
     query_id = query_id.lower().replace("query", "")
     from agent.app.dab.dab_evaluator import load_eval_result
@@ -71,7 +71,7 @@ def _dab_query_status(dataset: str, query_id: str, date: str = "all", run_id: Op
     if qkey in DAB_RUNNING_TASKS:
         return {"status": "running", "passed": None, "reason": "", "evaluated": False, "latency": 0}
 
-    eval_result = load_eval_result(dataset, query_id, date=date, run_id=run_id)
+    eval_result = load_eval_result(dataset, query_id, date=date, run_id=run_id, username=username)
     if eval_result is None:
         return {"status": "pending", "passed": None, "reason": "", "evaluated": False, "latency": 0}
 
@@ -318,14 +318,15 @@ def _get_md_corrections_cached(md_file: Path) -> int:
 
 
 @router.get("/api/dab/queries/db/{dataset}")
-def get_dab_queries_by_db(dataset: str, date: str = "all", run_id: Optional[str] = None):
+def get_dab_queries_by_db(dataset: str, request: Request, date: str = "all", run_id: Optional[str] = None):
     """Return queries for a specific DAB dataset."""
+    username = _get_username_from_request(request)
     queries = _get_dab_queries()
     db_queries = [q for q in queries if q.get("dataset") == dataset]
     
     result = []
     for q in db_queries:
-        status_info = _dab_query_status(q["dataset"], q["query_id"], date=date, run_id=run_id)
+        status_info = _dab_query_status(q["dataset"], q["query_id"], date=date, run_id=run_id, username=username)
         dbtypes = list({cfg.get("db_type", "?") for cfg in q.get("db_clients", {}).values()})
         
         # Calculate tokens and cost
@@ -336,13 +337,19 @@ def get_dab_queries_by_db(dataset: str, date: str = "all", run_id: Optional[str]
         
         # Calculate rows count from CSV (cached)
         rows_count = 0
-        csv_file = DAB_RESULTS_BASE / q["dataset"] / f"query{q['query_id']}.csv"
+        from agent.app.core.config import get_user_dab_results_dir
+        user_dab_dir = get_user_dab_results_dir(username)
+        csv_file = user_dab_dir / q["dataset"] / f"query{q['query_id']}.csv"
+        if not csv_file.exists():
+            csv_file = DAB_RESULTS_BASE / q["dataset"] / f"query{q['query_id']}.csv"
         if csv_file.exists():
             rows_count = _get_csv_rows_cached(csv_file)
                 
         # Corrections count from md log (cached)
         corrections = 0
-        md_file = DAB_RESULTS_BASE / q["dataset"] / f"query{q['query_id']}.md"
+        md_file = user_dab_dir / q["dataset"] / f"query{q['query_id']}.md"
+        if not md_file.exists():
+            md_file = DAB_RESULTS_BASE / q["dataset"] / f"query{q['query_id']}.md"
         if md_file.exists():
             corrections = _get_md_corrections_cached(md_file)
 
@@ -373,12 +380,13 @@ def get_dab_queries_by_db(dataset: str, date: str = "all", run_id: Optional[str]
     return result
 
 @router.get("/api/dab/queries")
-def get_dab_queries(date: str = "all"):
+def get_dab_queries(request: Request, date: str = "all", run_id: Optional[str] = None):
     """List all 54 DAB queries with their current status."""
+    username = _get_username_from_request(request)
     queries = _get_dab_queries()
     result = []
     for q in queries:
-        status_info = _dab_query_status(q["dataset"], q["query_id"], date=date)
+        status_info = _dab_query_status(q["dataset"], q["query_id"], date=date, run_id=run_id, username=username)
         dbtypes = list({cfg.get("db_type", "?") for cfg in q["db_clients"].values()})
         result.append(
             {
@@ -419,22 +427,27 @@ def get_dab_submissions():
 
 
 @router.get("/api/dab/results/{dataset}/{query_id}")
-def get_dab_result(dataset: str, query_id: str, date: str = "all", run_id: Optional[str] = None):
+def get_dab_result(dataset: str, query_id: str, request: Request, date: str = "all", run_id: Optional[str] = None):
     """Get full result details for a specific DAB query."""
     query_id = query_id.lower().replace("query", "")
     from agent.app.dab.dab_evaluator import load_eval_result
     from agent.app.utils.archive import get_target_dirs_for_date
+    from agent.app.core.config import get_user_dab_results_dir
+
+    username = _get_username_from_request(request)
+    user_dab_dir = get_user_dab_results_dir(username)
 
     if run_id and run_id != "live" and run_id != "all":
-        target_dirs = [DAB_RESULTS_BASE / "_archive" / run_id]
+        target_dirs = [user_dab_dir / "_archive" / run_id]
     else:
-        target_dirs = get_target_dirs_for_date(DAB_RESULTS_BASE, date)
+        target_dirs = get_target_dirs_for_date(user_dab_dir, date)
     
     md_file = None
     sql_file = None
     csv_file = None
     answer_file = None
     
+    # Check user-scoped target directories first
     for t_dir in target_dirs:
         if (t_dir / dataset / f"query{query_id}.md").exists():
             result_dir = t_dir / dataset
@@ -444,12 +457,39 @@ def get_dab_result(dataset: str, query_id: str, date: str = "all", run_id: Optio
             answer_file = result_dir / f"query{query_id}_answer.txt"
             break
             
+    # Check legacy target directories fallback
     if md_file is None:
-        result_dir = DAB_RESULTS_BASE / dataset
+        if run_id and run_id != "live" and run_id != "all":
+            legacy_target_dirs = [DAB_RESULTS_BASE / "_archive" / run_id]
+        else:
+            legacy_target_dirs = get_target_dirs_for_date(DAB_RESULTS_BASE, date)
+            
+        for t_dir in legacy_target_dirs:
+            if (t_dir / dataset / f"query{query_id}.md").exists():
+                result_dir = t_dir / dataset
+                md_file = result_dir / f"query{query_id}.md"
+                sql_file = result_dir / f"query{query_id}.sql"
+                csv_file = result_dir / f"query{query_id}.csv"
+                answer_file = result_dir / f"query{query_id}_answer.txt"
+                break
+
+    # If not found in target_dirs (e.g. active run), check active results folder
+    if md_file is None:
+        result_dir = user_dab_dir / dataset
         md_file = result_dir / f"query{query_id}.md"
         sql_file = result_dir / f"query{query_id}.sql"
         csv_file = result_dir / f"query{query_id}.csv"
         answer_file = result_dir / f"query{query_id}_answer.txt"
+        
+        # Check active legacy results folder fallback
+        if not md_file.exists():
+            legacy_result_dir = DAB_RESULTS_BASE / dataset
+            if (legacy_result_dir / f"query{query_id}.md").exists():
+                result_dir = legacy_result_dir
+                md_file = result_dir / f"query{query_id}.md"
+                sql_file = result_dir / f"query{query_id}.sql"
+                csv_file = result_dir / f"query{query_id}.csv"
+                answer_file = result_dir / f"query{query_id}_answer.txt"
 
     log_content = ""
     sql_content = ""
@@ -489,8 +529,8 @@ def get_dab_result(dataset: str, query_id: str, date: str = "all", run_id: Optio
         except Exception:
             pass
 
-    eval_result = load_eval_result(dataset, query_id, date=date, run_id=run_id)
-    status_info = _dab_query_status(dataset, query_id, date=date, run_id=run_id)
+    eval_result = load_eval_result(dataset, query_id, date=date, run_id=run_id, username=username)
+    status_info = _dab_query_status(dataset, query_id, date=date, run_id=run_id, username=username)
 
     return {
         **status_info,
@@ -505,11 +545,19 @@ def get_dab_result(dataset: str, query_id: str, date: str = "all", run_id: Optio
     }
 
 
+class DabRunSinglePayload(BaseModel):
+    model: Optional[str] = None
+    temperature: Optional[float] = None
+
+
 @router.post("/api/dab/run/{dataset}/{query_id}")
-def run_dab_single(dataset: str, query_id: str):
+def run_dab_single(dataset: str, query_id: str, request: Request, payload: DabRunSinglePayload = DabRunSinglePayload()):
     """Run a single DAB query through the agent pipeline."""
     query_id = query_id.lower().replace("query", "")
     from agent.app.dab.dab_orchestrator import run_dab_query
+    import agent.app.dab.dab_evaluator as de
+
+    username = _get_username_from_request(request)
 
     qkey = f"{dataset}_q{query_id}"
     if qkey in DAB_RUNNING_TASKS:
@@ -532,8 +580,14 @@ def run_dab_single(dataset: str, query_id: str):
     def _execute():
         from agent.app.services.task_manager import TaskManager
         task_id = TaskManager.start_task('dab_query', qkey)
+        
+        # Set username and ID in dab_evaluator module
+        de.DAB_RUN_USERNAME = username
+        de.DAB_RUN_DATE = None
+        de.DAB_RUN_ID = "live"
+        
         try:
-            run_dab_query(target)
+            run_dab_query(target, model=payload.model, temperature=payload.temperature)
             TaskManager.complete_task(task_id, success=True)
         except Exception as e:
             TaskManager.complete_task(task_id, success=False, error_message=str(e))
@@ -758,6 +812,9 @@ class DabRunAllPayload(BaseModel):
     workers: int = 3  # parallel query workers (keep ≤ 3 to avoid SSL/rate-limit errors)
     mode: str = "fresh"  # "fresh" or "continue"
     date: Optional[str] = None  # YYYY-MM-DD
+    run_id: Optional[str] = None  # specific archived run_id to continue (e.g. "run_20260617_160102")
+    model: Optional[str] = None
+    temperature: Optional[float] = None
 
 
 def _parse_qkey(qkey: str):
@@ -896,9 +953,12 @@ def parse_evaluation_from_md(md_path: Path) -> dict:
         "timestamp": dt
     }
 
-def rebuild_run_database_records(db, run_id: str):
-    logger.info(f"Rebuilding database records for archived run: {run_id}")
-    archive_dir = DAB_RESULTS_DIR / "_archive" / run_id
+def rebuild_run_database_records(db, run_id: str, username: str):
+    logger.info(f"Rebuilding database records for archived run: {run_id} (user={username})")
+    from agent.app.core.config import get_user_dab_results_dir
+    archive_dir = get_user_dab_results_dir(username) / "_archive" / run_id
+    if not archive_dir.exists():
+        archive_dir = DAB_RESULTS_DIR / "_archive" / run_id
     if not archive_dir.exists():
         return
         
@@ -966,7 +1026,8 @@ def rebuild_run_database_records(db, run_id: str):
                     input_tokens=res["input_tokens"],
                     output_tokens=res["output_tokens"],
                     timestamp=ts_val,
-                    run_id=run_id
+                    run_id=run_id,
+                    username=username
                 )
                 db.add(eval_record)
                 
@@ -978,17 +1039,28 @@ def rebuild_run_database_records(db, run_id: str):
         logger.error(f"Failed to save rebuilt database records for {run_id}: {e}")
 
 @router.get("/api/dab/runs")
-def get_dab_runs():
-    """Return the list of last 5 runs, with auto-rebuild of SQLite records."""
+def get_dab_runs(request: Request):
+    """Return the list of last 5 runs for the requesting user, with auto-rebuild of SQLite records."""
     from agent.app.db.database import SessionLocal
     from agent.app.db.models import Evaluation
+    from agent.app.core.config import get_user_dab_results_dir
     
-    archive_base = DAB_RESULTS_DIR / "_archive"
+    username = _get_username_from_request(request)
+    
+    archive_base = get_user_dab_results_dir(username) / "_archive"
     archive_runs = []
     if archive_base.exists():
         for item in archive_base.iterdir():
             if item.is_dir() and item.name.startswith("run_"):
                 archive_runs.append(item.name)
+                
+    # Fallback to check legacy archive directory just in case
+    legacy_archive_base = DAB_RESULTS_DIR / "_archive"
+    if legacy_archive_base.exists():
+        for item in legacy_archive_base.iterdir():
+            if item.is_dir() and item.name.startswith("run_"):
+                if item.name not in archive_runs:
+                    archive_runs.append(item.name)
                 
     archive_runs = sorted(archive_runs, reverse=True)
     last_5_runs = archive_runs[:5]
@@ -996,32 +1068,47 @@ def get_dab_runs():
     db = SessionLocal()
     try:
         for run_id in last_5_runs:
-            count = db.query(Evaluation).filter(Evaluation.run_id == run_id).count()
+            # Only rebuild if this user has NO records for this run
+            count = db.query(Evaluation).filter(
+                Evaluation.run_id == run_id,
+                Evaluation.username == username
+            ).count()
             if count == 0:
-                rebuild_run_database_records(db, run_id)
+                # If a different user's records exist, don't rebuild
+                any_count = db.query(Evaluation).filter(Evaluation.run_id == run_id).count()
+                if any_count == 0:
+                    rebuild_run_database_records(db, run_id, username)
                 
         runs = [
             {"id": "all", "label": "All Runs", "date": "All"},
             {"id": "live", "label": "Current Run (Active)", "date": "Active"}
         ]
         
+        # Only include archived runs that have data for this user
         for run_id in last_5_runs:
-            label = run_id
-            date_str = ""
-            try:
-                parts = run_id.split('_')
-                if len(parts) >= 3:
-                    ds, ts = parts[1], parts[2]
-                    date_str = f"{ds[:4]}-{ds[4:6]}-{ds[6:8]}"
-                    time_str = f"{ts[:2]}:{ts[2:4]}:{ts[4:6]}"
-                    label = f"{date_str} {time_str}"
-            except Exception:
-                pass
-            runs.append({"id": run_id, "label": label, "date": date_str})
+            user_count = db.query(Evaluation).filter(
+                Evaluation.run_id == run_id,
+                Evaluation.username == username
+            ).count()
+            # Include the run if this user has records, or if nobody has records (legacy)
+            any_count = db.query(Evaluation).filter(Evaluation.run_id == run_id).count()
+            if user_count > 0 or any_count == 0:
+                label = run_id
+                date_str = ""
+                try:
+                    parts = run_id.split('_')
+                    if len(parts) >= 3:
+                        ds, ts = parts[1], parts[2]
+                        date_str = f"{ds[:4]}-{ds[4:6]}-{ds[6:8]}"
+                        time_str = f"{ts[:2]}:{ts[2:4]}:{ts[4:6]}"
+                        label = f"{date_str} {time_str}"
+                except Exception:
+                    pass
+                runs.append({"id": run_id, "label": label, "date": date_str})
             
         return runs
     except Exception as e:
-        logger.error(f"Failed to fetch DAB runs: {e}")
+        logger.error(f"Failed to fetch DAB runs for user {username}: {e}")
         return []
     finally:
         db.close()
@@ -1145,7 +1232,7 @@ def run_dab_all(request: Request, payload: DabRunAllPayload = DabRunAllPayload()
     # are timestamped correctly and attributed to this user.
     import agent.app.dab.dab_evaluator as de
     de.DAB_RUN_DATE = run_date_str
-    de.DAB_RUN_ID = "live"
+    de.DAB_RUN_ID = payload.run_id if (payload.mode == "continue" and payload.run_id) else "live"
     de.DAB_RUN_USERNAME = username
 
     try:
@@ -1247,7 +1334,12 @@ def run_dab_all(request: Request, payload: DabRunAllPayload = DabRunAllPayload()
         qkey = q["instance_id"]
         try:
             from agent.app.dab.dab_orchestrator import run_dab_query
-            run_dab_query(q, run_number=q.get("run_number", 0))
+            run_dab_query(
+                q,
+                run_number=q.get("run_number", 0),
+                model=payload.model,
+                temperature=payload.temperature
+            )
         except Exception:
             pass
         finally:
@@ -1290,14 +1382,15 @@ def run_dab_all(request: Request, payload: DabRunAllPayload = DabRunAllPayload()
 
 
 @router.get("/api/dab/results/recent")
-def get_dab_recent_results(limit: int = 15, date: str = "all", run_id: Optional[str] = None):
+def get_dab_recent_results(request: Request, limit: int = 15, date: str = "all", run_id: Optional[str] = None):
     from agent.app.db.database import SessionLocal
     from agent.app.db.models import Evaluation
     from datetime import datetime
 
+    username = _get_username_from_request(request)
     db = SessionLocal()
     try:
-        query = db.query(Evaluation)
+        query = db.query(Evaluation).filter(Evaluation.username == username)
         if run_id is not None:
             if run_id == "all":
                 pass

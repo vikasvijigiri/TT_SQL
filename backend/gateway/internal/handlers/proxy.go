@@ -1,4 +1,4 @@
-// Package handlers â€” proxy.go
+// Package handlers – proxy.go
 // Forwards AI/ML routes to the Python FastAPI service and transparently passes SSE streams.
 package handlers
 
@@ -9,12 +9,53 @@ import (
 	"net/http"
 	"net/http/httputil"
 	"net/url"
+	"regexp"
 	"strings"
 	"time"
 
 	"github.com/gin-gonic/gin"
+	"github.com/golang-jwt/jwt/v5"
 	"go.uber.org/zap"
 )
+
+// usernameSlugRe strips anything that isn't a lowercase letter, digit, underscore or dash.
+var usernameSlugRe = regexp.MustCompile(`[^a-z0-9_\-]`)
+
+// extractUsernameFromJWT reads the Bearer token from the Authorization header,
+// parses (without verifying) the JWT claims, and returns a sanitized username slug
+// derived from the email claim's local part (before @).
+// Returns "" if no valid token / email is present.
+func extractUsernameFromJWT(authHeader string) (username, email string) {
+	if !strings.HasPrefix(authHeader, "Bearer ") {
+		return "", ""
+	}
+	tokenStr := strings.TrimPrefix(authHeader, "Bearer ")
+	// Parse without verification (gateway already validated the token earlier)
+	p := jwt.NewParser()
+	token, _, err := p.ParseUnverified(tokenStr, jwt.MapClaims{})
+	if err != nil {
+		return "", ""
+	}
+	claims, ok := token.Claims.(jwt.MapClaims)
+	if !ok {
+		return "", ""
+	}
+	emailRaw, _ := claims["email"].(string)
+	email = emailRaw
+	if emailRaw == "" {
+		return "", ""
+	}
+	// Use the local part of the email as the username
+	local := emailRaw
+	if idx := strings.Index(emailRaw, "@"); idx > 0 {
+		local = emailRaw[:idx]
+	}
+	slug := usernameSlugRe.ReplaceAllString(strings.ToLower(local), "")
+	if slug == "" {
+		slug = "anonymous"
+	}
+	return slug, emailRaw
+}
 
 // NewAIProxy returns a Gin handler that reverse-proxies every request to pythonBaseURL.
 // SSE endpoints (URLs containing "/stream") are handled with a streaming-safe transport.
@@ -59,6 +100,13 @@ func NewAIProxy(pythonBaseURL string, log *zap.Logger) gin.HandlerFunc {
 	return func(c *gin.Context) {
 		isSSE := strings.Contains(c.Request.URL.Path, "/stream")
 
+		// Inject user identity headers so Python can scope data per user
+		authHeader := c.Request.Header.Get("Authorization")
+		if username, email := extractUsernameFromJWT(authHeader); username != "" {
+			c.Request.Header.Set("X-Username", username)
+			c.Request.Header.Set("X-User-Email", email)
+		}
+
 		if isSSE {
 			handleSSE(c, target, sseClient, log)
 			return
@@ -72,6 +120,7 @@ func NewAIProxy(pythonBaseURL string, log *zap.Logger) gin.HandlerFunc {
 		proxy.ServeHTTP(c.Writer, c.Request)
 	}
 }
+
 
 // handleSSE proxies a Server-Sent Events stream from Python to the client.
 func handleSSE(c *gin.Context, target *url.URL, client *http.Client, log *zap.Logger) {
