@@ -10,6 +10,7 @@ from langchain_core.messages import SystemMessage, HumanMessage
 from langchain_community.cache import SQLiteCache
 from langchain_core.globals import set_llm_cache
 from dotenv import load_dotenv
+from agent.app.core.observability.token_monitor import record_call as _record_token_call
 
 # Force python to use the certifi CA bundle, preventing Windows-specific SSL cert lookup failures
 import certifi
@@ -56,6 +57,47 @@ _RETRYABLE_ERRORS = (
 
 thread_local = threading.local()
 
+# ---------------------------------------------------------------------------
+# Module-level circuit breaker for Bedrock / LLM backend
+# Opens after CB_FAILURE_THRESHOLD consecutive non-retryable failures;
+# auto-resets after CB_RESET_AFTER_S seconds so the system self-heals.
+# ---------------------------------------------------------------------------
+CB_FAILURE_THRESHOLD: int = 5
+CB_RESET_AFTER_S: float = 60.0
+
+_cb_lock = threading.Lock()
+_cb_failures: int = 0
+_cb_opened_at: float = 0.0
+
+
+def _cb_record_failure() -> None:
+    global _cb_failures, _cb_opened_at
+    with _cb_lock:
+        _cb_failures += 1
+        if _cb_failures >= CB_FAILURE_THRESHOLD and _cb_opened_at == 0.0:
+            _cb_opened_at = time.time()
+
+
+def _cb_record_success() -> None:
+    global _cb_failures, _cb_opened_at
+    with _cb_lock:
+        _cb_failures = 0
+        _cb_opened_at = 0.0
+
+
+def _cb_is_open() -> bool:
+    """Returns True when the circuit is open (calls should be rejected fast)."""
+    global _cb_failures, _cb_opened_at
+    with _cb_lock:
+        if _cb_failures < CB_FAILURE_THRESHOLD:
+            return False
+        if time.time() - _cb_opened_at >= CB_RESET_AFTER_S:
+            # Reset window elapsed — allow one probe through (half-open)
+            _cb_failures = 0
+            _cb_opened_at = 0.0
+            return False
+        return True
+
 
 def reset_token_counters():
     thread_local.input_tokens = 0
@@ -69,6 +111,7 @@ def add_tokens(input_tokens: int, output_tokens: int):
         thread_local.output_tokens = 0
     thread_local.input_tokens += input_tokens
     thread_local.output_tokens += output_tokens
+    _record_token_call(input_tokens, output_tokens)  # aggregate to process-level monitor
 
 
 def get_tokens() -> tuple:
@@ -372,10 +415,16 @@ class LLMClient:
 
     def generate(self, system_prompt: str, user_prompt: str) -> str:
         """Simple text completion with exponential-backoff retry on transient Bedrock errors."""
+        if _cb_is_open():
+            raise RuntimeError(
+                f"LLM circuit breaker is open after {CB_FAILURE_THRESHOLD} consecutive "
+                f"failures. Retrying in {CB_RESET_AFTER_S:.0f}s."
+            )
+
         logger.debug(
             f"LLM Prompt lengths | System: {len(system_prompt)} | User: {len(user_prompt)}"
         )
-        
+
         # Bedrock supports prompt caching on Claude 3.5 (Sonnet/Opus), Claude 3 Haiku, and Nova
         supported_caching_models = ("claude-3-5", "claude-3-haiku", "nova")
         use_cache = len(system_prompt) > 4000 and any(m in self.model_id.lower() for m in supported_caching_models)
@@ -403,6 +452,7 @@ class LLMClient:
                 full_prompt = f"=== SYSTEM PROMPT ===\n{system_prompt}\n\n=== USER PROMPT ===\n{user_prompt}"
                 agent_name = getattr(logger.logger, "name", "AGENT")
                 logger.log_agent_call(agent_name, full_prompt, final_str, metrics)
+                _cb_record_success()
                 return final_str
             except Exception as e:
                 # Failsafe: if cachePoint fails (e.g. parameter validation error), retry immediately without caching
@@ -421,6 +471,7 @@ class LLMClient:
                         full_prompt = f"=== SYSTEM PROMPT ===\n{system_prompt}\n\n=== USER PROMPT ===\n{user_prompt}"
                         agent_name = getattr(logger.logger, "name", "AGENT")
                         logger.log_agent_call(agent_name, full_prompt, final_str, metrics)
+                        _cb_record_success()
                         return final_str
                     except Exception as fallback_e:
                         e = fallback_e
@@ -435,15 +486,85 @@ class LLMClient:
                 else:
                     break
         if last_exc:
+            _cb_record_failure()
             logger.error(f"Bedrock generation failed after {self._max_retries} retries: {last_exc}")
             raise last_exc
         return ""
 
+    async def agenerate_structured(
+        self, system_prompt: str, user_prompt: str, response_model: Type[T]
+    ) -> T:
+        """
+        Async version of generate_structured. Uses agenerate (ainvoke) internally so
+        the event loop is never blocked by Bedrock I/O. Drop-in async replacement.
+        """
+        try:
+            schema_str = SchemaCompactor.compact_json_schema(response_model)
+        except Exception:
+            schema_str = "Required fields and types matching " + response_model.__name__
+
+        json_enforcer = (
+            f"\n\nCRITICAL MANDATORY INSTRUCTION: You MUST format your entire output EXACTLY as pure valid JSON enclosed in ```json ... ``` adhering to this minimal JSON skeleton structure:\n```json\n{schema_str}\n```\n\n"
+            "You MUST start your JSON response directly with ```json\n{\n... without any introductory text outside the JSON block. "
+            "IMPORTANT FOR REASONING MODELS: If you use a <think> scratchpad, you MUST keep your internal thinking concise and summarized under 500 tokens. "
+            "Do NOT engage in repetitive item-by-item loops. "
+            "Exhaustive repetitive loops will cause token truncation before the JSON is generated, resulting in system failure."
+        )
+        sys_enforced = (
+            system_prompt + json_enforcer
+            if "CRITICAL MANDATORY INSTRUCTION" not in system_prompt
+            else system_prompt
+        )
+
+        raw_content = await self.agenerate(sys_enforced, user_prompt)
+        data = self._extract_json_from_text(raw_content)
+
+        if not data:
+            logger.warning(
+                f"Async initial JSON generation failed for {response_model.__name__}. Executing self-repair retry..."
+            )
+            repair_prompt = user_prompt + (
+                "\n\n[SYSTEM REPAIR NOTICE]: Your previous response failed to parse as valid JSON. "
+                "Keep your <think> reasoning extremely brief (under 300 tokens) and output the complete valid JSON object inside ```json ... ```."
+            )
+            raw_content2 = await self.agenerate(sys_enforced, repair_prompt)
+            data = self._extract_json_from_text(raw_content2)
+            if not data:
+                raise ValueError(
+                    f"Async: Failed to generate valid JSON for {response_model.__name__} after self-repair retry."
+                )
+
+        try:
+            return response_model.model_validate(data)
+        except Exception as e:
+            logger.warning(
+                f"Async Pydantic Validation Failed for {response_model.__name__}: {e!s}. Attempting self-repair retry..."
+            )
+            repair_prompt = (
+                user_prompt
+                + f"\n\n[SYSTEM REPAIR NOTICE]: Your previous JSON failed schema validation with error: {e!s}.\nData parsed was:\n{json.dumps(data, indent=2)}\n\nYou MUST correct this and return ONLY valid JSON matching the exact schema."
+            )
+            raw_content2 = await self.agenerate(sys_enforced, repair_prompt)
+            data2 = self._extract_json_from_text(raw_content2)
+            if not data2:
+                raise e
+            try:
+                return response_model.model_validate(data2)
+            except Exception as e2:
+                logger.error(f"Async Pydantic Validation Failed on retry for {response_model.__name__}: {e2!s}")
+                raise e2
+
     async def agenerate(self, system_prompt: str, user_prompt: str) -> str:
         """Asynchronous text completion with exponential-backoff retry."""
         import asyncio
+        if _cb_is_open():
+            raise RuntimeError(
+                f"LLM circuit breaker is open after {CB_FAILURE_THRESHOLD} consecutive "
+                f"failures. Retrying in {CB_RESET_AFTER_S:.0f}s."
+            )
+
         logger.debug(f"LLM Prompt lengths | System: {len(system_prompt)} | User: {len(user_prompt)}")
-        
+
         # Bedrock supports prompt caching on Claude 3.5 (Sonnet/Opus), Claude 3 Haiku, and Nova
         supported_caching_models = ("claude-3-5", "claude-3-haiku", "nova")
         use_cache = len(system_prompt) > 4000 and any(m in self.model_id.lower() for m in supported_caching_models)
@@ -471,6 +592,7 @@ class LLMClient:
                 full_prompt = f"=== SYSTEM PROMPT ===\n{system_prompt}\n\n=== USER PROMPT ===\n{user_prompt}"
                 agent_name = getattr(logger.logger, "name", "AGENT")
                 logger.log_agent_call(agent_name, full_prompt, final_str, metrics)
+                _cb_record_success()
                 return final_str
             except Exception as e:
                 # Failsafe: if cachePoint fails, retry immediately without caching
@@ -489,6 +611,7 @@ class LLMClient:
                         full_prompt = f"=== SYSTEM PROMPT ===\n{system_prompt}\n\n=== USER PROMPT ===\n{user_prompt}"
                         agent_name = getattr(logger.logger, "name", "AGENT")
                         logger.log_agent_call(agent_name, full_prompt, final_str, metrics)
+                        _cb_record_success()
                         return final_str
                     except Exception as fallback_e:
                         e = fallback_e
@@ -501,6 +624,7 @@ class LLMClient:
                 else:
                     break
         if last_exc:
+            _cb_record_failure()
             logger.error(f"Bedrock async generation failed after {self._max_retries} retries: {last_exc}")
             raise last_exc
         return ""

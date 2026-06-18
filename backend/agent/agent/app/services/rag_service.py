@@ -5,6 +5,7 @@ from pathlib import Path
 from typing import List, Dict, Any
 from agent.app.core.config import MEMORY_DIR
 from agent.app.utils.logger import logger
+from agent.app.core.observability.retrieval_analytics import record_retrieval
 
 class DynamicRAGService:
     """
@@ -115,6 +116,8 @@ class DynamicRAGService:
         scores.sort(key=lambda x: x[0], reverse=True)
         top_results = [doc for s, doc in scores[:top_k] if s > 0]
 
+        record_retrieval(db_name, len(top_results))
+
         if not top_results:
             return ""
 
@@ -124,6 +127,6 @@ class DynamicRAGService:
             output += f"Example {i+1}:\n"
             output += f"User Question: {res['query']}\n"
             output += f"Verified SQL:\n```sql\n{res['sql']}\n```\n\n"
-            
+
         logger.info(f"[RAGService] Injected {len(top_results)} Dynamic Few-Shot examples into context.")
         return output

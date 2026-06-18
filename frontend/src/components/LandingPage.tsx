@@ -4,26 +4,26 @@ import {
   Zap, Shield, Brain, GitBranch, BarChart3, Globe,
   ArrowRight, Layers,
   CheckCircle2, ChevronRight, Play, Database, Search, Code, Terminal, Copy, Check, Sparkles, AlertCircle, Loader2,
-  Download, Cpu, RotateCcw, Pause, Info, LogOut, X, User
+  Download, Cpu, RotateCcw, Pause, Info, LogOut, X, User, Sun, Moon
 } from 'lucide-react';
 import { useGoogleLogin } from '@react-oauth/google';
 import NQuireLogo from './NQuireLogo';
 
 /* ─── Palette ──────────────────────────────────────────────────────────────── */
 const C = {
-  bg:       '#1b2738',
-  surface1: 'rgba(26,38,54,0.88)',
-  surface2: 'rgba(32,46,64,0.70)',
-  sky:      '#5fa8d8',
-  indigo:   '#7e96d0',
-  violet:   '#a07ec8',
-  teal:     '#3db8b0',
-  pink:     '#c882a8',
-  mint:     '#38b890',
-  text1:    '#e2ecf5',
-  text2:    '#8aaac0',
-  text3:    '#4e6880',
-  border:   'rgba(120,160,200,0.12)',
+  bg:       'var(--bg, #1b2738)',
+  surface1: 'var(--surface1, rgba(26,38,54,0.88))',
+  surface2: 'var(--surface2, rgba(32,46,64,0.70))',
+  sky:      'var(--sky, #5fa8d8)',
+  indigo:   'var(--indigo, #7e96d0)',
+  violet:   'var(--violet, #a07ec8)',
+  teal:     'var(--teal, #3db8b0)',
+  pink:     'var(--pink, #c882a8)',
+  mint:     'var(--mint, #38b890)',
+  text1:    'var(--text1, #e2ecf5)',
+  text2:    'var(--text2, #8aaac0)',
+  text3:    'var(--text3, #4e6880)',
+  border:   'var(--border, rgba(120,160,200,0.12))',
 };
 
 /* ─── Data ─────────────────────────────────────────────────────────────────── */
@@ -51,8 +51,8 @@ const STATS = [
 ];
 
 const BENCHMARKS = [
-  { name: 'Spider2-Lite',   accuracy: '61.0', detail: '334 / 547 queries', color: '#38bdf8', desc: 'Execution Acc.' },
-  { name: 'DataAgentBench', accuracy: '47.0', detail: '54 queries · 12 datasets', color: '#2dd4bf', desc: 'Pass@1' },
+  { name: 'Spider2-Lite',   accuracy: '61.0', detail: '334 / 547 queries', color: 'var(--sky, #38bdf8)', desc: 'Execution Acc.' },
+  { name: 'DataAgentBench', accuracy: '47.0', detail: '54 queries · 12 datasets', color: 'var(--teal, #2dd4bf)', desc: 'Pass@1' },
 ];
 
 const SLOGANS = [
@@ -69,25 +69,25 @@ const STRENGTHS_LIST = [
     title: "Self-Correction Loop", 
     desc: "Automated compiler debugging in a closed-loop sandbox up to 4 retries.", 
     badge: "Self-Healing",
-    col: '#a78bfa'
+    col: 'var(--violet, #a78bfa)'
   },
   { 
     title: "FQN Entity Mapping", 
     desc: "Precision grounding matching ambiguous search keywords to exact metadata.", 
     badge: "High Recall",
-    col: '#38bdf8'
+    col: 'var(--sky, #38bdf8)'
   },
   { 
     title: "Semantic Pruning", 
     desc: "Reduces latency and LLM costs by trimming out irrelevant tables.", 
     badge: "Context-Aware",
-    col: '#2dd4bf'
+    col: 'var(--teal, #2dd4bf)'
   },
   { 
     title: "Data-IQ Audit Linting", 
     desc: "Inspects result grain, null variance, and limit bounds pre-execution.", 
     badge: "Verified Results",
-    col: '#c882a8'
+    col: 'var(--pink, #c882a8)'
   }
 ];
 
@@ -97,21 +97,21 @@ const TESTIMONIALS = [
     author: "Vikas V.",
     role: "Dean of Crying in Dark Theme",
     initials: "VV",
-    col: '#5fa8d8',
+    col: 'var(--sky, #5fa8d8)',
   },
   {
     quote: "FQN grounding found a column named 'temp_final_v3_dont_drop' on our legacy server in 0.03 seconds. It knows our database secrets better than our security auditor does.",
     author: "Vinay N.",
     role: "Chief Coffee-to-Code Transpiler",
     initials: "VN",
-    col: '#7e96d0',
+    col: 'var(--indigo, #7e96d0)',
   },
   {
     quote: "Our database is a 400-table labyrinth of poor life choices. NQuire's semantic context pruner sliced token costs so much our finance team asked if we closed the company.",
     author: "Vishal A.",
     role: "Guardian of the Free Tier",
     initials: "VA",
-    col: '#3db8b0',
+    col: 'var(--teal, #3db8b0)',
   },
 ];
 
@@ -1003,7 +1003,7 @@ const GoogleIcon = () => (
 );
 
 /* ─── Main component ───────────────────────────────────────────────────────── */
-const LandingPage = ({ onEnter, user, onLogin, onLogout }) => {
+const LandingPage = ({ onEnter, user, onLogin, onLogout, theme, setTheme }) => {
   const [demoQuery, setDemoQuery] = useState("");
   const [demoLoading, setDemoLoading] = useState(false);
   const [demoResult, setDemoResult] = useState(null);
@@ -1318,7 +1318,7 @@ const LandingPage = ({ onEnter, user, onLogin, onLogout }) => {
         animate={{ opacity: 1, y: 0 }}
         transition={{ duration: 0.5 }}
         className="sticky top-0 z-20 flex items-center justify-between px-8 py-4 max-w-[1400px] mx-auto w-full"
-        style={{ borderBottom: `1px solid rgba(120,160,200,0.12)`, backdropFilter: 'blur(20px)', background: 'rgba(24,36,52,0.92)' }}
+        style={{ borderBottom: `1px solid var(--border)`, backdropFilter: 'blur(20px)', background: 'var(--navbar-bg)' }}
       >
         <div className="flex items-center gap-2.5">
           <NQuireLogo size={30} showName nameSize="text-sm" onClick={() => window.scrollTo({ top: 0, behavior: 'smooth' })} />
@@ -1359,6 +1359,17 @@ const LandingPage = ({ onEnter, user, onLogin, onLogout }) => {
             </svg>
             <span className="hidden sm:inline font-mono font-bold tracking-tight">GitHub</span>
           </motion.a>
+
+          {/* Theme Toggle Button */}
+          <motion.button
+            whileHover={{ scale: 1.03, background: 'rgba(255,255,255,0.07)', borderColor: 'rgba(148,163,184,0.28)' }}
+            whileTap={{ scale: 0.97 }}
+            onClick={() => setTheme(theme === 'light' ? 'dark' : 'light')}
+            className="flex items-center justify-center p-1.5 rounded-lg transition-all cursor-pointer bg-[#162030]/80 border border-[#2c3e55] hover:border-violet-500/40 text-slate-400 hover:text-white"
+            title={`Switch to ${theme === 'light' ? 'dark' : 'light'} theme`}
+          >
+            {theme === 'light' ? <Moon size={14} className="text-violet-400" /> : <Sun size={14} className="text-amber-400" />}
+          </motion.button>
 
           {user ? (
             <div className="flex items-center gap-2">

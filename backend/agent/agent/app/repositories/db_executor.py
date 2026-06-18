@@ -320,6 +320,56 @@ class DatabaseExecutor:
 
         return None
 
+    def explain_validate(self, sql: str) -> Optional[Dict]:
+        """
+        Run ``EXPLAIN QUERY PLAN`` on SQLite (dialect-guarded) and return a
+        structured plan dict with any performance warnings.
+
+        Returns ``None`` for non-SQLite dialects.  Never raises.
+
+        The caller can use ``warnings`` to detect full-table scans on large
+        tables, which is a signal that a JOIN condition may be missing or that
+        an index would help.
+
+        Shape::
+
+            {
+                "plan": [{"id": 1, "parent": 0, "detail": "SCAN TABLE player"}],
+                "warnings": ["Full scan: player — consider adding an index or filter"],
+                "success": True,
+            }
+        """
+        sqlite_path, _, _ = self._resolve_paths()
+        if not sqlite_path:
+            return None  # only supported for SQLite
+
+        try:
+            import sqlite3
+
+            conn = sqlite3.connect(sqlite_path, timeout=5)
+            cursor = conn.cursor()
+            cursor.execute(f"EXPLAIN QUERY PLAN {sql}")
+            rows = cursor.fetchall()
+            conn.close()
+        except Exception as exc:
+            return {"plan": [], "warnings": [], "success": False, "error": str(exc)[:300]}
+
+        plan = [
+            {"id": r[0], "parent": r[1], "detail": r[3] if len(r) > 3 else str(r)}
+            for r in rows
+        ]
+        warnings: List[str] = []
+        for entry in plan:
+            detail = entry.get("detail", "")
+            # A bare SCAN TABLE without USING INDEX on a JOIN is often expensive
+            if "SCAN TABLE" in detail and "USING INDEX" not in detail and "USING ROWID" not in detail:
+                table_name = detail.replace("SCAN TABLE", "").split()[0] if "SCAN TABLE" in detail else "?"
+                warnings.append(
+                    f"Full scan: {table_name} — consider adding an index or a WHERE/JOIN filter"
+                )
+
+        return {"plan": plan, "warnings": warnings, "success": True}
+
     def execute_direct(self, sql: str, timeout: int | None = None) -> Tuple[bool, str, List[Dict[str, Any]]]:
         """Executes a query directly and returns the raw rows without persisting to CSV."""
         sqlite_path, duckdb_path, pg_conn_str = self._resolve_paths()
@@ -372,10 +422,14 @@ class DatabaseExecutor:
                     
                     columns = []
                     for col in cols_info:
-                        if isinstance(col, dict) or hasattr(col, "keys"):
+                        if isinstance(col, dict):
                             cname = col.get("name")
                         else:
-                            cname = col[1] if len(col) > 1 else None
+                            # sqlite3.Row supports key access but not .get(); fall back to positional
+                            try:
+                                cname = col["name"]
+                            except (IndexError, KeyError, TypeError):
+                                cname = col[1] if len(col) > 1 else None
                         if cname:
                             columns.append(cname)
                             col_lower = cname.lower()
@@ -396,10 +450,13 @@ class DatabaseExecutor:
                     cur.execute(f"PRAGMA {prefix}foreign_key_list(\"{t_name}\");")
                     fks = cur.fetchall()
                     for fk in fks:
-                        if isinstance(fk, dict) or hasattr(fk, "keys"):
+                        if isinstance(fk, dict):
                             fk_from = fk.get("from")
                         else:
-                            fk_from = fk[3] if len(fk) > 3 else None
+                            try:
+                                fk_from = fk["from"]
+                            except (IndexError, KeyError, TypeError):
+                                fk_from = fk[3] if len(fk) > 3 else None
                         if fk_from:
                             fk_cols.add(fk_from.lower())
                 except Exception:
@@ -411,19 +468,25 @@ class DatabaseExecutor:
                     cur.execute(f"PRAGMA {prefix}index_list(\"{t_name}\");")
                     existing_indexes = cur.fetchall()
                     for idx in existing_indexes:
-                        if isinstance(idx, dict) or hasattr(idx, "keys"):
+                        if isinstance(idx, dict):
                             idx_name = idx.get("name")
                         else:
-                            idx_name = idx[1] if len(idx) > 1 else None
+                            try:
+                                idx_name = idx["name"]
+                            except (IndexError, KeyError, TypeError):
+                                idx_name = idx[1] if len(idx) > 1 else None
                         
                         if idx_name:
                             try:
                                 cur.execute(f"PRAGMA {prefix}index_info(\"{idx_name}\");")
                                 for idx_col in cur.fetchall():
-                                    if isinstance(idx_col, dict) or hasattr(idx_col, "keys"):
+                                    if isinstance(idx_col, dict):
                                         cname = idx_col.get("name")
                                     else:
-                                        cname = idx_col[2] if len(idx_col) > 2 else None
+                                        try:
+                                            cname = idx_col["name"]
+                                        except (IndexError, KeyError, TypeError):
+                                            cname = idx_col[2] if len(idx_col) > 2 else None
                                     if cname:
                                         indexed_cols.add(cname.lower())
                             except Exception:

@@ -10,10 +10,10 @@ import pandas as pd
 import numpy as np
 import asyncio
 import contextlib
-from fastapi import FastAPI, BackgroundTasks, Request
+from fastapi import FastAPI, BackgroundTasks, Request, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.middleware.gzip import GZipMiddleware
-from fastapi.responses import StreamingResponse
+from fastapi.responses import StreamingResponse, JSONResponse
 from pathlib import Path
 from pydantic import BaseModel
 from typing import List, Dict, Any, Optional
@@ -56,6 +56,22 @@ from agent.app.core.config import (
 )
 from agent.app.utils.llm import LLMClient
 from agent.app.repositories.db_executor import DatabaseExecutor
+from agent.app.core.observability.latency_tracker import get_latency_stats
+from agent.app.core.observability.cache_monitor import all_stats as get_cache_stats
+from agent.app.core.observability.prompt_registry import PromptRegistry
+from agent.app.core.observability.drift_detector import SchemaDriftDetector
+from agent.app.core.security.validator import SecurityValidator
+from agent.app.core.reliability.rate_limiter import get_query_limiter
+from agent.app.core.observability.token_monitor import get_token_stats
+from agent.app.core.observability import query_analytics as _qa_module
+from agent.app.core.observability import failure_tracker as _ft_module
+from agent.app.core.observability.determinism_tracker import get_determinism_stats
+from agent.app.core.observability.result_auditor import get_quality_stats
+from agent.app.core.regression.golden_gate import GoldenGate
+from agent.app.core.observability.validation_analytics import get_validation_stats
+from agent.app.core.observability.retrieval_analytics import get_retrieval_stats
+from agent.app.core.reporting.failure_report import generate_failure_report
+from agent.app.core.validation.schema_completeness import check_schema_completeness
 
 # Track active background tasks to prevent UI flickering
 import threading
@@ -262,6 +278,47 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
+# ---------------------------------------------------------------------------
+# Security & Observability Middleware
+# ---------------------------------------------------------------------------
+# API key auth: set ENABLE_AUTH=true and API_KEY_SECRET=<secret> in .env.
+# When ENABLE_AUTH is false (default) auth is skipped — safe for local dev.
+# Protected paths: anything under /api/run* or /api/dab/run* or /api/improvement/run*.
+_ENABLE_AUTH: bool = os.getenv("ENABLE_AUTH", "false").lower() == "true"
+_API_KEY_SECRET: str = os.getenv("API_KEY_SECRET", "")
+
+_PROTECTED_PATH_PREFIXES = (
+    "/api/run",
+    "/api/dab/run",
+    "/api/improvement/run",
+)
+
+
+@app.middleware("http")
+async def security_and_access_log_middleware(request: Request, call_next):
+    start = time.time()
+
+    # --- API key enforcement (mutation / execution endpoints only) ---
+    if _ENABLE_AUTH and _API_KEY_SECRET:
+        if any(request.url.path.startswith(p) for p in _PROTECTED_PATH_PREFIXES):
+            supplied = request.headers.get("X-API-Key", "")
+            if supplied != _API_KEY_SECRET:
+                return JSONResponse(
+                    status_code=401,
+                    content={"detail": "Unauthorized: invalid or missing X-API-Key header."},
+                )
+
+    response = await call_next(request)
+    latency_ms = (time.time() - start) * 1000
+    client_ip = request.client.host if request.client else "unknown"
+    # logger is the module; the singleton lives at logger.logger
+    logger.logger.info(
+        f"ACCESS {request.method} {request.url.path} "
+        f"→ {response.status_code} ({latency_ms:.1f}ms) ip={client_ip}"
+    )
+    return response
+
+
 # Prometheus metrics handled by Go gateway; Python agent does not instrument.
 
 # Custom Project endpoints
@@ -308,6 +365,11 @@ async def startup_event():
             db.close()
     except Exception as e:
         logger.error(f"Failed to purge stale running tasks on startup: {e}")
+
+    # Initialize query analytics JSONL store
+    _qa_module.initialize(store_path=MEMORY_DIR / "query_analytics.jsonl")
+    # Initialize failure tracker JSONL store
+    _ft_module.initialize(store_path=MEMORY_DIR / "failure_log.jsonl")
 
 
 def _read_log_sample(path_str: str) -> str:
@@ -737,7 +799,58 @@ def health_check():
     )
 
     # 10. API self-ping (always passes if we're responding)
-    _check("api_self", lambda: {"endpoint_count": 36, "status": "serving"})
+    _check("api_self", lambda: {"endpoint_count": 40, "status": "serving"})
+
+    # 11. Prompt integrity — SHA-256 versioning of every YAML prompt file
+    def _prompt_integrity_check() -> dict:
+        registry = PromptRegistry.get_instance(
+            prompts_dir=PROMPTS_DIR,
+            checksum_path=MEMORY_DIR / "prompt_checksums.json",
+        )
+        manifest = registry.get_manifest()
+        return {
+            "prompt_count": len(manifest),
+            "changed_since_baseline": registry.has_changed_prompts(),
+            "versions": {name: m["version"] for name, m in manifest.items()},
+        }
+
+    _check("prompt_integrity", _prompt_integrity_check)
+
+    # 12. Schema drift — content-hash comparison against persisted baseline
+    def _schema_drift_check() -> dict:
+        detector = SchemaDriftDetector.get_instance(
+            schema_dir=DATABASES_DIR,
+            baseline_path=MEMORY_DIR / "schema_checksums.json",
+        )
+        report = detector.drift_report
+        return {
+            "drifted": report["drifted"],
+            "total_files": report["total_files"],
+            "added": len(report["added"]),
+            "removed": len(report["removed"]),
+            "modified": len(report["modified"]),
+        }
+
+    _check("schema_drift", _schema_drift_check)
+
+    # 13. Latency SLA — P50/P95/P99 against defined targets
+    def _latency_sla_check() -> dict:
+        stats = get_latency_stats()
+        sla = stats.get("sla", {})
+        return {
+            "sample_count": stats.get("sample_count", 0),
+            "p50_s": stats.get("p50_s"),
+            "p95_s": stats.get("p95_s"),
+            "p99_s": stats.get("p99_s"),
+            "sla_ok": all(
+                v is True
+                for k, v in sla.items()
+                if k.endswith("_ok") and v is not None
+            ),
+            "targets": sla.get("targets", {}),
+        }
+
+    _check("latency_sla", _latency_sla_check)
 
     critical = {"results_dir", "databases_dir", "llm_config", "gold_standards"}
     failed = [c for c in checks if c["status"] == "fail"]
@@ -774,6 +887,182 @@ def get_metrics(date: str = "all", force: bool = False):
     if force:
         _cached_get_metrics.cache_clear()
     return _cached_get_metrics(date, _get_ttl_hash(15))
+
+
+@app.get("/api/performance")
+def get_performance():
+    """
+    Real-time P50/P95/P99 latency percentiles with SLA pass/fail gates,
+    cumulative LLM token usage, and cache hit-rate stats.
+
+    SLA targets:  P50 < 10 s  |  P95 < 30 s  |  P99 < 60 s
+    Latency computed from the last 1000 completed queries (rolling window).
+    Returns null percentiles and None token avg until the first query completes.
+    """
+    return {
+        "latency": get_latency_stats(),
+        "tokens": get_token_stats(),
+        "cache": get_cache_stats(),
+        "concurrency": get_query_limiter().stats(),
+        "determinism": get_determinism_stats(),
+        "data_quality": get_quality_stats(),
+    }
+
+
+@app.get("/api/analytics/queries")
+def get_analytics_queries(limit: int = 50):
+    """
+    Recent pipeline query events — question text, generated SQL, latency, success flag.
+
+    ``limit`` caps the number of returned events (max 500, newest last).
+    Draws from the in-memory rolling buffer; populated only after the analytics
+    store is initialized on startup.
+    """
+    limit = min(max(1, limit), 500)
+    inst = _qa_module.get_analytics()
+    if inst is None:
+        return {"events": [], "note": "Analytics store not yet initialized"}
+    return {"events": inst.get_recent(limit), "limit": limit}
+
+
+@app.get("/api/analytics/stats")
+def get_analytics_stats():
+    """
+    Aggregate query analytics: success rate, average latency, error count.
+    Computed over the in-memory rolling window (last 500 queries).
+    """
+    inst = _qa_module.get_analytics()
+    if inst is None:
+        return {"note": "Analytics store not yet initialized"}
+    return inst.stats()
+
+
+@app.get("/api/analytics/failures")
+def get_analytics_failures(limit: int = 20):
+    """
+    Recent pipeline failure events with structured error categorization.
+
+    Each event contains: timestamp, question text, attempted SQL, error message,
+    and a pre-classified error category (schema_error, syntax_error, timeout,
+    type_error, permission_error, circuit_open, max_retries, rate_limited,
+    empty_result, unknown).
+
+    ``limit`` caps the number of returned events (max 200, newest last).
+    Also returns a ``failure_groups`` summary showing counts per category.
+    """
+    limit = min(max(1, limit), 200)
+    tracker = _ft_module.get_tracker()
+    if tracker is None:
+        return {"events": [], "failure_groups": {}, "note": "Failure tracker not yet initialized"}
+    return {
+        "events": tracker.get_recent(limit),
+        "failure_groups": tracker.failure_groups(),
+        "limit": limit,
+    }
+
+
+@app.get("/api/analytics/quality")
+def get_analytics_quality():
+    """
+    Rolling data quality statistics for successful query result sets.
+
+    Quality score ranges from 0.0 (unusable) to 1.0 (ideal).  Computed
+    from the last 500 successful executions using null-rate and duplicate-rate
+    penalties.  A ``below_threshold_count`` > 0 signals systematic data issues
+    worth investigating.
+    """
+    return get_quality_stats()
+
+
+@app.get("/api/regression/check")
+def run_regression_check():
+    """
+    Run the golden SQL regression suite against the IPL SQLite database.
+
+    Executes 8 known-good queries and asserts structural invariants
+    (row count bounds, required columns, numeric value floors).
+    Returns a detailed pass/fail report.  Safe to call in CI — no LLM required.
+    """
+    ipl_db = DATABASES_DIR / "sqlite" / "IPL" / "ipl.sqlite"
+    if not ipl_db.exists():
+        return {
+            "all_passed": None,
+            "note": f"IPL database not found at {ipl_db}. Regression suite skipped.",
+            "cases": [],
+        }
+    executor = DatabaseExecutor(db_name="IPL", dialect="sqlite", explicit_db_path=str(ipl_db))
+    report = GoldenGate().run(executor)
+    return report
+
+
+@app.get("/api/analytics/validation")
+def get_analytics_validation():
+    """
+    AST / schema-identifier / explain-plan validation analytics.
+
+    Reports how often SQL generated by the LLM passes each validation gate
+    before reaching the database.  Key signals:
+
+    - ``ast_pass_rate``: fraction that pass sqlglot syntax check first try.
+    - ``id_clean_rate``: fraction whose table/column names are all in the schema.
+    - ``explain_plan_warnings``: cumulative full-scan warnings detected.
+    - ``preflight_rejections``: SQLite nested-window rejections.
+    """
+    return get_validation_stats()
+
+
+@app.get("/api/analytics/retrieval")
+def get_analytics_retrieval():
+    """
+    BM25 few-shot retrieval analytics.
+
+    Tracks every call to the RAG service: hit rate (at least one example
+    returned), miss rate (empty result), and per-database distribution.
+    A low hit rate means the memory bank needs more successful examples.
+    """
+    return get_retrieval_stats()
+
+
+@app.get("/api/analytics/failure-report")
+def get_failure_report():
+    """
+    Structured failure analysis report ranked by frequency.
+
+    Reads the persistent failure JSONL log and groups failures by category
+    (schema_error, syntax_error, timeout, etc.).  Returns the top 10 failure
+    patterns with recent example questions and error messages.
+    Used for engineering retrospectives and release gates.
+    """
+    log_path = MEMORY_DIR / "failure_log.jsonl"
+    report = generate_failure_report(log_path)
+    return report.as_dict()
+
+
+@app.get("/api/analytics/schema-completeness")
+def get_schema_completeness(db_name: str = "IPL"):
+    """
+    Schema / metadata / relationship completeness report for a database.
+
+    Validates every schema JSON file in the database directory and reports:
+    - Required key coverage (table_name, column_names, column_types)
+    - Column count mismatches (column_names vs column_types length)
+    - Broken FK references (referenced table has no schema file)
+    - Overall coverage score (0.0 – 1.0)
+
+    Use ``?db_name=<DB>`` to target a specific database.
+    """
+    db_dir = DATABASES_DIR / "sqlite" / db_name
+    if not db_dir.exists():
+        # Try other dialect dirs
+        for dialect_dir in (DATABASES_DIR / d for d in ("duckdb", "postgres", "bigquery") if (DATABASES_DIR / d).exists()):
+            candidate = dialect_dir / db_name
+            if candidate.exists():
+                db_dir = candidate
+                break
+        else:
+            return {"error": f"Database directory not found for '{db_name}'", "coverage_score": 0.0}
+    report = check_schema_completeness(db_dir)
+    return report.as_dict()
 
 
 from agent.app.services.semantic_engine import SemanticContextEngine
@@ -990,6 +1279,19 @@ def run_demo_query(payload: DemoQueryRequest):
 
     query_text = payload.query.strip()
 
+    # ── Security: reject prompt injection attempts before touching the LLM ──
+    violation = SecurityValidator.check_user_input(query_text)
+    if violation:
+        raise HTTPException(
+            status_code=400,
+            detail={
+                "error": "prompt_injection_detected",
+                "threat": violation.pattern,
+                "details": violation.details,
+            },
+        )
+
+
     schema_desc = """SQLite database: IPL (Indian Premier League cricket)
 
 Tables and columns:
@@ -1042,24 +1344,43 @@ LIMIT 10;
 
 Question: {query_text}"""
 
+    # ── Rate limit: cap concurrent LLM+DB calls; reject with 429 when full ──
     try:
-        llm = LLMClient(temperature=0.1)
-        resp = llm.generate(prompt, "IPL NL-to-SQL")
-        import re as _re
-        m = _re.search(r"```sql\s*(.*?)\s*```", resp, _re.DOTALL | _re.IGNORECASE)
-        sql = m.group(1).strip() if m else resp.strip()
-    except Exception as e:
-        return {"success": False, "error": f"SQL generation failed: {e}", "sql": ""}
+        acquire_ctx = get_query_limiter().acquire()
+    except RuntimeError as exc:
+        raise HTTPException(status_code=429, detail=str(exc))
 
-    try:
-        executor = DatabaseExecutor(db_name="IPL", dialect="sqlite")
-        success, msg, rows = executor.execute_direct(sql)
-        if not success:
-            return {"success": False, "error": msg, "sql": sql}
-        columns = list(rows[0].keys()) if rows else []
-        return {"success": True, "sql": sql, "columns": columns, "results": rows[:20]}
-    except Exception as e:
-        return {"success": False, "error": str(e), "sql": sql or ""}
+    with acquire_ctx:
+        try:
+            llm = LLMClient(temperature=0.1)
+            resp = llm.generate(prompt, "IPL NL-to-SQL")
+            import re as _re
+            m = _re.search(r"```sql\s*(.*?)\s*```", resp, _re.DOTALL | _re.IGNORECASE)
+            sql = m.group(1).strip() if m else resp.strip()
+        except Exception as e:
+            return {"success": False, "error": f"SQL generation failed: {e}", "sql": ""}
+
+        # Block destructive SQL before it reaches the database
+        sql_violation = SecurityValidator.check_generated_sql(sql)
+        if sql_violation:
+            logger.logger.warning(
+                f"[Security] Destructive SQL blocked: {sql_violation.pattern} — {sql_violation.details}"
+            )
+            return {
+                "success": False,
+                "error": f"Blocked by security policy: {sql_violation.pattern}",
+                "sql": "",
+            }
+
+        try:
+            executor = DatabaseExecutor(db_name="IPL", dialect="sqlite")
+            success, msg, rows = executor.execute_direct(sql)
+            if not success:
+                return {"success": False, "error": msg, "sql": sql}
+            columns = list(rows[0].keys()) if rows else []
+            return {"success": True, "sql": sql, "columns": columns, "results": rows[:20]}
+        except Exception as e:
+            return {"success": False, "error": str(e), "sql": sql or ""}
 
 
 @lru_cache(maxsize=4)

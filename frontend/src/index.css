@@ -135,3 +135,216 @@ select option {
   box-shadow: 0 0 0 0 rgba(34, 197, 94, 0.75);
   vertical-align: middle;
 }
+
+/* ==========================================================================
+   MINIMAL LIGHT THEME OVERRIDES (Perplexity-style)
+   ========================================================================== */
+:root {
+  --bg: #1b2738;
+  --surface1: rgba(26, 38, 54, 0.88);
+  --surface2: rgba(32, 46, 64, 0.70);
+  --text1: #e2ecf5;
+  --text2: #8aaac0;
+  --text3: #4e6880;
+  --border: rgba(120, 160, 200, 0.12);
+  --navbar-bg: rgba(24, 36, 52, 0.92);
+}
+
+body.light-theme {
+  --bg: #f9fafb;
+  --surface1: #ffffff;
+  --surface2: #f3f4f6;
+  --text1: #111827;
+  --text2: #1f2937;
+  --text3: #374151;
+  --border: #e5e7eb;
+  --navbar-bg: rgba(255, 255, 255, 0.92);
+  background-color: #ffffff !important;
+  color: #111827 !important;
+}
+
+body.light-theme :root {
+  color-scheme: light !important;
+}
+
+/* Parent Workspace & Main Panels */
+body.light-theme [class*="bg-[#1b2738]"],
+body.light-theme main,
+body.light-theme main[class*="bg-[#1b2738]"] {
+  background: #f9fafb !important;
+  background-color: #f9fafb !important;
+}
+
+/* Sidebar & Header Navigation */
+body.light-theme header,
+body.light-theme [class*="bg-[#162030]"],
+body.light-theme [class*="bg-[#162030]/90]"],
+body.light-theme header[class*="bg-[#162030]"],
+body.light-theme aside {
+  background-color: #ffffff !important;
+  border-color: #e5e7eb !important;
+}
+
+/* Catch-all for dark backgrounds to turn them white/light-gray */
+body.light-theme [class*="bg-[#0"],
+body.light-theme [class*="bg-[#1"] {
+  background-color: #ffffff !important;
+  border-color: #e5e7eb !important;
+  color: #1f2937 !important;
+}
+
+/* Neutral subtle light gray panels (such as list background slots, panels, select tags) */
+body.light-theme select,
+body.light-theme [class*="bg-[#0a0914]"],
+body.light-theme [class*="bg-[#0c0c10]"],
+body.light-theme [class*="bg-[#050508]"],
+body.light-theme [class*="bg-[#0c0c12]"],
+body.light-theme [class*="bg-[#090812]"],
+body.light-theme [class*="bg-[#040406]"],
+body.light-theme [class*="bg-[#07070a]"],
+body.light-theme [class*="bg-slate-800"] {
+  background-color: #f3f4f6 !important;
+  border-color: #e5e7eb !important;
+  color: #374151 !important;
+}
+
+/* Range Inputs (Slider Tracks) */
+body.light-theme input[type="range"] {
+  background-color: #d1d5db !important;
+}
+
+/* Mascot Speech Bubble Card */
+body.light-theme [class*="bg-[#1a2a3a]"] {
+  background-color: #f3f4f6 !important;
+  border-color: #e5e7eb !important;
+}
+body.light-theme [class*="border-t-[#1a2a3a]"] {
+  border-top-color: #f3f4f6 !important;
+}
+
+/* Hover highlights in list slots */
+body.light-theme [class*="hover:bg-"]:hover,
+body.light-theme [class*="hover:bg-[#1a1532]/30"]:hover,
+body.light-theme [class*="hover:bg-[#141420]/30"]:hover {
+  background-color: rgba(0, 0, 0, 0.04) !important;
+}
+
+/* Action Buttons (Inspect Log / Play / Schema Detail view buttons) */
+body.light-theme [class*="bg-[#131126]"],
+body.light-theme [class*="bg-[#1d1b32]"] {
+  background-color: #f3f4f6 !important;
+  border-color: #ddd6fe !important;
+  color: #7c3aed !important;
+}
+body.light-theme [class*="bg-[#131126]"]:hover,
+body.light-theme [class*="bg-[#1d1b32]"]:hover {
+  background-color: #ddd6fe !important;
+  color: #6d28d9 !important;
+}
+
+body.light-theme [class*="bg-[#181822]"] {
+  background-color: #f3f4f6 !important;
+  border-color: #bae6fd !important;
+  color: #0284c7 !important;
+}
+body.light-theme [class*="bg-[#181822]"]:hover {
+  background-color: #bae6fd !important;
+  color: #0369a1 !important;
+}
+
+/* Text Overrides - Primary, Secondary and Subtle */
+body.light-theme .text-white,
+body.light-theme [class*="text-white"],
+body.light-theme .text-slate-100,
+body.light-theme .text-slate-200 {
+  color: #111827 !important;
+}
+
+body.light-theme .text-slate-300,
+body.light-theme .text-slate-400 {
+  color: #111827 !important;
+}
+
+body.light-theme .text-slate-500,
+body.light-theme .text-slate-600 {
+  color: #1f2937 !important;
+}
+
+/* Opacity text overrides to avoid low contrast */
+body.light-theme [class*="text-slate-500/80"],
+body.light-theme [class*="text-slate-400/70"] {
+  color: #374151 !important;
+}
+
+body.light-theme [class*="bg-white/5"] {
+  background-color: rgba(0, 0, 0, 0.05) !important;
+}
+
+/* Rich Status Badge Color Remaps (High-contrast for accessibility on light bg) */
+body.light-theme .text-sky-400 { color: #0284c7 !important; }
+body.light-theme .text-emerald-400 { color: #059669 !important; }
+body.light-theme .text-rose-400 { color: #e11d48 !important; }
+body.light-theme .text-violet-400 { color: #7c3aed !important; }
+body.light-theme .text-amber-400 { color: #d97706 !important; }
+body.light-theme .text-purple-400 { color: #9333ea !important; }
+body.light-theme .text-blue-400 { color: #2563eb !important; }
+body.light-theme .text-cyan-400 { color: #0891b2 !important; }
+body.light-theme .text-indigo-400 { color: #4f46e5 !important; }
+body.light-theme .text-teal-400 { color: #0d9488 !important; }
+
+/* Status Badge Backgrounds & Borders */
+body.light-theme [class*="bg-sky-500/10"] { background-color: rgba(2, 132, 199, 0.08) !important; border-color: rgba(2, 132, 199, 0.15) !important; }
+body.light-theme [class*="bg-emerald-500/10"] { background-color: rgba(5, 150, 105, 0.08) !important; border-color: rgba(5, 150, 105, 0.15) !important; }
+body.light-theme [class*="bg-rose-500/10"] { background-color: rgba(225, 29, 72, 0.08) !important; border-color: rgba(225, 29, 72, 0.15) !important; }
+body.light-theme [class*="bg-violet-500/10"] { background-color: rgba(124, 58, 237, 0.08) !important; border-color: rgba(124, 58, 237, 0.15) !important; }
+body.light-theme [class*="bg-amber-500/10"] { background-color: rgba(217, 119, 6, 0.08) !important; border-color: rgba(217, 119, 6, 0.15) !important; }
+body.light-theme [class*="bg-purple-500/10"] { background-color: rgba(147, 51, 234, 0.08) !important; border-color: rgba(147, 51, 234, 0.15) !important; }
+body.light-theme [class*="bg-blue-500/10"] { background-color: rgba(37, 99, 235, 0.08) !important; border-color: rgba(37, 99, 235, 0.15) !important; }
+body.light-theme [class*="bg-cyan-500/10"] { background-color: rgba(8, 145, 178, 0.08) !important; border-color: rgba(8, 145, 178, 0.15) !important; }
+body.light-theme [class*="bg-indigo-500/10"] { background-color: rgba(79, 70, 229, 0.08) !important; border-color: rgba(79, 70, 229, 0.15) !important; }
+body.light-theme [class*="bg-teal-500/10"] { background-color: rgba(13, 148, 136, 0.08) !important; border-color: rgba(13, 148, 136, 0.15) !important; }
+
+/* Borders overrides */
+body.light-theme [class*="border-[#2c3e55]"],
+body.light-theme [class*="border-[#1c1833]"],
+body.light-theme [class*="border-[#1e1933]"],
+body.light-theme [class*="border-[#1f1f27]"],
+body.light-theme [class*="border-[#1b1b22]"],
+body.light-theme [class*="border-[#1e1932]"],
+body.light-theme [class*="border-[#2c2748]"],
+body.light-theme [class*="border-[#231d36]"],
+body.light-theme .border-b,
+body.light-theme .border-r,
+body.light-theme .border {
+  border-color: #e5e7eb !important;
+}
+
+/* Shadows for card layouts */
+body.light-theme section,
+body.light-theme [class*="bg-[#0b0a12]"],
+body.light-theme [class*="bg-[#0e0c1b]"],
+body.light-theme .rounded-xl,
+body.light-theme .group {
+  box-shadow: 0 1px 3px 0 rgba(0, 0, 0, 0.05), 0 1px 2px 0 rgba(0, 0, 0, 0.03) !important;
+}
+
+/* Keep gradient text white */
+body.light-theme button.bg-gradient-to-r {
+  color: #ffffff !important;
+}
+
+/* Code blocks remains dark mode */
+body.light-theme pre,
+body.light-theme code {
+  background-color: #111827 !important;
+  color: #e5e7eb !important;
+  border-color: #1f2937 !important;
+}
+
+/* Scrollbars */
+body.light-theme ::-webkit-scrollbar-thumb {
+  background: #d1d5db !important;
+}
+body.light-theme ::-webkit-scrollbar-thumb:hover {
+  background: #9ca3af !important;
+}

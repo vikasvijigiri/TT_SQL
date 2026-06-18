@@ -1,5 +1,5 @@
 batch:
-  workers: 4
+  workers: 1
 data_iq:
   placeholders:
   - ''
@@ -17,7 +17,7 @@ llm:
   max_tokens: 8000
   model: bedrock/openai.gpt-oss-safeguard-120b
   retry_base_delay_s: 1
-  temperature: 0
+  temperature: 0.0
 orchestrator:
   max_retries: 4
   pruning_threshold_tokens: 3500

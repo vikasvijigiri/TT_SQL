@@ -1,4 +1,4 @@
-import re
+﻿import re
 from typing import List, Optional, Dict, Tuple
 from agent.app.utils.llm import LLMClient
 from agent.app.models.schemas import CriticOutput
@@ -93,6 +93,23 @@ class SQLCriticAgent:
         If a flaw is found, outputs a precise criticism and an actionable fix recipe.
         """
         logger.set_agent("CRITIC")
+
+        # ── Prompt Integrity Monitor ─────────────────────────────────────────────
+        # Detect the scenario where natural-language text was forwarded as SQL
+        # (empty generation fallback, mis-wired call sites).  Bail out early with a
+        # safe no-op rather than burning LLM tokens on garbage input.
+        _stripped = (proposed_sql or '').strip()
+        _looks_like_sql = bool(_stripped) and _stripped.upper().lstrip('(').startswith(
+            ('SELECT', 'WITH', 'INSERT', 'UPDATE', 'DELETE', 'VALUES', 'CREATE', 'EXPLAIN')
+        )
+        if not _looks_like_sql:
+            logger.warning(
+                '[PromptIntegrity] Critic received non-SQL input — skipping to prevent token waste. '
+                f'Input starts with: {repr(_stripped[:120])}'
+            )
+            from agent.app.models.schemas import CriticOutput as _CO
+            return _CO(is_valid=False, criticism='No valid SQL was provided for audit.', proposed_fix='')
+        # ── End Prompt Integrity Monitor ─────────────────────────────────────────
         logger.info("Executing adversarial Planner-Critic query audit...")
 
         from agent.app.core.retrieval.hierarchical_retriever import (
@@ -109,16 +126,22 @@ class SQLCriticAgent:
 
         # SOTA Execution-Guided Decoding Probe
         probe_warnings = ""
-        if executor:
+        _sql_looks_valid = (
+            proposed_sql
+            and proposed_sql.strip()
+            and proposed_sql.strip().upper().lstrip("(").startswith(("SELECT", "WITH", "VALUES"))
+        )
+        if executor and _sql_looks_valid:
             try:
-                # Wrap proposed SQL to check if it returns 0 rows or syntax errors
-                probe_sql = f"SELECT * FROM ({proposed_sql}) AS __probe LIMIT 1"
-                ok, _, rows = executor.execute_direct(probe_sql, timeout=5)
+                # Strip trailing semicolons — they break SQLite subquery wrapping
+                clean_sql = proposed_sql.rstrip().rstrip(";").rstrip()
+                probe_sql = f"SELECT * FROM ({clean_sql}) AS __probe LIMIT 1"
+                ok, err_msg, rows = executor.execute_direct(probe_sql, timeout=5)
                 if ok and not rows:
                     probe_warnings = "EXECUTION PROBE WARNING: The proposed SQL executed successfully but returned ZERO rows! If the user query expects an answer, this means your JOINs or WHERE clauses are hallucinated and filtering out all data. You MUST rewrite the SQL to return data.\n\n"
                 elif not ok:
-                    # Capture runtime errors that static analysis missed
-                    probe_warnings = f"EXECUTION PROBE ERROR: The proposed SQL failed at runtime with error: {rows}. You MUST fix this error.\n\n"
+                    # Use the actual error string (2nd return value), not the empty rows list
+                    probe_warnings = f"EXECUTION PROBE ERROR: The proposed SQL failed at runtime with error: {err_msg}. You MUST fix this error.\n\n"
             except Exception as e:
                 probe_warnings = f"EXECUTION PROBE ERROR: The proposed SQL failed at runtime with error: {e}. You MUST fix this error.\n\n"
 

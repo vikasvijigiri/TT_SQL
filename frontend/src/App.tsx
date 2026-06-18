@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Database, Sparkles, FolderOpen, ChevronRight, Activity, Loader2, X, ChevronUp, ChevronDown, Play, LogOut, User } from 'lucide-react';
+import { Database, Sparkles, FolderOpen, ChevronRight, Activity, Loader2, X, ChevronUp, ChevronDown, Play, LogOut, User, Sun, Moon } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import axios from 'axios';
 import LandingPage from './components/LandingPage';
@@ -121,6 +121,19 @@ const GlobalRunningPanel = ({ runningSpiderTasks, runningDabTasks, isDabActive, 
 };
 
 const App = () => {
+  const [theme, setTheme] = useState(() => {
+    return localStorage.getItem('nquire_theme') || 'dark';
+  });
+
+  useEffect(() => {
+    if (theme === 'light') {
+      document.body.classList.add('light-theme');
+    } else {
+      document.body.classList.remove('light-theme');
+    }
+    localStorage.setItem('nquire_theme', theme);
+  }, [theme]);
+
   const [currentView, setCurrentView] = useState('landing'); // 'landing' | 'dashboard'
   const [selectedProject, setSelectedProject] = useState(null); // null | 'spider' | 'dab' | 'custom'
   const [runningSpiderTasks, setRunningSpiderTasks] = useState([]);
@@ -256,6 +269,8 @@ const App = () => {
         user={user}
         onLogin={handleLogin}
         onLogout={handleLogout}
+        theme={theme}
+        setTheme={setTheme}
       />
     );
   } else if (selectedProject === 'spider') {
@@ -267,6 +282,8 @@ const App = () => {
         clearAutoOpenDetails={() => setAutoOpenDetails(null)}
         user={user}
         onLogout={handleLogout}
+        theme={theme}
+        setTheme={setTheme}
       />
     );
   } else if (selectedProject === 'dab') {
@@ -278,6 +295,8 @@ const App = () => {
         clearAutoOpenDetails={() => setAutoOpenDetails(null)}
         user={user}
         onLogout={handleLogout}
+        theme={theme}
+        setTheme={setTheme}
       />
     );
   } else if (selectedProject === 'custom') {
@@ -287,6 +306,8 @@ const App = () => {
         onHome={() => { setSelectedProject(null); setCurrentView('landing'); }}
         user={user}
         onLogout={handleLogout}
+        theme={theme}
+        setTheme={setTheme}
       />
     );
   }
@@ -296,39 +317,49 @@ const App = () => {
       <div
         className="flex flex-col items-center justify-center min-h-screen w-full bg-[#1b2738] text-slate-200 font-sans p-6 overflow-y-auto select-none relative animate-fadeIn"
         style={{
-          backgroundImage: 'radial-gradient(circle, rgba(95,168,216,0.06) 1px, transparent 1px)',
+          backgroundImage: theme === 'light' 
+            ? 'radial-gradient(circle, rgba(0,0,0,0.04) 1px, transparent 1px)' 
+            : 'radial-gradient(circle, rgba(95,168,216,0.06) 1px, transparent 1px)',
           backgroundSize: '28px 28px',
-          backgroundColor: '#1b2738'
+          backgroundColor: 'var(--bg)'
         }}
-      >
-        <header className="absolute top-0 left-0 right-0 px-8 py-5 flex justify-between items-center max-w-7xl mx-auto z-30">
+      >        <header className="absolute top-0 left-0 right-0 px-8 py-5 flex justify-between items-center max-w-7xl mx-auto z-30">
           <NQuireLogo size={34} showName nameSize="text-sm" onClick={() => setCurrentView('landing')} />
-          {user && (
-            <div className="flex items-center gap-2.5 bg-[#162030]/80 border border-[#2c3e55] rounded-xl px-3 py-1.5 shadow-md">
-              {user.picture ? (
-                <img src={user.picture} alt={user.name} className="w-6 h-6 rounded-full shrink-0 ring-1 ring-purple-500/40" referrerPolicy="no-referrer" />
-              ) : (
-                <div className="w-6 h-6 rounded-full bg-gradient-to-br from-purple-500/20 to-indigo-500/20 border border-purple-500/30 shrink-0 flex items-center justify-center shadow-inner">
-                  <User className="w-3.5 h-3.5 text-purple-300" />
+          <div className="flex items-center gap-3">
+            <button
+              onClick={() => setTheme(theme === 'light' ? 'dark' : 'light')}
+              className="p-1.5 rounded-lg bg-[#162030]/80 border border-[#2c3e55] hover:border-violet-500/40 text-slate-400 hover:text-white transition-all shadow-md cursor-pointer flex items-center justify-center"
+              title={`Switch to ${theme === 'light' ? 'dark' : 'light'} theme`}
+            >
+              {theme === 'light' ? <Moon className="w-4 h-4 text-violet-400" /> : <Sun className="w-4 h-4 text-amber-400" />}
+            </button>
+            {user && (
+              <div className="flex items-center gap-2.5 bg-[#162030]/80 border border-[#2c3e55] rounded-xl px-3 py-1.5 shadow-md">
+                {user.picture ? (
+                  <img src={user.picture} alt={user.name} className="w-6 h-6 rounded-full shrink-0 ring-1 ring-purple-500/40" referrerPolicy="no-referrer" />
+                ) : (
+                  <div className="w-6 h-6 rounded-full bg-gradient-to-br from-purple-500/20 to-indigo-500/20 border border-purple-500/30 shrink-0 flex items-center justify-center shadow-inner">
+                    <User className="w-3.5 h-3.5 text-purple-300" />
+                  </div>
+                )}
+                <div className="flex flex-col min-w-0 text-left">
+                  <span className="text-[10px] font-bold text-slate-200 truncate leading-tight">
+                    {user.name || 'User'}
+                  </span>
+                  <span className="text-[8.5px] text-slate-500 truncate leading-none">
+                    {user.email || 'guest@nquire.ai'}
+                  </span>
                 </div>
-              )}
-              <div className="flex flex-col min-w-0 text-left">
-                <span className="text-[10px] font-bold text-slate-200 truncate leading-tight">
-                  {user.name || 'User'}
-                </span>
-                <span className="text-[8.5px] text-slate-500 truncate leading-none">
-                  {user.email || 'guest@nquire.ai'}
-                </span>
+                <button
+                  onClick={handleLogout}
+                  title="Sign out"
+                  className="ml-1.5 p-1 rounded-lg text-slate-500 hover:text-red-400 hover:bg-red-400/10 transition-all cursor-pointer bg-transparent border-0"
+                >
+                  <LogOut className="w-3.5 h-3.5" />
+                </button>
               </div>
-              <button
-                onClick={handleLogout}
-                title="Sign out"
-                className="ml-1.5 p-1 rounded-lg text-slate-500 hover:text-red-400 hover:bg-red-400/10 transition-all cursor-pointer bg-transparent border-0"
-              >
-                <LogOut className="w-3.5 h-3.5" />
-              </button>
-            </div>
-          )}
+            )}
+          </div>
         </header>
 
         <div className="max-w-5xl w-full space-y-10 text-center mt-12">

@@ -1,10 +1,10 @@
 import { useState, useEffect } from 'react';
-import { Database, MessageSquare, ArrowLeft, CheckCircle2, LogOut, User } from 'lucide-react';
+import { Database, MessageSquare, ArrowLeft, CheckCircle2, LogOut, User, Sun, Moon } from 'lucide-react';
 import CustomProjectsScreen from './CustomProjectsScreen';
 import CustomChatView from './CustomChatView';
 import NQuireLogo from './NQuireLogo';
 
-const CustomWorkspace = ({ onBack, onHome, user, onLogout }) => {
+const CustomWorkspace = ({ onBack, onHome, user, onLogout, theme, setTheme }) => {
   const [currentView, setCurrentView] = useState(() => {
     return localStorage.getItem('custom_current_view') || 'projects';
   });
@@ -77,6 +77,20 @@ const CustomWorkspace = ({ onBack, onHome, user, onLogout }) => {
         <div className="hidden lg:flex flex-col gap-1 p-3 rounded-xl bg-[#161c24] border border-[#1e2530] text-[10px] font-mono text-center select-none">
           <span className="text-slate-500">CustomSQL Engine</span>
           <span className="text-emerald-500/60">v1.0 · NL-to-SQL</span>
+        </div>
+
+        {/* Theme Toggle in Sidebar */}
+        <div className="pt-2 border-t border-[#2c3e55] flex items-center justify-between px-1">
+          <span className="hidden lg:inline text-[10px] font-mono font-bold text-slate-400 tracking-wider">
+            THEME
+          </span>
+          <button
+            onClick={() => setTheme(theme === 'light' ? 'dark' : 'light')}
+            className="p-1.5 rounded-lg bg-[#181e28] border border-[#232d3a] hover:border-emerald-500/40 text-slate-400 hover:text-white transition-all shadow-md flex items-center justify-center cursor-pointer"
+            title={`Switch to ${theme === 'light' ? 'dark' : 'light'} theme`}
+          >
+            {theme === 'light' ? <Moon className="w-3.5 h-3.5 text-violet-400" /> : <Sun className="w-3.5 h-3.5 text-amber-400" />}
+          </button>
         </div>
 
         {/* User Profile */}

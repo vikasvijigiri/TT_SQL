@@ -204,4 +204,10 @@ Every prompt, link, and agent logic in Semantic DIN-SQL is decoupled from domain
 
 ## MAIN GOAL
 
-Our goal is minimal latency, maximum accuracy, world class architecture, minimal tokens, 0 bias, 0 hardcoding, 0 gold truth leakage into pipeline, 100% pure reasoning and fast inference, fast caching wherever necessary, KV cahing may be and no duplicates, 0 warnings in the pipeline run, 100% strong self learning, 0% leakage of prompts, 0 failures of prompt injestion, prompt monitoring, grounded agent analytics etc etc? these are goals make sure these are met strictly and reverified
+Our goal is 100% generic pipeline that works on any DB and any diaelect (dialects should be learnable and non diverging) with 0% bias, minimal latency (< 60s), 100% purely non blocking fast and scalable services, 0% erroring, 0% exceptions, 100% stable and deterministic, maximum accurate sql generation, world class architecture, minimal tokens, 0 hardcoding, 0 leakage of gold truth into pipeline, 100% pure reasoning and fast inference, fast caching wherever necessary, KV cahing may be and no duplicates, 0 warnings in the pipeline run, 100% strong self learning, 0% leakage of prompts, 0 failures of prompt injestion, prompt monitoring, grounded agent analytics, 0% redundant checks, 100% data quality checks at every step, 100% sql validation  etc etc you can improvise this more and make this list even bigger, But i think you understood our main/most and utmost important goals, so please make sure these are met strictly and reverified atleast on 5 failed queries it's a must in the evaluation time.
+
+With each run our pipeline should only get better and better and converging and improving accuracy. Must and should be self learning to that level. With each failure it should learn and improvise and grow stronger and more intelligent. It should be so strong that even after 1000s of runs it doesnt fail and it keeps on learning and improvising and growing stronger and more intelligent. 
+
+With 0 hallucinations with 0 fabrication with 0 guess works at any stage. It should be so deterministic that even after 1000s of runs it gives same sql query for same question with same db. The only thing that can change is the accuracy of the sql query and it should keep improving with each run. 
+
+All these have to be implemented at highest world class quality.

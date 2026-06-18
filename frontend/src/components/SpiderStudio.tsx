@@ -37,7 +37,9 @@ import {
   Download,
   MessageSquare,
   LogOut,
-  User
+  User,
+  Sun,
+  Moon
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import PipelinePulse from './PipelinePulse';
@@ -535,7 +537,7 @@ const parseLiveStepsFromMd = (content) => {
   return { currentPhase, steps: cleanSteps };
 };
 
-const SpiderStudio = ({ onBack, onHome, autoOpenDetails, clearAutoOpenDetails, user, onLogout }) => {
+const SpiderStudio = ({ onBack, onHome, autoOpenDetails, clearAutoOpenDetails, user, onLogout, theme, setTheme }) => {
   const [currentView, setCurrentView] = useState(() => {
     return localStorage.getItem('spider_current_view') || 'dashboard';
   });
@@ -1204,6 +1206,14 @@ const SpiderStudio = ({ onBack, onHome, autoOpenDetails, clearAutoOpenDetails, u
               title="Refresh Current Dashboard"
             >
               <RefreshCw className="w-4 h-4" />
+            </button>
+
+            <button
+              onClick={() => setTheme(theme === 'light' ? 'dark' : 'light')}
+              className="p-1.5 rounded-lg bg-[#0e0e14] border border-[#222232] hover:bg-[#141420] text-slate-400 hover:text-white transition-all shadow-sm flex items-center justify-center"
+              title={`Switch to ${theme === 'light' ? 'dark' : 'light'} theme`}
+            >
+              {theme === 'light' ? <Moon className="w-4 h-4 text-violet-400" /> : <Sun className="w-4 h-4 text-amber-400" />}
             </button>
 
             {currentView === 'dashboard' && dateFilter !== 'all' && (

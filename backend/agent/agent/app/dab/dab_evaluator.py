@@ -469,3 +469,36 @@ if __name__ == "__main__":
     queries = load_all_queries(dab_repo)
     metrics = compute_accuracy(queries)
     print(json.dumps(metrics, indent=2))
+
+
+# ── Multi-Process Shared State sync via cache_service (Redis) ──
+import sys
+
+class _DABModuleWrapper(object):
+    def __init__(self, wrapped):
+        self.__dict__["_wrapped"] = wrapped
+
+    def __getattr__(self, name):
+        if name in ("DAB_RUN_ID", "DAB_RUN_DATE", "DAB_RUN_USERNAME"):
+            try:
+                from agent.app.utils.cache import cache_service
+                return cache_service.get(f"shared_{name}")
+            except Exception:
+                return getattr(self._wrapped, name)
+        return getattr(self._wrapped, name)
+
+    def __setattr__(self, name, value):
+        if name in ("DAB_RUN_ID", "DAB_RUN_DATE", "DAB_RUN_USERNAME"):
+            try:
+                from agent.app.utils.cache import cache_service
+                cache_service.set(f"shared_{name}", value, ttl=86400)
+            except Exception:
+                pass
+            try:
+                setattr(self._wrapped, name, value)
+            except Exception:
+                pass
+        else:
+            setattr(self._wrapped, name, value)
+
+sys.modules[__name__] = _DABModuleWrapper(sys.modules[__name__])

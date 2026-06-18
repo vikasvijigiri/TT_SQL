@@ -1,4 +1,4 @@
-import typing
+﻿import typing
 from agent.app.utils.logger import logger
 from agent.app.utils.llm import LLMClient
 from agent.app.services.semantic_engine import SemanticContextEngine
@@ -36,6 +36,40 @@ from agent.app.core.config import RESULTS_DIR, CONFIG_DIR, RESOURCES_DIR, MEMORY
 from agent.app.utils.dialect_loader import DialectLoader
 from agent.app.core.connection import parse_connection
 import contextlib
+from agent.app.core.observability.latency_tracker import record_query_latency
+from agent.app.core.observability.query_analytics import record_query_event
+from agent.app.core.observability.failure_tracker import record_failure as _record_failure
+from agent.app.core.observability.determinism_tracker import record as _record_determinism
+from agent.app.core.observability.result_auditor import record_quality_event as _record_quality, audit as _audit_quality
+from agent.app.core.validation.sql_validator import validate as _ast_validate, validate_against_schema as _schema_id_check
+from agent.app.core.observability.validation_analytics import (
+    record_validation_event as _record_val,
+    AST_VALID, AST_INVALID, SCHEMA_HALLUCINATION, IDENTIFIER_CLEAN,
+    EXPLAIN_WARNING, PREFLIGHT_REJECTION,
+)
+
+# ---------------------------------------------------------------------------
+# Module-level cache for dynamic_lessons.json — avoids per-query disk I/O.
+# TTL of 60 s means a newly synthesised lesson propagates within one minute.
+# ---------------------------------------------------------------------------
+_DYN_LESSONS_CACHE: list = []
+_DYN_LESSONS_TS: float = 0.0
+_DYN_LESSONS_TTL: float = 60.0
+
+
+def _load_dynamic_lessons_cached(path) -> list:
+    global _DYN_LESSONS_CACHE, _DYN_LESSONS_TS
+    import time, json
+    now = time.monotonic()
+    if _DYN_LESSONS_CACHE and (now - _DYN_LESSONS_TS) < _DYN_LESSONS_TTL:
+        return _DYN_LESSONS_CACHE
+    try:
+        with open(path, "r", encoding="utf-8") as _f:
+            _DYN_LESSONS_CACHE = json.load(_f)
+        _DYN_LESSONS_TS = now
+    except Exception:
+        pass
+    return _DYN_LESSONS_CACHE
 
 
 class SemanticDINOrchestrator:
@@ -148,14 +182,11 @@ class SemanticDINOrchestrator:
         rule_list = rule_retriever.get_adaptive_rules(profile, max_rules=15)
         lessons = "=== DIALECT RULES ===\n" + "\n".join(f"- {r}" for r in rule_list)
 
-        # Load dynamically synthesized lessons (completely generic, no hardcoding)
+        # Load dynamically synthesized lessons via TTL-cached loader (avoids per-query disk I/O)
         dynamic_lessons_path = MEMORY_DIR / "dynamic_lessons.json"
         if dynamic_lessons_path.exists():
             try:
-                import json
-
-                with open(dynamic_lessons_path, "r", encoding="utf-8") as df:
-                    dyn_data = json.load(df)
+                dyn_data = _load_dynamic_lessons_cached(dynamic_lessons_path)
                 active_rules = [r for r in dyn_data if r.get("status") == "ACTIVE"]
 
                 # Select lessons that share intent keyword / schema overlap
@@ -260,6 +291,33 @@ class SemanticDINOrchestrator:
         logger.info(
             f"Schema density evaluated (~{estimated_tokens} tokens vs threshold {threshold})."
         )
+
+        # Pre-compute hint text here so FeasibilityAgent can start in parallel with ContextPruner.
+        # IMPORTANT: db_description_withhint.txt is intentionally excluded to prevent
+        # ground-truth leakage into the inference pipeline during benchmark runs.
+        _hint_files: list = []
+        _hints_text: str = ""
+        if external_knowledge:
+            _hint_candidate = RESOURCES_DIR / "documents" / external_knowledge
+            if _hint_candidate.exists():
+                _hint_files.append(str(_hint_candidate))
+        for _hf in _hint_files:
+            with contextlib.suppress(Exception):
+                _hints_text += Path(_hf).read_text(encoding="utf-8", errors="replace")[:2000] + "\n"
+
+        # Parallelism: FeasibilityAgent only needs schema text + hints.
+        # Start it as a background future so it runs concurrently with
+        # ContextPruner → SchemaLinker → join probe, saving one serial LLM round-trip.
+        import concurrent.futures as _cf
+        _feasibility_executor = _cf.ThreadPoolExecutor(max_workers=1, thread_name_prefix="feasibility")
+        _feasibility_future = _feasibility_executor.submit(
+            self.feasibility_agent.analyze,
+            user_query,
+            full_schema_str,
+            _hints_text,
+        )
+        _emit("feasibility", "running")
+
         # Invoke ContextPruner
         relevant_tables, table_columns = self.context_pruner.prune(
             user_query,
@@ -393,32 +451,21 @@ class SemanticDINOrchestrator:
         _diagnostic_answer = None  # set when strategy bypasses SQL generation
 
         try:
-            _schema_text_for_diag = self.semantic_engine.format_for_prompt()
-
-            # Collect hint files before feasibility analysis so the agent can
-            # distinguish direct columns from LIKE-proxy workarounds
-            hint_files = []
-            _hints_text = ""
-            if external_knowledge:
-                from agent.app.core.config import RESOURCES_DIR
-
-                hint_candidate = RESOURCES_DIR / "documents" / external_knowledge
-                if hint_candidate.exists():
-                    hint_files.append(str(hint_candidate))
-            # db_description_withhint.txt is excluded from inference â€” it contains
-            # ground-truth hints which must never reach the model during a benchmark run.
-            for _hf in hint_files:
-                with contextlib.suppress(Exception):
-                    _hints_text += (
-                        Path(_hf).read_text(encoding="utf-8", errors="replace")[:2000]
-                        + "\n"
-                    )
+            # Reuse schema string already computed before ContextPruner — avoids redundant call.
+            _schema_text_for_diag = full_schema_str
+            # hint_files pre-computed and FeasibilityAgent already running in background thread.
+            hint_files = _hint_files
 
             # 1. Map question concepts ÃƒÂ¢Ã¢â‚¬Â Ã¢â‚¬â„¢ schema columns, flag any gaps
-            _emit("feasibility", "running")
-            feasibility = self.feasibility_agent.analyze(
-                user_query, _schema_text_for_diag, hints=_hints_text
-            )
+            # Collect FeasibilityAgent result from the background future that ran in parallel
+            # with ContextPruner + SchemaLinker + join probe above.
+            try:
+                feasibility = _feasibility_future.result(timeout=120)
+            except Exception as _fe:
+                logger.debug(f"[DiagnosticLayer][parallel] FeasibilityAgent future error: {_fe}")
+                feasibility = {"has_gaps": False, "concepts": [], "gap_summary": ""}
+            finally:
+                _feasibility_executor.shutdown(wait=False)
             _emit("feasibility", "success")
 
             if feasibility["has_gaps"]:
@@ -874,6 +921,53 @@ class SemanticDINOrchestrator:
                 error_context = f"SCHEMA ERROR: {schema_err}"
                 attempts = 0
 
+            # AST syntax pre-validation — catches parse errors before DB round-trip.
+            # Only fires when schema pre-flight passed (avoids double-faulting on the
+            # same SQL) and no earlier error_context is already queued.
+            if is_valid and not locals().get("error_context"):
+                _ast = _ast_validate(current_sql, dialect=self.executor.dialect)
+                if not _ast.valid:
+                    _record_val(AST_INVALID)
+                    logger.warning(
+                        f"[AST PRE-VALIDATION] Syntax error detected before execution: "
+                        f"{_ast.error_summary}"
+                    )
+                    error_context = (
+                        f"SQL SYNTAX ERROR (caught before execution by AST validator): "
+                        f"{_ast.error_summary}. "
+                        "Fix the SQL syntax so it is valid for the "
+                        f"{self.executor.dialect} dialect."
+                    )
+                    attempts = 0
+                else:
+                    _record_val(AST_VALID)
+                    # Schema-aware identifier cross-check: verify every table and column
+                    # the LLM wrote actually exists in the linked schema.  Catches
+                    # hallucinated identifier names that syntax validation can't see.
+                    _known_tables = {
+                        t.lower().split(".")[-1]
+                        for t in (linked_schema.selected_tables or [])
+                    }
+                    _known_cols: dict = {
+                        tbl.lower(): [c.lower() for c in cols]
+                        for tbl, cols in table_columns_map.items()
+                    }
+                    _id_check = _schema_id_check(_ast, _known_tables, _known_cols or None)
+                    if not _id_check.is_clean:
+                        _record_val(SCHEMA_HALLUCINATION)
+                        logger.warning(
+                            f"[IDENTIFIER CHECK] Hallucinated identifiers: "
+                            f"{_id_check.summary}"
+                        )
+                        error_context = (
+                            f"HALLUCINATED IDENTIFIERS: {_id_check.summary}. "
+                            "All tables and columns in the SQL must exist in the schema. "
+                            "Rewrite the query using only the provided table and column names."
+                        )
+                        attempts = 0
+                    else:
+                        _record_val(IDENTIFIER_CLEAN)
+
         _emit("sql_generation", "success")
         telemetry.end_stage("profiling_and_generation")
         telemetry.start_stage("execution_and_audit")
@@ -905,6 +999,7 @@ class SemanticDINOrchestrator:
 
                 sql_hash = self.stabilizer.get_sql_hash(current_sql)
                 if preflight_error:
+                    _record_val(PREFLIGHT_REJECTION)
                     logger.error(f"[PRE-FLIGHT SQL REJECTION] {preflight_error}")
                     success = False
                     result_msg = preflight_error
@@ -932,6 +1027,13 @@ class SemanticDINOrchestrator:
                     result_msg = error_context
                 else:
                     self.stabilizer.retry_history.add(sql_hash)
+                    # Explain-plan check (SQLite only): surface full-scan warnings
+                    # before execution so they appear in the analytics dashboard.
+                    _ep = self.executor.explain_validate(current_sql)
+                    if _ep and _ep.get("warnings"):
+                        for _w in _ep["warnings"]:
+                            _record_val(EXPLAIN_WARNING)
+                            logger.debug(f"[EXPLAIN PLAN WARNING] {_w}")
                     _emit("execution", "running")
                     success, result_msg, row_count = self.executor.execute(
                         current_sql, instance_id
@@ -1040,6 +1142,50 @@ class SemanticDINOrchestrator:
 
                                 column_profiles[col] = col_info
 
+                        # IQR-based outlier detection on numeric columns.
+                        # Flags values beyond 3×IQR from the quartile fences — extreme
+                        # outliers (not normal spread) that often indicate a wrong
+                        # aggregation (SUM where AVG was intended, wrong GROUP BY, etc.).
+                        if not df.empty:
+                            for _col in df.select_dtypes(include=["number"]).columns:
+                                _s = df[_col].dropna()
+                                if len(_s) < 4:
+                                    continue
+                                _q1, _q3 = float(_s.quantile(0.25)), float(_s.quantile(0.75))
+                                _iqr = _q3 - _q1
+                                if _iqr == 0:
+                                    continue
+                                _lo, _hi = _q1 - 3 * _iqr, _q3 + 3 * _iqr
+                                _n_out = int(((_s < _lo) | (_s > _hi)).sum())
+                                if _n_out > 0:
+                                    data_iq_alerts.append(
+                                        f"ALERT: Column '{_col}' has {_n_out} extreme "
+                                        f"outlier(s) outside [{_lo:.4g}, {_hi:.4g}] "
+                                        f"(3×IQR fence). Verify aggregation — may "
+                                        "indicate SUM/AVG/COUNT used incorrectly."
+                                    )
+
+                        # Null-rate quality alert fed directly into DataIQ context so
+                        # the result validator can reason about result completeness.
+                        _quality_report = _audit_quality(
+                            df.to_dict(orient="records") if not df.empty else []
+                        )
+                        if _quality_report.null_rate > 0.30:
+                            data_iq_alerts.append(
+                                f"ALERT: High null rate — "
+                                f"{_quality_report.null_rate:.1%} of all result cells "
+                                f"are NULL across {_quality_report.column_count} "
+                                f"column(s). Check JOIN conditions: a LEFT JOIN may be "
+                                "producing unmatched rows or a SELECT targets the wrong table."
+                            )
+                        if _quality_report.duplicate_rate > 0.50:
+                            data_iq_alerts.append(
+                                f"ALERT: High duplicate row rate — "
+                                f"{_quality_report.duplicate_rate:.1%} of rows are "
+                                "exact duplicates. The query likely needs a GROUP BY or "
+                                "DISTINCT, or has a fan-out JOIN without aggregation."
+                            )
+
                         stats = {
                             "total_rows": total_rows,
                             "total_columns": len(df.columns),  # type: ignore
@@ -1050,6 +1196,8 @@ class SemanticDINOrchestrator:
                             else 0,  # type: ignore
                             "placeholder_counts": placeholder_counts,  # type: ignore
                             "data_iq_alerts": data_iq_alerts,
+                            "null_rate": _quality_report.null_rate,
+                            "quality_score": _quality_report.quality_score,
                         }
                     except Exception as e:
                         logger.warning(f"Failed to generate stats for Data IQ: {e}")
@@ -1156,6 +1304,10 @@ class SemanticDINOrchestrator:
                     )
                     _emit("validation", "success")
                     _emit("complete", "success")
+                    record_query_latency(total_time)
+                    record_query_event(user_query, current_sql, total_time, success=True)
+                    _record_quality(csv_path)
+                    _record_determinism(user_query, current_sql)
                     return current_sql
                 else:
                     error_context = f"DATA QUALITY FAIL: {validation.feedback}"
@@ -1390,6 +1542,9 @@ class SemanticDINOrchestrator:
                     row_count=fb_row_count,
                     latency=f"{total_time:.2f}s (FALLBACK)",
                 )
+                record_query_latency(total_time)
+                record_query_event(user_query, best_sql, total_time, success=True)
+                _record_determinism(user_query, best_sql)
                 _save_telemetry()
                 return best_sql
 
@@ -1404,6 +1559,11 @@ class SemanticDINOrchestrator:
             else "Max retries exceeded",
             latency=f"{total_time:.2f}s",
         )
+        record_query_latency(total_time)
+        _err = error_context if "error_context" in locals() else "Max retries exceeded"
+        record_query_event(user_query, current_sql, total_time, success=False, error=_err)
+        _record_failure(user_query, current_sql, _err, stage="execute_query")
+        _record_determinism(user_query, current_sql)
         _save_telemetry()
         return current_sql
 

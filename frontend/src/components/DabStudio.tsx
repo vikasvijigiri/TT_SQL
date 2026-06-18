@@ -41,7 +41,9 @@ import {
   LogOut,
   ChevronDown,
   Info,
-  User
+  User,
+  Sun,
+  Moon
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import NQuireLogo from './NQuireLogo';
@@ -525,7 +527,7 @@ const parseLiveStepsFromMd = (content) => {
   return { currentPhase, steps: cleanSteps };
 };
 
-const DabStudio = ({ onBack, onHome, autoOpenDetails, clearAutoOpenDetails, user, onLogout }) => {
+const DabStudio = ({ onBack, onHome, autoOpenDetails, clearAutoOpenDetails, user, onLogout, theme, setTheme }) => {
   const [selectedModel, setSelectedModel] = useState(() => localStorage.getItem('dab_settings_model') || 'bedrock/openai.gpt-oss-safeguard-120b');
   const [temperature, setTemperature] = useState(() => Number(localStorage.getItem('dab_settings_temp') || '0.0'));
   const [workers, setWorkers] = useState(() => Number(localStorage.getItem('dab_settings_workers') || '3'));
@@ -2032,6 +2034,14 @@ const DabStudio = ({ onBack, onHome, autoOpenDetails, clearAutoOpenDetails, user
               title="Refresh Current Dashboard"
             >
               <RefreshCw className={`w-4 h-4 ${isRefreshing ? 'animate-spin' : ''}`} />
+            </button>
+
+            <button
+              onClick={() => setTheme(theme === 'light' ? 'dark' : 'light')}
+              className="p-1.5 rounded-lg bg-[#0a0914] border border-[#1e1932] hover:bg-[#131024] text-slate-400 hover:text-white transition-all shadow-sm flex items-center justify-center"
+              title={`Switch to ${theme === 'light' ? 'dark' : 'light'} theme`}
+            >
+              {theme === 'light' ? <Moon className="w-4 h-4 text-violet-400" /> : <Sun className="w-4 h-4 text-amber-400" />}
             </button>
 
             {currentView === 'dashboard' && dateFilter !== 'all' && (

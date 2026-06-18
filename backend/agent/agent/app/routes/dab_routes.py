@@ -1,6 +1,7 @@
 from agent.app.core.config import MEMORY_DIR
 import asyncio
 from agent.app.core.config import RESULTS_DIR
+from agent.app.core.learning.lesson_rollback import LessonRollback
 from fastapi import APIRouter, HTTPException, BackgroundTasks, Request
 from fastapi.responses import StreamingResponse
 from pydantic import BaseModel
@@ -2058,6 +2059,13 @@ async def trigger_improvement_run(background_tasks: BackgroundTasks):
     """Trigger a self-improvement run in the background (respects daily cap)."""
     from agent.app.core.config import DAB_REPO as DAB_REPO_PATH
 
+    # Snapshot current lessons before mutating them so rollback is always available
+    rollback = LessonRollback(
+        lessons_path=MEMORY_DIR / "dynamic_lessons.json",
+        snapshot_dir=MEMORY_DIR / "lessons_snapshots",
+    )
+    snapshot_name = rollback.save_snapshot()
+
     def _run():
         try:
             from agent.app.core.rules.self_improving_loop import SelfImprovingLoop
@@ -2071,7 +2079,50 @@ async def trigger_improvement_run(background_tasks: BackgroundTasks):
 
     background_tasks.add_task(_run)
     return {
-        "message": "Self-improvement run started in background. Check /api/improvement/status for results."
+        "message": "Self-improvement run started in background. Check /api/improvement/status for results.",
+        "snapshot": snapshot_name,
+    }
+
+
+@router.get("/api/improvement/snapshots")
+def list_lesson_snapshots():
+    """List all available lesson snapshots that can be used for rollback."""
+    rollback = LessonRollback(
+        lessons_path=MEMORY_DIR / "dynamic_lessons.json",
+        snapshot_dir=MEMORY_DIR / "lessons_snapshots",
+    )
+    snapshots = rollback.list_snapshots()
+    return {
+        "count": len(snapshots),
+        "snapshots": snapshots,
+        "rollback_endpoint": "POST /api/improvement/rollback?version=YYYYMMDD_HHMMSS",
+    }
+
+
+@router.post("/api/improvement/rollback")
+def rollback_lessons(version: str):
+    """
+    Atomically restore dynamic_lessons.json from the specified snapshot version.
+
+    ``version`` is the snapshot stem returned by GET /api/improvement/snapshots
+    (format: ``YYYYMMDD_HHMMSS``).  The live lessons file is replaced atomically
+    using write-then-rename so in-flight readers are never disrupted.
+    """
+    rollback = LessonRollback(
+        lessons_path=MEMORY_DIR / "dynamic_lessons.json",
+        snapshot_dir=MEMORY_DIR / "lessons_snapshots",
+    )
+    success = rollback.rollback_to(version)
+    if not success:
+        raise HTTPException(
+            status_code=404,
+            detail=f"Snapshot '{version}' not found. "
+            "Use GET /api/improvement/snapshots to list available versions.",
+        )
+    return {
+        "success": True,
+        "rolled_back_to": version,
+        "message": "Lessons restored. The pipeline will use the rolled-back rules immediately.",
     }
 
 

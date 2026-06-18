@@ -12,6 +12,7 @@ Usage:
 
 import sys
 import json
+import asyncio
 import argparse
 from pathlib import Path
 from typing import List, Dict, Any, Optional
@@ -43,6 +44,54 @@ def print_progress_bar(
     print(f"\r{prefix} [{bar}] {current}/{total} ({pct:.0f}%)", end="", flush=True)
 
 
+async def _run_query_async(
+    loop: asyncio.AbstractEventLoop,
+    thread_pool: ThreadPoolExecutor,
+    q: Dict[str, Any],
+    llm_client: Any,
+    r: int,
+) -> Dict[str, Any]:
+    """Wrap the sync run_dab_query so it's awaitable without blocking the event loop.
+
+    The LLM calls inside are I/O-bound network requests; Python's GIL is released
+    during socket waits, so multiple threads make real parallel progress.
+    """
+    try:
+        return await loop.run_in_executor(thread_pool, run_dab_query, q, llm_client, r)
+    except Exception as exc:
+        return {
+            "dataset": q["dataset"],
+            "query_id": q["query_id"],
+            "run_number": r,
+            "status": "error",
+            "passed": False,
+            "error": str(exc),
+        }
+
+
+async def run_all_concurrent(
+    work: List[tuple],
+    llm_client: Any,
+    max_concurrent: int = 0,
+) -> List[Dict[str, Any]]:
+    """Run all work items concurrently using asyncio + thread pool.
+
+    max_concurrent=0 means one thread per work item (fully parallel).
+    Uses asyncio.gather so the event loop interleaves I/O waits efficiently.
+    """
+    n = max_concurrent if max_concurrent > 0 else len(work)
+    loop = asyncio.get_event_loop()
+    thread_pool = ThreadPoolExecutor(max_workers=n, thread_name_prefix="dab_async")
+    print(f"\n[ASYNC] Running {len(work)} queries concurrently (max_workers={n})")
+    print("-" * 60)
+    try:
+        tasks = [_run_query_async(loop, thread_pool, q, llm_client, r) for q, r in work]
+        results = await asyncio.gather(*tasks)
+    finally:
+        thread_pool.shutdown(wait=True)
+    return list(results)
+
+
 def run_all(
     queries: List[Dict[str, Any]],
     workers: int = 1,
@@ -52,6 +101,7 @@ def run_all(
     force_rerun: bool = False,
     num_runs: int = 1,
     enqueue_only: bool = False,
+    async_concurrent: bool = False,
 ) -> List[Dict[str, Any]]:
     """Run all (or filtered) queries and return results.
 
@@ -126,6 +176,22 @@ def run_all(
 
     llm_client = LLMClient()
 
+    if async_concurrent:
+        # workers==1 is the default "unset" value — treat as uncapped (0) so all queries
+        # truly run in parallel threads.  --workers N > 1 explicitly caps concurrency.
+        _max_conc = workers if workers > 1 else 0
+        results = asyncio.run(run_all_concurrent(work, llm_client, max_concurrent=_max_conc))
+        for result in results:
+            if isinstance(result, dict):
+                if result["status"] == "passed":
+                    print(f"\n  [PASS] {result.get('reason', '')[:80]}")
+                elif result["status"] == "error":
+                    print(f"\n  [ERROR] {result.get('error', '')[:80]}")
+                else:
+                    print(f"\n  [FAIL] {result.get('reason', '')[:80]}")
+        print_summary(results, queries)
+        return results
+
     if workers == 1:
         for i, (q, r) in enumerate(work, 1):
             label = f"run {r}" if num_runs > 1 else ""
@@ -172,7 +238,7 @@ def run_all(
 
 
 def print_summary(
-    results: List[Dict[str, Any]], all_queries: List[Dict[str, Any]]
+    _results: List[Dict[str, Any]], all_queries: List[Dict[str, Any]]
 ) -> None:
     """Print benchmark summary matching Claude's pass@1 / pass@K format."""
     accuracy = compute_accuracy(all_queries)
@@ -253,6 +319,13 @@ def main():
         action="store_true",
         help="Run the self-improving loop (extract rules from failures, activate, re-run, compare)",
     )
+    parser.add_argument(
+        "--async",
+        dest="async_concurrent",
+        action="store_true",
+        help="Run all queries concurrently using asyncio + thread pool (non-blocking I/O). "
+             "Faster than --workers N for I/O-bound LLM calls. Use --workers to cap parallelism.",
+    )
     args = parser.parse_args()
 
     # Load query index
@@ -322,6 +395,7 @@ def main():
         force_rerun=args.force,
         num_runs=args.runs,
         enqueue_only=args.enqueue,
+        async_concurrent=args.async_concurrent,
     )
 
     if args.enqueue:
