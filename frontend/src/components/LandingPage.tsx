@@ -113,6 +113,159 @@ const TESTIMONIALS = [
   },
 ];
 
+const COMPARISON_DATA = [
+  {
+    feature: "Pass@1 Accuracy (DAB)",
+    nquire: { text: "47.0%", status: "success" },
+    databao: { text: "38.5%", status: "warning" },
+    dinsql: { text: "35.2%", status: "warning" },
+    macsql: { text: "39.0%", status: "warning" }
+  },
+  {
+    feature: "Pass@5 Accuracy (DAB)",
+    nquire: { text: "70.4%", status: "success" },
+    databao: { text: "48.0%", status: "warning" },
+    dinsql: { text: "40.0%", status: "warning" },
+    macsql: { text: "52.0%", status: "warning" }
+  },
+  {
+    feature: "Self-Healing Retry",
+    nquire: { text: "4-Stage Closed-Loop", status: "success" },
+    databao: { text: "None (Fails on Error)", status: "error" },
+    dinsql: { text: "1-Stage Syntax Only", status: "warning" },
+    macsql: { text: "2-Stage Retry", status: "warning" }
+  },
+  {
+    feature: "Token Efficiency",
+    nquire: { text: "80% Context Pruned", status: "success" },
+    databao: { text: "0% (Raw Catalog)", status: "error" },
+    dinsql: { text: "20% Pruned", status: "warning" },
+    macsql: { text: "0% (Agent Overhead)", status: "error" }
+  },
+  {
+    feature: "Entity Grounding",
+    nquire: { text: "FQN Precision Grounding", status: "success" },
+    databao: { text: "Naive String Match", status: "warning" },
+    dinsql: { text: "Rule-based Grammar", status: "warning" },
+    macsql: { text: "Multi-agent Voting", status: "warning" }
+  },
+  {
+    feature: "Dialect Adaptor",
+    nquire: { text: "6 Dialects (YAML Engine)", status: "success" },
+    databao: { text: "SQLite/DuckDB only", status: "warning" },
+    dinsql: { text: "Single Dialect", status: "error" },
+    macsql: { text: "Dual Dialect", status: "warning" }
+  }
+];
+
+const ComparisonMatrix = () => {
+  return (
+    <section className="relative z-10 max-w-5xl mx-auto px-6 mb-20 text-center">
+      <motion.div
+        initial={{ opacity: 0, y: 20 }}
+        whileInView={{ opacity: 1, y: 0 }}
+        viewport={{ once: true }}
+        transition={{ duration: 0.5 }}
+        className="mb-10"
+      >
+        <span
+          className="text-[10px] font-mono font-bold px-2.5 py-1 rounded-full uppercase tracking-wider mb-4 inline-block"
+          style={{ background: 'rgba(61,184,176,0.12)', color: '#3db8b0', border: '1px solid rgba(61,184,176,0.22)' }}
+        >
+          Competitive Advantage
+        </span>
+        <h2 className="text-3xl font-extrabold tracking-tight mb-2" style={{ color: C.text1 }}>
+          How NQuire Compares to the Market
+        </h2>
+        <p className="text-xs max-w-xl mx-auto text-slate-400 leading-relaxed font-sans">
+          NQuire's Semantic DIN-SQL architecture outclasses general purpose SQL agents and basic generators across all execution matrices.
+        </p>
+      </motion.div>
+
+      <motion.div
+        initial={{ opacity: 0, scale: 0.98 }}
+        whileInView={{ opacity: 1, scale: 1 }}
+        viewport={{ once: true }}
+        transition={{ duration: 0.55, ease: [0.25, 1, 0.5, 1] }}
+        className="overflow-hidden rounded-2xl border text-left"
+        style={{ background: 'rgba(26,38,54,0.60)', borderColor: 'rgba(120,160,200,0.12)', backdropFilter: 'blur(10px)' }}
+      >
+        <div className="overflow-x-auto">
+          <table className="w-full border-collapse text-xs">
+            <thead>
+              <tr className="border-b" style={{ borderColor: 'rgba(120,160,200,0.08)', background: 'rgba(20,30,45,0.40)' }}>
+                <th className="p-4 font-mono font-bold uppercase tracking-wider text-slate-400 text-left">Capabilities</th>
+                <th className="p-4 font-mono font-black uppercase tracking-wider text-center" style={{ color: C.sky }}>NQuire (Ours)</th>
+                <th className="p-4 font-mono font-bold uppercase tracking-wider text-center text-slate-500">Databao</th>
+                <th className="p-4 font-mono font-bold uppercase tracking-wider text-center text-slate-500">DIN-SQL (Std)</th>
+                <th className="p-4 font-mono font-bold uppercase tracking-wider text-center text-slate-500">MAC-SQL</th>
+              </tr>
+            </thead>
+            <tbody className="divide-y divide-[rgba(120,160,200,0.06)] font-mono text-[11px]">
+              {COMPARISON_DATA.map((row, idx) => (
+                <tr key={idx} className="hover:bg-white/[0.02] transition-colors">
+                  <td className="p-4 font-sans font-bold text-slate-200 text-left">{row.feature}</td>
+                  
+                  {/* NQuire */}
+                  <td className="p-4 text-center font-bold relative" style={{ background: 'rgba(95,168,216,0.03)' }}>
+                    <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-emerald-400 bg-emerald-500/10 border border-emerald-500/20 font-black">
+                      <CheckCircle2 className="w-3.5 h-3.5 shrink-0" />
+                      {row.nquire.text}
+                    </span>
+                  </td>
+
+                  {/* Databao */}
+                  <td className="p-4 text-center text-slate-300">
+                    <span className={`inline-flex items-center gap-1.5 px-2 py-0.5 rounded-full ${
+                      row.databao.status === 'error' ? 'text-rose-400 bg-rose-500/10 border border-rose-500/10' : 'text-slate-400 bg-slate-800/40'
+                    }`}>
+                      {row.databao.status === 'error' ? (
+                        <AlertCircle className="w-3 h-3 shrink-0" />
+                      ) : (
+                        <span className="w-1 h-1 rounded-full bg-slate-400 shrink-0" />
+                      )}
+                      {row.databao.text}
+                    </span>
+                  </td>
+
+                  {/* DIN-SQL */}
+                  <td className="p-4 text-center text-slate-400">
+                    <span className={`inline-flex items-center gap-1.5 px-2 py-0.5 rounded-full ${
+                      row.dinsql.status === 'error' ? 'text-rose-400 bg-rose-500/10 border border-rose-500/10' : 'text-slate-400 bg-slate-800/40'
+                    }`}>
+                      {row.dinsql.status === 'error' ? (
+                        <AlertCircle className="w-3 h-3 shrink-0" />
+                      ) : (
+                        <span className="w-1 h-1 rounded-full bg-slate-400 shrink-0" />
+                      )}
+                      {row.dinsql.text}
+                    </span>
+                  </td>
+
+                  {/* MAC-SQL */}
+                  <td className="p-4 text-center text-slate-400">
+                    <span className={`inline-flex items-center gap-1.5 px-2 py-0.5 rounded-full ${
+                      row.macsql.status === 'error' ? 'text-rose-400 bg-rose-500/10 border border-rose-500/10' : 'text-slate-400 bg-slate-800/40'
+                    }`}>
+                      {row.macsql.status === 'error' ? (
+                        <AlertCircle className="w-3 h-3 shrink-0" />
+                      ) : (
+                        <span className="w-1 h-1 rounded-full bg-slate-400 shrink-0" />
+                      )}
+                      {row.macsql.text}
+                    </span>
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      </motion.div>
+    </section>
+  );
+};
+
+
 /* ─── Testimonials strip ────────────────────────────────────────────────────── */
 const TestimonialsStrip = () => (
   <section className="relative z-10 max-w-5xl mx-auto px-6 mb-14">
@@ -1598,6 +1751,9 @@ const LandingPage = ({ onEnter, user, onLogin, onLogout }) => {
 
       {/* ── Testimonials ── */}
       <TestimonialsStrip />
+
+      {/* ── Agentic Capability Comparison Matrix ── */}
+      <ComparisonMatrix />
 
       {/* ── Agent Architecture Flow ── */}
       <section id="architecture" className="relative z-10 max-w-5xl mx-auto px-6 mb-24 scroll-mt-24 text-center">

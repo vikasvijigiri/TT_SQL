@@ -472,6 +472,261 @@ def get_dab_submissions():
     return []
 
 
+def _get_query_difficulty(q: dict) -> str:
+    question = q.get("question", "").lower()
+    needs_docker = q.get("needs_docker", False)
+    
+    if needs_docker:
+        return "tough"
+    
+    keywords_tough = ["decade", "highest average", "distinct", "having", "ratio", "percentage", "failed", "correlated", "subquery", "subqueries"]
+    keywords_medium = ["average", "count", "maximum", "minimum", "total", "join", "filter", "group", "sort", "order by"]
+    
+    if any(k in question for k in keywords_tough) or len(question) > 180:
+        return "tough"
+    elif any(k in question for k in keywords_medium) or len(question) > 100:
+        return "medium"
+    else:
+        return "easy"
+
+
+@router.get("/api/dab/agent_analytics")
+def get_dab_agent_analytics(request: Request, date: str = "all", run_id: Optional[str] = None):
+    """Get DAB Agent Analytics including tool scores, difficulty stats, and plots data."""
+    username = _get_username_from_request(request)
+    run_id = _resolve_live_run_id(run_id, username)
+    from agent.app.db.database import SessionLocal
+    from agent.app.db.models import Evaluation
+    from agent.app.core.config import get_user_dab_results_dir
+    import re
+
+    db = SessionLocal()
+    try:
+        # 1. Fetch matching evaluations
+        query = db.query(Evaluation).filter(Evaluation.username == username)
+        if run_id is not None:
+            if run_id == "all":
+                pass
+            elif run_id == "live":
+                query = query.filter((Evaluation.run_id == "live") | (Evaluation.run_id == None))
+            else:
+                query = query.filter(Evaluation.run_id == run_id)
+        elif date != "all":
+            from datetime import datetime, timedelta
+            start_dt = datetime.strptime(date, "%Y-%m-%d")
+            end_dt = start_dt + timedelta(days=1)
+            query = query.filter(
+                Evaluation.timestamp >= start_dt,
+                Evaluation.timestamp < end_dt
+            )
+        
+        evals = query.all()
+        
+        # Load benchmark queries to map question text and properties
+        queries = _get_dab_queries()
+        q_map = {(q["dataset"].lower(), str(q["query_id"])): q for q in queries}
+        
+        # User results dir
+        user_dab_dir = get_user_dab_results_dir(username)
+        if run_id and run_id != "live" and run_id != "all":
+            target_results_dir = user_dab_dir / "_archive" / run_id
+            legacy_results_dir = DAB_RESULTS_DIR / "_archive" / run_id
+        else:
+            target_results_dir = user_dab_dir
+            legacy_results_dir = DAB_RESULTS_DIR
+            
+        queries_analytics = []
+        
+        # Aggregate statistics
+        diff_stats = {
+            "easy": {"total": 0, "passed": 0, "failed": 0},
+            "medium": {"total": 0, "passed": 0, "failed": 0},
+            "tough": {"total": 0, "passed": 0, "failed": 0}
+        }
+        
+        agent_scores_sum = {
+            "schema_linker": 0,
+            "sql_generator": 0,
+            "critic": 0,
+            "self_corrector": 0,
+            "data_iq": 0
+        }
+        agent_counts = {
+            "schema_linker": 0,
+            "sql_generator": 0,
+            "critic": 0,
+            "self_corrector": 0,
+            "data_iq": 0
+        }
+        
+        for ev in evals:
+            dataset_lower = ev.dataset.lower()
+            q_info = q_map.get((dataset_lower, str(ev.query_id)))
+            if not q_info:
+                continue
+                
+            difficulty = _get_query_difficulty(q_info)
+            passed = bool(ev.passed)
+            
+            # Update difficulty totals
+            diff_stats[difficulty]["total"] += 1
+            if passed:
+                diff_stats[difficulty]["passed"] += 1
+            else:
+                diff_stats[difficulty]["failed"] += 1
+                
+            # Log parsing for agent scores
+            run_suffix = ev.run_suffix or ""
+            md_file = target_results_dir / ev.dataset / f"query{ev.query_id}{run_suffix}.md"
+            if not md_file.exists():
+                md_file = legacy_results_dir / ev.dataset / f"query{ev.query_id}{run_suffix}.md"
+                
+            content = ""
+            if md_file.exists():
+                try:
+                    content = md_file.read_text(encoding="utf-8", errors="replace")
+                except Exception:
+                    pass
+            
+            # Default scores
+            score_linker = 100
+            score_gen = 100
+            score_critic = 100
+            score_corrector = 100
+            score_data_iq = 100
+            
+            linker_restores = 0
+            linker_valuemaps = 0
+            corrections_count = 0
+            critic_rounds = 0
+            data_iq_anomalies = 0
+            
+            if content:
+                # 1. Schema Linker
+                # Count auto-restored join keys
+                linker_restores = len(re.findall(r"JoinKeyGuard.*restored|JoinKeyGuard.*Auto-restored", content, re.IGNORECASE))
+                linker_valuemaps = len(re.findall(r"ValueMapGuard.*added|ValueMapGuard.*Auto-added", content, re.IGNORECASE))
+                score_linker = max(0, 100 - (15 * linker_restores) - (15 * linker_valuemaps))
+                
+                # 2. SQL Generator
+                # Count self correction attempts
+                corrections_count = len(re.findall(r"Executing Self-Correction Module|Self-Corrector: Repair loop #", content, re.IGNORECASE))
+                score_gen = max(0, 100 - (15 * corrections_count) - (30 if not passed else 0))
+                
+                # 3. Critic
+                critic_rounds = len(re.findall(r"Executing adversarial Planner-Critic|Agent Execution: CRITIC", content, re.IGNORECASE))
+                score_critic = max(0, 100 - (15 * critic_rounds))
+                
+                # 4. Self Corrector (only counts if it actually executed)
+                if corrections_count > 0:
+                    if passed:
+                        score_corrector = max(0, 100 - (10 * corrections_count))
+                    else:
+                        score_corrector = 20
+                else:
+                    score_corrector = 100 # No self-correction needed, so perfect performance
+                    
+                # 5. Data IQ
+                data_iq_anomalies = len(re.findall(r"anomaly|anomalies|NULL density|NULL-density|Data IQ Auditor", content, re.IGNORECASE))
+                score_data_iq = max(0, 100 - (20 * data_iq_anomalies))
+            else:
+                # If no log file is written yet, or if it failed at start
+                if not passed:
+                    score_linker = 50
+                    score_gen = 50
+                    score_critic = 50
+                    score_corrector = 50
+                    score_data_iq = 50
+            
+            # Aggregate agent scores
+            agent_scores_sum["schema_linker"] += score_linker
+            agent_counts["schema_linker"] += 1
+            
+            agent_scores_sum["sql_generator"] += score_gen
+            agent_counts["sql_generator"] += 1
+            
+            agent_scores_sum["critic"] += score_critic
+            agent_counts["critic"] += 1
+            
+            # Only average Self Corrector if it actually was triggered, or count all but let it be high
+            agent_scores_sum["self_corrector"] += score_corrector
+            agent_counts["self_corrector"] += 1
+            
+            agent_scores_sum["data_iq"] += score_data_iq
+            agent_counts["data_iq"] += 1
+            
+            queries_analytics.append({
+                "id": ev.instance_id + (f"_run{ev.run_suffix}" if ev.run_suffix else ""),
+                "dataset": ev.dataset,
+                "query_id": ev.query_id,
+                "question": q_info["question"],
+                "passed": passed,
+                "difficulty": difficulty,
+                "scores": {
+                    "schema_linker": score_linker,
+                    "sql_generator": score_gen,
+                    "critic": score_critic,
+                    "self_corrector": score_corrector,
+                    "data_iq": score_data_iq
+                },
+                "details": {
+                    "join_key_restores": linker_restores,
+                    "value_map_additions": linker_valuemaps,
+                    "corrections_count": corrections_count,
+                    "critic_rounds": critic_rounds,
+                    "data_iq_anomalies": data_iq_anomalies
+                }
+            })
+            
+        # Calculate final averages
+        avg_scores = {}
+        for k, total in agent_scores_sum.items():
+            count = agent_counts[k]
+            avg_scores[k] = round(total / count, 1) if count > 0 else 100.0
+            
+        # Format difficulty stats for response
+        formatted_diff = {}
+        for key, stats in diff_stats.items():
+            total = stats["total"]
+            failed = stats["failed"]
+            pct_failed = round((failed / total) * 100, 1) if total > 0 else 0.0
+            formatted_diff[key] = {
+                "total": total,
+                "passed": stats["passed"],
+                "failed": failed,
+                "pct_failed": pct_failed
+            }
+            
+        return {
+            "avg_scores": avg_scores,
+            "difficulty_metrics": formatted_diff,
+            "queries": queries_analytics,
+            "total_evaluated": len(queries_analytics)
+        }
+        
+    except Exception as e:
+        logger.error(f"Failed to compile agent analytics: {e}")
+        return {
+            "error": str(e),
+            "avg_scores": {
+                "schema_linker": 100,
+                "sql_generator": 100,
+                "critic": 100,
+                "self_corrector": 100,
+                "data_iq": 100
+            },
+            "difficulty_metrics": {
+                "easy": {"total": 0, "passed": 0, "failed": 0, "pct_failed": 0.0},
+                "medium": {"total": 0, "passed": 0, "failed": 0, "pct_failed": 0.0},
+                "tough": {"total": 0, "passed": 0, "failed": 0, "pct_failed": 0.0}
+            },
+            "queries": [],
+            "total_evaluated": 0
+        }
+    finally:
+        db.close()
+
+
 @router.get("/api/dab/results/{dataset}/{query_id}")
 def get_dab_result(dataset: str, query_id: str, request: Request, date: str = "all", run_id: Optional[str] = None):
     """Get full result details for a specific DAB query."""
@@ -861,23 +1116,28 @@ async def stream_dab_live_log(dataset: str, query_id: str, request: Request):
         last_steps_count = -1
 
         while True:
-            # Honour client disconnect ÃƒÂ¢Ã¢â€šÂ¬Ã¢â‚¬Â avoids leaking coroutines
+            # Honour client disconnect — avoids leaking coroutines
             if await request.is_disconnected():
                 break
 
             is_running = qkey in DAB_RUNNING_TASKS
-            md_file = _resolve_md()
+            md_file = await asyncio.to_thread(_resolve_md)
 
             if md_file:
-                size = md_file.stat().st_size
-                if size != last_size:
-                    last_size = size
+                def _get_file_info():
                     try:
-                        content = md_file.read_text(encoding="utf-8", errors="replace")
+                        size = md_file.stat().st_size
+                        if size != last_size:
+                            return size, md_file.read_text(encoding="utf-8", errors="replace")
                     except Exception:
-                        content = ""
+                        pass
+                    return last_size, None
+
+                size, content = await asyncio.to_thread(_get_file_info)
+                if content is not None:
+                    last_size = size
                     parsed = _parse_steps(content)
-                    # Only push when the step list actually grew ÃƒÂ¢Ã¢â€šÂ¬Ã¢â‚¬Â no duplicate frames
+                    # Only push when the step list actually grew — no duplicate frames
                     if len(parsed["live_steps"]) != last_steps_count:
                         last_steps_count = len(parsed["live_steps"])
                         payload = json.dumps({**parsed, "is_running": is_running})
@@ -1151,10 +1411,11 @@ def rebuild_run_database_records(db, run_id: str, username: str):
 
 @router.get("/api/dab/runs")
 def get_dab_runs(request: Request):
-    """Return the list of last 5 runs for the requesting user, with auto-rebuild of SQLite records."""
+    """Return the list of last 5 runs for the requesting user. Rebuilds are done in background."""
     from agent.app.db.database import SessionLocal
     from agent.app.db.models import Evaluation
     from agent.app.core.config import get_user_dab_results_dir
+    import threading
     
     username = _get_username_from_request(request)
     
@@ -1178,17 +1439,30 @@ def get_dab_runs(request: Request):
     
     db = SessionLocal()
     try:
+        # Identify runs needing rebuild without doing the rebuild synchronously
+        runs_needing_rebuild = []
         for run_id in last_5_runs:
-            # Only rebuild if this user has NO records for this run
             count = db.query(Evaluation).filter(
                 Evaluation.run_id == run_id,
                 Evaluation.username == username
             ).count()
             if count == 0:
-                # If a different user's records exist, don't rebuild
                 any_count = db.query(Evaluation).filter(Evaluation.run_id == run_id).count()
                 if any_count == 0:
-                    rebuild_run_database_records(db, run_id, username)
+                    runs_needing_rebuild.append(run_id)
+                
+        # Kick off rebuilds in background so they don't block this response
+        if runs_needing_rebuild:
+            def _bg_rebuild():
+                _db = SessionLocal()
+                try:
+                    for rid in runs_needing_rebuild:
+                        rebuild_run_database_records(_db, rid, username)
+                except Exception as e:
+                    logger.error(f"Background rebuild failed: {e}")
+                finally:
+                    _db.close()
+            threading.Thread(target=_bg_rebuild, daemon=True).start()
                 
         import agent.app.dab.dab_evaluator as de
         active_run_id = de.DAB_RUN_ID
@@ -1784,7 +2058,7 @@ _langsmith_eval_running = False
 
 
 @router.get("/api/langsmith/status")
-async def langsmith_status():
+def langsmith_status():
     """
     Return LangSmith connection status, project info, and dataset stats.
     Also shows per-evaluator aggregate scores from stored DAB eval results.
@@ -1913,7 +2187,7 @@ async def run_langsmith_eval(background_tasks: BackgroundTasks):
 
 
 @router.get("/api/langsmith/scores")
-async def get_langsmith_scores():
+def get_langsmith_scores():
     """
     Return per-query evaluator scores from stored DAB eval JSON records.
     Used by the UI to show the evaluator scorecard.

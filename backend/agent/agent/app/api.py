@@ -1610,7 +1610,7 @@ async def stream_live_execution(db_name: str, instance_id: str, request: Request
         while True:
             if await request.is_disconnected():
                 break
-            state = _parse_state()
+            state = await asyncio.to_thread(_parse_state)
             if len(state["steps"]) != last_steps_count:
                 last_steps_count = len(state["steps"])
                 yield f"data: {json.dumps(state)}\n\n"

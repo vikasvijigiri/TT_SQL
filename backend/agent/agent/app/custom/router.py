@@ -312,16 +312,23 @@ async def stream_query(body: StreamRequest) -> StreamingResponse:
         total_count = 0
 
         csv_path = Path(RESULTS_DIR) / conn_cfg.db_name / f"{instance_id}.csv"
-        if csv_path.exists():
+
+        def _read_csv():
+            if not csv_path.exists():
+                return [], [], 0
             try:
                 df = pd.read_csv(csv_path)
-                columns = df.columns.tolist()
-                total_count = len(df)
-                results_df = df.head(200)
+                cols = df.columns.tolist()
+                cnt = len(df)
+                res_df = df.head(200)
                 # Convert NaN Ã¢â€ â€™ None for JSON serialisation
-                results = json.loads(results_df.to_json(orient="records"))
+                res = json.loads(res_df.to_json(orient="records"))
+                return res, cols, cnt
             except Exception as e:
                 logger.warning(f"[CustomRouter] Could not read results CSV: {e}")
+                return [], [], 0
+
+        results, columns, total_count = await asyncio.to_thread(_read_csv)
 
         yield _sse(
             "result",

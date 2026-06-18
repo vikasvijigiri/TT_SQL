@@ -1,6 +1,7 @@
 import { MetricsGrid } from './common/MetricsGrid';
 import React, { useState, useEffect, useRef } from 'react';
 import axios from 'axios';
+import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer, Cell } from 'recharts';
 import {
   BarChart3,
   Database,
@@ -545,16 +546,19 @@ const DabStudio = ({ onBack, onHome, autoOpenDetails, clearAutoOpenDetails, user
     return localStorage.getItem('dab_current_view') || 'dashboard';
   });
   const [metrics, setMetrics] = useState(null);
+  const [agentAnalytics, setAgentAnalytics] = useState(null);
+  const [loadingAgentAnalytics, setLoadingAgentAnalytics] = useState(false);
+  const [analyticsSearchQuery, setAnalyticsSearchQuery] = useState('');
   const [databases, setDatabases] = useState([]);
   const [selectedDb, setSelectedDb] = useState(() => {
     return localStorage.getItem('dab_selected_db') || null;
   });
   const [dbResults, setDbResults] = useState([]);
-  const [loading, setLoading] = useState(true);
+  const [loading, setLoading] = useState(false);
   const [loadingDetails, setLoadingDetails] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
   const [dateFilter, setDateFilter] = useState<string>(''); // Default to empty, wait for dates to load
-  const [allDates, setAllDates] = useState<string[]>([]);
+  const [allDates, setAllDates] = useState<{ id: string; label: string; date: string; is_active: boolean }[]>([]);
   const [recentRuns, setRecentRuns] = useState([]);
   const [runningInstances, setRunningInstances] = useState({});
   const [runningDbs, setRunningDbs] = useState({});
@@ -628,14 +632,20 @@ const DabStudio = ({ onBack, onHome, autoOpenDetails, clearAutoOpenDetails, user
     "DBMS dialect alignment complete! 🚀"
   ];
 
-  // Fetch dates on mount
+  // Fetch dates on mount — with a 7s global safety net so spinner never gets stuck
   useEffect(() => {
-    fetchDates();
+    // Safety: if fetchDates hangs beyond 7s, force dateFilter='all' so the page unblocks
+    const safetyFallback = setTimeout(() => {
+      setLoading(false);
+      setDateFilter(prev => prev || 'all');
+    }, 7000);
+
+    fetchDates().finally(() => clearTimeout(safetyFallback));
     fetchDabSubmissions();
     const ticker = setInterval(() => {
       setDabQuip(dabMascotQuotes[Math.floor(Math.random() * dabMascotQuotes.length)]);
     }, 9000);
-    return () => clearInterval(ticker);
+    return () => { clearInterval(ticker); clearTimeout(safetyFallback); };
   }, []);
 
   const handleOpenSchemaModal = async (e, dbName) => {
@@ -688,11 +698,14 @@ const DabStudio = ({ onBack, onHome, autoOpenDetails, clearAutoOpenDetails, user
     const loop = async () => {
       if (!isMounted) return;
       await checkGlobalRunStatus();
+      if (isMounted && currentView === 'agents') {
+        await fetchAgentAnalytics(false);
+      }
       if (isMounted) timer = setTimeout(loop, 5000);
     };
     loop();
     return () => { isMounted = false; clearTimeout(timer); };
-  }, [dateFilter]);
+  }, [dateFilter, currentView]);
 
   // Auto-open details when navigated deep-link from global tasks panel
   useEffect(() => {
@@ -827,26 +840,38 @@ const DabStudio = ({ onBack, onHome, autoOpenDetails, clearAutoOpenDetails, user
 
   const fetchDates = async () => {
     try {
-      const res = await axios.get(`${API_BASE}/dab/runs`);
+      // 6s timeout so a hung backend doesn't freeze the UI forever
+      const res = await axios.get(`${API_BASE}/dab/runs`, { timeout: 6000 });
       const dates = res.data || [];
-      setAllDates(dates);
-      
+
+      // Always inject a "Live" option at position 1 so active runs are always visible
+      const liveEntry = { id: 'live', label: '⚡ Live View', date: '', is_active: true };
+      const withLive = [
+        dates[0] || { id: 'all', label: 'All Runs', date: 'All', is_active: false },
+        liveEntry,
+        ...dates.slice(1),
+      ];
+      setAllDates(withLive);
+
       if (dateFilter === '') {
-        const activeRun = dates.find(r => r.is_active);
+        // Check if backend flagged an actively running archived run
+        const activeRun = dates.find(r => r.is_active && r.id !== 'all');
         if (activeRun) {
           setDateFilter(activeRun.id);
-        } else if (dates.length > 1) {
-          // Default to the most recent run (index 1, since index 0 is "all")
-          setDateFilter(dates[1].id);
-        } else if (dates.length > 0) {
-          setDateFilter(dates[0].id);
         } else {
-          setDateFilter('all');
+          // Default to Live — always shows whatever is currently being written
+          setDateFilter('live');
         }
       }
     } catch (err) {
       console.error("Failed to load execution dates", err);
-      if (dateFilter === '') setDateFilter('all');
+      // On failure, still inject Live option so user can try
+      const liveEntry = { id: 'live', label: '⚡ Live View', date: '', is_active: true };
+      setAllDates([
+        { id: 'all', label: 'All Runs', date: 'All', is_active: false },
+        liveEntry,
+      ]);
+      if (dateFilter === '') setDateFilter('live');
     }
   };
 
@@ -857,10 +882,10 @@ const DabStudio = ({ onBack, onHome, autoOpenDetails, clearAutoOpenDetails, user
     if (!activeDate) return; // Don't fetch until date filter is determined
     
     if (showSpinner) setLoading(true);
-    // Hard timeout — if any call hangs longer than 16 s, clear the spinner anyway
-    const safetyTimer = showSpinner ? setTimeout(() => setLoading(false), 65000) : null;
+    // Hard timeout — if any call hangs longer than 10 s, clear the spinner anyway
+    const safetyTimer = showSpinner ? setTimeout(() => setLoading(false), 10000) : null;
     try {
-      const OPT = { timeout: 60000 };
+      const OPT = { timeout: 12000 };
       const [metricsRes, dbsRes, recentRes] = await Promise.all([
         axios.get(`${API_BASE}/dab/metrics?run_id=${activeDate}${force ? '&force=true' : ''}`, OPT).catch(() => ({ data: null })),
         axios.get(`${API_BASE}/dab/databases?run_id=${activeDate}${force ? '&force=true' : ''}`, OPT).catch(() => ({ data: [] })),
@@ -869,11 +894,26 @@ const DabStudio = ({ onBack, onHome, autoOpenDetails, clearAutoOpenDetails, user
       if (metricsRes.data) setMetrics(metricsRes.data);
       if (dbsRes.data) setDatabases(dbsRes.data);
       if (recentRes.data) setRecentRuns(recentRes.data);
+      fetchAgentAnalytics(false, activeDate);
     } catch (err) {
       console.error("Failed to load initial DAB metrics", err);
     } finally {
       clearTimeout(safetyTimer);
       if (showSpinner) setLoading(false);
+    }
+  };
+
+  const fetchAgentAnalytics = async (showSpinner = true, forceDate?: string) => {
+    const activeDate = forceDate || dateFilter;
+    if (!activeDate) return;
+    if (showSpinner) setLoadingAgentAnalytics(true);
+    try {
+      const res = await axios.get(`${API_BASE}/dab/agent_analytics?run_id=${activeDate}`);
+      if (res.data) setAgentAnalytics(res.data);
+    } catch (err) {
+      console.error("Failed to load agent analytics", err);
+    } finally {
+      if (showSpinner) setLoadingAgentAnalytics(false);
     }
   };
 
@@ -947,6 +987,7 @@ const DabStudio = ({ onBack, onHome, autoOpenDetails, clearAutoOpenDetails, user
     await checkGlobalRunStatus();
     await fetchDates();
     await fetchInitialData(false, true, forceDate);
+    await fetchAgentAnalytics(false, activeDate);
     if (target) {
       try {
         const res = await axios.get(`${API_BASE}/dab/queries/db/${target}?run_id=${activeDate}`);
@@ -1403,6 +1444,301 @@ const DabStudio = ({ onBack, onHome, autoOpenDetails, clearAutoOpenDetails, user
     db.name.toLowerCase().includes(searchQuery.toLowerCase())
   );
 
+  const renderAgentAnalytics = () => {
+    if (loadingAgentAnalytics && !agentAnalytics) {
+      return (
+        <div className="h-[50vh] flex flex-col items-center justify-center gap-3 text-purple-400 font-mono animate-pulse">
+          <Activity className="w-10 h-10 animate-spin" />
+          <p className="text-sm font-black">Compiling Agent performance scores from logs...</p>
+        </div>
+      );
+    }
+
+    if (!agentAnalytics || agentAnalytics.queries.length === 0) {
+      return (
+        <div className="py-24 text-center border border-dashed border-[#231d36] rounded-2xl bg-[#090812] max-w-2xl mx-auto flex flex-col items-center gap-4 animate-fadeIn">
+          <Cpu className="w-12 h-12 text-slate-500 stroke-1" />
+          <p className="text-sm text-slate-400 font-mono font-bold uppercase tracking-wider">No Analytics Data Available</p>
+          <p className="text-xs text-slate-500 font-mono max-w-sm">
+            Ensure you have run evaluations for the selected date filter. The agent analytics are parsed live from execution logs.
+          </p>
+          <button
+            onClick={() => handleRefresh()}
+            className="mt-2 px-4 py-2 rounded-lg font-mono font-bold text-xs bg-purple-600/20 hover:bg-purple-600/30 text-purple-400 border border-purple-500/20 shadow-md transition-all flex items-center gap-1.5"
+          >
+            <RefreshCw className="w-3.5 h-3.5" /> REFRESH
+          </button>
+        </div>
+      );
+    }
+
+    const { avg_scores, difficulty_metrics, queries } = agentAnalytics;
+    
+    // Calculate global average score
+    const totalScores: number = (Object.values(avg_scores) as number[]).reduce((acc: number, val: number) => acc + val, 0);
+    const globalAvgScore = Math.round(totalScores / Object.keys(avg_scores).length);
+
+    // Filtered queries
+    const filteredQueries = queries.filter(q => 
+      q.id.toLowerCase().includes(analyticsSearchQuery.toLowerCase()) ||
+      q.dataset.toLowerCase().includes(analyticsSearchQuery.toLowerCase()) ||
+      q.question.toLowerCase().includes(analyticsSearchQuery.toLowerCase())
+    );
+
+    const agentScoresData = [
+      { name: 'Schema Linker', score: avg_scores.schema_linker, color: '#3b82f6' },
+      { name: 'SQL Generator', score: avg_scores.sql_generator, color: '#a855f7' },
+      { name: 'Critic', score: avg_scores.critic, color: '#ec4899' },
+      { name: 'Self Corrector', score: avg_scores.self_corrector, color: '#eab308' },
+      { name: 'Data IQ', score: avg_scores.data_iq, color: '#10b981' }
+    ];
+
+    const difficultyData = [
+      { name: 'Easy', failedPct: difficulty_metrics.easy.pct_failed, total: difficulty_metrics.easy.total, color: '#10b981' },
+      { name: 'Medium', failedPct: difficulty_metrics.medium.pct_failed, total: difficulty_metrics.medium.total, color: '#f59e0b' },
+      { name: 'Tough', failedPct: difficulty_metrics.tough.pct_failed, total: difficulty_metrics.tough.total, color: '#ef4444' }
+    ];
+
+    const CustomTooltip = ({ active, payload, label }: any) => {
+      if (active && payload && payload.length) {
+        return (
+          <div className="bg-[#0b0a12] border border-[#231d36] rounded-xl p-3 shadow-2xl font-mono text-xs text-slate-300">
+            <p className="font-bold text-white mb-1">{label}</p>
+            <p className="flex items-center gap-1.5">
+              <span className="w-2 h-2 rounded-full" style={{ backgroundColor: payload[0].payload.color || '#a855f7' }} />
+              <span>{payload[0].name}: <strong className="text-white">{payload[0].value}%</strong></span>
+            </p>
+            {payload[0].payload.total !== undefined && (
+              <p className="text-[10px] text-slate-500 mt-1">Total Evaluated: {payload[0].payload.total}</p>
+            )}
+          </div>
+        );
+      }
+      return null;
+    };
+
+    return (
+      <div className="space-y-6 animate-fadeIn pb-12">
+        {/* Top level stats */}
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+          <div className="p-4 rounded-xl border border-[#1e1932] bg-gradient-to-br from-[#0c0a15] to-[#08070e] shadow-lg flex flex-col gap-1 select-none">
+            <span className="text-[9px] font-mono font-bold text-slate-500 uppercase tracking-widest">Global Agent Rating</span>
+            <div className="flex items-baseline gap-1.5 mt-1">
+              <span className="text-2xl font-mono font-black text-purple-400">{globalAvgScore}%</span>
+              <span className="text-[10px] font-mono text-slate-600">Avg Score</span>
+            </div>
+            <div className="mt-2 text-[10px] font-mono text-slate-400 flex items-center gap-1">
+              <CheckCircle2 className="w-3.5 h-3.5 text-purple-500" />
+              Comprehensive rating based on logs
+            </div>
+          </div>
+
+          <div className="p-4 rounded-xl border border-[#1e1932] bg-gradient-to-br from-[#0c0a15] to-[#08070e] shadow-lg flex flex-col gap-1 select-none">
+            <span className="text-[9px] font-mono font-bold text-slate-500 uppercase tracking-widest">Easy Failure Rate</span>
+            <div className="flex items-baseline gap-1.5 mt-1">
+              <span className="text-2xl font-mono font-black text-emerald-400">{difficulty_metrics.easy.pct_failed}%</span>
+              <span className="text-[10px] font-mono text-slate-600">Failed</span>
+            </div>
+            <div className="mt-2 text-[10px] font-mono text-slate-400">
+              Passed: {difficulty_metrics.easy.passed} / {difficulty_metrics.easy.total}
+            </div>
+          </div>
+
+          <div className="p-4 rounded-xl border border-[#1e1932] bg-gradient-to-br from-[#0c0a15] to-[#08070e] shadow-lg flex flex-col gap-1 select-none">
+            <span className="text-[9px] font-mono font-bold text-slate-500 uppercase tracking-widest">Medium Failure Rate</span>
+            <div className="flex items-baseline gap-1.5 mt-1">
+              <span className="text-2xl font-mono font-black text-amber-500">{difficulty_metrics.medium.pct_failed}%</span>
+              <span className="text-[10px] font-mono text-slate-600">Failed</span>
+            </div>
+            <div className="mt-2 text-[10px] font-mono text-slate-400">
+              Passed: {difficulty_metrics.medium.passed} / {difficulty_metrics.medium.total}
+            </div>
+          </div>
+
+          <div className="p-4 rounded-xl border border-[#1e1932] bg-gradient-to-br from-[#0c0a15] to-[#08070e] shadow-lg flex flex-col gap-1 select-none">
+            <span className="text-[9px] font-mono font-bold text-slate-500 uppercase tracking-widest">Tough Failure Rate</span>
+            <div className="flex items-baseline gap-1.5 mt-1">
+              <span className="text-2xl font-mono font-black text-rose-500">{difficulty_metrics.tough.pct_failed}%</span>
+              <span className="text-[10px] font-mono text-slate-600">Failed</span>
+            </div>
+            <div className="mt-2 text-[10px] font-mono text-slate-400">
+              Passed: {difficulty_metrics.tough.passed} / {difficulty_metrics.tough.total}
+            </div>
+          </div>
+        </div>
+
+        {/* Charts Section */}
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+          <div className="bg-[#0b0a12] border border-[#1e1933] rounded-xl p-4.5 flex flex-col shadow-lg">
+            <h2 className="text-xs font-mono font-bold pb-3 mb-3 border-b border-[#1e1933] uppercase tracking-wider text-slate-400 flex items-center gap-2">
+              <Activity className="w-3.5 h-3.5 text-purple-400" />
+              Agent Tools Performance Scores (%)
+            </h2>
+            <div className="h-64 w-full">
+              <ResponsiveContainer width="100%" height="100%">
+                <BarChart data={agentScoresData} margin={{ top: 10, right: 10, left: -25, bottom: 0 }}>
+                  <XAxis dataKey="name" stroke="#64748b" fontSize={9} tickLine={false} />
+                  <YAxis domain={[0, 100]} stroke="#64748b" fontSize={9} tickLine={false} />
+                  <CartesianGrid stroke="#1c1833" vertical={false} strokeDasharray="3 3" />
+                  <Tooltip content={<CustomTooltip />} cursor={{ fill: 'rgba(255,255,255,0.03)' }} />
+                  <Bar dataKey="score" radius={[4, 4, 0, 0]} name="Performance Score">
+                    {agentScoresData.map((entry, index) => (
+                      <Cell key={`cell-${index}`} fill={entry.color} />
+                    ))}
+                  </Bar>
+                </BarChart>
+              </ResponsiveContainer>
+            </div>
+          </div>
+
+          <div className="bg-[#0b0a12] border border-[#1e1933] rounded-xl p-4.5 flex flex-col shadow-lg">
+            <h2 className="text-xs font-mono font-bold pb-3 mb-3 border-b border-[#1e1933] uppercase tracking-wider text-slate-400 flex items-center gap-2">
+              <BarChart3 className="w-3.5 h-3.5 text-purple-400" />
+              Failure Rate by Query Complexity (%)
+            </h2>
+            <div className="h-64 w-full">
+              <ResponsiveContainer width="100%" height="100%">
+                <BarChart data={difficultyData} margin={{ top: 10, right: 10, left: -25, bottom: 0 }}>
+                  <XAxis dataKey="name" stroke="#64748b" fontSize={9} tickLine={false} />
+                  <YAxis domain={[0, 100]} stroke="#64748b" fontSize={9} tickLine={false} />
+                  <CartesianGrid stroke="#1c1833" vertical={false} strokeDasharray="3 3" />
+                  <Tooltip content={<CustomTooltip />} cursor={{ fill: 'rgba(255,255,255,0.03)' }} />
+                  <Bar dataKey="failedPct" radius={[4, 4, 0, 0]} name="Failure Rate">
+                    {difficultyData.map((entry, index) => (
+                      <Cell key={`cell-${index}`} fill={entry.color} />
+                    ))}
+                  </Bar>
+                </BarChart>
+              </ResponsiveContainer>
+            </div>
+          </div>
+        </div>
+
+        {/* Live Ratings Feed Table */}
+        <div className="bg-[#0b0a12] border border-[#1e1933] rounded-xl p-4 flex flex-col shadow-lg">
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-3 mb-3 border-b border-[#1e1933]">
+            <h2 className="text-xs font-mono font-bold flex items-center gap-2 uppercase tracking-wider text-slate-400">
+              <Cpu className="w-3.5 h-3.5 text-purple-400" />
+              Live Query Performance Ratings
+            </h2>
+            <div className="flex items-center gap-2 max-w-sm w-full">
+              <div className="relative flex-1">
+                <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-slate-500" />
+                <input
+                  type="text"
+                  placeholder="Search queries, questions or datasets..."
+                  value={analyticsSearchQuery}
+                  onChange={(e) => setAnalyticsSearchQuery(e.target.value)}
+                  className="w-full bg-[#050508] border border-[#231d36] hover:border-purple-500/40 rounded px-2.5 py-1.5 pl-8 text-xs font-mono text-slate-200 placeholder-slate-500 focus:outline-none focus:border-purple-500 transition-all"
+                />
+              </div>
+            </div>
+          </div>
+
+          <div className="overflow-x-auto rounded-lg border border-[#1c1833] bg-[#050508]/40">
+            <table className="w-full font-mono text-left border-collapse text-xs">
+              <thead>
+                <tr className="bg-[#0e0c1b] text-slate-400 uppercase tracking-widest text-[9px] border-b border-[#1c1833]">
+                  <th className="p-3">Query ID</th>
+                  <th className="p-3">Question</th>
+                  <th className="p-3">Difficulty</th>
+                  <th className="p-3">Status</th>
+                  <th className="p-3 text-center">Schema Linker</th>
+                  <th className="p-3 text-center">SQL Gen</th>
+                  <th className="p-3 text-center">Critic</th>
+                  <th className="p-3 text-center">Self Corrector</th>
+                  <th className="p-3 text-center">Data IQ</th>
+                  <th className="p-3 text-center">Actions</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-[#1b1730]">
+                {filteredQueries.length > 0 ? (
+                  filteredQueries.map(q => {
+                    const getScoreColor = (score: number) => {
+                      if (score >= 80) return 'text-emerald-400 bg-emerald-500/10 border-emerald-500/20';
+                      if (score >= 50) return 'text-amber-400 bg-amber-500/10 border-amber-500/20';
+                      return 'text-rose-500 bg-rose-500/10 border-rose-500/20';
+                    };
+                    
+                    const getDifficultyBadge = (diff: string) => {
+                      if (diff === 'easy') return 'text-emerald-400 bg-emerald-500/10 border-emerald-500/20';
+                      if (diff === 'medium') return 'text-amber-400 bg-amber-500/10 border-amber-500/20';
+                      return 'text-rose-500 bg-rose-500/10 border-rose-500/20';
+                    };
+
+                    return (
+                      <tr key={q.id} className="hover:bg-[#1a1532]/10 transition-colors">
+                        <td className="p-3 font-bold text-white whitespace-nowrap">
+                          {q.id.replace("_q", " q")}
+                        </td>
+                        <td className="p-3 max-w-[200px] truncate" title={q.question}>
+                          {q.question}
+                        </td>
+                        <td className="p-3 uppercase whitespace-nowrap">
+                          <span className={`px-2 py-0.5 rounded border text-[9px] font-bold ${getDifficultyBadge(q.difficulty)}`}>
+                            {q.difficulty}
+                          </span>
+                        </td>
+                        <td className="p-3 whitespace-nowrap">
+                          <span className="flex items-center gap-1.5">
+                            {getStatusIcon(q.passed ? 'passed' : 'failed')}
+                            {q.passed ? 'PASSED' : 'FAILED'}
+                          </span>
+                        </td>
+                        <td className="p-3 text-center">
+                          <span className={`px-2 py-1 rounded-md border font-bold ${getScoreColor(q.scores.schema_linker)}`}>
+                            {q.scores.schema_linker}%
+                          </span>
+                        </td>
+                        <td className="p-3 text-center">
+                          <span className={`px-2 py-1 rounded-md border font-bold ${getScoreColor(q.scores.sql_generator)}`}>
+                            {q.scores.sql_generator}%
+                          </span>
+                        </td>
+                        <td className="p-3 text-center">
+                          <span className={`px-2 py-1 rounded-md border font-bold ${getScoreColor(q.scores.critic)}`}>
+                            {q.scores.critic}%
+                          </span>
+                        </td>
+                        <td className="p-3 text-center">
+                          <span className={`px-2 py-1 rounded-md border font-bold ${getScoreColor(q.scores.self_corrector)}`}>
+                            {q.scores.self_corrector}%
+                          </span>
+                        </td>
+                        <td className="p-3 text-center">
+                          <span className={`px-2 py-1 rounded-md border font-bold ${getScoreColor(q.scores.data_iq)}`}>
+                            {q.scores.data_iq}%
+                          </span>
+                        </td>
+                        <td className="p-3 text-center whitespace-nowrap">
+                          <button
+                            onClick={() => {
+                              setSelectedDb(q.dataset);
+                              fetchInstanceDetails(q.dataset, q.query_id, q.question);
+                            }}
+                            className="px-2.5 py-1 rounded bg-[#131126] border border-[#231d3d] hover:border-purple-500/40 hover:bg-purple-500/10 text-purple-400 hover:text-purple-300 font-bold transition-all cursor-pointer shadow-sm text-[10px]"
+                          >
+                            INSPECT LOG
+                          </button>
+                        </td>
+                      </tr>
+                    );
+                  })
+                ) : (
+                  <tr>
+                    <td colSpan={10} className="p-12 text-center text-slate-500 italic">
+                      No query results match the search filter.
+                    </td>
+                  </tr>
+                )}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+    );
+  };
+
   const filteredMetricInstances = allInstanceResults.filter(inst => {
     if (activeMetricFilter === 'succeeded' && inst.status !== 'passed') return false;
     if (activeMetricFilter === 'errored' && inst.status !== 'failed') return false;
@@ -1474,6 +1810,16 @@ const DabStudio = ({ onBack, onHome, autoOpenDetails, clearAutoOpenDetails, user
           >
             <Terminal className="w-4 h-4 shrink-0" />
             <span className="hidden lg:block truncate">Execution Probes</span>
+          </button>
+          <button
+            onClick={() => {
+              setCurrentView('agents');
+              fetchAgentAnalytics(true);
+            }}
+            className={`flex items-center gap-3 px-3 py-2.5 rounded-lg transition-all font-bold text-xs tracking-tight ${currentView === 'agents' ? 'bg-purple-500/10 text-purple-400 border border-purple-500/20 shadow-inner' : 'hover:bg-white/[0.04] text-slate-400 hover:text-slate-200'}`}
+          >
+            <Cpu className="w-4 h-4 shrink-0" />
+            <span className="hidden lg:block truncate">Agent Analytics</span>
           </button>
 
 
@@ -1592,6 +1938,7 @@ const DabStudio = ({ onBack, onHome, autoOpenDetails, clearAutoOpenDetails, user
           <div className="flex items-center gap-3 min-w-0">
             <span className="text-sm font-mono font-bold text-white tracking-tight truncate">
               {currentView === 'dashboard' && 'DataAgentBench · Forensic Telemetry & Audit Matrix'}
+              {currentView === 'agents' && 'DataAgentBench · Live Agent rating & complexity matrix'}
               {currentView === 'database' && `DataAgentBench · Dataset: ${selectedDb}`}
             </span>
           </div>
@@ -1937,6 +2284,8 @@ const DabStudio = ({ onBack, onHome, autoOpenDetails, clearAutoOpenDetails, user
                   </section>
                 </div>
               </>
+            ) : currentView === 'agents' ? (
+              renderAgentAnalytics()
             ) : currentView === 'database' ? (
               /* Database Detail View */
               <div className="space-y-4 animate-fadeIn">

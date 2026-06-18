@@ -6,4 +6,4 @@ COPY . .
 EXPOSE 8010
 HEALTHCHECK --interval=20s --timeout=10s --retries=3 \
   CMD ["python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:8010/api/health')"]
-CMD ["sh", "-c", "uvicorn agent.app.api:app --host 0.0.0.0 --port ${PYTHON_PORT:-8010}"]
+CMD ["sh", "-c", "uvicorn agent.app.api:app --host 0.0.0.0 --port ${PYTHON_PORT:-8010} --workers ${PYTHON_WORKERS:-4}"]

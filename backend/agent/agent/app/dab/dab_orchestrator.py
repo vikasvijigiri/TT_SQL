@@ -543,7 +543,7 @@ def run_dab_query(
         # Run the query through the pipeline
         final_sql = orchestrator.execute_query(
             user_query=question,
-            instance_id=f"dab_{dataset}_q{query_id}",
+            instance_id=f"dab_{dataset}_q{query_id}{_run_sfx}",
             external_knowledge=ext_knowledge_param,
         )
 
@@ -559,7 +559,7 @@ def run_dab_query(
 
             # CSV is auto-saved by executor under RESULTS_DIR/{db_name}/{instance_id}.csv
             # Move it to our DAB results dir
-            src_csv = RESULTS_DIR / db_name / f"dab_{dataset}_q{query_id}.csv"
+            src_csv = RESULTS_DIR / db_name / f"dab_{dataset}_q{query_id}{_run_sfx}.csv"
             if src_csv.exists():
                 import shutil
 
@@ -573,7 +573,7 @@ def run_dab_query(
                 instance_id=instance_id,
             )
         else:
-            # Direct text answer from diagnostic layer Ã¢â‚¬â€ use it verbatim, no CSV needed.
+            # Direct text answer from diagnostic layer — use it verbatim, no CSV needed.
             # Writing through extract_answer risks reading a stale CSV from a prior run.
             agent_answer = final_sql.strip()
             csv_path.write_text(f'result\n"{agent_answer}"\n', encoding="utf-8")
@@ -582,7 +582,7 @@ def run_dab_query(
         # sample data from the live DB so the LLM can see actual table/column names.
         if _is_empty_answer(agent_answer):
             logger.info(
-                "[EmptyRetry] First attempt returned empty answer Ã¢â‚¬â€ injecting real schema evidence for retry."
+                "[EmptyRetry] First attempt returned empty answer — injecting real schema evidence for retry."
             )
             schema_hint = _build_rich_schema_hint(db_path, db_type)
             if schema_hint:
@@ -601,7 +601,7 @@ def run_dab_query(
                 retry_ext_file.write_text(retry_knowledge, encoding="utf-8")
 
                 orchestrator.stabilizer.retry_history.clear()
-                retry_instance_id = f"dab_{dataset}_q{query_id}_retry"
+                retry_instance_id = f"dab_{dataset}_q{query_id}{_run_sfx}_retry"
                 retry_sql = orchestrator.execute_query(
                     user_query=question,
                     instance_id=retry_instance_id,

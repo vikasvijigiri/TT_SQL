@@ -5,7 +5,7 @@ $ROOT = Split-Path -Parent $MyInvocation.MyCommand.Path
 Start-Process powershell -ArgumentList "-NoExit", "-Command", @"
   Set-Location '$ROOT\backend\agent'
   Write-Host '=== NQuire Agent (Python :8010) ===' -ForegroundColor Cyan
-  python -m uvicorn agent.app.api:app --host 0.0.0.0 --port 8010 --reload
+  python -m uvicorn agent.app.api:app --host 0.0.0.0 --port 8010 --workers 4
 "@
 
 # 2. Go Gateway (:8002)
