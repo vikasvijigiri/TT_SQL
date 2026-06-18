@@ -253,7 +253,7 @@ const CustomProjectsScreen = ({
     } catch { return 'Recently'; }
   };
 
-  const DbIcon = ({ type, size = 16, style }) => {
+  const DbIcon = ({ type, size = 16, style = undefined }) => {
     if (type === 'sqlite') return <HardDrive size={size} color="#7c3aed" style={style} />;
     if (type === 'bigquery') return <Cloud size={size} color="#ea4335" style={style} />;
     if (type === 'snowflake') return <Triangle size={size} color="#29b5e8" style={{ transform: 'rotate(180deg)', ...style }} />;
@@ -262,10 +262,10 @@ const CustomProjectsScreen = ({
   };
 
   return (
-    <div className="flex h-full w-full overflow-hidden bg-[#070709]">
+    <div className="flex h-full w-full overflow-hidden bg-[#1b2738]">
       {/* ─── Inner Sidebar ─── */}
-      <div className="w-56 bg-[#0c0c10] border-r border-[#1a1a22] flex flex-col shrink-0">
-        <div className="px-4 py-5 border-b border-[#1a1a22]">
+      <div className="w-56 bg-[#162030] border-r border-[#2c3e55] flex flex-col shrink-0">
+        <div className="px-4 py-5 border-b border-[#2c3e55]">
           <div className="flex items-center gap-2.5 text-emerald-400">
             <Plug size={18} />
             <span className="text-sm font-bold">Data Sources</span>
@@ -303,7 +303,7 @@ const CustomProjectsScreen = ({
           </button>
         </div>
 
-        <div className="px-3 py-3 border-t border-[#1a1a22]">
+        <div className="px-3 py-3 border-t border-[#2c3e55]">
           <button
             onClick={() => { setSelectedTab('Home'); resetForm(); setSelectedProjectId(null); }}
             className={`flex items-center gap-2.5 w-full px-3 py-2.5 rounded-lg text-[13px] font-medium transition-all ${selectedTab === 'Home' ? 'bg-emerald-500/10 text-emerald-400' : 'text-slate-500 hover:text-slate-300 hover:bg-white/[0.04]'}`}
@@ -443,10 +443,10 @@ const CustomProjectsScreen = ({
                       initial={{ opacity: 0, y: 16 }}
                       animate={{ opacity: 1, y: 0 }}
                       transition={{ delay: idx * 0.05 }}
-                      className={`rounded-xl overflow-hidden transition-all ${isActive ? 'border-2 border-emerald-500/40 shadow-lg shadow-emerald-500/10' : 'border border-[#1e1e2c] hover:border-[#2a2a3e]'} bg-[#0e0e14]`}
+                      className={`rounded-xl overflow-hidden transition-all ${isActive ? 'border-2 border-emerald-500/40 shadow-lg shadow-emerald-500/10' : 'border border-[#2c3e55] hover:border-[#3a5268]'} bg-[#1e2d40]`}
                     >
                       {/* Card Header */}
-                      <div className={`flex items-center justify-between px-4 py-3 border-b border-[#1a1a22] ${isActive ? 'bg-emerald-500/5' : 'bg-[#0c0c10]'}`}>
+                      <div className={`flex items-center justify-between px-4 py-3 border-b border-[#2c3e55] ${isActive ? 'bg-emerald-500/5' : 'bg-[#162030]'}`}>
                         <div className="flex items-center gap-2.5">
                           <DbIcon type={p.connection?.db_type} size={16} />
                           <div>

@@ -1076,9 +1076,9 @@ const SpiderStudio = ({ onBack, onHome, autoOpenDetails, clearAutoOpenDetails, u
   });
 
   return (
-    <div className="flex h-screen w-full overflow-hidden bg-[#070709] text-slate-200 font-sans selection:bg-blue-500/30 selection:text-white">
+    <div className="flex h-screen w-full overflow-hidden bg-[#1b2738] text-slate-200 font-sans selection:bg-blue-500/30 selection:text-white">
       {/* Sidebar Navigation */}
-      <aside className="w-16 lg:w-56 border-r border-[#1a1a22] bg-[#0c0c10] flex flex-col p-4 gap-6 shrink-0 z-20 shadow-2xl animate-fadeIn">
+      <aside className="w-16 lg:w-56 border-r border-[#2c3e55] bg-[#162030] flex flex-col p-4 gap-6 shrink-0 z-20 shadow-2xl animate-fadeIn">
         <div className="flex flex-col gap-3">
           <div className="flex items-center gap-3 px-1">
             <NQuireLogo size={32} showName nameSize="text-xs" onClick={onHome} />
@@ -1086,7 +1086,7 @@ const SpiderStudio = ({ onBack, onHome, autoOpenDetails, clearAutoOpenDetails, u
 
           <button
             onClick={onBack}
-            className="flex items-center gap-2 px-3 py-2 rounded-lg bg-[#14141d] border border-[#262638] hover:border-amber-500/50 hover:bg-[#1a1a26] text-slate-400 hover:text-amber-400 transition-all font-bold text-[11px] font-mono justify-center w-full shadow-md shrink-0"
+            className="flex items-center gap-2 px-3 py-2 rounded-lg bg-[#182030] border border-[#2c3e55] hover:border-amber-500/50 hover:bg-[#1e2d40] text-slate-400 hover:text-amber-400 transition-all font-bold text-[11px] font-mono justify-center w-full shadow-md shrink-0"
           >
             <ArrowLeft className="w-3.5 h-3.5" />
             <span className="hidden lg:inline">Switch Project</span>
@@ -1096,7 +1096,7 @@ const SpiderStudio = ({ onBack, onHome, autoOpenDetails, clearAutoOpenDetails, u
         <nav className="flex flex-col gap-1 flex-1">
           <button
             onClick={() => setCurrentView('dashboard')}
-            className={`flex items-center gap-3 px-3 py-2.5 rounded-lg transition-all font-bold text-xs tracking-tight ${currentView === 'dashboard' ? 'bg-blue-500/10 text-blue-400 border border-blue-500/20 shadow-inner' : 'hover:bg-white/[0.04] text-slate-400 hover:text-slate-200'}`}
+            className={`flex items-center gap-3 px-3 py-2.5 rounded-lg transition-all font-bold text-xs tracking-tight ${currentView === 'dashboard' ? 'bg-sky-500/15 text-sky-400 border border-sky-500/25 shadow-inner' : 'hover:bg-white/[0.05] text-slate-400 hover:text-slate-200'}`}
           >
             <BarChart3 className="w-4 h-4 shrink-0" />
             <span className="hidden lg:block truncate">Audit Dashboard</span>
@@ -1106,21 +1106,21 @@ const SpiderStudio = ({ onBack, onHome, autoOpenDetails, clearAutoOpenDetails, u
               if (databases.length > 0) fetchResults(selectedDb || databases[0].name);
               else setCurrentView('database');
             }}
-            className={`flex items-center gap-3 px-3 py-2.5 rounded-lg transition-all font-bold text-xs tracking-tight ${currentView === 'database' ? 'bg-blue-500/10 text-blue-400 border border-blue-500/20 shadow-inner' : 'hover:bg-white/[0.04] text-slate-400 hover:text-slate-200'}`}
+            className={`flex items-center gap-3 px-3 py-2.5 rounded-lg transition-all font-bold text-xs tracking-tight ${currentView === 'database' ? 'bg-sky-500/15 text-sky-400 border border-sky-500/25 shadow-inner' : 'hover:bg-white/[0.05] text-slate-400 hover:text-slate-200'}`}
           >
             <Terminal className="w-4 h-4 shrink-0" />
           </button>
           
           {/* Active Runs Sidebar Widget */}
           {Object.keys(runningInstances).length > 0 && (
-            <div className="hidden lg:block mt-6 pt-6 border-t border-[#1a1a22] animate-fadeIn">
+            <div className="hidden lg:block mt-6 pt-6 border-t border-[#2c3e55] animate-fadeIn">
               <div className="text-[10px] font-mono font-bold text-slate-500 uppercase tracking-widest mb-3 px-3 flex items-center justify-between">
                 <span>Active Runs</span>
                 <span className="bg-blue-500/20 text-blue-400 px-1.5 py-0.5 rounded animate-pulse">{Object.keys(runningInstances).length}</span>
               </div>
               <div className="space-y-1.5 px-2 max-h-[200px] overflow-y-auto no-scrollbar">
                 {Object.keys(runningInstances).map(qkey => (
-                  <div key={qkey} className="flex items-center gap-2 text-[10px] font-mono text-slate-300 bg-[#12101e] border border-[#231d36] rounded p-1.5 shadow">
+                  <div key={qkey} className="flex items-center gap-2 text-[10px] font-mono text-slate-300 bg-[#1a2a3a] border border-[#2c3e55] rounded p-1.5 shadow">
                     <Activity className="w-3 h-3 text-blue-400 animate-spin shrink-0" />
                     <span className="truncate" title={qkey}>{qkey}</span>
                   </div>
@@ -1131,22 +1131,22 @@ const SpiderStudio = ({ onBack, onHome, autoOpenDetails, clearAutoOpenDetails, u
         </nav>
 
         {/* Spidey Mascot Quote Card */}
-        <div className="hidden lg:flex flex-col my-auto p-3.5 bg-[#0e0e14] rounded-2xl border border-[#20202a] shadow-md relative overflow-hidden group select-none transition-all hover:border-blue-500/40">
+        <div className="hidden lg:flex flex-col my-auto p-3.5 bg-[#162030] rounded-2xl border border-[#2c3e55] shadow-md relative overflow-hidden group select-none transition-all hover:border-sky-500/40">
           <div className="absolute top-0 left-0 right-0 h-[2px] bg-gradient-to-r from-blue-500 via-indigo-500 to-cyan-500 animate-pulse" />
-          <div className="relative mb-3 bg-[#14141e] border border-[#252535] p-2.5 rounded-xl rounded-bl-none shadow-lg">
+          <div className="relative mb-3 bg-[#1a2a3a] border border-[#2c3e55] p-2.5 rounded-xl rounded-bl-none shadow-lg">
             <div className="text-[11px] font-mono text-slate-300 leading-tight min-h-[28px] flex items-center">
               {spideyQuip}
             </div>
-            <div className="absolute -bottom-2 left-3 w-0 h-0 border-t-8 border-t-[#14141e] border-r-8 border-r-transparent border-l-0" />
+            <div className="absolute -bottom-2 left-3 w-0 h-0 border-t-8 border-t-[#1a2a3a] border-r-8 border-r-transparent border-l-0" />
           </div>
           <div className="flex items-center justify-center py-2">
-            <Sparkles className="w-6 h-6 text-blue-400 animate-pulse" />
+            <Sparkles className="w-6 h-6 text-sky-400 animate-pulse" />
           </div>
         </div>
 
         {/* User Profile */}
         {user && (
-          <div className="mt-auto pt-3 border-t border-[#1a1a22]">
+          <div className="mt-auto pt-3 border-t border-[#2c3e55]">
             <div className="flex items-center gap-2.5 px-1 py-2 rounded-xl hover:bg-white/[0.04] transition-all group">
               {user.picture ? (
                 <img src={user.picture} alt={user.name} className="w-7 h-7 rounded-full shrink-0 ring-1 ring-blue-500/40" referrerPolicy="no-referrer" />
@@ -1172,9 +1172,9 @@ const SpiderStudio = ({ onBack, onHome, autoOpenDetails, clearAutoOpenDetails, u
       </aside>
 
       {/* Main Panel */}
-      <main className="flex-1 flex flex-col min-w-0 bg-[#070709] relative overflow-hidden">
+      <main className="flex-1 flex flex-col min-w-0 bg-[#1b2738] relative overflow-hidden">
         {/* Header Bar */}
-        <header className="h-16 border-b border-[#14141b] bg-[#09090d]/80 backdrop-blur-lg flex items-center justify-between px-6 z-10 shrink-0 gap-4">
+        <header className="h-16 border-b border-[#2c3e55] bg-[#162030]/90 backdrop-blur-lg flex items-center justify-between px-6 z-10 shrink-0 gap-4">
           <div className="flex items-center gap-3 min-w-0">
             <span className="text-sm font-mono font-bold text-white tracking-tight truncate">
               {currentView === 'dashboard' && 'Spider2-Lite · Forensic Telemetry & Audit Matrix'}
@@ -1184,7 +1184,7 @@ const SpiderStudio = ({ onBack, onHome, autoOpenDetails, clearAutoOpenDetails, u
 
           <div className="flex items-center gap-2 shrink-0">
             {/* Date filter select */}
-            <div className="flex items-center gap-1.5 bg-[#0e0e14] border border-[#222232] rounded-lg px-2.5 py-1.5 text-xs font-mono">
+            <div className="flex items-center gap-1.5 bg-[#162030] border border-[#2c3e55] rounded-lg px-2.5 py-1.5 text-xs font-mono">
               <Filter className="w-3.5 h-3.5 text-blue-400" />
               <select
                 value={dateFilter}
@@ -1252,7 +1252,7 @@ const SpiderStudio = ({ onBack, onHome, autoOpenDetails, clearAutoOpenDetails, u
 
         {/* Global Progress Bar */}
         {activeSession && activeSession.running && activeSession.total > 0 && (
-          <div className="w-full bg-[#0a0a0f] border-b border-[#14141b] px-6 py-2 flex items-center gap-4 shrink-0 z-10 shadow-md">
+          <div className="w-full bg-[#1e2d40] border-b border-[#2c3e55] px-6 py-2 flex items-center gap-4 shrink-0 z-10 shadow-md">
             <div className="flex-1 max-w-2xl flex items-center gap-3">
               <div className="text-[10px] font-mono font-bold text-emerald-400 whitespace-nowrap bg-emerald-500/10 px-2 py-1 rounded border border-emerald-500/20 shadow-inner">
                 {Math.round((activeSession.completed / activeSession.total) * 100)}% COMPLETED
@@ -1285,29 +1285,46 @@ const SpiderStudio = ({ onBack, onHome, autoOpenDetails, clearAutoOpenDetails, u
                   {metrics && (
                     <>
                       {[
-                        { label: 'TOTAL PROCESSED', value: metrics.total_processed, color: 'blue', type: 'total', sub: 'RUNS' },
-                        { label: 'SUCCEEDED (CSV)', value: metrics.succeeded_count, color: 'emerald', type: 'succeeded', sub: 'VALID' },
-                        { label: 'ERRORED', value: metrics.errored_count, color: 'rose', type: 'errored', sub: 'FAILED' },
-                        { label: 'GOLD ACCURACY', value: metrics.gold_accuracy, color: 'indigo', type: 'gold', sub: `${metrics.gold_succeeded_count} PASS` },
-                        { label: 'AVG LATENCY', value: metrics.avg_latency, color: 'cyan', type: 'total', sub: 'PER RUN' },
-                        { label: 'AVG TOKENS', value: String(metrics.avg_tokens_per_agent || '0 tokens').replace(' tokens', ''), color: 'fuchsia', type: 'total', sub: 'PER AGENT' },
-                        { label: 'TOTAL COST ($)', value: String(metrics.total_cost || '$0.0000').replace('$', ''), color: 'amber', type: 'total', sub: 'ESTIMATED' },
-                        { label: 'LLM CALLS', value: metrics.llm_calls, color: 'violet', type: 'total', sub: 'TOTAL' }
-                      ].map(m => (
-                        <div
-                          key={m.label}
-                          onClick={() => handleOpenMetricModal(m.type)}
-                          className="bg-[#101014] border border-[#1f1f27] hover:border-blue-500/50 p-3.5 rounded-xl shadow-sm relative overflow-hidden flex flex-col justify-between group cursor-pointer transition-all hover:scale-[1.02]"
-                        >
-                          <div className="flex justify-between items-center text-slate-400 text-[10px] font-mono font-bold uppercase tracking-wider">
-                            <span>{m.label}</span>
+                        { label: 'TOTAL', icon: BarChart3, value: metrics.total_processed, color: 'blue', type: 'total', sub: 'RUNS' },
+                        { label: 'PASSED', icon: CheckCircle2, value: metrics.succeeded_count, color: 'emerald', type: 'succeeded', sub: 'VALID' },
+                        { label: 'FAILED', icon: XCircle, value: metrics.errored_count, color: 'rose', type: 'errored', sub: 'ERRORS' },
+                        { label: 'ACCURACY', icon: Trophy, value: metrics.gold_accuracy, color: 'indigo', type: 'gold', sub: `${metrics.gold_succeeded_count} PASS` },
+                        { label: 'LATENCY', icon: Clock, value: metrics.avg_latency, color: 'cyan', type: 'total', sub: 'AVG' },
+                        { label: 'TOKENS', icon: Cpu, value: String(metrics.avg_tokens_per_agent || '0 tokens').replace(' tokens', ''), color: 'fuchsia', type: 'total', sub: '/AGENT' },
+                        { label: 'COST', icon: DollarSign, value: String(metrics.total_cost || '$0.0000').replace('$', ''), color: 'amber', type: 'total', sub: 'EST.$' },
+                        { label: 'LLM', icon: Zap, value: metrics.llm_calls, color: 'violet', type: 'total', sub: 'CALLS' }
+                      ].map(m => {
+                        const IconComp = m.icon;
+                        const colorMap = {
+                          blue: 'text-blue-400 bg-blue-500/10 border-blue-500/20',
+                          emerald: 'text-emerald-400 bg-emerald-500/10 border-emerald-500/20',
+                          rose: 'text-rose-400 bg-rose-500/10 border-rose-500/20',
+                          indigo: 'text-indigo-400 bg-indigo-500/10 border-indigo-500/20',
+                          cyan: 'text-cyan-400 bg-cyan-500/10 border-cyan-500/20',
+                          fuchsia: 'text-fuchsia-400 bg-fuchsia-500/10 border-fuchsia-500/20',
+                          amber: 'text-amber-400 bg-amber-500/10 border-amber-500/20',
+                          violet: 'text-violet-400 bg-violet-500/10 border-violet-500/20',
+                        };
+                        const iconClass = colorMap[m.color] || 'text-slate-400 bg-slate-500/10 border-slate-500/20';
+                        return (
+                          <div
+                            key={m.label}
+                            onClick={() => handleOpenMetricModal(m.type)}
+                            className="bg-[#1e2d40] border border-[#2c3e55] hover:border-sky-500/40 p-3.5 rounded-xl shadow-sm relative overflow-hidden flex flex-col justify-between group cursor-pointer transition-all hover:scale-[1.02]"
+                          >
+                            <div className="flex justify-between items-center mb-1.5">
+                              <span className="text-slate-400 text-[9px] font-mono font-bold uppercase tracking-wider">{m.label}</span>
+                              <div className={`w-6 h-6 rounded-lg border flex items-center justify-center shrink-0 ${iconClass}`}>
+                                <IconComp className="w-3 h-3" />
+                              </div>
+                            </div>
+                            <div className="flex items-baseline gap-1.5">
+                              <span className="text-2xl font-mono font-extrabold tracking-tight text-white">{m.value}</span>
+                              <span className="text-[9px] font-mono text-slate-400 font-bold bg-white/5 px-1 py-0.5 rounded uppercase">{m.sub}</span>
+                            </div>
                           </div>
-                          <div className="mt-2 flex items-baseline gap-2">
-                            <span className="text-2xl font-mono font-extrabold tracking-tight text-white">{m.value}</span>
-                            <span className="text-[10px] font-mono text-slate-400 font-bold bg-white/5 px-1.5 py-0.5 rounded uppercase">{m.sub}</span>
-                          </div>
-                        </div>
-                      ))}
+                        );
+                      })}
                     </>
                   )}
                 </section>
@@ -1344,7 +1361,7 @@ const SpiderStudio = ({ onBack, onHome, autoOpenDetails, clearAutoOpenDetails, u
                           <div
                             key={db.name}
                             onClick={() => fetchResults(db.name)}
-                            className={`group p-3.5 rounded-lg bg-[#0e0e14]/90 border border-[#1b1b26] hover:border-blue-500/40 hover:bg-[#121217] transition-all cursor-pointer flex items-center justify-between ${selectedDb === db.name ? 'border-blue-500 bg-blue-500/5 shadow-[0_0_15px_rgba(59,130,246,0.15)]' : ''}`}
+                          className={`group p-3.5 rounded-lg bg-[#1e2d40]/90 border border-[#2c3e55] hover:border-sky-500/40 hover:bg-[#243447] transition-all cursor-pointer flex items-center justify-between ${selectedDb === db.name ? 'border-sky-500 bg-sky-500/5 shadow-[0_0_15px_rgba(56,189,248,0.1)]' : ''}`}
                           >
                             <div className="flex items-center gap-3 w-full pr-4">
                               <div className={`w-8 h-8 shrink-0 rounded-md flex items-center justify-center font-bold text-xs ${db.status === 'completed' ? 'bg-emerald-500/10 text-emerald-400 border border-emerald-500/20' : 'bg-slate-800 text-slate-400 border border-slate-700/20'}`}>

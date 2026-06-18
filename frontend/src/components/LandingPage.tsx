@@ -56,10 +56,12 @@ const BENCHMARKS = [
 ];
 
 const SLOGANS = [
-  "Traditional generators write SQL. We guarantee correctness.",
-  "Closed-Loop self-healing repairs broken database queries automatically.",
-  "FQN-grounded mappings eliminate column and table ambiguity.",
-  "Semantic context pruning reduces token consumption by 80%."
+  { text: "Traditional generators write SQL. We guarantee ", highlight: "correctness." },
+  { text: "Closed-loop healing: runs, debugs, and ", highlight: "improves until correct.", suffix: " Smarter with every iteration." },
+  { text: "Closed-loop self-healing ", highlight: "repairs broken database queries", suffix: " automatically." },
+  { text: "Not just a generator. An execution engine that ", highlight: "debugs, heals, and refines", suffix: " on every run." },
+  { text: "FQN-grounded mappings eliminate column and ", highlight: "table ambiguity." },
+  { text: "Semantic context pruning reduces token consumption by ", highlight: "80%." }
 ];
 
 const STRENGTHS_LIST = [
@@ -340,6 +342,8 @@ const SloganCycle = () => {
     return () => clearInterval(t);
   }, []);
 
+  const slogan = SLOGANS[idx];
+
   return (
     <div className="flex items-center gap-2">
       <span className="w-px h-4 shrink-0 rounded-full" style={{ background: 'linear-gradient(to bottom, #818cf8, #2dd4bf)' }} />
@@ -351,10 +355,20 @@ const SloganCycle = () => {
             animate={{ y: 0, opacity: 1 }}
             exit={{ y: -14, opacity: 0 }}
             transition={{ duration: 0.45, ease: [0.25, 1, 0.5, 1] }}
-            className="absolute text-[11px] font-medium text-left whitespace-nowrap"
+            className="absolute text-[11px] font-medium text-left whitespace-nowrap flex items-center gap-1"
             style={{ color: '#94a3b8' }}
           >
-            {SLOGANS[idx]}
+            <span>{slogan.text}</span>
+            <span style={{ 
+              fontWeight: 800, 
+              background: 'linear-gradient(90deg, #818cf8, #2dd4bf)',
+              WebkitBackgroundClip: 'text',
+              WebkitTextFillColor: 'transparent',
+              display: 'inline'
+            }}>
+              {slogan.highlight}
+            </span>
+            {slogan.suffix && <span>{slogan.suffix}</span>}
           </motion.p>
         </AnimatePresence>
       </div>
@@ -1330,67 +1344,84 @@ const LandingPage = ({ onEnter, user, onLogin, onLogout }) => {
           ))}
         </nav>
 
-        {user ? (
-          <div className="flex items-center gap-2">
-            {user.picture ? (
-              <img
-                src={user.picture}
-                alt={user.name}
-                referrerPolicy="no-referrer"
-                className="w-8 h-8 rounded-full border border-slate-700/60 shrink-0"
-              />
-            ) : (
-              <div className="w-8 h-8 rounded-full bg-gradient-to-br from-indigo-500/20 to-purple-500/20 border border-indigo-500/30 flex items-center justify-center shrink-0 shadow-inner">
-                <User className="w-4.5 h-4.5 text-indigo-300" />
-              </div>
-            )}
-            <span className="text-[12px] text-slate-300 font-medium hidden lg:block max-w-[80px] truncate">
-              {user.name.split(' ')[0]}
-            </span>
-            <motion.button
-              whileHover={{ scale: 1.03, background: 'rgba(99,102,241,0.18)' }}
-              whileTap={{ scale: 0.97 }}
-              onClick={onEnter}
-              className="flex items-center gap-1.5 px-4 py-2 rounded-lg text-[13px] font-semibold transition-all"
-              style={{ background: 'rgba(99,102,241,0.1)', color: C.indigo, border: `1px solid rgba(99,102,241,0.22)` }}
-            >
-              Dashboard <ArrowRight size={13} />
-            </motion.button>
-            <motion.button
-              whileHover={{ scale: 1.05, color: '#f87171' }}
-              whileTap={{ scale: 0.95 }}
-              onClick={onLogout}
-              className="p-1.5 rounded-lg transition-all"
-              title="Sign out"
-              style={{ color: '#64748b' }}
-            >
-              <LogOut size={14} />
-            </motion.button>
-          </div>
-        ) : (
-          <div className="flex items-center gap-2">
-            <motion.button
-              whileHover={{ scale: 1.02, background: 'rgba(255,255,255,0.07)', borderColor: 'rgba(148,163,184,0.28)' }}
-              whileTap={{ scale: 0.97 }}
-              onClick={signIn}
-              disabled={loginLoading}
-              className="flex items-center gap-2 px-4 py-2 rounded-lg text-[13px] font-semibold transition-all cursor-pointer disabled:opacity-60 disabled:cursor-not-allowed"
-              style={{ background: 'rgba(255,255,255,0.04)', color: C.text1, border: '1px solid rgba(148,163,184,0.15)' }}
-            >
-              {loginLoading ? <Loader2 size={14} className="animate-spin" /> : <GoogleIcon />}
-              Sign in with Google
-            </motion.button>
-            <motion.button
-              whileHover={{ scale: 1.02, color: C.text1 }}
-              whileTap={{ scale: 0.97 }}
-              onClick={() => setShowGuestModal(true)}
-              className="px-3 py-2 rounded-lg text-[12px] font-medium transition-all cursor-pointer"
-              style={{ color: C.text3 }}
-            >
-              Guest
-            </motion.button>
-          </div>
-        )}
+        <div className="flex items-center gap-3">
+          <motion.a
+            href="https://github.com/NG-VikasV/TT_SQL"
+            target="_blank"
+            rel="noopener noreferrer"
+            whileHover={{ scale: 1.03, background: 'rgba(255,255,255,0.07)', borderColor: 'rgba(148,163,184,0.28)' }}
+            whileTap={{ scale: 0.97 }}
+            className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold transition-all no-underline shrink-0"
+            style={{ color: C.text1, border: '1px solid rgba(148,163,184,0.15)', background: 'rgba(255,255,255,0.03)' }}
+          >
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor">
+              <path d="M9 19c-5 1.5-5-2.5-7-3m14 6v-3.87a3.37 3.37 0 0 0-.94-2.61c3.14-.35 6.44-1.54 6.44-7A5.44 5.44 0 0 0 20 4.77 5.07 5.07 0 0 0 19.91 1S18.73.65 16 2.48a13.38 13.38 0 0 0-7 0C6.27.65 5.09 1 5.09 1A5.07 5.07 0 0 0 5 4.77a5.44 5.44 0 0 0-1.5 3.78c0 5.42 3.3 6.61 6.44 7A3.37 3.37 0 0 0 9 18.13V22"/>
+            </svg>
+            <span className="hidden sm:inline font-mono font-bold tracking-tight">GitHub</span>
+          </motion.a>
+
+          {user ? (
+            <div className="flex items-center gap-2">
+              {user.picture ? (
+                <img
+                  src={user.picture}
+                  alt={user.name}
+                  referrerPolicy="no-referrer"
+                  className="w-8 h-8 rounded-full border border-slate-700/60 shrink-0"
+                />
+              ) : (
+                <div className="w-8 h-8 rounded-full bg-gradient-to-br from-indigo-500/20 to-purple-500/20 border border-indigo-500/30 flex items-center justify-center shrink-0 shadow-inner">
+                  <User className="w-4.5 h-4.5 text-indigo-300" />
+                </div>
+              )}
+              <span className="text-[12px] text-slate-300 font-medium hidden lg:block max-w-[80px] truncate">
+                {user.name.split(' ')[0]}
+              </span>
+              <motion.button
+                whileHover={{ scale: 1.03, background: 'rgba(99,102,241,0.18)' }}
+                whileTap={{ scale: 0.97 }}
+                onClick={onEnter}
+                className="flex items-center gap-1.5 px-4 py-2 rounded-lg text-[13px] font-semibold transition-all"
+                style={{ background: 'rgba(99,102,241,0.1)', color: C.indigo, border: `1px solid rgba(99,102,241,0.22)` }}
+              >
+                Dashboard <ArrowRight size={13} />
+              </motion.button>
+              <motion.button
+                whileHover={{ scale: 1.05, color: '#f87171' }}
+                whileTap={{ scale: 0.95 }}
+                onClick={onLogout}
+                className="p-1.5 rounded-lg transition-all"
+                title="Sign out"
+                style={{ color: '#64748b' }}
+              >
+                <LogOut size={14} />
+              </motion.button>
+            </div>
+          ) : (
+            <div className="flex items-center gap-2">
+              <motion.button
+                whileHover={{ scale: 1.02, background: 'rgba(255,255,255,0.07)', borderColor: 'rgba(148,163,184,0.28)' }}
+                whileTap={{ scale: 0.97 }}
+                onClick={signIn}
+                disabled={loginLoading}
+                className="flex items-center gap-2 px-4 py-2 rounded-lg text-[13px] font-semibold transition-all cursor-pointer disabled:opacity-60 disabled:cursor-not-allowed"
+                style={{ background: 'rgba(255,255,255,0.04)', color: C.text1, border: '1px solid rgba(148,163,184,0.15)' }}
+              >
+                {loginLoading ? <Loader2 size={14} className="animate-spin" /> : <GoogleIcon />}
+                Sign in with Google
+              </motion.button>
+              <motion.button
+                whileHover={{ scale: 1.02, color: C.text1 }}
+                whileTap={{ scale: 0.97 }}
+                onClick={() => setShowGuestModal(true)}
+                className="px-3 py-2 rounded-lg text-[12px] font-medium transition-all cursor-pointer"
+                style={{ color: C.text3 }}
+              >
+                Guest
+              </motion.button>
+            </div>
+          )}
+        </div>
       </motion.header>
 
       {/* ── Hero ── */}

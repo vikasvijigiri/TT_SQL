@@ -113,7 +113,7 @@ class SQLCriticAgent:
             try:
                 # Wrap proposed SQL to check if it returns 0 rows or syntax errors
                 probe_sql = f"SELECT * FROM ({proposed_sql}) AS __probe LIMIT 1"
-                ok, _, rows = executor.execute_direct(probe_sql)
+                ok, _, rows = executor.execute_direct(probe_sql, timeout=5)
                 if ok and not rows:
                     probe_warnings = "EXECUTION PROBE WARNING: The proposed SQL executed successfully but returned ZERO rows! If the user query expects an answer, this means your JOINs or WHERE clauses are hallucinated and filtering out all data. You MUST rewrite the SQL to return data.\n\n"
                 elif not ok:

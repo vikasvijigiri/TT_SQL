@@ -1751,7 +1751,7 @@ const DabStudio = ({ onBack, onHome, autoOpenDetails, clearAutoOpenDetails, user
   });
 
   return (
-    <div className="flex h-screen w-full overflow-hidden bg-[#050508] text-slate-200 font-sans selection:bg-purple-500/30 selection:text-white">
+    <div className="flex h-screen w-full overflow-hidden bg-[#1b2738] text-slate-200 font-sans selection:bg-purple-500/30 selection:text-white">
       {/* Toast Notification System */}
       <AnimatePresence>
         {toast && (
@@ -1778,7 +1778,7 @@ const DabStudio = ({ onBack, onHome, autoOpenDetails, clearAutoOpenDetails, user
       </AnimatePresence>
 
       {/* Sidebar Navigation */}
-      <aside className="w-16 lg:w-56 border-r border-[#1a1a22] bg-[#090812] flex flex-col p-4 gap-6 shrink-0 z-20 shadow-2xl animate-fadeIn">
+      <aside className="w-16 lg:w-56 border-r border-[#2c3e55] bg-[#162030] flex flex-col p-4 gap-6 shrink-0 z-20 shadow-2xl animate-fadeIn">
         <div className="flex flex-col gap-3">
           <div className="flex items-center gap-3 px-1">
             <NQuireLogo size={32} showName nameSize="text-xs" onClick={onHome} />
@@ -1786,7 +1786,7 @@ const DabStudio = ({ onBack, onHome, autoOpenDetails, clearAutoOpenDetails, user
 
           <button
             onClick={onBack}
-            className="flex items-center gap-2 px-3 py-2 rounded-lg bg-[#110f1c] border border-[#231d36] hover:border-amber-500/50 hover:bg-[#19152a] text-slate-400 hover:text-amber-400 transition-all font-bold text-[11px] font-mono justify-center w-full shadow-md shrink-0"
+            className="flex items-center gap-2 px-3 py-2 rounded-lg bg-[#182030] border border-[#2c3e55] hover:border-amber-500/50 hover:bg-[#1e2d40] text-slate-400 hover:text-amber-400 transition-all font-bold text-[11px] font-mono justify-center w-full shadow-md shrink-0"
           >
             <ArrowLeft className="w-3.5 h-3.5" />
             <span className="hidden lg:inline">Switch Project</span>
@@ -1796,7 +1796,7 @@ const DabStudio = ({ onBack, onHome, autoOpenDetails, clearAutoOpenDetails, user
         <nav className="flex flex-col gap-1 flex-1">
           <button
             onClick={() => setCurrentView('dashboard')}
-            className={`flex items-center gap-3 px-3 py-2.5 rounded-lg transition-all font-bold text-xs tracking-tight ${currentView === 'dashboard' ? 'bg-purple-500/10 text-purple-400 border border-purple-500/20 shadow-inner' : 'hover:bg-white/[0.04] text-slate-400 hover:text-slate-200'}`}
+            className={`flex items-center gap-3 px-3 py-2.5 rounded-lg transition-all font-bold text-xs tracking-tight ${currentView === 'dashboard' ? 'bg-violet-500/15 text-violet-400 border border-violet-500/25 shadow-inner' : 'hover:bg-white/[0.05] text-slate-400 hover:text-slate-200'}`}
           >
             <BarChart3 className="w-4 h-4 shrink-0" />
             <span className="hidden lg:block truncate">Audit Dashboard</span>
@@ -1806,7 +1806,7 @@ const DabStudio = ({ onBack, onHome, autoOpenDetails, clearAutoOpenDetails, user
               if (databases.length > 0) fetchResults(selectedDb || databases[0].name);
               else setCurrentView('database');
             }}
-            className={`flex items-center gap-3 px-3 py-2.5 rounded-lg transition-all font-bold text-xs tracking-tight ${currentView === 'database' ? 'bg-purple-500/10 text-purple-400 border border-purple-500/20 shadow-inner' : 'hover:bg-white/[0.04] text-slate-400 hover:text-slate-200'}`}
+            className={`flex items-center gap-3 px-3 py-2.5 rounded-lg transition-all font-bold text-xs tracking-tight ${currentView === 'database' ? 'bg-violet-500/15 text-violet-400 border border-violet-500/25 shadow-inner' : 'hover:bg-white/[0.05] text-slate-400 hover:text-slate-200'}`}
           >
             <Terminal className="w-4 h-4 shrink-0" />
             <span className="hidden lg:block truncate">Execution Probes</span>
@@ -1816,7 +1816,7 @@ const DabStudio = ({ onBack, onHome, autoOpenDetails, clearAutoOpenDetails, user
               setCurrentView('agents');
               fetchAgentAnalytics(true);
             }}
-            className={`flex items-center gap-3 px-3 py-2.5 rounded-lg transition-all font-bold text-xs tracking-tight ${currentView === 'agents' ? 'bg-purple-500/10 text-purple-400 border border-purple-500/20 shadow-inner' : 'hover:bg-white/[0.04] text-slate-400 hover:text-slate-200'}`}
+            className={`flex items-center gap-3 px-3 py-2.5 rounded-lg transition-all font-bold text-xs tracking-tight ${currentView === 'agents' ? 'bg-violet-500/15 text-violet-400 border border-violet-500/25 shadow-inner' : 'hover:bg-white/[0.05] text-slate-400 hover:text-slate-200'}`}
           >
             <Cpu className="w-4 h-4 shrink-0" />
             <span className="hidden lg:block truncate">Agent Analytics</span>
@@ -1826,13 +1826,13 @@ const DabStudio = ({ onBack, onHome, autoOpenDetails, clearAutoOpenDetails, user
         </nav>
 
         {/* Mascot Card */}
-        <div className="hidden lg:flex flex-col my-auto p-3.5 bg-[#0b0a14] rounded-2xl border border-[#1d1933] shadow-md relative overflow-hidden group select-none transition-all hover:border-purple-500/40">
+        <div className="hidden lg:flex flex-col my-auto p-3.5 bg-[#162030] rounded-2xl border border-[#2c3e55] shadow-md relative overflow-hidden group select-none transition-all hover:border-violet-500/40">
           <div className="absolute top-0 left-0 right-0 h-[2px] bg-gradient-to-r from-purple-500 via-indigo-500 to-pink-500 animate-pulse" />
-          <div className="relative mb-3 bg-[#110e1e] border border-[#231c36] p-2.5 rounded-xl rounded-bl-none shadow-lg">
+          <div className="relative mb-3 bg-[#1a2a3a] border border-[#2c3e55] p-2.5 rounded-xl rounded-bl-none shadow-lg">
             <div className="text-[11px] font-mono text-slate-300 leading-tight min-h-[28px] flex items-center">
               {dabQuip}
             </div>
-            <div className="absolute -bottom-2 left-3 w-0 h-0 border-t-8 border-t-[#110e1e] border-r-8 border-r-transparent border-l-0" />
+            <div className="absolute -bottom-2 left-3 w-0 h-0 border-t-8 border-t-[#1a2a3a] border-r-8 border-r-transparent border-l-0" />
           </div>
           <div className="flex items-center justify-center py-2">
             <Sparkles className="w-6 h-6 text-purple-400 animate-pulse" />
@@ -1840,7 +1840,7 @@ const DabStudio = ({ onBack, onHome, autoOpenDetails, clearAutoOpenDetails, user
         </div>
 
         {/* DIN Pipeline Settings */}
-        <div className="hidden lg:flex flex-col p-3.5 bg-[#0b0a14] rounded-2xl border border-[#1d1933] shadow-md relative overflow-hidden group select-none transition-all hover:border-purple-500/40 mt-4">
+        <div className="hidden lg:flex flex-col p-3.5 bg-[#162030] rounded-2xl border border-[#2c3e55] shadow-md relative overflow-hidden group select-none transition-all hover:border-violet-500/40 mt-4">
           <div className="absolute top-0 left-0 right-0 h-[2px] bg-gradient-to-r from-purple-500 to-indigo-500" />
           <div className="flex items-center gap-2 mb-3">
             <Sliders className="w-3.5 h-3.5 text-purple-400" />
@@ -1854,7 +1854,7 @@ const DabStudio = ({ onBack, onHome, autoOpenDetails, clearAutoOpenDetails, user
               <select
                 value={selectedModel}
                 onChange={e => setSelectedModel(e.target.value)}
-                className="w-full bg-[#121020] border border-[#231d36] rounded px-2 py-1 text-[11px] font-mono text-slate-200 focus:outline-none focus:border-purple-500 cursor-pointer"
+                className="w-full bg-[#1b2738] border border-[#2c3e55] rounded px-2 py-1 text-[11px] font-mono text-slate-200 focus:outline-none focus:border-violet-500 cursor-pointer"
               >
                 <option value="bedrock/openai.gpt-oss-safeguard-120b">GPT-OSS Safeguard 120B</option>
                 <option value="bedrock/anthropic.claude-3-5-sonnet-20241022-v2:0">Claude 3.5 Sonnet v2</option>
@@ -1877,7 +1877,7 @@ const DabStudio = ({ onBack, onHome, autoOpenDetails, clearAutoOpenDetails, user
                 step="0.1"
                 value={temperature}
                 onChange={e => setTemperature(Number(e.target.value))}
-                className="w-full h-1 bg-[#121020] rounded-lg appearance-none cursor-pointer accent-purple-500"
+                className="w-full h-1 bg-[#1b2738] rounded-lg appearance-none cursor-pointer accent-violet-500"
               />
             </div>
 
@@ -1894,14 +1894,14 @@ const DabStudio = ({ onBack, onHome, autoOpenDetails, clearAutoOpenDetails, user
                 step="1"
                 value={workers}
                 onChange={e => setWorkers(Number(e.target.value))}
-                className="w-full h-1 bg-[#121020] rounded-lg appearance-none cursor-pointer accent-purple-500"
+                className="w-full h-1 bg-[#1b2738] rounded-lg appearance-none cursor-pointer accent-violet-500"
               />
             </div>
           </div>
         </div>
 
         {/* User Profile */}
-        <div className="mt-auto pt-3 border-t border-[#1a1a22]">
+        <div className="mt-auto pt-3 border-t border-[#2c3e55]">
           <div className="flex items-center gap-2.5 px-1 py-2 rounded-xl hover:bg-white/[0.04] transition-all group">
             {user && user.picture ? (
               <img src={user.picture} alt={user.name} className="w-7 h-7 rounded-full shrink-0 ring-1 ring-purple-500/40" referrerPolicy="no-referrer" />
@@ -1932,9 +1932,9 @@ const DabStudio = ({ onBack, onHome, autoOpenDetails, clearAutoOpenDetails, user
       </aside>
 
       {/* Main Panel */}
-      <main className="flex-1 flex flex-col min-w-0 bg-[#050508] relative overflow-hidden">
+      <main className="flex-1 flex flex-col min-w-0 bg-[#1b2738] relative overflow-hidden">
         {/* Header Bar */}
-        <header className="h-16 border-b border-[#14141c] bg-[#08070e]/80 backdrop-blur-lg flex items-center justify-between px-6 z-10 shrink-0 gap-4">
+        <header className="h-16 border-b border-[#2c3e55] bg-[#162030]/90 backdrop-blur-lg flex items-center justify-between px-6 z-10 shrink-0 gap-4">
           <div className="flex items-center gap-3 min-w-0">
             <span className="text-sm font-mono font-bold text-white tracking-tight truncate">
               {currentView === 'dashboard' && 'DataAgentBench · Forensic Telemetry & Audit Matrix'}
@@ -2089,7 +2089,7 @@ const DabStudio = ({ onBack, onHome, autoOpenDetails, clearAutoOpenDetails, user
 
         {/* Global Progress Bar */}
         {isGlobalRunning && globalProgress.total > 0 && currentView === 'dashboard' && (
-          <div className="bg-[#0b0a12] border-b border-[#1e1933] px-6 py-3 flex flex-col gap-2 shadow-lg animate-fadeIn shrink-0">
+          <div className="bg-[#1e2d40] border-b border-[#2c3e55] px-6 py-3 flex flex-col gap-2 shadow-lg animate-fadeIn shrink-0">
             <div className="flex items-center justify-between text-xs font-mono font-bold">
               <span className="text-purple-400 flex items-center gap-2">
                 <Activity className="w-4 h-4 animate-spin" />
@@ -2099,7 +2099,7 @@ const DabStudio = ({ onBack, onHome, autoOpenDetails, clearAutoOpenDetails, user
                 {Math.round((globalProgress.completed / globalProgress.total) * 100)}% Completed ({globalProgress.completed}/{globalProgress.total})
               </span>
             </div>
-            <div className="w-full h-2 bg-[#050508] rounded-full overflow-hidden border border-[#1e1933]">
+            <div className="w-full h-2 bg-[#162030] rounded-full overflow-hidden border border-[#2c3e55]">
               <div 
                 className="h-full bg-gradient-to-r from-purple-500 to-indigo-500 shadow-[0_0_10px_rgba(167,139,250,0.5)] transition-all duration-500"
                 style={{ width: `${(globalProgress.completed / globalProgress.total) * 100}%` }}
@@ -2121,18 +2121,17 @@ const DabStudio = ({ onBack, onHome, autoOpenDetails, clearAutoOpenDetails, user
             currentView === 'dashboard' ? (
               <>
                 {/* Metrics Grid */}
-                {/* Metrics Grid */}
                 {metrics && (
                   <MetricsGrid 
                     metrics={[
-                        { label: 'TOTAL QUERIES', value: metrics.total_queries || 0, color: 'blue', type: 'total', sub: 'QUERIES' },
-                        { label: 'EVALUATED', value: metrics.evaluated || 0, color: 'indigo', type: 'total', sub: 'RUNS' },
+                        { label: 'TOTAL', value: metrics.total_queries || 0, color: 'blue', type: 'total', sub: 'QUERIES' },
+                        { label: 'EVALUATED', value: metrics.evaluated || 0, color: 'indigo', type: 'evaluated', sub: 'RUNS' },
                         { label: 'PASSED', value: metrics.passed || 0, color: 'emerald', type: 'succeeded', sub: 'PASS' },
                         { label: 'FAILED', value: metrics.failed || 0, color: 'rose', type: 'errored', sub: 'FAIL' },
-                        { label: 'PASS@1 ACCURACY (%)', value: String(metrics.pass_at_1_pct || metrics.gold_accuracy || '0.0%').replace('%', ''), color: 'violet', type: 'gold', sub: 'ACCURACY' },
-                        { label: 'AVG LATENCY (s)', value: String(metrics.avg_latency || '0.0s').replace('s', ''), color: 'cyan', type: 'total', sub: 'PER RUN' },
-                        { label: 'AVG TOKENS', value: String(metrics.avg_tokens_per_agent || '0 tokens').replace(' tokens', ''), color: 'fuchsia', type: 'total', sub: 'PER AGENT' },
-                        { label: 'TOTAL COST ($)', value: String(metrics.total_cost || '$0.0000').replace('$', ''), color: 'amber', type: 'total', sub: 'ESTIMATED' }
+                        { label: 'PASS@1', value: String(metrics.pass_at_1_pct || metrics.gold_accuracy || '0.0%').replace('%', ''), color: 'violet', type: 'gold', sub: 'ACC %' },
+                        { label: 'LATENCY', value: String(metrics.avg_latency || '0.0s').replace('s', ''), color: 'cyan', type: 'latency', sub: 'AVG' },
+                        { label: 'TOKENS', value: String(metrics.avg_tokens_per_agent || '0 tokens').replace(' tokens', ''), color: 'fuchsia', type: 'tokens', sub: '/AGENT' },
+                        { label: 'COST', value: String(metrics.total_cost || '$0.0000').replace('$', ''), color: 'amber', type: 'cost', sub: 'EST.$' }
                     ]}
                     onMetricClick={handleOpenMetricModal}
                   />
@@ -2141,13 +2140,13 @@ const DabStudio = ({ onBack, onHome, autoOpenDetails, clearAutoOpenDetails, user
                 {/* Databases and Recent Runs */}
                 <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
                   {/* Left Column: Target Repositories Matrix */}
-                  <section className="lg:col-span-7 bg-[#0b0a12] border border-[#1e1933] rounded-xl p-4 flex flex-col shadow-lg">
-                    <div className="flex items-center justify-between pb-3 mb-3 border-b border-[#1e1933]">
+                  <section className="lg:col-span-7 bg-[#1e2d40] border border-[#2c3e55] rounded-xl p-4 flex flex-col shadow-lg">
+                    <div className="flex items-center justify-between pb-3 mb-3 border-b border-[#2c3e55]">
                       <h2 className="text-xs font-mono font-bold flex items-center gap-2 uppercase tracking-wider text-slate-400">
-                        <Database className="w-3.5 h-3.5 text-purple-400" />
+                        <Database className="w-3.5 h-3.5 text-violet-400" />
                         Target Benchmarks Matrix
                       </h2>
-                      <span className="text-[10px] font-mono font-bold text-slate-500 bg-[#12101e] px-2 py-0.5 rounded border border-white/5">
+                      <span className="text-[10px] font-mono font-bold text-slate-500 bg-[#162030] px-2 py-0.5 rounded border border-[#2c3e55]">
                         {filteredDatabases.length} DATASETS
                       </span>
                     </div>

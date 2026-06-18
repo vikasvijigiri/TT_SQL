@@ -36,45 +36,89 @@ class TablePruner:
         intent: QueryIntentAnalysis = None,  # type: ignore
     ) -> List[str]:
         logger.set_agent("TABLE_PRUNER")
-        logger.info(f"Pruning tables for query: '{user_query}'")
+        logger.info(f"Pruning tables (hybrid/vector retrieval) for query: '{user_query}'")
 
         retriever = HierarchicalRetriever()
         if intent is None:
             intent = retriever.analyze_intent(user_query)
 
-        # Pre-filter candidate tables using hierarchical retrieval to avoid token overload
+        # Retrieve candidate tables using hierarchical retrieval to avoid token overload
         full_ctx = self.semantic_engine.context or self.semantic_engine.build_context()
         narrowed_ctx, _, _ = retriever.narrow_schema(user_query, full_ctx)
 
+        selected_tables = [t.name for t in narrowed_ctx.tables]
+        
+        # Expand tables dynamically to include direct foreign-key-linked neighbors
+        # to prevent join-path retrieval bias on tables with low semantic query matching.
+        import re
+        selected_set = {t.lower().replace('"', "").replace('`', "") for t in selected_tables}
+        expanded_any = False
+        
+        for tbl in full_ctx.tables:
+            tbl_clean = tbl.name.lower().replace('"', "").replace('`', "")
+            if tbl_clean in selected_set:
+                for fk_str in tbl.foreign_keys or []:
+                    # FK format: FOREIGN KEY (col) REFERENCES ref_table(ref_col)
+                    match = re.search(r"REFERENCES\s+([^\s(]+)", fk_str, re.IGNORECASE)
+                    if match:
+                        ref_tbl = match.group(1).strip().strip('"').strip('`')
+                        ref_clean = ref_tbl.lower().split(".")[-1]
+                        
+                        # Find matching table in full schema
+                        for cand in full_ctx.tables:
+                            cand_clean = cand.name.lower().replace('"', "").replace('`', "")
+                            if cand_clean == ref_clean or cand_clean.endswith("." + ref_clean):
+                                if cand_clean not in selected_set:
+                                    selected_tables.append(cand.name)
+                                    selected_set.add(cand_clean)
+                                    expanded_any = True
+                                    logger.info(f"[VectorPruner] Expanded neighbors: added join anchor '{cand.name}'")
+
+        if expanded_any:
+            logger.info(f"[VectorPruner] Selected tables after FK expansion: {selected_tables}")
+
+        # If candidate table count is small, skip LLM pruning entirely to save cost and avoid LLM hallucinations/errors
+        if len(selected_tables) <= 4:
+            logger.info(f"[TablePruner] Candidate table count is small ({len(selected_tables)} tables). Skipping LLM table pruning.")
+            logger.reset_agent()
+            return selected_tables
+
+        logger.info(f"[TablePruner] Running LLM table pruning on {len(selected_tables)} candidate tables.")
         from agent.app.core.prompts.prompt_assembler import PromptAssembler
+        
+        # Build a filtered context containing only the candidate tables
+        filtered_tables = [t for t in full_ctx.tables if t.name in selected_tables]
+        filtered_ctx = SemanticContext(tables=filtered_tables)
 
         assembler = PromptAssembler(dialect=dialect, stage="TABLE_PRUNER")
         assembled = assembler.assemble(
             user_query=user_query,
             agent_type="TABLE_PRUNER",
-            context=narrowed_ctx,
+            context=filtered_ctx,
             intent=intent,
-            relevant_tables=[t.name for t in narrowed_ctx.tables],
+            relevant_tables=selected_tables,
             lessons=lessons,
         )
 
-        system_prompt = assembled.system_prompt
-        user_prompt = assembled.user_prompt
-
         try:
             result = self.llm.generate_structured(
-                system_prompt=system_prompt,
-                user_prompt=user_prompt,
+                system_prompt=assembled.system_prompt,
+                user_prompt=assembled.user_prompt,
                 response_model=TablePruningResult,
             )
             logger.info(f"PRUNING REASONING: {result.reasoning}")
             logger.info(
                 f"Selected {len(result.selected_tables)} tables: {result.selected_tables}"
             )
-            return result.selected_tables
+            # Ensure selected tables actually exist in our candidate set (failsafe)
+            valid_tables = [t for t in result.selected_tables if t in selected_tables]
+            if not valid_tables:
+                logger.warning("[TablePruner] LLM selected 0 valid tables. Falling back to all candidate tables.")
+                return selected_tables
+            return valid_tables
         except Exception as e:
-            logger.error(f"Table pruning failed: {e}")
-            return [t.name for t in narrowed_ctx.tables]
+            logger.error(f"Table pruning LLM refinement failed: {e}")
+            return selected_tables
         finally:
             logger.reset_agent()
 
@@ -164,7 +208,7 @@ class ColumnPruner:
         intent: QueryIntentAnalysis = None,  # type: ignore
     ) -> Dict[str, List[str]]:
         logger.set_agent("COLUMN_PRUNER")
-        logger.info(f"Pruning columns for {len(relevant_tables)} tables.")
+        logger.info(f"Pruning columns (hybrid/vector retrieval) for {len(relevant_tables)} tables.")
 
         retriever = HierarchicalRetriever()
         if intent is None:
@@ -186,6 +230,22 @@ class ColumnPruner:
             force_tables=relevant_tables,
         )
 
+        # Estimate the token count of this narrowed context
+        slim_context = self.semantic_engine.format_for_prompt(
+            relevant_tables=relevant_tables, include_samples=False
+        )
+        estimated_tokens = len(slim_context) // 4
+
+        # If context is already small (<= 3000 tokens), skip LLM column pruning entirely
+        if estimated_tokens <= 3000:
+            logger.info(f"[ColumnPruner] Candidate columns context is small (~{estimated_tokens} tokens). Skipping LLM column pruning.")
+            final_table_columns = self._restore_join_keys(
+                table_cols_map, relevant_tables, full_ctx
+            )
+            logger.reset_agent()
+            return final_table_columns
+
+        logger.info(f"[ColumnPruner] Running LLM column pruning on context with ~{estimated_tokens} tokens.")
         from agent.app.core.prompts.prompt_assembler import PromptAssembler
 
         assembler = PromptAssembler(dialect=dialect, stage="COLUMN_PRUNER")
@@ -199,18 +259,15 @@ class ColumnPruner:
             lessons=lessons,
         )
 
-        system_prompt = assembled.system_prompt
-        user_prompt = assembled.user_prompt
-
         try:
             result = self.llm.generate_structured(
-                system_prompt=system_prompt,
-                user_prompt=user_prompt,
+                system_prompt=assembled.system_prompt,
+                user_prompt=assembled.user_prompt,
                 response_model=ColumnPruningResult,
             )
 
             # Convert flat list "table.column" to Dict[table, List[column]]
-            final_table_columns: dict[str, typing.Any] = {}
+            final_table_columns = {}
             for fqn in result.selected_columns:
                 if "." in fqn:
                     parts = fqn.split(".")
@@ -228,8 +285,11 @@ class ColumnPruner:
             logger.info(f"Selected columns across {len(final_table_columns)} tables.")
             return final_table_columns
         except Exception as e:
-            logger.error(f"Column pruning failed: {e}")
-            return table_cols_map
+            logger.error(f"Column pruning LLM refinement failed: {e}")
+            final_table_columns = self._restore_join_keys(
+                table_cols_map, relevant_tables, full_ctx
+            )
+            return final_table_columns
         finally:
             logger.reset_agent()
 

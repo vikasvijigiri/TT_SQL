@@ -343,7 +343,7 @@ class SemanticDINOrchestrator:
                                             f"SELECT column_name FROM information_schema.columns "
                                             f"WHERE table_name='{_t}' ORDER BY ordinal_position"
                                         )
-                                    _ok, _, _cdata = self.executor.execute_direct(_csql)
+                                    _ok, _, _cdata = self.executor.execute_direct(_csql, timeout=5)
                                     if _ok and _cdata:
                                         _cols = [
                                             list(r.values())[1]
@@ -460,7 +460,7 @@ class SemanticDINOrchestrator:
                                         f"SELECT column_name FROM information_schema.columns "
                                         f"WHERE table_name='{_t}' ORDER BY ordinal_position"
                                     )
-                                _ok, _, _cdata = self.executor.execute_direct(_csql)
+                                _ok, _, _cdata = self.executor.execute_direct(_csql, timeout=5)
                                 if _ok and _cdata:
                                     _cols = [
                                         list(r.values())[1]
@@ -501,7 +501,7 @@ class SemanticDINOrchestrator:
                             f"SELECT CAST({_dc_col} AS VARCHAR) AS val "
                             f"FROM {_dc_table} WHERE {_dc_col} IS NOT NULL LIMIT 5"
                         )
-                        _ok_s, _, _srows = self.executor.execute_direct(_sample_sql)
+                        _ok_s, _, _srows = self.executor.execute_direct(_sample_sql, timeout=5)
                         if _ok_s and _srows:
                             _quick_samples = [
                                 str(r.get("VAL", r.get("val", ""))) for r in _srows
@@ -750,25 +750,54 @@ class SemanticDINOrchestrator:
                 critic_schema_context = self.semantic_engine.format_for_prompt(
                     relevant_tables=linked_schema.selected_tables, include_samples=False
                 )
+                
+                import concurrent.futures
+                from agent.app.utils.llm import reset_token_counters, get_tokens, add_tokens
+
+                def _critique_task(cand):
+                    reset_token_counters()
+                    try:
+                        critique_res = self.critic.critique_sql(
+                            user_query,
+                            cand.sql,
+                            critic_schema_context,
+                            combined_lessons,
+                            self.executor.dialect,
+                            executor=self.executor,
+                            relevant_tables=linked_schema.selected_tables,
+                            table_columns=None,
+                            intent=intent,
+                        )
+                        in_t, out_t = get_tokens()
+                        return cand, critique_res, in_t, out_t
+                    except Exception as ce:
+                        logger.warning(f"[DiverseGen] Candidate critique task failed: {ce}")
+                        return None
+
+                critique_results = []
+                with concurrent.futures.ThreadPoolExecutor(max_workers=len(candidates)) as executor:
+                    futures = [executor.submit(_critique_task, cand) for cand in candidates]
+                    for future in concurrent.futures.as_completed(futures):
+                        res = future.result()
+                        if res:
+                            cand, critique_res, in_t, out_t = res
+                            add_tokens(in_t, out_t)  # Add tokens back to parent thread
+                            critique_results.append((cand, critique_res))
+
+                # Preserving the original order of candidates for preference
+                # Map critique results by candidate SQL
+                critique_map = {cand.sql: critique_res for cand, critique_res in critique_results}
                 last_critic_res = None
                 critic_accepted = False
                 for cand in candidates:
-                    last_critic_res = self.critic.critique_sql(
-                        user_query,
-                        cand.sql,
-                        critic_schema_context,
-                        combined_lessons,
-                        self.executor.dialect,
-                        executor=self.executor,
-                        relevant_tables=linked_schema.selected_tables,
-                        table_columns=None,
-                        intent=intent,
-                    )
-                    if last_critic_res.is_valid:
-                        current_sql = cand.sql
-                        critic_accepted = True
-                        logger.info("[DiverseGen] Critic-selected candidate accepted.")
-                        break
+                    critique_res = critique_map.get(cand.sql)
+                    if critique_res:
+                        last_critic_res = critique_res
+                        if critique_res.is_valid:
+                            current_sql = cand.sql
+                            critic_accepted = True
+                            logger.info("[DiverseGen] Critic-selected candidate accepted (from parallel check).")
+                            break
 
                 if not critic_accepted and last_critic_res:
                     logger.warning(

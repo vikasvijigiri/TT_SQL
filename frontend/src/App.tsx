@@ -294,17 +294,17 @@ const App = () => {
   if (!activeScreen) {
     activeScreen = (
       <div
-        className="flex flex-col items-center justify-center min-h-screen w-full bg-[#070709] text-slate-200 font-sans p-6 overflow-y-auto select-none relative animate-fadeIn"
+        className="flex flex-col items-center justify-center min-h-screen w-full bg-[#1b2738] text-slate-200 font-sans p-6 overflow-y-auto select-none relative animate-fadeIn"
         style={{
-          backgroundImage: 'radial-gradient(circle, rgba(255,255,255,0.03) 1px, transparent 1px)',
-          backgroundSize: '24px 24px',
-          backgroundColor: '#07070b'
+          backgroundImage: 'radial-gradient(circle, rgba(95,168,216,0.06) 1px, transparent 1px)',
+          backgroundSize: '28px 28px',
+          backgroundColor: '#1b2738'
         }}
       >
         <header className="absolute top-0 left-0 right-0 px-8 py-5 flex justify-between items-center max-w-7xl mx-auto z-30">
           <NQuireLogo size={34} showName nameSize="text-sm" onClick={() => setCurrentView('landing')} />
           {user && (
-            <div className="flex items-center gap-2.5 bg-[#0f0e16]/80 border border-[#211b33] rounded-xl px-3 py-1.5 shadow-md">
+            <div className="flex items-center gap-2.5 bg-[#162030]/80 border border-[#2c3e55] rounded-xl px-3 py-1.5 shadow-md">
               {user.picture ? (
                 <img src={user.picture} alt={user.name} className="w-6 h-6 rounded-full shrink-0 ring-1 ring-purple-500/40" referrerPolicy="no-referrer" />
               ) : (
@@ -338,7 +338,7 @@ const App = () => {
               initial={{ opacity: 0, y: -20 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ duration: 0.6 }}
-              className="inline-flex items-center gap-3 bg-[#12121a] border border-[#222232] px-4 py-2 rounded-full text-xs font-mono text-cyan-400 font-bold"
+              className="inline-flex items-center gap-3 bg-[#1e2d40] border border-[#2c3e55] px-4 py-2 rounded-full text-xs font-mono text-sky-400 font-bold"
             >
               <span className="w-2 h-2 rounded-full bg-cyan-400 animate-pulse" />
               <span>ZEN AGENTIC SQL WORKBENCH v2.0</span>
@@ -350,7 +350,7 @@ const App = () => {
               transition={{ delay: 0.2, duration: 0.8 }}
               className="text-4xl sm:text-5xl font-black tracking-tight text-white leading-none bg-gradient-to-r from-white via-slate-200 to-slate-500 bg-clip-text text-transparent"
             >
-              Forensic Benchmark Hub
+              NQuire Agentic SQL Studio
             </motion.h1>
 
             <motion.p
@@ -372,7 +372,7 @@ const App = () => {
               transition={{ delay: 0.4, type: 'spring', stiffness: 100 }}
               whileHover={{ y: -6, borderColor: 'rgba(59, 130, 246, 0.5)' }}
               onClick={() => setSelectedProject('spider')}
-              className="bg-[#0e0e14]/90 backdrop-blur border border-[#1e1e2c] p-6 rounded-2xl cursor-pointer shadow-xl relative overflow-hidden group flex flex-col justify-between min-h-[280px]"
+              className="bg-[#1e2d40]/90 backdrop-blur border border-[#2c3e55] p-6 rounded-2xl cursor-pointer shadow-xl relative overflow-hidden group flex flex-col justify-between min-h-[280px]"
             >
               <div className="absolute -right-12 -bottom-12 w-40 h-40 bg-blue-500/5 rounded-full blur-3xl group-hover:bg-blue-500/10 transition-all pointer-events-none" />
               <div className="space-y-4">
@@ -406,7 +406,7 @@ const App = () => {
               transition={{ delay: 0.4, type: 'spring', stiffness: 100 }}
               whileHover={{ y: -6, borderColor: 'rgba(139, 92, 246, 0.5)' }}
               onClick={() => setSelectedProject('dab')}
-              className="bg-[#0e0e14]/90 backdrop-blur border border-[#1e1e2c] p-6 rounded-2xl cursor-pointer shadow-xl relative overflow-hidden group flex flex-col justify-between min-h-[280px]"
+              className="bg-[#1e2d40]/90 backdrop-blur border border-[#2c3e55] p-6 rounded-2xl cursor-pointer shadow-xl relative overflow-hidden group flex flex-col justify-between min-h-[280px]"
             >
               <div className="absolute -right-12 -bottom-12 w-40 h-40 bg-violet-500/5 rounded-full blur-3xl group-hover:bg-violet-500/10 transition-all pointer-events-none" />
               <div className="space-y-4">
@@ -433,38 +433,48 @@ const App = () => {
               </div>
             </motion.div>
 
-            {/* Custom Project Card */}
+            {/* Custom Project Card (Primary Workspace Highlighted) */}
             <motion.div
               initial={{ opacity: 0, y: 30 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ delay: 0.5, type: 'spring', stiffness: 100 }}
-              whileHover={{ y: -6, borderColor: 'rgba(16, 185, 129, 0.5)' }}
+              whileHover={{ y: -6, borderColor: 'rgba(16, 185, 129, 0.8)', scale: 1.02 }}
               onClick={() => setSelectedProject('custom')}
-              className="bg-[#0e0e14]/90 backdrop-blur border border-[#1e1e2c] p-6 rounded-2xl cursor-pointer shadow-xl relative overflow-hidden group flex flex-col justify-between min-h-[280px]"
+              className="bg-gradient-to-br from-[#162f27]/90 via-[#1b2b3a]/95 to-[#121d28]/95 backdrop-blur border-2 border-emerald-500/30 p-6 rounded-2xl cursor-pointer shadow-[0_0_30px_rgba(16,185,129,0.06)] relative overflow-hidden group flex flex-col justify-between min-h-[300px] transition-all"
             >
-              <div className="absolute -right-12 -bottom-12 w-40 h-40 bg-emerald-500/5 rounded-full blur-3xl group-hover:bg-emerald-500/10 transition-all pointer-events-none" />
-              <div className="absolute -left-6 -top-6 w-24 h-24 bg-teal-500/3 rounded-full blur-2xl pointer-events-none" />
-              <div className="space-y-4">
+              {/* Top gradient highlight strip */}
+              <div className="absolute top-0 right-0 left-0 h-[3px] bg-gradient-to-r from-emerald-500 via-teal-400 to-emerald-500" />
+              
+              <div className="absolute -right-12 -bottom-12 w-48 h-48 bg-emerald-500/10 rounded-full blur-3xl group-hover:bg-emerald-500/15 transition-all pointer-events-none" />
+              <div className="absolute -left-6 -top-6 w-24 h-24 bg-teal-500/4 rounded-full blur-2xl pointer-events-none" />
+              
+              <div className="space-y-4 pt-1">
                 <div className="flex items-center justify-between">
-                  <div className="w-12 h-12 bg-emerald-600/10 border border-emerald-500/30 rounded-xl flex items-center justify-center text-emerald-400 shadow-lg shadow-emerald-500/10">
-                    <FolderOpen className="w-6 h-6" />
+                  <div className="w-12 h-12 bg-emerald-500/20 border border-emerald-400/30 rounded-xl flex items-center justify-center text-emerald-300 shadow-[0_0_15px_rgba(16,185,129,0.15)] group-hover:shadow-[0_0_20px_rgba(16,185,129,0.25)] transition-all">
+                    <FolderOpen className="w-6 h-6 animate-pulse" />
                   </div>
-                  <span className="text-[10px] font-mono font-bold tracking-wider px-2 py-0.5 rounded bg-emerald-500/15 text-emerald-400 border border-emerald-500/20">
-                    YOUR DATA
-                  </span>
+                  <div className="flex items-center gap-1.5">
+                    <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-ping" />
+                    <span className="text-[10px] font-mono font-bold tracking-wider px-2 py-0.5 rounded bg-emerald-500 text-slate-950 shadow-[0_0_8px_rgba(16,185,129,0.4)]">
+                      ACTIVE WORKBENCH
+                    </span>
+                  </div>
                 </div>
                 <div>
-                  <h2 className="text-lg font-black font-mono text-white group-hover:text-emerald-400 transition-colors">
+                  <h2 className="text-xl font-black font-mono text-white group-hover:text-emerald-300 transition-colors flex items-center gap-2">
                     Custom Project
                   </h2>
-                  <p className="text-xs text-slate-400 mt-2 leading-relaxed">
+                  <p className="text-xs text-slate-300 mt-2 leading-relaxed">
                     Connect your own database — PostgreSQL, SQLite, BigQuery, or Snowflake — and explore it with AI-powered natural language queries. No benchmarks, just your data.
                   </p>
                 </div>
               </div>
-              <div className="pt-6 flex items-center gap-1.5 text-xs text-emerald-400 font-bold font-mono group-hover:gap-2.5 transition-all">
-                <span>START PROJECT</span>
-                <ChevronRight className="w-4 h-4" />
+              
+              <div className="pt-6">
+                <div className="w-full py-2.5 bg-gradient-to-r from-emerald-500 to-teal-500 hover:from-emerald-400 hover:to-teal-400 text-slate-950 font-bold font-mono text-xs rounded-xl shadow-[0_4px_12px_rgba(16,185,129,0.2)] group-hover:shadow-[0_4px_20px_rgba(16,185,129,0.35)] transition-all flex items-center justify-center gap-1.5">
+                  <span>START WORKBENCH</span>
+                  <ChevronRight className="w-4 h-4 group-hover:translate-x-0.5 transition-transform" />
+                </div>
               </div>
             </motion.div>
           </div>

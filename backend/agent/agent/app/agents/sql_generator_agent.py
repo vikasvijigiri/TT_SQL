@@ -163,13 +163,9 @@ class SQLGeneratorAgent:
         n: int = 3,
     ) -> List[SQLGeneratorOutput]:
         """
-        Generate N structurally diverse SQL candidates by providing a different
-        structural approach directive to each LLM call.  Duplicate SQL strings
-        are filtered so only genuinely distinct candidates are returned.
-
-        Used for complex queries where a single generation may pick the wrong
-        grain or join strategy.  Returns 1Ã¢â‚¬â€œN candidates; never empty (if every
-        attempt fails, falls back to a single standard generate() call).
+        Generate N structurally diverse SQL candidates concurrently by providing a
+        different structural approach directive to each LLM call. Duplicate SQL strings
+        are filtered.
         """
         logger.set_agent("SQL_GENERATOR")
         if intent is None:
@@ -180,45 +176,63 @@ class SQLGeneratorAgent:
         )
         table_columns_map = self._build_table_columns_map(linked_schema)
 
-        candidates: List[SQLGeneratorOutput] = []
+        import concurrent.futures
+        from agent.app.utils.llm import reset_token_counters, get_tokens, add_tokens
+
+        # Task runner for threads
+        def _gen_candidate_task(i, approach):
+            reset_token_counters()
+            directive_header = (
+                f"=== MANDATORY STRUCTURAL DIRECTIVE (candidate {i + 1}/{n}) ===\n"
+                f"{approach}\n"
+                f"You MUST follow this directive. Violating it produces a useless duplicate.\n"
+                f"=== END DIRECTIVE ===\n\n"
+            )
+            try:
+                system_prompt, user_prompt = self._build_prompt(
+                    user_query,
+                    linked_schema,
+                    base_lessons,
+                    intent,
+                    table_columns_map,
+                )
+                user_prompt = directive_header + user_prompt
+                result = self._call_llm_and_sanitize(system_prompt, user_prompt)
+                in_t, out_t = get_tokens()
+                return result, in_t, out_t, i
+            except Exception as e:
+                logger.warning(
+                    f"[SQLGenerator] Candidate {i + 1} generation failed: {e}"
+                )
+                return None
+
+        candidates_by_index: list[tuple[SQLGeneratorOutput, int]] = []
         seen_sql: set = set()
 
         try:
-            for i, approach in enumerate(_DIVERSITY_APPROACHES[:n]):
-                # Prepend the directive to the user prompt so it appears BEFORE all other context,
-                # not buried at the end where it gets ignored by the LLM.
-                directive_header = (
-                    f"=== MANDATORY STRUCTURAL DIRECTIVE (candidate {i + 1}/{n}) ===\n"
-                    f"{approach}\n"
-                    f"You MUST follow this directive. Violating it produces a useless duplicate.\n"
-                    f"=== END DIRECTIVE ===\n\n"
-                )
-                try:
-                    system_prompt, user_prompt = self._build_prompt(
-                        user_query,
-                        linked_schema,
-                        base_lessons,
-                        intent,
-                        table_columns_map,
-                    )
-                    user_prompt = directive_header + user_prompt
-                    result = self._call_llm_and_sanitize(system_prompt, user_prompt)
-                    if result and result.sql:
-                        norm = " ".join(result.sql.split()).upper()
-                        if norm not in seen_sql:
-                            seen_sql.add(norm)
-                            candidates.append(result)
-                            logger.info(
-                                f"[SQLGenerator] Diverse candidate {len(candidates)}/{n} accepted."
-                            )
-                except Exception as e:
-                    logger.warning(
-                        f"[SQLGenerator] Candidate {i + 1} generation failed: {e}"
-                    )
+            with concurrent.futures.ThreadPoolExecutor(max_workers=n) as executor:
+                futures = [
+                    executor.submit(_gen_candidate_task, i, approach)
+                    for i, approach in enumerate(_DIVERSITY_APPROACHES[:n])
+                ]
+                for future in concurrent.futures.as_completed(futures):
+                    res = future.result()
+                    if res:
+                        result, in_t, out_t, index = res
+                        add_tokens(in_t, out_t)  # Add tokens back to parent thread
+                        if result and result.sql:
+                            norm = " ".join(result.sql.split()).upper()
+                            if norm not in seen_sql:
+                                seen_sql.add(norm)
+                                candidates_by_index.append((result, index))
+
+            # Re-sort to preserve original priority order
+            candidates_by_index.sort(key=lambda x: x[1])
+            candidates = [c for c, idx in candidates_by_index]
 
             if not candidates:
                 logger.warning(
-                    "[SQLGenerator] All diverse attempts failed Ã¢â‚¬â€ falling back to standard generate()."
+                    "[SQLGenerator] All diverse attempts failed — falling back to standard generate()."
                 )
                 logger.reset_agent()
                 fallback = self.generate(

@@ -31,6 +31,34 @@ def is_sqlite_file(filepath: str) -> bool:
 
 
 class DatabaseExecutor:
+    @property
+    def _conn(self):
+        if not hasattr(self, "_local"):
+            self._local = threading.local()
+        if not hasattr(self._local, "conn"):
+            self._local.conn = None
+        return self._local.conn
+
+    @_conn.setter
+    def _conn(self, val):
+        if not hasattr(self, "_local"):
+            self._local = threading.local()
+        self._local.conn = val
+
+    @property
+    def _conn_type(self):
+        if not hasattr(self, "_local"):
+            self._local = threading.local()
+        if not hasattr(self._local, "conn_type"):
+            self._local.conn_type = None
+        return self._local.conn_type
+
+    @_conn_type.setter
+    def _conn_type(self, val):
+        if not hasattr(self, "_local"):
+            self._local = threading.local()
+        self._local.conn_type = val
+
     def __init__(
         self,
         db_name: str = "",
@@ -39,6 +67,7 @@ class DatabaseExecutor:
         explicit_db_path: str | None = None,
         connection_string: str | None = None,
     ):
+        self._local = threading.local()
         if sf_config_path is None:
             sf_config_path = str(CONFIG_DIR / "sf_credentials.json")
 
@@ -189,7 +218,7 @@ class DatabaseExecutor:
         """True when neither a native backend nor a local file was resolved."""
         return bool(self._conn_cfg and self._conn_cfg.needs_sqlalchemy)
 
-    def execute(self, sql: str, instance_id: str) -> Tuple[bool, str, int]:
+    def execute(self, sql: str, instance_id: str, timeout: int | None = None) -> Tuple[bool, str, int]:
         """Execute SQL (handles multi-statements) and persist results."""
         save_dir = os.path.join(str(RESULTS_DIR), self.db_name)
         os.makedirs(save_dir, exist_ok=True)
@@ -217,7 +246,7 @@ class DatabaseExecutor:
                     logger.error(f"SQLite preflight failed: {preflight_error}")
                     return False, preflight_error, 0
             if sqlite_path:
-                rows, columns, error = self._execute_sqlite(stmt, sqlite_path)
+                rows, columns, error = self._execute_sqlite(stmt, sqlite_path, timeout=timeout)
             elif duckdb_path:
                 rows, columns, error = self._execute_duckdb(stmt, duckdb_path)
             elif pg_conn_str:
@@ -291,12 +320,12 @@ class DatabaseExecutor:
 
         return None
 
-    def execute_direct(self, sql: str) -> Tuple[bool, str, List[Dict[str, Any]]]:
+    def execute_direct(self, sql: str, timeout: int | None = None) -> Tuple[bool, str, List[Dict[str, Any]]]:
         """Executes a query directly and returns the raw rows without persisting to CSV."""
         sqlite_path, duckdb_path, pg_conn_str = self._resolve_paths()
 
         if sqlite_path:
-            rows, columns, error = self._execute_sqlite(sql, sqlite_path)
+            rows, columns, error = self._execute_sqlite(sql, sqlite_path, timeout=timeout)
         elif duckdb_path:
             rows, columns, error = self._execute_duckdb(sql, duckdb_path)
         elif pg_conn_str:
@@ -311,12 +340,120 @@ class DatabaseExecutor:
             return False, error, []
         return True, "Success", rows
 
-    # ------------------------------------------------------------------
-    # Backends
-    # ------------------------------------------------------------------
+    def _seed_sqlite_indexes(self, conn, cur):
+        """
+        Seed indexes on key join columns dynamically based on SQLite schema constraints
+        and shared column names across tables. Completely avoids hardcoded string patterns.
+        """
+        try:
+            # 1. Get list of all databases (main + attached)
+            cur.execute("PRAGMA database_list;")
+            dbs = [r[1] for r in cur.fetchall() if r[1] not in ("temp",)]
+
+            all_dbs_tables = []
+            col_counts = {}  # col_name.lower() -> count of tables containing it
+            table_cols_map = {}  # (db, table) -> list of column names
+
+            # 2. Collect column names across all tables in all databases
+            for db_alias in dbs:
+                prefix = f'"{db_alias}".' if db_alias != "main" else ""
+                try:
+                    cur.execute(f"SELECT name FROM {prefix}sqlite_master WHERE type='table';")
+                    tables = [r[0] for r in cur.fetchall() if r[0] not in ("sqlite_sequence", "sqlite_stat1")]
+                except Exception:
+                    continue
+
+                for t_name in tables:
+                    try:
+                        cur.execute(f"PRAGMA {prefix}table_info(\"{t_name}\");")
+                        cols_info = cur.fetchall()
+                    except Exception:
+                        continue
+                    
+                    columns = []
+                    for col in cols_info:
+                        if isinstance(col, dict) or hasattr(col, "keys"):
+                            cname = col.get("name")
+                        else:
+                            cname = col[1] if len(col) > 1 else None
+                        if cname:
+                            columns.append(cname)
+                            col_lower = cname.lower()
+                            col_counts[col_lower] = col_counts.get(col_lower, 0) + 1
+                    
+                    table_cols_map[(db_alias, t_name)] = columns
+                    all_dbs_tables.append((db_alias, t_name))
+
+            # 3. Create indexes on columns that are either:
+            #    a) Explicit foreign keys
+            #    b) Shared column names across 2 or more tables (candidate join keys)
+            for db_alias, t_name in all_dbs_tables:
+                prefix = f'"{db_alias}".' if db_alias != "main" else ""
+                
+                # Fetch constraints for this table
+                fk_cols = set()
+                try:
+                    cur.execute(f"PRAGMA {prefix}foreign_key_list(\"{t_name}\");")
+                    fks = cur.fetchall()
+                    for fk in fks:
+                        if isinstance(fk, dict) or hasattr(fk, "keys"):
+                            fk_from = fk.get("from")
+                        else:
+                            fk_from = fk[3] if len(fk) > 3 else None
+                        if fk_from:
+                            fk_cols.add(fk_from.lower())
+                except Exception:
+                    pass
+
+                # Get existing index columns to avoid duplicates
+                indexed_cols = set()
+                try:
+                    cur.execute(f"PRAGMA {prefix}index_list(\"{t_name}\");")
+                    existing_indexes = cur.fetchall()
+                    for idx in existing_indexes:
+                        if isinstance(idx, dict) or hasattr(idx, "keys"):
+                            idx_name = idx.get("name")
+                        else:
+                            idx_name = idx[1] if len(idx) > 1 else None
+                        
+                        if idx_name:
+                            try:
+                                cur.execute(f"PRAGMA {prefix}index_info(\"{idx_name}\");")
+                                for idx_col in cur.fetchall():
+                                    if isinstance(idx_col, dict) or hasattr(idx_col, "keys"):
+                                        cname = idx_col.get("name")
+                                    else:
+                                        cname = idx_col[2] if len(idx_col) > 2 else None
+                                    if cname:
+                                        indexed_cols.add(cname.lower())
+                            except Exception:
+                                pass
+                except Exception:
+                    pass
+
+                columns = table_cols_map.get((db_alias, t_name), [])
+                for col in columns:
+                    col_lower = col.lower()
+                    
+                    # Decide if this column needs an index
+                    is_fk = col_lower in fk_cols
+                    is_shared = col_counts.get(col_lower, 0) >= 2
+                    
+                    if (is_fk or is_shared) and col_lower not in indexed_cols:
+                        idx_name = f"idx_dyn_{t_name}_{col_lower}"
+                        idx_name = idx_name[:60]
+                        try:
+                            create_sql = f"CREATE INDEX IF NOT EXISTS {prefix}\"{idx_name}\" ON \"{t_name}\" (\"{col}\");"
+                            cur.execute(create_sql)
+                            logger.info(f"[IndexSeeding] Created dynamic index on {db_alias}.{t_name}.{col}")
+                        except Exception as ie:
+                            logger.debug(f"[IndexSeeding] Could not create index on {db_alias}.{t_name}.{col}: {ie}")
+            conn.commit()
+        except Exception as e:
+            logger.warning(f"[IndexSeeding] SQLite dynamic index seeding failed: {e}")
 
     def _execute_sqlite(
-        self, sql: str, path: str
+        self, sql: str, path: str, timeout: int | None = None
     ) -> Tuple[List[Dict], List[str], Optional[str]]:
         import sqlite3
         import glob
@@ -407,11 +544,17 @@ class DatabaseExecutor:
                         logger.warning(
                             f"Failed to create views for attached SQLite DB {alias}: {e}"
                         )
-                    cur.close()
+                cur.close()
+
+                # Seed SQLite indexes on key columns
+                try:
+                    self._seed_sqlite_indexes(self._conn, self._conn.cursor())
+                except Exception as _se:
+                    logger.debug(f"[IndexSeeding] SQLite index seeding setup failed: {_se}")
 
             # Execute statement
             conn = self._conn
-            timeout_seconds = 120
+            timeout_seconds = timeout if timeout is not None else 120
             start_time = time.time()
 
             def progress_handler():
@@ -419,7 +562,7 @@ class DatabaseExecutor:
                     return 1
                 return 0
   # type: ignore
-            conn.set_progress_handler(progress_handler, 10000)  # type: ignore
+            conn.set_progress_handler(progress_handler, 1000)  # type: ignore
             cur = conn.cursor()
             cur.execute(sql)
             columns = [col[0] for col in cur.description] if cur.description else []

@@ -149,7 +149,7 @@ class SchemaExplorer:
             # Get column names first
             try:
                 col_sql = self._columns_query(table, dialect, quote)
-                ok, _, col_data = executor.execute_direct(col_sql)
+                ok, _, col_data = executor.execute_direct(col_sql, timeout=5)
                 if not ok or not col_data:
                     continue
                 # PRAGMA table_info / our DESCRIBE wrapper return name at index 1
@@ -170,7 +170,7 @@ class SchemaExplorer:
                         f"WHERE {quote}{col}{quote} IS NOT NULL "
                         f"LIMIT {self.MAX_DISTINCT_VALUES}"
                     )
-                    ok2, _, raw_rows = executor.execute_direct(q)
+                    ok2, _, raw_rows = executor.execute_direct(q, timeout=5)
                     if not ok2 or not raw_rows:
                         continue
                     vals = [str(next(iter(r.values())))[:60] for r in raw_rows]
@@ -204,7 +204,7 @@ class SchemaExplorer:
                 continue
             try:
                 col_sql = self._columns_query(table, dialect, quote)
-                ok, _, col_data = executor.execute_direct(col_sql)
+                ok, _, col_data = executor.execute_direct(col_sql, timeout=5)
                 if not ok or not col_data:
                     continue
                 cols = [
@@ -218,7 +218,7 @@ class SchemaExplorer:
             try:
                 tref = self._tref(table, quote)
                 ok2, _, cnt_rows = executor.execute_direct(
-                    f"SELECT COUNT(*) FROM {tref}"
+                    f"SELECT COUNT(*) FROM {tref}", timeout=5
                 )
                 if ok2 and cnt_rows:
                     table_size[table] = int(next(iter(cnt_rows[0].values())))
@@ -262,7 +262,7 @@ class SchemaExplorer:
                             f"JOIN {self._tref(tb, quote)} b "
                             f"ON a.{quote}{col_a}{quote} = b.{quote}{col_b}{quote}"
                         )
-                        ok, _, rows = executor.execute_direct(join_sql)
+                        ok, _, rows = executor.execute_direct(join_sql, timeout=5)
                         if not ok or not rows:
                             continue
                         join_count = int(next(iter(rows[0].values())))
@@ -322,7 +322,7 @@ class SchemaExplorer:
                 continue
             try:
                 q = f"SELECT * FROM {self._tref(table, quote)} LIMIT {self.MAX_SAMPLE_ROWS}"
-                ok2, _, raw_rows = executor.execute_direct(q)
+                ok2, _, raw_rows = executor.execute_direct(q, timeout=5)
                 if not ok2 or not raw_rows:
                     continue
                 lines.append(f"  Table: {table}")

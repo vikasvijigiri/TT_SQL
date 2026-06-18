@@ -131,7 +131,7 @@ const PipelineFlow = ({ stageStatuses }) => {
           const status = statuses[stage.id] ?? 'pending';
           const prevStatus = i > 0 ? (statuses[STAGES[i - 1].id] ?? 'pending') : null;
           return (
-            <div key={stage.id} ref={el => (nodeRefs.current[i] = el)}>
+            <div key={stage.id} ref={el => { nodeRefs.current[i] = el; }}>
               {i > 0 && <Connector fromStatus={prevStatus} />}
               <StageNode stage={stage} status={status} />
             </div>

@@ -348,9 +348,12 @@ class LLMClient:
             final_str = str(content).strip()
 
         in_t, out_t = 0, 0
+        cache_creation, cache_read = 0, 0
         if hasattr(response, "usage_metadata") and response.usage_metadata:
             in_t = response.usage_metadata.get("input_tokens", 0)
             out_t = response.usage_metadata.get("output_tokens", 0)
+            cache_creation = response.usage_metadata.get("cache_creation_input_tokens", 0) or response.usage_metadata.get("cache_creation_tokens", 0) or 0
+            cache_read = response.usage_metadata.get("cache_read_input_tokens", 0) or response.usage_metadata.get("cache_read_tokens", 0) or 0
         elif (
             hasattr(response, "response_metadata")
             and "usage" in response.response_metadata
@@ -358,6 +361,11 @@ class LLMClient:
             u = response.response_metadata["usage"]
             in_t = u.get("inputTokens", u.get("input_tokens", 0))
             out_t = u.get("outputTokens", u.get("output_tokens", 0))
+            cache_creation = u.get("cache_creation_input_tokens", u.get("cache_creation_tokens", 0)) or 0
+            cache_read = u.get("cache_read_input_tokens", u.get("cache_read_tokens", 0)) or 0
+
+        if cache_read > 0 or cache_creation > 0:
+            logger.info(f"[ContextCaching] Input: {in_t} | Cache Read: {cache_read} | Cache Creation: {cache_creation}")
         return final_str, in_t, out_t
 
     def generate(self, system_prompt: str, user_prompt: str) -> str:
@@ -365,14 +373,25 @@ class LLMClient:
         logger.debug(
             f"LLM Prompt lengths | System: {len(system_prompt)} | User: {len(user_prompt)}"
         )
-        messages = [
-            SystemMessage(content=system_prompt),
-            HumanMessage(content=user_prompt),
-        ]
+        
+        use_cache = len(system_prompt) > 4000
 
         last_exc: Optional[Exception] = None
         for attempt in range(self._max_retries + 1):
             try:
+                if use_cache:
+                    system_content = [
+                        {"type": "text", "text": system_prompt},
+                        {"cachePoint": {"type": "default"}}
+                    ]
+                else:
+                    system_content = system_prompt
+
+                messages = [
+                    SystemMessage(content=system_content),
+                    HumanMessage(content=user_prompt),
+                ]
+
                 response = self.llm.invoke(messages)
                 final_str, in_t, out_t = self._parse_response(response)
                 add_tokens(in_t, out_t)
@@ -382,11 +401,31 @@ class LLMClient:
                 logger.log_agent_call(agent_name, full_prompt, final_str, metrics)
                 return final_str
             except Exception as e:
+                # Failsafe: if cachePoint fails (e.g. parameter validation error), retry immediately without caching
+                if use_cache:
+                    logger.warning(f"Bedrock prompt caching failed: {e}. Retrying this attempt without cachePoint failsafe...")
+                    use_cache = False
+                    try:
+                        messages = [
+                            SystemMessage(content=system_prompt),
+                            HumanMessage(content=user_prompt),
+                        ]
+                        response = self.llm.invoke(messages)
+                        final_str, in_t, out_t = self._parse_response(response)
+                        add_tokens(in_t, out_t)
+                        metrics = {"input_tokens": in_t, "output_tokens": out_t}
+                        full_prompt = f"=== SYSTEM PROMPT ===\n{system_prompt}\n\n=== USER PROMPT ===\n{user_prompt}"
+                        agent_name = getattr(logger.logger, "name", "AGENT")
+                        logger.log_agent_call(agent_name, full_prompt, final_str, metrics)
+                        return final_str
+                    except Exception as fallback_e:
+                        e = fallback_e
+
                 last_exc = e
                 if self._is_retryable(e) and attempt < self._max_retries:
                     delay = self._retry_base_delay * (2**attempt)
                     logger.warning(
-                        f"Transient Bedrock error (attempt {attempt + 1}/{self._max_retries}): {e}. Retrying in {delay:.1f}sÃ¢â‚¬Â¦"
+                        f"Transient Bedrock error (attempt {attempt + 1}/{self._max_retries}): {e}. Retrying in {delay:.1f}s..."
                     )
                     time.sleep(delay)
                 else:
@@ -400,14 +439,25 @@ class LLMClient:
         """Asynchronous text completion with exponential-backoff retry."""
         import asyncio
         logger.debug(f"LLM Prompt lengths | System: {len(system_prompt)} | User: {len(user_prompt)}")
-        messages = [
-            SystemMessage(content=system_prompt),
-            HumanMessage(content=user_prompt),
-        ]
+        
+        use_cache = len(system_prompt) > 4000
 
         last_exc: Optional[Exception] = None
         for attempt in range(self._max_retries + 1):
             try:
+                if use_cache:
+                    system_content = [
+                        {"type": "text", "text": system_prompt},
+                        {"cachePoint": {"type": "default"}}
+                    ]
+                else:
+                    system_content = system_prompt
+
+                messages = [
+                    SystemMessage(content=system_content),
+                    HumanMessage(content=user_prompt),
+                ]
+
                 response = await self.llm.ainvoke(messages)
                 final_str, in_t, out_t = self._parse_response(response)
                 add_tokens(in_t, out_t)
@@ -417,10 +467,30 @@ class LLMClient:
                 logger.log_agent_call(agent_name, full_prompt, final_str, metrics)
                 return final_str
             except Exception as e:
+                # Failsafe: if cachePoint fails, retry immediately without caching
+                if use_cache:
+                    logger.warning(f"Bedrock async prompt caching failed: {e}. Retrying this attempt without cachePoint failsafe...")
+                    use_cache = False
+                    try:
+                        messages = [
+                            SystemMessage(content=system_prompt),
+                            HumanMessage(content=user_prompt),
+                        ]
+                        response = await self.llm.ainvoke(messages)
+                        final_str, in_t, out_t = self._parse_response(response)
+                        add_tokens(in_t, out_t)
+                        metrics = {"input_tokens": in_t, "output_tokens": out_t}
+                        full_prompt = f"=== SYSTEM PROMPT ===\n{system_prompt}\n\n=== USER PROMPT ===\n{user_prompt}"
+                        agent_name = getattr(logger.logger, "name", "AGENT")
+                        logger.log_agent_call(agent_name, full_prompt, final_str, metrics)
+                        return final_str
+                    except Exception as fallback_e:
+                        e = fallback_e
+
                 last_exc = e
                 if self._is_retryable(e) and attempt < self._max_retries:
                     delay = self._retry_base_delay * (2**attempt)
-                    logger.warning(f"Transient Bedrock error (attempt {attempt + 1}/{self._max_retries}): {e}. Retrying in {delay:.1f}sÃ¢â‚¬Â¦")
+                    logger.warning(f"Transient Bedrock error (attempt {attempt + 1}/{self._max_retries}): {e}. Retrying in {delay:.1f}s...")
                     await asyncio.sleep(delay)
                 else:
                     break
