@@ -15,7 +15,7 @@ from functools import lru_cache
 from datetime import datetime
 import contextlib
 
-from agent.app.core.config import DAB_RESULTS_DIR
+from agent.app.core.config import DAB_RESULTS_DIR, DEFAULT_USERNAME
 from agent.app.core.dependencies import EXECUTION_POOL
 from agent.app.utils.logger import logger
 from sqlalchemy import cast, Date
@@ -38,7 +38,7 @@ _dab_queries_cache = None
 
 def _get_username_from_request(request: Request) -> str:
     """Extract sanitised username from X-Username header (injected by Go gateway from JWT).
-    Falls back to 'vikasvijigiri' for requests without auth or in local dev mode."""
+    Falls back to DEFAULT_USERNAME for requests without auth or in local dev mode."""
     raw = request.headers.get("X-Username", "").strip()
     if not raw:
         raw = request.headers.get("X-User-Email", "").strip()
@@ -46,7 +46,7 @@ def _get_username_from_request(request: Request) -> str:
         if "@" in raw:
             raw = raw.split("@")[0]
     safe = re.sub(r'[^a-z0-9_\-]', '', raw.lower()) if raw else ""
-    return safe or "vikasvijigiri"
+    return safe or DEFAULT_USERNAME
 
 
 def _resolve_live_run_id(run_id: Optional[str], username: str) -> Optional[str]:
@@ -1169,6 +1169,7 @@ class DabRunAllPayload(BaseModel):
     run_id: Optional[str] = None  # specific archived run_id to continue (e.g. "run_20260617_160102")
     model: Optional[str] = None
     temperature: Optional[float] = None
+    dataset_scope: Optional[str] = None
 
 
 def _parse_qkey(qkey: str):
@@ -1669,22 +1670,27 @@ def run_dab_all(request: Request, payload: DabRunAllPayload = DabRunAllPayload()
     de.DAB_RUN_USERNAME = username
 
     try:
-        # 1. Purge any incomplete/corrupted evaluations for the target date (user-scoped)
-        deleted_count = db.query(Evaluation).filter(
+        # 1. Purge any incomplete/corrupted evaluations for the target date (user-scoped, optionally dataset-scoped)
+        purge_query = db.query(Evaluation).filter(
             Evaluation.timestamp >= start_dt,
             Evaluation.timestamp < end_dt,
             Evaluation.username == username,
             (Evaluation.passed == None) | (Evaluation.elapsed_s == None)
-        ).delete(synchronize_session=False)
+        )
+        if payload.dataset_scope:
+            purge_query = purge_query.filter(Evaluation.dataset == payload.dataset_scope)
+            
+        deleted_count = purge_query.delete(synchronize_session=False)
         db.commit()
         if deleted_count > 0:
-            logger.info(f"Purged {deleted_count} incomplete/aborted evaluation records for {run_date_str} (user={username}).")
+            scope_info = f" (scope={payload.dataset_scope})" if payload.dataset_scope else ""
+            logger.info(f"Purged {deleted_count} incomplete/aborted evaluation records for {run_date_str}{scope_info} (user={username}).")
 
         if payload.mode == "continue":
             logger.info(f"DAB run_all: Continuing previous incomplete run for {run_date_str} (user={username}).")
             # Retrieve already completed runs for this user to skip them.
             # Check both live records AND archived run_id records (for when a run_ id was selected).
-            completed_records = db.query(Evaluation).filter(
+            completed_query = db.query(Evaluation).filter(
                 Evaluation.username == username,
                 Evaluation.passed != None,
                 Evaluation.elapsed_s != None
@@ -1695,17 +1701,23 @@ def run_dab_all(request: Request, payload: DabRunAllPayload = DabRunAllPayload()
                 ) | (
                     (payload.run_id != None) & (Evaluation.run_id == payload.run_id)
                 )
-            ).all()
+            )
+            if payload.dataset_scope:
+                completed_query = completed_query.filter(Evaluation.dataset == payload.dataset_scope)
+            completed_records = completed_query.all()
             for rec in completed_records:
                 completed_keys.add((rec.dataset, str(rec.query_id), rec.run_suffix or ""))
             logger.info(f"Continue mode: {len(completed_keys)} already-completed slots found for user={username}.")
         else:
             logger.info(f"DAB run_all: Starting a fresh run for {run_date_str} (user={username}).")
             # Find the timestamp of the existing live records to use as the archive run ID
-            first_record = db.query(Evaluation).filter(
+            first_record_query = db.query(Evaluation).filter(
                 Evaluation.username == username,
                 (Evaluation.run_id == "live") | (Evaluation.run_id == None)
-            ).order_by(Evaluation.timestamp.asc()).first()
+            )
+            if payload.dataset_scope:
+                first_record_query = first_record_query.filter(Evaluation.dataset == payload.dataset_scope)
+            first_record = first_record_query.order_by(Evaluation.timestamp.asc()).first()
             
             if first_record and first_record.timestamp:
                 archive_run_id = first_record.timestamp.strftime("run_%Y%m%d_%H%M%S")
@@ -1725,15 +1737,19 @@ def run_dab_all(request: Request, payload: DabRunAllPayload = DabRunAllPayload()
                 for item in DAB_RESULTS_DIR.iterdir():
                     if item.name != "_archive":
                         try:
-                            shutil.move(str(item), str(archive_dir / item.name))
+                            if not payload.dataset_scope or item.name == payload.dataset_scope:
+                                shutil.move(str(item), str(archive_dir / item.name))
                         except Exception:
                             pass
 
             # Update this user's live records to have the archived run_id
-            db.query(Evaluation).filter(
+            update_query = db.query(Evaluation).filter(
                 Evaluation.username == username,
                 (Evaluation.run_id == "live") | (Evaluation.run_id == None)
-            ).update({Evaluation.run_id: archive_run_id}, synchronize_session=False)
+            )
+            if payload.dataset_scope:
+                update_query = update_query.filter(Evaluation.dataset == payload.dataset_scope)
+            update_query.update({Evaluation.run_id: archive_run_id}, synchronize_session=False)
             db.commit()
             
     except Exception as e:
@@ -1744,6 +1760,10 @@ def run_dab_all(request: Request, payload: DabRunAllPayload = DabRunAllPayload()
     queries = _get_dab_queries()
     if not queries:
         return {"error": "No queries found. Check DAB repo path."}
+
+    # Filter by dataset scope if provided
+    if payload.dataset_scope:
+        queries = [q for q in queries if q["dataset"] == payload.dataset_scope]
 
     to_run = []
     for q in queries:
@@ -1771,7 +1791,7 @@ def run_dab_all(request: Request, payload: DabRunAllPayload = DabRunAllPayload()
             "count": 0,
         }
 
-    num_workers = max(1, min(payload.workers, 5))  # clamp to [1, 5] for safety
+    num_workers = max(1, min(payload.workers, 10))  # clamp to [1, 10] for safety
 
     def _run_one(q):
         global DAB_CANCEL_FLAG
@@ -1798,6 +1818,11 @@ def run_dab_all(request: Request, payload: DabRunAllPayload = DabRunAllPayload()
         from concurrent.futures import ThreadPoolExecutor as _Pool, as_completed as _done
         global DAB_CANCEL_FLAG
 
+        logger.info(
+            f"DAB ThreadPoolExecutor starting batch of {len(to_run)} queries with {num_workers} workers. "
+            f"Model override: {payload.model}, Temperature override: {payload.temperature}"
+        )
+
         with _Pool(max_workers=num_workers) as pool:
             futures = {pool.submit(_run_one, q): q for q in to_run}
             for fut in _done(futures):
@@ -1822,6 +1847,10 @@ def run_dab_all(request: Request, payload: DabRunAllPayload = DabRunAllPayload()
         de.DAB_RUN_DATE = None
         de.DAB_RUN_ID = None
 
+    logger.info(
+        f"DAB run_all: Submitting batch run with {len(to_run)} queries to execution pool. "
+        f"Workers={num_workers}, scope={payload.dataset_scope}, model={payload.model}, temp={payload.temperature}"
+    )
     EXECUTION_POOL.submit(_run_batch)
     return {
         "message": f"Started DAB batch run: {len(to_run)} queries queued",

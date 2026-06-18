@@ -21,3 +21,4 @@ fastapi
 uvicorn
 requests
 sqlalchemy
+redis

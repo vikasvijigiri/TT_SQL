@@ -198,3 +198,10 @@ Every prompt, link, and agent logic in Semantic DIN-SQL is decoupled from domain
 - **Evidence-Based Grounding**: Scanning actual database profiles and samples rather than guessing.
 - **Structural Strategy**: Mapping queries via complexity templates rather than hardcoded columns.
 - **Execution Validation**: Query results are dynamically profiled by the Data IQ Layer to ensure logical validation before completion.
+
+
+
+
+## MAIN GOAL
+
+Our goal is minimal latency, maximum accuracy, world class architecture, minimal tokens, 0 bias, 0 hardcoding, 0 gold truth leakage into pipeline, 100% pure reasoning and fast inference, fast caching wherever necessary, KV cahing may be and no duplicates, 0 warnings in the pipeline run, 100% strong self learning, 0% leakage of prompts, 0 failures of prompt injestion, prompt monitoring, grounded agent analytics etc etc? these are goals make sure these are met strictly and reverified

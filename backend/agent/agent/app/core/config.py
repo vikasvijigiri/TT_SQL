@@ -35,6 +35,8 @@ DAB_RESULTS_DIR = RESULTS_DIR / "dab"
 # Override with DAB_REPO env var (set in docker-compose and .env).
 DAB_REPO = Path(os.environ.get("DAB_REPO", str(BACKEND_DIR.parent.parent.parent / "DataAgentBench")))
 
+DEFAULT_USERNAME = os.environ.get("DEFAULT_USERNAME", "anonymous")
+
 
 # ── Helpers ──────────────────────────────────────────────────────────────────
 

@@ -24,5 +24,5 @@ Start-Process powershell -ArgumentList "-NoExit", "-Command", @"
 
 Write-Host ""
 Write-Host "All services launching in separate windows." -ForegroundColor Yellow
-Write-Host "App URL: http://localhost:3000" -ForegroundColor Yellow
+Write-Host "App URL: http://localhost:5173" -ForegroundColor Yellow
 Write-Host "(wait ~5s for all services to start)" -ForegroundColor DarkGray

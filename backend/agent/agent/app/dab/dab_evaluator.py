@@ -19,7 +19,7 @@ from datetime import datetime
 from agent.app.core.config import DAB_REPO, RESULTS_DIR
 import contextlib
 
-from agent.app.core.config import DAB_RESULTS_DIR
+from agent.app.core.config import DAB_RESULTS_DIR, DEFAULT_USERNAME
 from agent.app.db.database import SessionLocal
 from agent.app.db.models import Evaluation
 from sqlalchemy import cast, Date
@@ -179,7 +179,7 @@ def evaluate_answer(
                 output_tokens=output_tokens,
                 timestamp=datetime.fromisoformat(ts_str) if ts_str else datetime.utcnow(),
                 run_id=DAB_RUN_ID or "live",
-                username=DAB_RUN_USERNAME or "vikasvijigiri"
+                username=DAB_RUN_USERNAME or DEFAULT_USERNAME
             )
             db.add(eval_record)
             db.commit()

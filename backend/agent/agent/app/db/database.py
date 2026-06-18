@@ -1,6 +1,6 @@
 from sqlalchemy import create_engine, event, text
 from sqlalchemy.orm import declarative_base, sessionmaker
-from agent.app.core.config import RESULTS_DIR
+from agent.app.core.config import RESULTS_DIR, DEFAULT_USERNAME
 
 DB_PATH = RESULTS_DIR / "nquire.db"
 SQLALCHEMY_DATABASE_URL = f"sqlite:///{DB_PATH}"
@@ -44,12 +44,12 @@ def migrate_db():
 
                 # Migration: add username column to separate data per user
                 if "username" not in columns:
-                    conn.execute(text("ALTER TABLE evaluations ADD COLUMN username VARCHAR DEFAULT 'vikasvijigiri'"))
+                    conn.execute(text(f"ALTER TABLE evaluations ADD COLUMN username VARCHAR DEFAULT '{DEFAULT_USERNAME}'"))
                     conn.execute(text("CREATE INDEX IF NOT EXISTS ix_evaluations_username ON evaluations (username)"))
                     # Backfill all existing rows to the current owner
-                    conn.execute(text("UPDATE evaluations SET username = 'vikasvijigiri' WHERE username IS NULL"))
+                    conn.execute(text(f"UPDATE evaluations SET username = '{DEFAULT_USERNAME}' WHERE username IS NULL"))
                     conn.commit()
-                    print("Migrated DB: added username column and backfilled existing rows to 'vikasvijigiri'.")
+                    print(f"Migrated DB: added username column and backfilled existing rows to '{DEFAULT_USERNAME}'.")
     except Exception as e:
         print(f"Database migration failed: {e}")
 

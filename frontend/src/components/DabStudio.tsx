@@ -1,7 +1,7 @@
 import { MetricsGrid } from './common/MetricsGrid';
 import React, { useState, useEffect, useRef } from 'react';
 import axios from 'axios';
-import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer, Cell } from 'recharts';
+import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer, Cell, LabelList } from 'recharts';
 import {
   BarChart3,
   Database,
@@ -1174,8 +1174,26 @@ const DabStudio = ({ onBack, onHome, autoOpenDetails, clearAutoOpenDetails, user
   const handleRunDb = async (dbName) => {
     setRunningDbs(prev => ({ ...prev, [dbName]: true }));
     try {
+      const today = new Date().toISOString().split('T')[0];
+      const getRunDateStr = (f) => {
+        if (f && f.startsWith('run_')) {
+          const parts = f.split('_')[1];
+          return `${parts.slice(0, 4)}-${parts.slice(4, 6)}-${parts.slice(6, 8)}`;
+        }
+        return today;
+      };
+      const targetDate = getRunDateStr(dateFilter);
+      const runIdToPass = dateFilter && dateFilter.startsWith('run_') ? dateFilter : undefined;
+
       await axios.post(`${API_BASE}/dab/run_all`, {
-        dataset_scope: dbName
+        dataset_scope: dbName,
+        force_rerun: true,
+        workers: workers,
+        mode: 'fresh',
+        date: targetDate,
+        run_id: runIdToPass,
+        model: selectedModel,
+        temperature: temperature
       });
       setTimeout(handleRefresh, 1500);
     } catch (err) {
@@ -1576,7 +1594,7 @@ const DabStudio = ({ onBack, onHome, autoOpenDetails, clearAutoOpenDetails, user
             </h2>
             <div className="h-64 w-full">
               <ResponsiveContainer width="100%" height="100%">
-                <BarChart data={agentScoresData} margin={{ top: 10, right: 10, left: -25, bottom: 0 }}>
+                <BarChart data={agentScoresData} margin={{ top: 20, right: 10, left: -25, bottom: 0 }}>
                   <XAxis dataKey="name" stroke="#64748b" fontSize={9} tickLine={false} />
                   <YAxis domain={[0, 100]} stroke="#64748b" fontSize={9} tickLine={false} />
                   <CartesianGrid stroke="#1c1833" vertical={false} strokeDasharray="3 3" />
@@ -1585,6 +1603,7 @@ const DabStudio = ({ onBack, onHome, autoOpenDetails, clearAutoOpenDetails, user
                     {agentScoresData.map((entry, index) => (
                       <Cell key={`cell-${index}`} fill={entry.color} />
                     ))}
+                    <LabelList dataKey="score" position="top" fill="#cbd5e1" fontSize={10} fontFamily="monospace" formatter={(val) => val != null ? `${val}%` : ''} />
                   </Bar>
                 </BarChart>
               </ResponsiveContainer>
@@ -1598,7 +1617,7 @@ const DabStudio = ({ onBack, onHome, autoOpenDetails, clearAutoOpenDetails, user
             </h2>
             <div className="h-64 w-full">
               <ResponsiveContainer width="100%" height="100%">
-                <BarChart data={difficultyData} margin={{ top: 10, right: 10, left: -25, bottom: 0 }}>
+                <BarChart data={difficultyData} margin={{ top: 20, right: 10, left: -25, bottom: 0 }}>
                   <XAxis dataKey="name" stroke="#64748b" fontSize={9} tickLine={false} />
                   <YAxis domain={[0, 100]} stroke="#64748b" fontSize={9} tickLine={false} />
                   <CartesianGrid stroke="#1c1833" vertical={false} strokeDasharray="3 3" />
@@ -1607,6 +1626,7 @@ const DabStudio = ({ onBack, onHome, autoOpenDetails, clearAutoOpenDetails, user
                     {difficultyData.map((entry, index) => (
                       <Cell key={`cell-${index}`} fill={entry.color} />
                     ))}
+                    <LabelList dataKey="failedPct" position="top" fill="#cbd5e1" fontSize={10} fontFamily="monospace" formatter={(val) => val != null ? `${val}%` : ''} />
                   </Bar>
                 </BarChart>
               </ResponsiveContainer>

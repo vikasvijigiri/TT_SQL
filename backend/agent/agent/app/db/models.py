@@ -2,6 +2,8 @@ from sqlalchemy import Column, Integer, String, Boolean, Float, DateTime
 from agent.app.db.database import Base, engine
 from datetime import datetime
 
+from agent.app.core.config import DEFAULT_USERNAME
+
 class Evaluation(Base):
     __tablename__ = "evaluations"
     
@@ -20,7 +22,7 @@ class Evaluation(Base):
     output_tokens = Column(Integer, nullable=True)
     timestamp = Column(DateTime, default=datetime.utcnow)
     run_id = Column(String, index=True, nullable=True)
-    username = Column(String, index=True, nullable=True, default="vikasvijigiri")
+    username = Column(String, index=True, nullable=True, default=DEFAULT_USERNAME)
 
 
 class TaskRun(Base):

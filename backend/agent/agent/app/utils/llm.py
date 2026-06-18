@@ -87,17 +87,25 @@ class LLMClient:
     """
 
     def __init__(self, model: str | None = None, temperature: float | None = None):
+        from agent.app.utils.cache import cache_service
+        params = cache_service.get("system_params")
+        if params is None:
+            try:
+                with open(CONFIG_DIR / "system_params.yaml", "r", encoding="utf-8") as f:
+                    params = yaml.safe_load(f)
+                    cache_service.set("system_params", params, ttl=3600)
+            except Exception:
+                params = {}
+
         try:
-            with open(CONFIG_DIR / "system_params.yaml", "r", encoding="utf-8") as f:
-                params = yaml.safe_load(f)
-                llm_cfg = params.get("llm", {})
-                sys_temp = float(llm_cfg.get("temperature", 0.0))
-                sys_model = llm_cfg.get(
-                    "model", "bedrock/openai.gpt-oss-safeguard-120b"
-                )
-                self._max_tokens = int(llm_cfg.get("max_tokens", 8000))
-                self._max_retries = int(llm_cfg.get("max_retries", 3))
-                self._retry_base_delay = float(llm_cfg.get("retry_base_delay_s", 1.0))
+            llm_cfg = params.get("llm", {}) if params else {}
+            sys_temp = float(llm_cfg.get("temperature", 0.0))
+            sys_model = llm_cfg.get(
+                "model", "bedrock/openai.gpt-oss-safeguard-120b"
+            )
+            self._max_tokens = int(llm_cfg.get("max_tokens", 8000))
+            self._max_retries = int(llm_cfg.get("max_retries", 3))
+            self._retry_base_delay = float(llm_cfg.get("retry_base_delay_s", 1.0))
         except Exception:
             sys_temp = 0.0
             sys_model = "bedrock/openai.gpt-oss-safeguard-120b"
@@ -116,22 +124,16 @@ class LLMClient:
 
         self.region = os.getenv("BEDROCK_REGION", "us-east-1")
 
-        # Map BEDROCK credentials to standard AWS environment variables for boto3
-        if os.getenv("BEDROCK_ACCESS_KEY_ID"):
-            os.environ["AWS_ACCESS_KEY_ID"] = os.getenv("BEDROCK_ACCESS_KEY_ID", "")
-        if os.getenv("BEDROCK_SECRET_ACCESS_KEY"):
-            os.environ["AWS_SECRET_ACCESS_KEY"] = os.getenv("BEDROCK_SECRET_ACCESS_KEY", "")
-        if os.getenv("BEDROCK_REGION"):
-            os.environ["AWS_DEFAULT_REGION"] = self.region
-        os.environ["AWS_REGION"] = self.region
-
-        # Using the secret key as the Bearer token as per src_backup1 implementation
+        # Pass the secret key as a Bearer token — this goes through the proxy gateway
+        # which handles auth. Do NOT set AWS_ACCESS_KEY_ID/AWS_SECRET_ACCESS_KEY here
+        # as that would cause boto3 to do direct SigV4-signed requests to
+        # bedrock-runtime.amazonaws.com instead of the intended Bearer-token proxy.
         api_key = os.getenv("BEDROCK_SECRET_ACCESS_KEY")
         headers = {"Authorization": f"Bearer {api_key}"} if api_key else {}
 
         try:
             logger.info(
-                f"Initializing ChatBedrockConverse | Model: {self.model_id} | Region: {self.region} | max_tokens: {self._max_tokens}"
+                f"Initializing ChatBedrockConverse | Model: {self.model_id} | Region: {self.region} | max_tokens: {self._max_tokens} | temperature: {temp}"
             )
             self.llm = ChatBedrockConverse(
                 model=self.model_id,
@@ -374,7 +376,9 @@ class LLMClient:
             f"LLM Prompt lengths | System: {len(system_prompt)} | User: {len(user_prompt)}"
         )
         
-        use_cache = len(system_prompt) > 4000
+        # Bedrock supports prompt caching on Claude 3.5 (Sonnet/Opus), Claude 3 Haiku, and Nova
+        supported_caching_models = ("claude-3-5", "claude-3-haiku", "nova")
+        use_cache = len(system_prompt) > 4000 and any(m in self.model_id.lower() for m in supported_caching_models)
 
         last_exc: Optional[Exception] = None
         for attempt in range(self._max_retries + 1):
@@ -440,7 +444,9 @@ class LLMClient:
         import asyncio
         logger.debug(f"LLM Prompt lengths | System: {len(system_prompt)} | User: {len(user_prompt)}")
         
-        use_cache = len(system_prompt) > 4000
+        # Bedrock supports prompt caching on Claude 3.5 (Sonnet/Opus), Claude 3 Haiku, and Nova
+        supported_caching_models = ("claude-3-5", "claude-3-haiku", "nova")
+        use_cache = len(system_prompt) > 4000 and any(m in self.model_id.lower() for m in supported_caching_models)
 
         last_exc: Optional[Exception] = None
         for attempt in range(self._max_retries + 1):
