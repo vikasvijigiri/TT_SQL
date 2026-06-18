@@ -36,7 +36,8 @@ import {
   Lightbulb,
   Download,
   MessageSquare,
-  LogOut
+  LogOut,
+  User
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import PipelinePulse from './PipelinePulse';
@@ -535,10 +536,14 @@ const parseLiveStepsFromMd = (content) => {
 };
 
 const SpiderStudio = ({ onBack, onHome, autoOpenDetails, clearAutoOpenDetails, user, onLogout }) => {
-  const [currentView, setCurrentView] = useState('dashboard'); // 'dashboard' | 'database'
+  const [currentView, setCurrentView] = useState(() => {
+    return localStorage.getItem('spider_current_view') || 'dashboard';
+  });
   const [metrics, setMetrics] = useState(null);
   const [databases, setDatabases] = useState([]);
-  const [selectedDb, setSelectedDb] = useState(null);
+  const [selectedDb, setSelectedDb] = useState(() => {
+    return localStorage.getItem('spider_selected_db') || null;
+  });
   const [dbResults, setDbResults] = useState([]);
   const [loading, setLoading] = useState(true);
   const [loadingDetails, setLoadingDetails] = useState(false);
@@ -597,6 +602,19 @@ const SpiderStudio = ({ onBack, onHome, autoOpenDetails, clearAutoOpenDetails, u
     }, 9000);
     return () => clearInterval(ticker);
   }, []);
+
+  // Sync state changes with localStorage
+  useEffect(() => {
+    localStorage.setItem('spider_current_view', currentView);
+  }, [currentView]);
+
+  useEffect(() => {
+    if (selectedDb) {
+      localStorage.setItem('spider_selected_db', selectedDb);
+    } else {
+      localStorage.removeItem('spider_selected_db');
+    }
+  }, [selectedDb]);
 
   // Fetch metrics and databases when date filter changes
   useEffect(() => {
@@ -1133,8 +1151,8 @@ const SpiderStudio = ({ onBack, onHome, autoOpenDetails, clearAutoOpenDetails, u
               {user.picture ? (
                 <img src={user.picture} alt={user.name} className="w-7 h-7 rounded-full shrink-0 ring-1 ring-blue-500/40" referrerPolicy="no-referrer" />
               ) : (
-                <div className="w-7 h-7 rounded-full bg-blue-500/20 border border-blue-500/30 shrink-0 flex items-center justify-center text-[11px] font-bold text-blue-400">
-                  {(user.name || user.email || '?')[0].toUpperCase()}
+                <div className="w-7 h-7 rounded-full bg-gradient-to-br from-blue-500/20 to-indigo-500/20 border border-blue-500/30 shrink-0 flex items-center justify-center shadow-inner">
+                  <User className="w-4 h-4 text-blue-300" />
                 </div>
               )}
               <div className="hidden lg:flex flex-col min-w-0 flex-1">

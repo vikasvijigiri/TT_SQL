@@ -1,4 +1,4 @@
-﻿"""
+"""
 feasibility_agent.py
 --------------------
 Diagnoses whether the schema can directly answer a question.
@@ -121,6 +121,7 @@ class FeasibilityAgent:
             schema_text=schema_text,
             hints_section=hints_section,
         )
+        logger.set_agent("FEASIBILITY_AGENT")
         try:
             raw = self.llm.generate(
                 system_prompt=_SYSTEM,
@@ -138,8 +139,10 @@ class FeasibilityAgent:
                 return result
         except Exception as e:  # noqa: BLE001
             logger.debug(f"[FeasibilityAgent] failed (non-fatal): {e}")
+        finally:
+            logger.reset_agent()
 
-        # Safe default ÃƒÂ¢Ã¢â€šÂ¬Ã¢â‚¬Â assume no gaps, continue with standard pipeline
+        # Safe default — assume no gaps, continue with standard pipeline
         return {"concepts": [], "has_gaps": False, "gap_summary": ""}
 
     # ------------------------------------------------------------------

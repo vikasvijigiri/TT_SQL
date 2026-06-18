@@ -1,4 +1,4 @@
-﻿import typing
+import typing
 from agent.app.utils.logger import logger
 from agent.app.utils.llm import LLMClient
 from agent.app.services.semantic_engine import SemanticContextEngine
@@ -24,6 +24,7 @@ from agent.app.agents.feasibility_agent import FeasibilityAgent
 from agent.app.agents.schema_explorer import SchemaExplorer
 from agent.app.agents.strategy_router import StrategyRouter
 from agent.app.agents.text_classify_executor import TextClassifyExecutor
+from agent.app.services.schema_pruner import ContextPruner
 
 import pandas as pd
 import os
@@ -45,6 +46,7 @@ class SemanticDINOrchestrator:
         dialect: str = "",
         max_retries: int = 3,
         connection_string: str | None = None,
+        use_few_shot_rag: bool = True,
     ):
         """
         Initialise the pipeline.
@@ -55,9 +57,12 @@ class SemanticDINOrchestrator:
         db_name            : Database / catalog name (derived from connection_string if omitted).
         dialect            : SQL dialect keyword (derived from connection_string if omitted).
                              Falls back to "snowflake" only when nothing else is available.
-        connection_string  : Any supported URI (sqlite:// / postgresql:// / mysql:// / ÃƒÂ¢Ã¢â€šÂ¬Ã‚Â¦).
+        connection_string  : Any supported URI (sqlite:// / postgresql:// / mysql:// / …).
                              When provided, dialect and db_name are derived from it automatically.
         max_retries        : Correction loop limit (overridden by system_params.yaml if present).
+        use_few_shot_rag   : If False, the BM25 few-shot RAG memory is never read or written.
+                             Must be False for all DAB benchmark runs to prevent cross-run SQL
+                             leakage and cross-submission contamination.
         """
         # Derive dialect + db_name from connection string when available
         if connection_string:
@@ -100,6 +105,7 @@ class SemanticDINOrchestrator:
         self.schema_explorer = SchemaExplorer()
         self.strategy_router = StrategyRouter(self.llm)
         self.text_classify_executor = TextClassifyExecutor(self.llm)
+        self.context_pruner = ContextPruner(self.llm, self.semantic_engine)
 
         # Load System Parameters
         params_path = CONFIG_DIR / "system_params.yaml"
@@ -107,6 +113,7 @@ class SemanticDINOrchestrator:
             self.params = yaml.safe_load(f)
 
         self.max_retries = self.params["orchestrator"].get("max_retries", max_retries)
+        self.use_few_shot_rag = use_few_shot_rag
 
         # Build context immediately
         self.semantic_engine.build_context()
@@ -195,11 +202,12 @@ class SemanticDINOrchestrator:
                         f"Failed to read external knowledge file {external_knowledge}: {e}"
                     )
         
-        # Inject SOTA World-Class RAG Few-Shot Examples
-        few_shot_context = rag_service.retrieve_few_shot(user_query, self.db_name)
-        if few_shot_context:
-            lessons += few_shot_context
-            
+        # Few-shot RAG is disabled for DAB benchmark runs to prevent cross-run SQL leakage.
+        if self.use_few_shot_rag:
+            few_shot_context = rag_service.retrieve_few_shot(user_query, self.db_name)
+            if few_shot_context:
+                lessons += few_shot_context
+
         return lessons
 
     def execute_query(
@@ -252,11 +260,21 @@ class SemanticDINOrchestrator:
         logger.info(
             f"Schema density evaluated (~{estimated_tokens} tokens vs threshold {threshold})."
         )
+        # Invoke ContextPruner
+        relevant_tables, table_columns = self.context_pruner.prune(
+            user_query,
+            dialect=self.executor.dialect,
+            lessons=lessons_context,
+            intent=intent,
+            force_full=(estimated_tokens <= threshold),
+        )
         linked_schema = self.schema_linker.link_schema(
             user_query,
             dialect=self.executor.dialect,
             lessons=lessons_context,
             force_full=(estimated_tokens <= threshold),
+            relevant_tables=relevant_tables,
+            table_columns=table_columns,
         )
         _emit("schema_linking", "success")
 

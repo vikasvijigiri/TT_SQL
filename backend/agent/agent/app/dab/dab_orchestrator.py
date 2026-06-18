@@ -513,12 +513,15 @@ def run_dab_query(
                 + "\n".join(f"  - {s}" for s in multi_db_context)
             )
 
-        # Build orchestrator
+        # Build orchestrator — RAG disabled for benchmark runs to prevent SQL leakage
+        # between runs and across submissions. Few-shot SQL from prior runs must never
+        # be fed back into the pipeline during a DAB evaluation.
         orchestrator = SemanticDINOrchestrator(
             db_directory=db_dir,
             db_name=db_name,
             dialect=dialect,
             max_retries=_load_configured_max_retries(default=2),
+            use_few_shot_rag=False,
         )
 
         # Write external knowledge to a temp file if needed
@@ -663,10 +666,7 @@ def run_dab_query(
         status = "passed" if eval_result["passed"] else "failed"
         logger.success(f"DAB Evaluation: {status.upper()} | {eval_result['reason']}")
         
-        # SOTA World-Class RAG Trigger: Save successful queries to memory
-        if eval_result["passed"] and is_sql and final_sql:
-            from agent.app.services.rag_service import DynamicRAGService
-            DynamicRAGService().save_success(question, final_sql, db_name)
+        # RAG is intentionally disabled for DAB benchmark runs — do not save SQL here.
 
         # Attach all 8 evaluator scores to the LangSmith trace (non-blocking)
         run_tree = get_current_run_tree()

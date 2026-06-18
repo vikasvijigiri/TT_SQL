@@ -393,6 +393,7 @@ class LLMClient:
                     break
         if last_exc:
             logger.error(f"Bedrock generation failed after {self._max_retries} retries: {last_exc}")
+            raise last_exc
         return ""
 
     async def agenerate(self, system_prompt: str, user_prompt: str) -> str:
@@ -425,4 +426,5 @@ class LLMClient:
                     break
         if last_exc:
             logger.error(f"Bedrock async generation failed after {self._max_retries} retries: {last_exc}")
+            raise last_exc
         return ""

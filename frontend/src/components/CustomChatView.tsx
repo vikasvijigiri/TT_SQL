@@ -24,6 +24,29 @@ const CustomChatView = ({ activeProject, onGoToProjects }) => {
   const inputRef = useRef(null);
 
   useEffect(() => {
+    if (activeProject) {
+      try {
+        const stored = localStorage.getItem(`custom_chat_messages_${activeProject.id}`);
+        setMessages(stored ? JSON.parse(stored) : []);
+      } catch {
+        setMessages([]);
+      }
+    } else {
+      setMessages([]);
+    }
+  }, [activeProject]);
+
+  useEffect(() => {
+    if (activeProject) {
+      if (messages.length > 0) {
+        localStorage.setItem(`custom_chat_messages_${activeProject.id}`, JSON.stringify(messages));
+      } else {
+        localStorage.removeItem(`custom_chat_messages_${activeProject.id}`);
+      }
+    }
+  }, [messages, activeProject]);
+
+  useEffect(() => {
     chatEndRef.current?.scrollIntoView({ behavior: 'smooth' });
   }, [messages]);
 

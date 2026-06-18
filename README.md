@@ -14,7 +14,7 @@ The workspace is organized into separate, highly-focused microservices:
 TT_SQL_V2/
 ├── backend/
 │   ├── gateway/          # [Go] API Gateway (port 8002) - CRUD, SQLite DB stats, Prometheus exporter & LLM proxying.
-│   └── agent/            # [Python] AI/ML worker (port 8001) - LLM reasoning, schema linkers, self-improving agent loop.
+│   └── agent/            # [Python] AI/ML worker (port 8010) - LLM reasoning, schema linkers, self-improving agent loop.
 │       ├── agent/        # Python source package (app/, config/, resources/, results/)
 │       ├── venv_new/     # Python local virtual environment
 │       └── requirements.txt
@@ -32,7 +32,7 @@ The generation flow follows a modular, iterative reasoning paradigm designed to 
 ```mermaid
 graph TD
     User([User Query]) --> Gateway[Go API Gateway :8002]
-    Gateway -->|Proxies AI Requests| PythonWorker[Python AI Worker :8001]
+    Gateway -->|Proxies AI Requests| PythonWorker[Python AI Worker :8010]
     
     PythonWorker --> GovernedEngine[Governed Semantic Engine]
     GovernedEngine --> Context[(Governed Semantic Context)]
@@ -94,8 +94,8 @@ LANGCHAIN_PROJECT="TT_SQL_V2"
 
 # Microservices Ports Setup
 GO_PORT=8002
-PYTHON_PORT=8001
-PYTHON_API_URL=http://localhost:8001
+PYTHON_PORT=8010
+PYTHON_API_URL=http://localhost:8010
 ```
 
 ### 2. Python AI/ML Worker Setup
@@ -119,7 +119,7 @@ Start the Python service:
 $env:PYTHONPATH="."
 venv_new\Scripts\python.exe agent/app/api.py
 ```
-The server will start on port `8001` (by default).
+The server will start on port `8010` (by default).
 
 ### 3. Go API Gateway Setup
 

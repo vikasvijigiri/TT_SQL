@@ -232,3 +232,97 @@ class ColumnPruner:
             return table_cols_map
         finally:
             logger.reset_agent()
+
+
+class ContextPruner:
+    def __init__(self, llm_client: LLMClient, semantic_engine: SemanticContextEngine):
+        self.llm = llm_client
+        self.semantic_engine = semantic_engine
+        self.table_pruner = TablePruner(llm_client, semantic_engine)
+        self.column_pruner = ColumnPruner(llm_client, semantic_engine)
+
+    def prune(
+        self,
+        user_query: str,
+        dialect: str = "snowflake",
+        lessons: str = "",
+        intent = None,
+        force_full: bool = False,
+    ) -> tuple[List[str], Dict[str, List[str]] | None]:
+        logger.set_agent("CONTEXT_PRUNER")
+        logger.info("Context optimization requested from Context Pruner.")
+        logger.info("Analyzing column dependencies...")
+
+        if not self.semantic_engine.context:
+            self.semantic_engine.build_context()
+
+        all_tables = [t.name for t in self.semantic_engine.context.tables]
+        full_slim = self.semantic_engine.format_for_prompt(slim=True)
+        full_tokens = len(full_slim) // 4
+
+        try:
+            # 1. Table Pruning Check with Progressive Fallback
+            if force_full or full_tokens <= 4000 or len(all_tables) <= 5:
+                logger.info(
+                    f"Compact database schema detected (~{full_slim} tokens, {len(all_tables)} tables). Skipping Table Pruner."
+                )
+                relevant_tables = all_tables
+            else:
+                logger.info(
+                    f"Extensive database schema detected (~{full_tokens} tokens, {len(all_tables)} tables). Running Table Pruner."
+                )
+                relevant_tables = self.table_pruner.prune(
+                    user_query, lessons=lessons, dialect=dialect, intent=intent
+                )
+                if not relevant_tables:
+                    logger.warning(
+                        "Table pruning returned empty. Utilizing Progressive Expansion Fallback."
+                    )
+                    from agent.app.core.retrieval.fallback_strategy import ProgressiveExpansionStrategy
+                    fallback = ProgressiveExpansionStrategy(HierarchicalRetriever())
+                    narrowed_ctx, _, _ = fallback.execute_with_fallback(
+                        user_query, self.semantic_engine.context
+                    )
+                    relevant_tables = [t.name for t in narrowed_ctx.tables]
+
+            # 2. Column Pruning Check
+            pruned_context = self.semantic_engine.format_for_prompt(
+                relevant_tables=relevant_tables, include_samples=True
+            )
+            pruned_tokens = len(pruned_context) // 4
+
+            # Absolute Token Safety Guard for Bedrock 131K limit
+            if pruned_tokens > 95000:
+                logger.warning(
+                    f"Pruned context (~{pruned_tokens} tokens) exceeds safe limits. Restricting table subset."
+                )
+                relevant_tables = relevant_tables[:35]
+                pruned_context = self.semantic_engine.format_for_prompt(
+                    relevant_tables=relevant_tables, include_samples=True
+                )
+                pruned_tokens = len(pruned_context) // 4
+
+            table_columns = None
+            if pruned_tokens <= 4500:
+                logger.info(
+                    f"Pruned table context is compact (~{pruned_tokens} tokens). Skipping Column Pruner."
+                )
+            else:
+                logger.info(
+                    f"Pruned table context is extensive (~{pruned_tokens} tokens). Running Column Pruner."
+                )
+                table_columns = self.column_pruner.prune(
+                    user_query,
+                    relevant_tables,
+                    lessons=lessons,
+                    dialect=dialect,
+                    intent=intent,
+                )
+
+            logger.info("Context pruning successful.")
+            return relevant_tables, table_columns
+        except Exception as e:
+            logger.error(f"Context pruning failed: {e}")
+            return all_tables, None
+        finally:
+            logger.reset_agent()

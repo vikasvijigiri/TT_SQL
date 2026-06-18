@@ -24,6 +24,23 @@ def _strip_think_tags(text: str) -> str:
     return cleaned.strip()
 
 
+def _fractions_to_decimals(text: str) -> str:
+    """Convert standalone fraction patterns (e.g. 3/4, 1/3) to their decimal equivalent.
+    Only converts simple integer fractions where the result is finite; leaves text unchanged
+    when the denominator is zero or the pattern is part of a larger word/path."""
+    def _replace(m: re.Match) -> str:
+        numerator, denominator = int(m.group(1)), int(m.group(2))
+        if denominator == 0:
+            return m.group(0)
+        result = numerator / denominator
+        # Preserve up to 6 significant figures, strip trailing zeros
+        formatted = f"{result:.6f}".rstrip("0").rstrip(".")
+        return formatted
+
+    # Match patterns like "3/4" or "10/3" that are word-bounded (not inside paths or dates)
+    return re.sub(r"(?<!\w)(\d+)/(\d+)(?!\w)", _replace, text)
+
+
 # System and user prompt templates for LLM answer extraction
 ANSWER_EXTRACTION_SYSTEM = (
     "You are a precise data analyst extracting a concise text answer from SQL results.\n\n"
@@ -204,7 +221,7 @@ def extract_answer(
         and direct.strip()
         and direct.lower() not in ("", "null", "none", "nan")
     ):
-        return direct
+        return _fractions_to_decimals(direct)
 
     deterministic = _deterministic_csv_answer(csv_path)
 
@@ -221,7 +238,7 @@ def extract_answer(
     )
 
     if deterministic is not None and not use_llm_enrichment:
-        return deterministic
+        return _fractions_to_decimals(deterministic)
 
     # LLM-based answer synthesis
     csv_preview = _csv_to_preview(csv_path, max_rows=15)
@@ -256,11 +273,11 @@ def extract_answer(
         # proximity windows (Ã‚Â±N chars) require.
         if use_llm_enrichment and deterministic:
             answer = f"{answer}\n\n{deterministic}"
-        return answer
+        return _fractions_to_decimals(answer)
     except Exception:
         # Fallback: return deterministic answer if available, else raw preview
         if deterministic:
-            return deterministic
+            return _fractions_to_decimals(deterministic)
         return f"Based on the data: {csv_preview[:500]}"
 
 

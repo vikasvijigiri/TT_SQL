@@ -32,7 +32,7 @@ services:
     environment:
       GO_PORT: "${GO_PORT:-8002}"
       GIN_MODE: "${GIN_MODE:-release}"
-      PYTHON_API_URL: "http://agent:${PYTHON_PORT:-8001}"
+      PYTHON_API_URL: "http://agent:${PYTHON_PORT:-8010}"
       BACKEND_DATA_DIR: /data
     volumes:
       - ./backend/agent/agent:/data
@@ -57,11 +57,11 @@ services:
   agent:
     build: ./backend/agent
     expose:
-      - "${PYTHON_PORT:-8001}"
+      - "${PYTHON_PORT:-8010}"
     env_file:
       - .env
     environment:
-      PYTHON_PORT: "${PYTHON_PORT:-8001}"
+      PYTHON_PORT: "${PYTHON_PORT:-8010}"
       BACKEND_DATA_DIR: /app/agent
       DATABASE_HOST: postgres
       DATABASE_PORT: "${DATABASE_PORT:-5432}"

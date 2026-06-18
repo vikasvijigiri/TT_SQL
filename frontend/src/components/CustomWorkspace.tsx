@@ -1,12 +1,33 @@
-import { useState } from 'react';
-import { Database, MessageSquare, ArrowLeft, CheckCircle2, LogOut } from 'lucide-react';
+import { useState, useEffect } from 'react';
+import { Database, MessageSquare, ArrowLeft, CheckCircle2, LogOut, User } from 'lucide-react';
 import CustomProjectsScreen from './CustomProjectsScreen';
 import CustomChatView from './CustomChatView';
 import NQuireLogo from './NQuireLogo';
 
 const CustomWorkspace = ({ onBack, onHome, user, onLogout }) => {
-  const [currentView, setCurrentView] = useState('projects');
-  const [activeProject, setActiveProject] = useState(null);
+  const [currentView, setCurrentView] = useState(() => {
+    return localStorage.getItem('custom_current_view') || 'projects';
+  });
+  const [activeProject, setActiveProject] = useState(() => {
+    try {
+      const stored = localStorage.getItem('custom_active_project');
+      return stored ? JSON.parse(stored) : null;
+    } catch {
+      return null;
+    }
+  });
+
+  useEffect(() => {
+    localStorage.setItem('custom_current_view', currentView);
+  }, [currentView]);
+
+  useEffect(() => {
+    if (activeProject) {
+      localStorage.setItem('custom_active_project', JSON.stringify(activeProject));
+    } else {
+      localStorage.removeItem('custom_active_project');
+    }
+  }, [activeProject]);
 
   return (
     <div className="flex h-screen w-full overflow-hidden bg-[#1b2738] text-slate-200 font-sans">
@@ -65,8 +86,8 @@ const CustomWorkspace = ({ onBack, onHome, user, onLogout }) => {
               {user.picture ? (
                 <img src={user.picture} alt={user.name} className="w-7 h-7 rounded-full shrink-0 ring-1 ring-emerald-500/40" referrerPolicy="no-referrer" />
               ) : (
-                <div className="w-7 h-7 rounded-full bg-emerald-500/20 border border-emerald-500/30 shrink-0 flex items-center justify-center text-[11px] font-bold text-emerald-400">
-                  {(user.name || user.email || '?')[0].toUpperCase()}
+                <div className="w-7 h-7 rounded-full bg-gradient-to-br from-emerald-500/20 to-teal-500/20 border border-emerald-500/30 shrink-0 flex items-center justify-center shadow-inner">
+                  <User className="w-4 h-4 text-emerald-300" />
                 </div>
               )}
               <div className="hidden lg:flex flex-col min-w-0 flex-1">

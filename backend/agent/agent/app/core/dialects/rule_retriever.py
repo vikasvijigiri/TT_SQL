@@ -56,7 +56,7 @@ class RuleFamilyRetriever:
         if profile.requires_geospatial:
             rules.extend(get_geospatial_rules())
         if profile.requires_windows or profile.requires_ranking:
-            rules.extend(get_window_rules())
+            rules.extend(get_window_rules(dialect=dialect))
         if profile.requires_regex:
             rules.extend(get_regex_rules())
 

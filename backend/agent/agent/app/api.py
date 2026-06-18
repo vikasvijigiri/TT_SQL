@@ -290,6 +290,24 @@ def _warmup_caches():
 @app.on_event("startup")
 async def startup_event():
     _warmup_caches()
+    # Clean up stale running tasks from DB on startup
+    try:
+        from agent.app.db.database import SessionLocal
+        from agent.app.db.models import TaskRun
+        db = SessionLocal()
+        try:
+            stale_tasks = db.query(TaskRun).filter(TaskRun.status == "RUNNING").all()
+            for t in stale_tasks:
+                t.status = "FAILED"
+                t.error_message = "Stale task: backend restarted"
+                t.updated_at = datetime.utcnow()
+            if stale_tasks:
+                db.commit()
+                logger.info(f"Purged {len(stale_tasks)} stale running tasks from DB on startup.")
+        finally:
+            db.close()
+    except Exception as e:
+        logger.error(f"Failed to purge stale running tasks on startup: {e}")
 
 
 def _read_log_sample(path_str: str) -> str:
@@ -2425,7 +2443,7 @@ app.include_router(dab_router)
 
 if __name__ == "__main__":
     import uvicorn
-    port = int(os.getenv("PYTHON_PORT", "8001"))
+    port = int(os.getenv("PYTHON_PORT", "8010"))
     uvicorn.run("agent.app.api:app", host="0.0.0.0", port=port, reload=True)
 
 

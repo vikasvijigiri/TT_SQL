@@ -53,13 +53,26 @@ class DynamicRAGService:
         except Exception as e:
             logger.warning(f"[RAGService] Failed to load memory: {e}")
 
+    @staticmethod
+    def _is_valid_sql(text: str) -> bool:
+        """Return True only if text looks like a real SQL query, not a plain-text answer."""
+        SQL_KEYWORDS = ("select", "with", "show", "explain", "pragma", "describe", "insert", "update", "delete")
+        return text.strip().lower().startswith(SQL_KEYWORDS)
+
     def save_success(self, query: str, sql: str, db_name: str):
-        """Called after a successful query execution to build the RAG memory."""
+        """Called after a successful query execution to build the RAG memory.
+        Only SQL queries are stored — plain-text answers are never saved so that
+        the few-shot context never leaks actual answer values to the LLM."""
+        if not self._is_valid_sql(sql):
+            logger.warning(
+                "[RAGService] save_success called with non-SQL text — skipping to prevent answer leakage."
+            )
+            return
         try:
             # Check if exactly identical query exists to avoid bloat
             if any(doc['query'] == query for doc in self.documents):
                 return
-                
+
             new_entry = {"query": query, "sql": sql, "db_name": db_name}
             self.documents.append(new_entry)
             

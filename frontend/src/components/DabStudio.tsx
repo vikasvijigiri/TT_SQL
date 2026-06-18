@@ -37,7 +37,10 @@ import {
   Lightbulb,
   Download,
   MessageSquare,
-  LogOut
+  LogOut,
+  ChevronDown,
+  Info,
+  User
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import NQuireLogo from './NQuireLogo';
@@ -538,10 +541,14 @@ const DabStudio = ({ onBack, onHome, autoOpenDetails, clearAutoOpenDetails, user
     localStorage.setItem('dab_settings_workers', String(workers));
   }, [workers]);
 
-  const [currentView, setCurrentView] = useState('dashboard'); // 'dashboard' | 'database' | 'leaderboard'
+  const [currentView, setCurrentView] = useState(() => {
+    return localStorage.getItem('dab_current_view') || 'dashboard';
+  });
   const [metrics, setMetrics] = useState(null);
   const [databases, setDatabases] = useState([]);
-  const [selectedDb, setSelectedDb] = useState(null);
+  const [selectedDb, setSelectedDb] = useState(() => {
+    return localStorage.getItem('dab_selected_db') || null;
+  });
   const [dbResults, setDbResults] = useState([]);
   const [loading, setLoading] = useState(true);
   const [loadingDetails, setLoadingDetails] = useState(false);
@@ -553,6 +560,19 @@ const DabStudio = ({ onBack, onHome, autoOpenDetails, clearAutoOpenDetails, user
   const [runningDbs, setRunningDbs] = useState({});
   const [toast, setToast] = useState<{ message: string; type: 'success' | 'error' } | null>(null);
   const [isDeleting, setIsDeleting] = useState(false);
+  const [showDateDropdown, setShowDateDropdown] = useState(false);
+  const dateDropdownRef = useRef<HTMLDivElement>(null);
+
+  // Close dropdown on click outside
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      if (dateDropdownRef.current && !dateDropdownRef.current.contains(event.target as Node)) {
+        setShowDateDropdown(false);
+      }
+    };
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, []);
 
   useEffect(() => {
     if (toast) {
@@ -569,6 +589,10 @@ const DabStudio = ({ onBack, onHome, autoOpenDetails, clearAutoOpenDetails, user
   const [showDeleteModal, setShowDeleteModal] = useState(false);
   const [showRunOptionsModal, setShowRunOptionsModal] = useState(false);
   const [completedSlots, setCompletedSlots] = useState(0);
+  const [showSchemaModal, setShowSchemaModal] = useState(false);
+  const [schemaLoading, setSchemaLoading] = useState(false);
+  const [schemaData, setSchemaData] = useState(null);
+  const [selectedSchemaTab, setSelectedSchemaTab] = useState("");
   const [activeMetricFilter, setActiveMetricFilter] = useState('total');
   const [allInstanceResults, setAllInstanceResults] = useState([]);
   const [loadingMetricInstances, setLoadingMetricInstances] = useState(false);
@@ -591,7 +615,7 @@ const DabStudio = ({ onBack, onHome, autoOpenDetails, clearAutoOpenDetails, user
   const safetyTimeoutRef = useRef(null);
   const logPollRef = useRef(null);
   const logPreRef = useRef(null);
-  const selectedDbRef = useRef(null);
+  const selectedDbRef = useRef(selectedDb);
   const rtPollRef = useRef(null);
 
   const dabMascotQuotes = [
@@ -613,6 +637,41 @@ const DabStudio = ({ onBack, onHome, autoOpenDetails, clearAutoOpenDetails, user
     }, 9000);
     return () => clearInterval(ticker);
   }, []);
+
+  const handleOpenSchemaModal = async (e, dbName) => {
+    e.stopPropagation(); // Avoid selecting/navigating the DB list row
+    setSchemaLoading(true);
+    setShowSchemaModal(true);
+    setSchemaData(null);
+    setSelectedSchemaTab("");
+    try {
+      const res = await axios.get(`${API_BASE}/dab/schema/${dbName}`);
+      setSchemaData(res.data);
+      if (res.data?.schema) {
+        const clients = Object.keys(res.data.schema);
+        if (clients.length > 0) {
+          setSelectedSchemaTab(clients[0]);
+        }
+      }
+    } catch (err) {
+      console.error("Failed to load schema info", err);
+    } finally {
+      setSchemaLoading(false);
+    }
+  };
+
+  // Sync state changes with localStorage
+  useEffect(() => {
+    localStorage.setItem('dab_current_view', currentView);
+  }, [currentView]);
+
+  useEffect(() => {
+    if (selectedDb) {
+      localStorage.setItem('dab_selected_db', selectedDb);
+    } else {
+      localStorage.removeItem('dab_selected_db');
+    }
+  }, [selectedDb]);
 
   // Fetch metrics and databases when date filter changes
   useEffect(() => {
@@ -773,9 +832,12 @@ const DabStudio = ({ onBack, onHome, autoOpenDetails, clearAutoOpenDetails, user
       setAllDates(dates);
       
       if (dateFilter === '') {
-        const hasLive = dates.some(r => r.id === 'live');
-        if (hasLive) {
-          setDateFilter('live');
+        const activeRun = dates.find(r => r.is_active);
+        if (activeRun) {
+          setDateFilter(activeRun.id);
+        } else if (dates.length > 1) {
+          // Default to the most recent run (index 1, since index 0 is "all")
+          setDateFilter(dates[1].id);
         } else if (dates.length > 0) {
           setDateFilter(dates[0].id);
         } else {
@@ -784,7 +846,7 @@ const DabStudio = ({ onBack, onHome, autoOpenDetails, clearAutoOpenDetails, user
       }
     } catch (err) {
       console.error("Failed to load execution dates", err);
-      if (dateFilter === '') setDateFilter('live');
+      if (dateFilter === '') setDateFilter('all');
     }
   };
 
@@ -1414,36 +1476,7 @@ const DabStudio = ({ onBack, onHome, autoOpenDetails, clearAutoOpenDetails, user
             <span className="hidden lg:block truncate">Execution Probes</span>
           </button>
 
-          {/* Batch Progress Widget */}
-          {isGlobalRunning && (
-            <div className="hidden lg:block mt-6 pt-6 border-t border-[#1a1a22] animate-fadeIn">
-              <div className="text-[10px] font-mono font-bold text-slate-500 uppercase tracking-widest mb-3 px-3 flex items-center justify-between">
-                <span>Batch Running</span>
-                <span className="bg-purple-500/20 text-purple-400 px-1.5 py-0.5 rounded animate-pulse">
-                  {globalProgress.total > 0 ? `${Math.round((globalProgress.completed / globalProgress.total) * 100)}%` : '0%'}
-                </span>
-              </div>
-              <div className="px-2 space-y-2">
-                <div className="flex justify-between text-[10px] font-mono text-slate-500">
-                  <span>{globalProgress.completed} done</span>
-                  <span>{globalProgress.total} total</span>
-                </div>
-                <div className="w-full h-1.5 bg-[#0b0916] rounded-full overflow-hidden border border-[#231d36]">
-                  <div
-                    className="h-full bg-gradient-to-r from-purple-500 to-indigo-500 transition-all duration-500 shadow-[0_0_6px_rgba(167,139,250,0.5)]"
-                    style={{ width: `${globalProgress.total > 0 ? (globalProgress.completed / globalProgress.total) * 100 : 0}%` }}
-                  />
-                </div>
-                {/* Show the single currently-executing query */}
-                {Object.keys(runningInstances).slice(0, 1).map(qkey => (
-                  <div key={qkey} className="flex items-center gap-2 text-[10px] font-mono text-slate-300 bg-[#12101e] border border-[#231d36] rounded p-1.5 shadow mt-1">
-                    <Activity className="w-3 h-3 text-purple-400 animate-spin shrink-0" />
-                    <span className="truncate" title={qkey}>{qkey}</span>
-                  </div>
-                ))}
-              </div>
-            </div>
-          )}
+
         </nav>
 
         {/* Mascot Card */}
@@ -1527,8 +1560,8 @@ const DabStudio = ({ onBack, onHome, autoOpenDetails, clearAutoOpenDetails, user
             {user && user.picture ? (
               <img src={user.picture} alt={user.name} className="w-7 h-7 rounded-full shrink-0 ring-1 ring-purple-500/40" referrerPolicy="no-referrer" />
             ) : (
-              <div className="w-7 h-7 rounded-full bg-purple-500/20 border border-purple-500/30 shrink-0 flex items-center justify-center text-[11px] font-bold text-purple-400">
-                {(user ? (user.name || user.email || '?') : '?')[0].toUpperCase()}
+              <div className="w-7 h-7 rounded-full bg-gradient-to-br from-purple-500/20 to-indigo-500/20 border border-purple-500/30 shrink-0 flex items-center justify-center shadow-inner">
+                <User className="w-4 h-4 text-purple-300" />
               </div>
             )}
             <div className="hidden lg:flex flex-col min-w-0 flex-1">
@@ -1564,18 +1597,65 @@ const DabStudio = ({ onBack, onHome, autoOpenDetails, clearAutoOpenDetails, user
           </div>
 
           <div className="flex items-center gap-2 shrink-0">
-            {/* Date filter select */}
-            <div className="flex items-center gap-1.5 bg-[#0a0914] border border-[#1e1932] rounded-lg px-2.5 py-1.5 text-xs font-mono">
-              <Filter className="w-3.5 h-3.5 text-purple-400" />
-              <select
-                value={dateFilter}
-                onChange={e => setDateFilter(e.target.value)}
-                className="bg-transparent border-none text-slate-200 font-bold focus:outline-none cursor-pointer"
+            {/* Custom High-Contrast Date Filter Dropdown */}
+            <div className="relative" ref={dateDropdownRef}>
+              <button
+                onClick={() => setShowDateDropdown(!showDateDropdown)}
+                className="flex items-center gap-2 bg-[#0d0c15] border border-[#2c2748] hover:border-purple-500/50 rounded-lg px-3 py-1.5 text-xs font-mono text-slate-200 hover:text-white font-bold transition-all shadow-md cursor-pointer select-none"
               >
-                {allDates.map(run => (
-                  <option key={run.id} value={run.id}>{run.label}</option>
-                ))}
-              </select>
+                <Filter className="w-3.5 h-3.5 text-purple-400 shrink-0" />
+                {(() => {
+                  const selectedRun = allDates.find(r => r.id === dateFilter);
+                  const isActive = selectedRun?.is_active;
+                  return (
+                    <span className="flex items-center gap-2">
+                      {isActive && <span className="pulsing-dot-green" title="Active Run" />}
+                      <span>{selectedRun?.label || (dateFilter === 'all' ? 'All Runs' : dateFilter)}</span>
+                    </span>
+                  );
+                })()}
+                <ChevronDown className="w-3.5 h-3.5 text-slate-400 shrink-0 ml-1" />
+              </button>
+
+              <AnimatePresence>
+                {showDateDropdown && (
+                  <motion.div
+                    initial={{ opacity: 0, y: 8, scale: 0.95 }}
+                    animate={{ opacity: 1, y: 0, scale: 1 }}
+                    exit={{ opacity: 0, y: 8, scale: 0.95 }}
+                    transition={{ duration: 0.15 }}
+                    className="absolute right-0 mt-1.5 w-60 rounded-xl bg-[#0b0a12] border border-[#231d36] shadow-2xl p-1 z-50 overflow-hidden font-mono"
+                  >
+                    <div className="text-[9px] font-bold text-slate-500 px-3 py-1.5 uppercase tracking-widest border-b border-[#1b172a] mb-1">
+                      Select Benchmark Run
+                    </div>
+                    <div className="space-y-0.5 max-h-60 overflow-y-auto no-scrollbar">
+                      {allDates.map(run => {
+                        const isSelected = dateFilter === run.id;
+                        return (
+                          <button
+                            key={run.id}
+                            onClick={() => {
+                              setDateFilter(run.id);
+                              setShowDateDropdown(false);
+                            }}
+                            className={`w-full flex items-center justify-between px-3 py-2 text-left text-xs font-mono rounded-lg transition-all ${
+                              isSelected 
+                                ? 'bg-purple-500/10 text-purple-300 font-bold border border-purple-500/20' 
+                                : 'hover:bg-white/[0.04] text-slate-400 hover:text-slate-200'
+                            }`}
+                          >
+                            <span className="truncate">{run.label}</span>
+                            {run.is_active && (
+                              <span className="pulsing-dot-green ml-2" title="Active Run" />
+                            )}
+                          </button>
+                        );
+                      })}
+                    </div>
+                  </motion.div>
+                )}
+              </AnimatePresence>
             </div>
 
             <button
@@ -1786,15 +1866,25 @@ const DabStudio = ({ onBack, onHome, autoOpenDetails, clearAutoOpenDetails, user
                               </div>
                             </div>
 
-                            {dateFilter === 'live' && (
+                            <div className="flex items-center gap-1.5 shrink-0">
                               <button
-                                className={`p-2 shrink-0 rounded-md bg-[#1d1b32] border border-[#2d284a] hover:bg-purple-600 hover:text-white transition-all ${runningDbs[db.name] ? 'animate-spin bg-purple-500 text-white' : 'text-slate-300'}`}
-                                onClick={(e) => { e.stopPropagation(); handleRunDb(db.name); }}
-                                title="Execute Batch Run"
+                                className="p-2 rounded-md bg-[#131126] border border-[#231d3d] hover:border-purple-500/40 hover:bg-purple-500/10 text-purple-400 hover:text-purple-300 transition-all cursor-pointer shadow-sm shrink-0"
+                                onClick={(e) => handleOpenSchemaModal(e, db.name)}
+                                title="View Database Schema"
                               >
-                                {runningDbs[db.name] ? <Activity className="w-3.5 h-3.5 animate-pulse" /> : <Play className="w-3.5 h-3.5" />}
+                                <Info size={14} className="animate-pulse" />
                               </button>
-                            )}
+
+                              {dateFilter === 'live' && (
+                                <button
+                                  className={`p-2 rounded-md bg-[#1d1b32] border border-[#2d284a] hover:bg-purple-600 hover:text-white transition-all cursor-pointer shrink-0 ${runningDbs[db.name] ? 'animate-spin bg-purple-500 text-white' : 'text-slate-300'}`}
+                                  onClick={(e) => { e.stopPropagation(); handleRunDb(db.name); }}
+                                  title="Execute Batch Run"
+                                >
+                                  {runningDbs[db.name] ? <Activity className="w-3.5 h-3.5 animate-pulse" /> : <Play className="w-3.5 h-3.5" />}
+                                </button>
+                              )}
+                            </div>
                           </div>
                         );
                       })}
@@ -2608,6 +2698,144 @@ const DabStudio = ({ onBack, onHome, autoOpenDetails, clearAutoOpenDetails, user
           </div>
         </div>
       )}
+
+      {/* Database Schema Modal */}
+      <AnimatePresence>
+        {showSchemaModal && (
+          <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm animate-fadeIn font-sans select-text">
+            <motion.div
+              initial={{ opacity: 0, scale: 0.9, y: 20 }}
+              animate={{ opacity: 1, scale: 1, y: 0 }}
+              exit={{ opacity: 0, scale: 0.9, y: 20 }}
+              transition={{ type: 'spring', damping: 25, stiffness: 200 }}
+              className="bg-[#0b0a14] border border-purple-500/30 rounded-2xl w-full max-w-3xl h-[80vh] shadow-2xl overflow-hidden flex flex-col relative"
+            >
+              <div className="absolute top-0 left-0 right-0 h-1 bg-gradient-to-r from-purple-600 via-indigo-500 to-cyan-500" />
+              
+              {/* Header */}
+              <header className="p-5 border-b border-[#1b1730] flex justify-between items-center bg-[#0d0c1b]/80 shrink-0">
+                <div className="flex items-center gap-3">
+                  <Database className="w-5 h-5 text-purple-400" />
+                  <div className="text-left">
+                    <h3 className="text-sm font-mono font-bold text-white uppercase tracking-wider">
+                      Database Schema Explorer
+                    </h3>
+                    <span className="text-[10px] font-mono text-slate-500 uppercase">
+                      Dataset: {schemaData?.dataset || 'Loading...'}
+                    </span>
+                  </div>
+                </div>
+                <button 
+                  onClick={() => { setShowSchemaModal(false); setSchemaData(null); }}
+                  className="p-1.5 rounded-lg bg-[#141224] border border-[#25203c] text-slate-400 hover:text-white transition-colors cursor-pointer"
+                >
+                  <X className="w-4 h-4" />
+                </button>
+              </header>
+
+              {/* Content Body */}
+              <div className="flex-1 overflow-y-auto p-6 bg-[#07070a] space-y-6 no-scrollbar text-left">
+                {schemaLoading || !schemaData ? (
+                  <div className="h-full flex flex-col items-center justify-center text-purple-400 animate-pulse font-mono py-20">
+                    <Activity className="w-8 h-8 animate-spin" />
+                    <p className="text-xs font-bold mt-2">Connecting to local database node...</p>
+                  </div>
+                ) : schemaData.error ? (
+                  <div className="text-rose-400 bg-rose-950/20 border border-rose-900/30 rounded-xl p-4 flex gap-2.5 text-xs font-mono">
+                    <AlertTriangle className="w-4 h-4 shrink-0" />
+                    <div>{schemaData.error}</div>
+                  </div>
+                ) : (
+                  <>
+                    {/* DB Description if available */}
+                    {schemaData.description && (
+                      <div className="p-4 rounded-xl bg-[#0e0c1b] border border-[#1e1735] text-slate-300 font-sans leading-relaxed text-xs">
+                        <div className="text-[9px] font-mono font-bold text-purple-400 uppercase tracking-wider mb-1">Description</div>
+                        {schemaData.description}
+                      </div>
+                    )}
+
+                    {/* Schema Tabs if multiple database clients */}
+                    {Object.keys(schemaData.schema || {}).length > 1 && (
+                      <div className="flex border-b border-[#1b1730] gap-1 shrink-0">
+                        {Object.keys(schemaData.schema).map(clientName => (
+                          <button
+                            key={clientName}
+                            onClick={() => setSelectedSchemaTab(clientName)}
+                            className={`px-4 py-2 text-xs font-mono font-bold transition-all border-b-2 cursor-pointer ${
+                              selectedSchemaTab === clientName
+                                ? 'border-purple-500 text-purple-400 bg-purple-500/5'
+                                : 'border-transparent text-slate-500 hover:text-slate-300'
+                            }`}
+                          >
+                            {clientName.toUpperCase()} ({schemaData.schema[clientName].db_type})
+                          </button>
+                        ))}
+                      </div>
+                    )}
+
+                    {/* Schema Display for Selected Client */}
+                    {(() => {
+                      const clientName = selectedSchemaTab || Object.keys(schemaData.schema || {})[0];
+                      const clientData = schemaData.schema?.[clientName];
+                      if (!clientData || !clientData.tables || Object.keys(clientData.tables).length === 0) {
+                        return (
+                          <div className="text-slate-500 font-mono text-xs italic text-center py-10">
+                            No tables found in this database schema.
+                          </div>
+                        );
+                      }
+
+                      return (
+                        <div className="space-y-6">
+                          {Object.entries(clientData.tables).map(([tableName, columns]: [string, any]) => (
+                            <div key={tableName} className="border border-[#1e1735] bg-[#0c0a18] rounded-xl overflow-hidden shadow-inner">
+                              {/* Table Header */}
+                              <div className="px-4 py-3 bg-[#110e24] border-b border-[#1e1735] flex items-center justify-between">
+                                <span className="font-mono font-black text-xs text-white">
+                                  📁 {tableName}
+                                </span>
+                                <span className="text-[9px] font-mono text-purple-400 font-bold bg-purple-500/10 px-2 py-0.5 rounded border border-purple-500/20">
+                                  {columns.length} Columns
+                                </span>
+                              </div>
+                              
+                              {/* Table Columns List */}
+                              <div className="divide-y divide-[#16122d]">
+                                {columns.map(col => (
+                                  <div key={col.name} className="px-4 py-3 flex items-center justify-between hover:bg-white/[0.02] transition-colors text-xs font-mono">
+                                    <div className="flex items-center gap-3">
+                                      <span className="font-bold text-slate-200">{col.name}</span>
+                                      <span className="text-[9.5px] text-slate-500 bg-[#121020] px-1.5 py-0.2 rounded border border-white/5">{col.type}</span>
+                                    </div>
+                                    
+                                    <div className="flex items-center gap-2">
+                                      {col.pk && (
+                                        <span className="text-[8px] font-black text-amber-400 bg-amber-500/10 px-1 rounded border border-amber-500/30">
+                                          PK
+                                        </span>
+                                      )}
+                                      {col.notnull && (
+                                        <span className="text-[8px] font-black text-purple-400 bg-purple-500/10 px-1 rounded border border-purple-500/30">
+                                          NOT NULL
+                                        </span>
+                                      )}
+                                    </div>
+                                  </div>
+                                ))}
+                              </div>
+                            </div>
+                          ))}
+                        </div>
+                      );
+                    })()}
+                  </>
+                )}
+              </div>
+            </motion.div>
+          </div>
+        )}
+      </AnimatePresence>
     </div>
   );
 };

@@ -172,128 +172,132 @@ class StrategyRouter:
         exploration: str,
     ) -> dict:
         """
-        Returns a strategy dict.  Never raises Ã¢â‚¬â€ falls back to direct_sql
+        Returns a strategy dict.  Never raises — falls back to direct_sql
         if the LLM call or parse fails.
         """
-        gap_report = json.dumps(
-            {
-                "has_gaps": feasibility.get("has_gaps", False),
-                "gap_summary": feasibility.get("gap_summary", ""),
-                "gaps": [
-                    {"term": c["term"], "reason": c.get("gap_reason", "")}
-                    for c in feasibility.get("concepts", [])
-                    if c.get("gap")
-                ],
-            },
-            indent=2,
-        )
-
-        prompt = _USER_TMPL.format(
-            question=question,
-            schema_text=schema_text,
-            gap_report=gap_report,
-            exploration=exploration or "(no exploration performed)",
-        )
-
+        logger.set_agent("STRATEGY_ROUTER")
         try:
-            raw = self.llm.generate(
-                system_prompt=_SYSTEM,
-                user_prompt=prompt,
+            gap_report = json.dumps(
+                {
+                    "has_gaps": feasibility.get("has_gaps", False),
+                    "gap_summary": feasibility.get("gap_summary", ""),
+                    "gaps": [
+                        {"term": c["term"], "reason": c.get("gap_reason", "")}
+                        for c in feasibility.get("concepts", [])
+                        if c.get("gap")
+                    ],
+                },
+                indent=2,
             )
-            raw = self._strip_think(raw)
-            result = self._parse(raw)
-            if result:
-                logger.info(f"[StrategyRouter] strategy={result['strategy']}")
-                logger.info(f"[StrategyRouter] reasoning: {result['reasoning'][:120]}")
-                # Safety net: if cannot_answer was chosen but exploration found data,
-                # try to rescue it with a smarter fallback.
-                if (
-                    result["strategy"] == "cannot_answer"
-                    and exploration
-                    and len(exploration.strip()) > 100
-                ):
-                    # Determine whether the data is pattern-extractable (JSON/structured) or
-                    # free-text narrative (requires semantic classification).
-                    expl_lower = exploration.lower()
-                    has_json_signal = any(
-                        sig in exploration
-                        for sig in [
-                            "Structured Attribute Keys",  # profiler found JSON keys
-                            '"$.',  # json_extract pattern
-                            "LIKE '%",  # LIKE pattern suggestion
-                            "json_extract",  # explicit json suggestion
-                            '{"',  # JSON object in sample
-                            "{'",  # Python dict in sample
-                        ]
-                    )
-                    has_narrative_text = any(
-                        sig in expl_lower
-                        for sig in [
-                            "description",
-                            "located at",
-                            "this establishment",
-                            "offers a range",
-                            "provides a",
-                            "premier destination",
-                            "services including",
-                        ]
-                    )
 
-                    base = result.get("enriched_context") or result.get(
-                        "cannot_answer_reason", ""
-                    )
+            prompt = _USER_TMPL.format(
+                question=question,
+                schema_text=schema_text,
+                gap_report=gap_report,
+                exploration=exploration or "(no exploration performed)",
+            )
 
-                    if has_json_signal:
-                        # Pattern-extractable: downgrade to enriched_sql
-                        logger.warning(
-                            "[StrategyRouter] cannot_answer returned but JSON/structured data detected Ã¢â‚¬â€ "
-                            "downgrading to enriched_sql for pattern-based extraction."
+            try:
+                raw = self.llm.generate(
+                    system_prompt=_SYSTEM,
+                    user_prompt=prompt,
+                )
+                raw = self._strip_think(raw)
+                result = self._parse(raw)
+                if result:
+                    logger.info(f"[StrategyRouter] strategy={result['strategy']}")
+                    logger.info(f"[StrategyRouter] reasoning: {result['reasoning'][:120]}")
+                    # Safety net: if cannot_answer was chosen but exploration found data,
+                    # try to rescue it with a smarter fallback.
+                    if (
+                        result["strategy"] == "cannot_answer"
+                        and exploration
+                        and len(exploration.strip()) > 100
+                    ):
+                        # Determine whether the data is pattern-extractable (JSON/structured) or
+                        # free-text narrative (requires semantic classification).
+                        expl_lower = exploration.lower()
+                        has_json_signal = any(
+                            sig in exploration
+                            for sig in [
+                                "Structured Attribute Keys",  # profiler found JSON keys
+                                '"$.',  # json_extract pattern
+                                "LIKE '%",  # LIKE pattern suggestion
+                                "json_extract",  # explicit json suggestion
+                                '{"',  # JSON object in sample
+                                "{'",  # Python dict in sample
+                            ]
                         )
-                        result["strategy"] = "enriched_sql"
-                        result["enriched_context"] = (
-                            (base + "\n\n" if base else "")
-                            + "GUIDANCE: The required value may be embedded in a structured JSON or serialized-text column. "
-                            "Use the EXPLORATION FINDINGS to identify the exact column and extraction pattern. "
-                            "Use json_extract_string(), regexp_extract(), LIKE, or CASE expressions. "
-                            "You MUST write a SQL query Ã¢â‚¬â€ do NOT refuse or return empty SQL."
+                        has_narrative_text = any(
+                            sig in expl_lower
+                            for sig in [
+                                "description",
+                                "located at",
+                                "this establishment",
+                                "offers a range",
+                                "provides a",
+                                "premier destination",
+                                "services including",
+                            ]
                         )
-                    elif has_narrative_text:
-                        # Free-text narrative: route to text_classify_aggregate for LLM classification
-                        logger.warning(
-                            "[StrategyRouter] cannot_answer returned but narrative text column detected Ã¢â‚¬â€ "
-                            "upgrading to text_classify_aggregate for LLM-based semantic extraction."
-                        )
-                        result["strategy"] = "text_classify_aggregate"
-                        # Provide a minimal classify_spec scaffold if none exists.
-                        # Do NOT hardcode column names or category labels Ã¢â‚¬â€ leave them
-                        # empty so the SQL generator fills them from the actual schema.
-                        if not result.get("classify_spec"):
-                            result["classify_spec"] = {
-                                "fetch_sql": "",
-                                "id_column": "",
-                                "text_columns": [],  # filled by SQL generator from schema
-                                "categories": [],  # filled by SQL generator from question
-                                "target_category": "",
-                                "native_category_column": "",
-                                "classification_instruction": "",
-                            }
-                    else:
-                        # Unknown data type: best-effort enriched_sql
-                        logger.warning(
-                            "[StrategyRouter] cannot_answer returned with exploration data Ã¢â‚¬â€ "
-                            "defaulting to enriched_sql as best-effort fallback."
-                        )
-                        result["strategy"] = "enriched_sql"
-                        result["enriched_context"] = (
-                            (base + "\n\n" if base else "")
-                            + "GUIDANCE: Attempt to extract the required value using available columns. "
-                            "You MUST write a SQL query Ã¢â‚¬â€ do NOT refuse or return empty SQL."
-                        )
-                return result
-        except Exception as e:
-            logger.debug(f"[StrategyRouter] failed (non-fatal): {e}")
 
-        return self._default()
+                        base = result.get("enriched_context") or result.get(
+                            "cannot_answer_reason", ""
+                        )
+
+                        if has_json_signal:
+                            # Pattern-extractable: downgrade to enriched_sql
+                            logger.warning(
+                                "[StrategyRouter] cannot_answer returned but JSON/structured data detected — "
+                                "downgrading to enriched_sql for pattern-based extraction."
+                            )
+                            result["strategy"] = "enriched_sql"
+                            result["enriched_context"] = (
+                                (base + "\n\n" if base else "")
+                                + "GUIDANCE: The required value may be embedded in a structured JSON or serialized-text column. "
+                                "Use the EXPLORATION FINDINGS to identify the exact column and extraction pattern. "
+                                "Use json_extract_string(), regexp_extract(), LIKE, or CASE expressions. "
+                                "You MUST write a SQL query — do NOT refuse or return empty SQL."
+                            )
+                        elif has_narrative_text:
+                            # Free-text narrative: route to text_classify_aggregate for LLM classification
+                            logger.warning(
+                                "[StrategyRouter] cannot_answer returned but narrative text column detected — "
+                                "upgrading to text_classify_aggregate for LLM-based semantic extraction."
+                            )
+                            result["strategy"] = "text_classify_aggregate"
+                            # Provide a minimal classify_spec scaffold if none exists.
+                            # Do NOT hardcode column names or category labels — leave them
+                            # empty so the SQL generator fills them from the actual schema.
+                            if not result.get("classify_spec"):
+                                result["classify_spec"] = {
+                                    "fetch_sql": "",
+                                    "id_column": "",
+                                    "text_columns": [],  # filled by SQL generator from schema
+                                    "categories": [],  # filled by SQL generator from question
+                                    "target_category": "",
+                                    "native_category_column": "",
+                                    "classification_instruction": "",
+                                }
+                        else:
+                            # Unknown data type: best-effort enriched_sql
+                            logger.warning(
+                                "[StrategyRouter] cannot_answer returned with exploration data — "
+                                "defaulting to enriched_sql as best-effort fallback."
+                            )
+                            result["strategy"] = "enriched_sql"
+                            result["enriched_context"] = (
+                                (base + "\n\n" if base else "")
+                                + "GUIDANCE: Attempt to extract the required value using available columns. "
+                                "You MUST write a SQL query — do NOT refuse or return empty SQL."
+                            )
+                    return result
+            except Exception as e:
+                logger.debug(f"[StrategyRouter] failed (non-fatal): {e}")
+
+            return self._default()
+        finally:
+            logger.reset_agent()
 
     # ------------------------------------------------------------------
     # Helpers

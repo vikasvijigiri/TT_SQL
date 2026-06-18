@@ -1,10 +1,10 @@
 # start.ps1 — Launch all NQuire services natively (DBs already in Docker via docker-compose.db.yml)
 $ROOT = Split-Path -Parent $MyInvocation.MyCommand.Path
 
-# 1. Python Agent (FastAPI on :8001)
+# 1. Python Agent (FastAPI on :8010)
 Start-Process powershell -ArgumentList "-NoExit", "-Command", @"
   Set-Location '$ROOT\backend\agent'
-  Write-Host '=== NQuire Agent (Python :8001) ===' -ForegroundColor Cyan
+  Write-Host '=== NQuire Agent (Python :8010) ===' -ForegroundColor Cyan
   python -m uvicorn agent.app.api:app --host 0.0.0.0 --port 8010 --reload
 "@
 
