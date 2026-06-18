@@ -5,7 +5,7 @@ import react from '@vitejs/plugin-react'
 export default defineConfig({
   plugins: [react()],
   server: {
-    allowedHosts: ['nquire.local'],
+    allowedHosts: ['dev.nquireai.com'],
     proxy: {
       '/api': {
         target: 'http://localhost:8002',
@@ -14,6 +14,6 @@ export default defineConfig({
     }
   },
   preview: {
-    allowedHosts: ['nquire.local'],
+    allowedHosts: ['dev.nquireai.com'],
   }
 })

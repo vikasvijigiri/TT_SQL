@@ -29,38 +29,23 @@ $ips | Format-Table -AutoSize
 $primaryIP = $ips | Select-Object -First 1 -ExpandProperty IPAddress
 Write-Host "      Primary IP: $primaryIP" -ForegroundColor Green
 
-# 3. Rename PC (enables mDNS so clients resolve nquire.local automatically)
+# 3. DNS / Local Access setup
 Write-Host ""
-Write-Host "[3/3] PC Rename for mDNS..." -ForegroundColor Yellow
-$currentName = $env:COMPUTERNAME
-if ($currentName -eq $serverName) {
-    Write-Host "      PC is already named '$serverName' — mDNS will work automatically." -ForegroundColor Green
-} else {
-    Write-Host "      Current PC name: $currentName"
-    Write-Host "      To enable 'http://nquire.local' for ALL clients automatically (no client config),"
-    Write-Host "      the PC needs to be renamed to '$serverName'. This requires a restart."
-    $answer = Read-Host "      Rename PC to '$serverName' now? (y/N)"
-    if ($answer -match '^[Yy]') {
-        Rename-Computer -NewName $serverName -Force
-        Write-Host ""
-        Write-Host "      PC renamed. A restart is required." -ForegroundColor Yellow
-        $restart = Read-Host "      Restart now? (y/N)"
-        if ($restart -match '^[Yy]') {
-            Restart-Computer -Force
-        } else {
-            Write-Host "      Remember to restart before testing!" -ForegroundColor Yellow
-        }
-    } else {
-        Write-Host ""
-        Write-Host "      SKIPPED rename. Clients must use the hosts file instead." -ForegroundColor Yellow
-        Write-Host "      Share this with each client to add to their hosts file:" -ForegroundColor Cyan
-        Write-Host "        $primaryIP    nquire.local" -ForegroundColor White
-        Write-Host ""
-        Write-Host "      Or run 'setup-client.ps1' as Administrator on each client PC." -ForegroundColor Cyan
-    }
-}
+Write-Host "[3/3] Local Access & DNS Setup Info:" -ForegroundColor Yellow
+Write-Host "      To enable users to access the app via http://dev.nquireai.com, you can either:"
+Write-Host ""
+Write-Host "      A) Configure a local DNS server (e.g. Technitium DNS):" -ForegroundColor Cyan
+Write-Host "         - Create a zone for 'dev.nquireai.com' pointing to '$primaryIP'"
+Write-Host "         - Set your Wi-Fi router's DHCP DNS server to Technitium's IP"
+Write-Host "         - No client configuration is required!"
+Write-Host ""
+Write-Host "      B) Use client-side hosts file fallback:" -ForegroundColor Cyan
+Write-Host "         - Run 'setup-client.ps1 -ServerIP $primaryIP' as Administrator on client PCs"
+Write-Host "         - Or add this line manually to C:\Windows\System32\drivers\etc\hosts:"
+Write-Host "           $primaryIP    dev.nquireai.com" -ForegroundColor White
+Write-Host ""
 
 Write-Host ""
 Write-Host "=== Server setup complete ===" -ForegroundColor Cyan
 Write-Host "Start the app with:  docker-compose up -d" -ForegroundColor White
-Write-Host "App will be at:      http://nquire.local" -ForegroundColor White
+Write-Host "App will be at:      http://dev.nquireai.com" -ForegroundColor White
