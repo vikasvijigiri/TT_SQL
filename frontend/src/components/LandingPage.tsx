@@ -4,7 +4,7 @@ import {
   Zap, Shield, Brain, GitBranch, BarChart3, Globe,
   ArrowRight, Layers,
   CheckCircle2, ChevronRight, Play, Database, Search, Code, Terminal, Copy, Check, Sparkles, AlertCircle, Loader2,
-  Download, Cpu, RotateCcw, Pause, Info, LogOut
+  Download, Cpu, RotateCcw, Pause, Info, LogOut, X, User
 } from 'lucide-react';
 import { useGoogleLogin } from '@react-oauth/google';
 import NQuireLogo from './NQuireLogo';
@@ -51,7 +51,7 @@ const STATS = [
 ];
 
 const BENCHMARKS = [
-  { name: 'Spider2-Lite',   accuracy: '20.5', detail: '112 / 547 queries', color: '#38bdf8', desc: 'Execution Acc.' },
+  { name: 'Spider2-Lite',   accuracy: '61.0', detail: '334 / 547 queries', color: '#38bdf8', desc: 'Execution Acc.' },
   { name: 'DataAgentBench', accuracy: '47.0', detail: '54 queries · 12 datasets', color: '#2dd4bf', desc: 'Pass@1' },
 ];
 
@@ -91,24 +91,24 @@ const STRENGTHS_LIST = [
 
 const TESTIMONIALS = [
   {
-    quote: "NQuire cut our SQL turnaround from hours to seconds. The self-correction loop alone saves us 30% of QA time.",
-    author: "Sarah K.",
-    role: "Data Lead, FinTech",
-    initials: "SK",
+    quote: "Before NQuire, I spent 80% of my day debugging syntax errors and 20% crying. Now, the self-correction loop does both for me. 10/10.",
+    author: "Vikas V.",
+    role: "Dean of Crying in Dark Theme",
+    initials: "VV",
     col: '#5fa8d8',
   },
   {
-    quote: "Finally a text-to-SQL tool that doesn't hallucinate column names. FQN grounding is remarkably accurate.",
-    author: "Rohan M.",
-    role: "Senior Data Engineer",
-    initials: "RM",
+    quote: "FQN grounding found a column named 'temp_final_v3_dont_drop' on our legacy server in 0.03 seconds. It knows our database secrets better than our security auditor does.",
+    author: "Vinay N.",
+    role: "Chief Coffee-to-Code Transpiler",
+    initials: "VN",
     col: '#7e96d0',
   },
   {
-    quote: "Went from 3 analysts writing SQL to 1, with better query quality across 6 different databases.",
-    author: "Priya S.",
-    role: "Analytics Manager",
-    initials: "PS",
+    quote: "Our database is a 400-table labyrinth of poor life choices. NQuire's semantic context pruner sliced token costs so much our finance team asked if we closed the company.",
+    author: "Vishal A.",
+    role: "Guardian of the Free Tier",
+    initials: "VA",
     col: '#3db8b0',
   },
 ];
@@ -850,6 +850,54 @@ const LandingPage = ({ onEnter, user, onLogin, onLogout }) => {
   const [selectedAgent, setSelectedAgent] = useState("orchestrator");
   const [loginLoading, setLoginLoading] = useState(false);
   const loginIntentRef = useRef(false); // true = navigate to dashboard after auth
+  const [showGuestModal, setShowGuestModal] = useState(false);
+  const [guestName, setGuestName] = useState("");
+  const [guestError, setGuestError] = useState("");
+
+  const handleGuestLogin = (e) => {
+    if (e) e.preventDefault();
+    const nameTrimmed = guestName.trim();
+    if (!nameTrimmed) {
+      setGuestError("Please enter a valid name.");
+      return;
+    }
+    // Clean name from forbidden characters to make it a safe slug
+    const safeName = nameTrimmed.toLowerCase().replace(/[^a-z0-9_\-]/g, "");
+    if (!safeName) {
+      setGuestError("Name must contain alphanumeric characters, underscores, or dashes.");
+      return;
+    }
+
+    const guestUser = {
+      name: nameTrimmed,
+      email: `${safeName}@nquire.ai`,
+      picture: null
+    };
+
+    // Helper for base64url encoding
+    const base64UrlEncode = (obj) => {
+      const json = JSON.stringify(obj);
+      const bytes = new TextEncoder().encode(json);
+      let binString = "";
+      bytes.forEach((b) => {
+        binString += String.fromCharCode(b);
+      });
+      return btoa(binString)
+        .replace(/=/g, "")
+        .replace(/\+/g, "-")
+        .replace(/\//g, "_");
+    };
+
+    const header = { alg: "none", typ: "JWT" };
+    const payload = { email: guestUser.email, name: guestUser.name };
+    const guestToken = `${base64UrlEncode(header)}.${base64UrlEncode(payload)}.`;
+
+    onLogin(guestUser, guestToken);
+    setShowGuestModal(false);
+    setGuestName("");
+    setGuestError("");
+    onEnter();
+  };
 
   const glogin = useGoogleLogin({
     onSuccess: async (tokenResponse) => {
@@ -1131,12 +1179,18 @@ const LandingPage = ({ onEnter, user, onLogin, onLogout }) => {
 
         {user ? (
           <div className="flex items-center gap-2">
-            <img
-              src={user.picture}
-              alt={user.name}
-              referrerPolicy="no-referrer"
-              className="w-8 h-8 rounded-full border border-slate-700/60 shrink-0"
-            />
+            {user.picture ? (
+              <img
+                src={user.picture}
+                alt={user.name}
+                referrerPolicy="no-referrer"
+                className="w-8 h-8 rounded-full border border-slate-700/60 shrink-0"
+              />
+            ) : (
+              <div className="w-8 h-8 rounded-full bg-gradient-to-br from-indigo-500/20 to-purple-500/20 border border-indigo-500/30 flex items-center justify-center shrink-0 shadow-inner">
+                <User className="w-4.5 h-4.5 text-indigo-300" />
+              </div>
+            )}
             <span className="text-[12px] text-slate-300 font-medium hidden lg:block max-w-[80px] truncate">
               {user.name.split(' ')[0]}
             </span>
@@ -1176,7 +1230,7 @@ const LandingPage = ({ onEnter, user, onLogin, onLogout }) => {
             <motion.button
               whileHover={{ scale: 1.02, color: C.text1 }}
               whileTap={{ scale: 0.97 }}
-              onClick={onEnter}
+              onClick={() => setShowGuestModal(true)}
               className="px-3 py-2 rounded-lg text-[12px] font-medium transition-all cursor-pointer"
               style={{ color: C.text3 }}
             >
@@ -1278,7 +1332,7 @@ const LandingPage = ({ onEnter, user, onLogin, onLogout }) => {
           </div>
 
           {/* CTA pair */}
-          <div className="flex flex-row items-center gap-3 mb-3">
+          <div className="flex flex-row items-center gap-3 mb-3 flex-wrap">
             <MagneticCTA onClick={user ? onEnter : signInAndEnter}>
               {user ? 'Launch Dashboard' : 'Sign in & Launch'}
             </MagneticCTA>
@@ -1292,6 +1346,25 @@ const LandingPage = ({ onEnter, user, onLogin, onLogout }) => {
               See how it works
               <ChevronRight size={14} style={{ color: C.text3 }} />
             </motion.button>
+            {/* Download setup script button */}
+            <motion.a
+              href="https://raw.githubusercontent.com/NG-VikasV/TT_SQL/main/setup-client.ps1"
+              download="setup-client.ps1"
+              target="_blank"
+              rel="noopener noreferrer"
+              whileHover={{ scale: 1.03, borderColor: 'rgba(61,184,176,0.45)', color: '#3db8b0' }}
+              whileTap={{ scale: 0.97 }}
+              className="flex items-center gap-2 px-4 py-2.5 rounded-xl text-[12px] font-semibold transition-all no-underline"
+              style={{
+                color: C.teal,
+                border: `1px solid rgba(61,184,176,0.25)`,
+                background: 'rgba(61,184,176,0.06)',
+              }}
+              title="Download the one-time client setup script for Wi-Fi access"
+            >
+              <Download size={13} />
+              Client Setup Script
+            </motion.a>
           </div>
 
           {/* Trust line */}
@@ -2213,6 +2286,84 @@ const LandingPage = ({ onEnter, user, onLogin, onLogout }) => {
           </div>
         </div>
       </footer>
+
+      {/* Guest Login Modal */}
+      <AnimatePresence>
+        {showGuestModal && (
+          <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-black/70 backdrop-blur-sm animate-fadeIn font-sans">
+            <motion.div
+              initial={{ opacity: 0, scale: 0.9, y: 20 }}
+              animate={{ opacity: 1, scale: 1, y: 0 }}
+              exit={{ opacity: 0, scale: 0.9, y: 20 }}
+              transition={{ type: 'spring', damping: 25, stiffness: 200 }}
+              className="bg-[#121a28] border border-cyan-500/30 rounded-2xl w-full max-w-md shadow-2xl overflow-hidden flex flex-col relative"
+              style={{ boxShadow: '0 20px 50px rgba(0,0,0,0.5), 0 0 0 1px rgba(61,184,176,0.1) inset' }}
+            >
+              <div className="absolute top-0 left-0 right-0 h-1 bg-gradient-to-r from-cyan-500 to-indigo-500" />
+              
+              <div className="p-6">
+                <div className="flex items-center justify-between mb-4">
+                  <div className="flex items-center gap-3">
+                    <div className="w-10 h-10 rounded-xl bg-cyan-500/10 border border-cyan-500/20 flex items-center justify-center text-cyan-400">
+                      <Sparkles className="w-5 h-5" />
+                    </div>
+                    <div>
+                      <h3 className="text-base font-bold text-white font-mono">Welcome, Guest!</h3>
+                      <p className="text-[10px] text-slate-400 font-mono mt-0.5">Please enter a name to initialize your session.</p>
+                    </div>
+                  </div>
+                  <button 
+                    onClick={() => { setShowGuestModal(false); setGuestError(""); }}
+                    className="p-1.5 rounded-lg bg-slate-900/60 border border-slate-800 text-slate-400 hover:text-white transition-colors cursor-pointer"
+                  >
+                    <X className="w-4 h-4" />
+                  </button>
+                </div>
+
+                <form onSubmit={handleGuestLogin} className="space-y-4">
+                  <div className="space-y-1.5 text-left">
+                    <label className="text-[10px] font-mono font-bold text-slate-400 uppercase tracking-wider">User Name</label>
+                    <input
+                      type="text"
+                      value={guestName}
+                      onChange={(e) => {
+                        setGuestName(e.target.value);
+                        if (guestError) setGuestError("");
+                      }}
+                      placeholder="e.g. Vikas"
+                      autoFocus
+                      className="w-full text-xs bg-slate-950/60 text-slate-100 placeholder-slate-600 px-3.5 py-2.5 rounded-xl border border-slate-800 focus:border-cyan-500/50 focus:outline-none transition-all font-mono"
+                    />
+                    {guestError && (
+                      <p className="text-[10.5px] font-mono text-rose-400 flex items-center gap-1.5 animate-pulse mt-1">
+                        <AlertCircle className="w-3.5 h-3.5 shrink-0" />
+                        {guestError}
+                      </p>
+                    )}
+                  </div>
+
+                  <div className="flex items-center justify-end gap-3 pt-2">
+                    <button
+                      type="button"
+                      onClick={() => { setShowGuestModal(false); setGuestError(""); }}
+                      className="px-4 py-2 rounded-lg font-mono text-xs font-bold text-slate-400 hover:text-slate-200 hover:bg-white/5 transition-all cursor-pointer"
+                    >
+                      CANCEL
+                    </button>
+                    <button
+                      type="submit"
+                      className="px-4 py-2 rounded-lg font-mono text-xs font-bold text-white bg-gradient-to-r from-cyan-600 to-indigo-600 hover:from-cyan-500 hover:to-indigo-500 transition-all shadow-lg shadow-cyan-600/10 flex items-center gap-2 cursor-pointer"
+                    >
+                      <Play className="w-3.5 h-3.5" />
+                      START SESSION
+                    </button>
+                  </div>
+                </form>
+              </div>
+            </motion.div>
+          </div>
+        )}
+      </AnimatePresence>
     </div>
   );
 };
