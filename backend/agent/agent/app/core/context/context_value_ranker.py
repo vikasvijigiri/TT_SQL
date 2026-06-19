@@ -21,12 +21,14 @@ class ContextValueRanker:
     """
 
     DEFAULT_SCORES = {
-        "dynamic_schema": (0.95, 1.0, 1.0),  # Primary grounding
-        "dialect_rules": (0.90, 0.95, 0.95),  # Syntax exactness
-        "reasoning_directives": (0.85, 0.90, 0.90),  # Structural guidance
-        "syntax_templates": (0.80, 0.70, 0.75),  # Helpful patterns
-        "past_lessons": (0.75, 0.65, 0.80),  # Historical corrections
-        "error_history": (0.95, 0.90, 0.95),  # Immediate correction
+        # (usefulness, necessity, hallucination_prevention)
+        # Composite = use*0.30 + nec*0.35 + hal*0.35
+        "dynamic_schema":      (0.95, 1.00, 1.00),  # 0.982 — Primary grounding (never drop)
+        "error_history":       (0.95, 0.90, 0.95),  # 0.933 — Immediate correction (never drop)
+        "past_lessons":        (0.95, 0.95, 0.98),  # 0.961 — RAISED: learned from failures, most valuable context
+        "dialect_rules":       (0.85, 0.80, 0.80),  # 0.816 — LOWERED: generic rules, less critical than lessons
+        "reasoning_directives":(0.80, 0.85, 0.85),  # 0.834 — Structural guidance
+        "syntax_templates":    (0.70, 0.60, 0.65),  # 0.650 — Helpful patterns (drop first)
     }
 
     @classmethod

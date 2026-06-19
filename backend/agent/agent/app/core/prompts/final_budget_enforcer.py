@@ -13,14 +13,14 @@ class FinalBudgetEnforcer:
     """
 
     STAGE_BUDGETS = {
-        "SCHEMA_LINKER": 12000,
-        "COLUMN_PRUNER": 8000,
-        "TABLE_PRUNER": 10000,
-        "SQL_GENERATOR": 16000,
-        "SELF_CORRECTOR": 14000,
-        "DATA_IQ": 12000,
-        "CRITIC": 10000,
-        "DEFAULT": 15000,
+        "SCHEMA_LINKER":   15000,  # was 12000
+        "COLUMN_PRUNER":   10000,  # was 8000
+        "TABLE_PRUNER":    12000,  # was 10000
+        "SQL_GENERATOR":   20000,  # was 16000
+        "SELF_CORRECTOR":  18000,  # was 14000
+        "DATA_IQ":         15000,  # was 12000
+        "CRITIC":          13000,  # was 10000
+        "DEFAULT":         18000,  # was 15000
     }
 
     @classmethod

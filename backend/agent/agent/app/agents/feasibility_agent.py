@@ -122,6 +122,7 @@ class FeasibilityAgent:
             hints_section=hints_section,
         )
         logger.set_agent("FEASIBILITY_AGENT")
+        logger.info("> AGENT EXECUTION: FEASIBILITY_AGENT")
         try:
             raw = self.llm.generate(
                 system_prompt=_SYSTEM,

@@ -31,9 +31,82 @@ from agent.app.core.config import DAB_REPO as _DAB_REPO
 
 DAB_REPO_PATH_DEFAULT = str(_DAB_REPO)
 DAB_RESULTS_BASE = DAB_RESULTS_DIR
-DAB_RUNNING_TASKS: set = set()
-DAB_EXECUTING_TASKS: set = set()
-DAB_CANCEL_FLAG: bool = False
+
+import collections.abc
+
+class RedisSet(collections.abc.MutableSet):
+    def __init__(self, key):
+        self.key = key
+
+    def _get(self):
+        from agent.app.utils.cache import cache_service
+        try:
+            val = cache_service.get(self.key)
+            return set(val) if val is not None else set()
+        except Exception:
+            if not hasattr(self, '_local_set'):
+                self._local_set = set()
+            return self._local_set
+
+    def _set(self, s):
+        from agent.app.utils.cache import cache_service
+        try:
+            cache_service.set(self.key, list(s), ttl=86400)
+        except Exception:
+            self._local_set = s
+
+    def __contains__(self, item):
+        return item in self._get()
+
+    def __iter__(self):
+        return iter(self._get())
+
+    def __len__(self):
+        return len(self._get())
+
+    def add(self, item):
+        s = self._get()
+        s.add(item)
+        self._set(s)
+
+    def discard(self, item):
+        s = self._get()
+        s.discard(item)
+        self._set(s)
+
+    def clear(self):
+        self._set(set())
+
+
+class RedisBool:
+    def __init__(self, key, default=False):
+        self.key = key
+        self.default = default
+
+    def get(self):
+        from agent.app.utils.cache import cache_service
+        try:
+            val = cache_service.get(self.key)
+            return self.default if val is None else bool(val)
+        except Exception:
+            if not hasattr(self, '_local_val'):
+                self._local_val = self.default
+            return self._local_val
+
+    def set(self, val):
+        from agent.app.utils.cache import cache_service
+        try:
+            cache_service.set(self.key, bool(val), ttl=86400)
+        except Exception:
+            self._local_val = val
+
+    def __bool__(self):
+        return self.get()
+
+
+DAB_RUNNING_TASKS = RedisSet("shared_DAB_RUNNING_TASKS")
+DAB_EXECUTING_TASKS = RedisSet("shared_DAB_EXECUTING_TASKS")
+DAB_CANCEL_FLAG = RedisBool("shared_DAB_CANCEL_FLAG", False)
 _dab_queries_cache = None
 
 
@@ -103,8 +176,10 @@ def _dab_query_status(dataset: str, query_id: str, date: str = "all", run_id: Op
     from agent.app.dab.dab_evaluator import load_eval_result
     qkey = f"{dataset}_q{query_id}"
 
-    if qkey in DAB_RUNNING_TASKS:
+    if qkey in DAB_EXECUTING_TASKS:
         return {"status": "running", "passed": None, "reason": "", "evaluated": False, "latency": 0}
+    if qkey in DAB_RUNNING_TASKS:
+        return {"status": "pending", "passed": None, "reason": "", "evaluated": False, "latency": 0}
 
     eval_result = load_eval_result(dataset, query_id, date=date, run_id=run_id, username=username)
     if eval_result is None:
@@ -251,9 +326,8 @@ def get_dab_databases(request: Request, date: str = "all", run_id: Optional[str]
     """Return DAB datasets formatted like Spider databases."""
     username = _get_username_from_request(request)
     run_id = _resolve_live_run_id(run_id, username)
-    if force:
-        from agent.app.dab.benchmark_loader import load_all_queries
-        from agent.app.dab.dab_evaluator import evaluate_answer
+    import agent.app.dab.dab_evaluator as de
+    if force or de.DAB_RUN_ID:
         _cached_dab_metrics.cache_clear()
     metrics = _cached_dab_metrics(date, run_id, username, _get_ttl_hash(15))
     per_dataset = metrics.get("per_dataset", {})
@@ -455,7 +529,8 @@ def get_dab_metrics(request: Request, date: str = "all", run_id: Optional[str] =
     """Get overall DAB accuracy metrics."""
     username = _get_username_from_request(request)
     run_id = _resolve_live_run_id(run_id, username)
-    if force:
+    import agent.app.dab.dab_evaluator as de
+    if force or de.DAB_RUN_ID:
         _cached_dab_metrics.cache_clear()
     return _cached_dab_metrics(date, run_id, username, _get_ttl_hash(5))
 
@@ -545,20 +620,8 @@ def get_dab_agent_analytics(request: Request, date: str = "all", run_id: Optiona
             "tough": {"total": 0, "passed": 0, "failed": 0}
         }
         
-        agent_scores_sum = {
-            "schema_linker": 0,
-            "sql_generator": 0,
-            "critic": 0,
-            "self_corrector": 0,
-            "data_iq": 0
-        }
-        agent_counts = {
-            "schema_linker": 0,
-            "sql_generator": 0,
-            "critic": 0,
-            "self_corrector": 0,
-            "data_iq": 0
-        }
+        agent_scores_sum = {}
+        agent_counts = {}
         
         for ev in evals:
             dataset_lower = ev.dataset.lower()
@@ -589,73 +652,47 @@ def get_dab_agent_analytics(request: Request, date: str = "all", run_id: Optiona
                 except Exception:
                     pass
             
-            # Default scores
-            score_linker = 100
-            score_gen = 100
-            score_critic = 100
-            score_corrector = 100
-            score_data_iq = 100
-            
-            linker_restores = 0
-            linker_valuemaps = 0
-            corrections_count = 0
-            critic_rounds = 0
-            data_iq_anomalies = 0
-            
+            from collections import defaultdict
+            agent_calls = defaultdict(int)
+            agent_errors = defaultdict(int)
+
             if content:
-                # 1. Schema Linker
-                # Count auto-restored join keys
-                linker_restores = len(re.findall(r"JoinKeyGuard.*restored|JoinKeyGuard.*Auto-restored", content, re.IGNORECASE))
-                linker_valuemaps = len(re.findall(r"ValueMapGuard.*added|ValueMapGuard.*Auto-added", content, re.IGNORECASE))
-                score_linker = max(0, 100 - (15 * linker_restores) - (15 * linker_valuemaps))
-                
-                # 2. SQL Generator
-                # Count self correction attempts
-                corrections_count = len(re.findall(r"Executing Self-Correction Module|Self-Corrector: Repair loop #", content, re.IGNORECASE))
-                score_gen = max(0, 100 - (15 * corrections_count) - (30 if not passed else 0))
-                
-                # 3. Critic
-                critic_rounds = len(re.findall(r"Executing adversarial Planner-Critic|Agent Execution: CRITIC", content, re.IGNORECASE))
-                score_critic = max(0, 100 - (15 * critic_rounds))
-                
-                # 4. Self Corrector (only counts if it actually executed)
-                if corrections_count > 0:
-                    if passed:
-                        score_corrector = max(0, 100 - (10 * corrections_count))
-                    else:
-                        score_corrector = 20
-                else:
-                    score_corrector = 100 # No self-correction needed, so perfect performance
+                # Find all agent log lines like "04:06:42 | DATA_IQ      | INFO     | Evaluating result quality"
+                for match in re.finditer(r"\|\s*([A-Z_]+)\s*\|\s*(INFO|WARNING|ERROR)\s*\|", content):
+                    agent = match.group(1).strip()
+                    level = match.group(2).strip()
+                    # Skip common non-agents
+                    if agent in ["ROOT", "MAIN", "DAB_EVALUATOR", "AGENT", "RESULT"]:
+                        continue
+                    agent_calls[agent] += 1
+                    if level in ["ERROR", "WARNING"]:
+                        agent_errors[agent] += 1
+            
+            # If no agents were logged but query failed, penalize all known
+            if not agent_calls and not passed:
+                agent_calls = {"ORCHESTRATOR": 1, "SCHEMA_LINKER": 1, "SQL_GENERATOR": 1}
+                agent_errors = {"ORCHESTRATOR": 2, "SCHEMA_LINKER": 2, "SQL_GENERATOR": 2}
+
+            query_agent_scores = {}
+            for agent, calls in agent_calls.items():
+                if calls > 0:
+                    errs = agent_errors.get(agent, 0)
+                    score = 100 - (15 * errs)
+                    if not passed:
+                        score -= 20
+                    # Special boost for self corrector if it fixed it
+                    if agent == "SELF_CORRECTOR" and passed:
+                        score = 100
+                    score = max(0, min(100, score))
                     
-                # 5. Data IQ
-                data_iq_anomalies = len(re.findall(r"anomaly|anomalies|NULL density|NULL-density|Data IQ Auditor", content, re.IGNORECASE))
-                score_data_iq = max(0, 100 - (20 * data_iq_anomalies))
-            else:
-                # If no log file is written yet, or if it failed at start
-                if not passed:
-                    score_linker = 50
-                    score_gen = 50
-                    score_critic = 50
-                    score_corrector = 50
-                    score_data_iq = 50
-            
-            # Aggregate agent scores
-            agent_scores_sum["schema_linker"] += score_linker
-            agent_counts["schema_linker"] += 1
-            
-            agent_scores_sum["sql_generator"] += score_gen
-            agent_counts["sql_generator"] += 1
-            
-            agent_scores_sum["critic"] += score_critic
-            agent_counts["critic"] += 1
-            
-            # Only average Self Corrector if it actually was triggered, or count all but let it be high
-            agent_scores_sum["self_corrector"] += score_corrector
-            agent_counts["self_corrector"] += 1
-            
-            agent_scores_sum["data_iq"] += score_data_iq
-            agent_counts["data_iq"] += 1
-            
+                    query_agent_scores[agent] = score
+                    
+                    if agent not in agent_scores_sum:
+                        agent_scores_sum[agent] = 0
+                        agent_counts[agent] = 0
+                    agent_scores_sum[agent] += score
+                    agent_counts[agent] += 1
+
             queries_analytics.append({
                 "id": ev.instance_id + (f"_run{ev.run_suffix}" if ev.run_suffix else ""),
                 "dataset": ev.dataset,
@@ -663,19 +700,10 @@ def get_dab_agent_analytics(request: Request, date: str = "all", run_id: Optiona
                 "question": q_info["question"],
                 "passed": passed,
                 "difficulty": difficulty,
-                "scores": {
-                    "schema_linker": score_linker,
-                    "sql_generator": score_gen,
-                    "critic": score_critic,
-                    "self_corrector": score_corrector,
-                    "data_iq": score_data_iq
-                },
+                "scores": query_agent_scores,
                 "details": {
-                    "join_key_restores": linker_restores,
-                    "value_map_additions": linker_valuemaps,
-                    "corrections_count": corrections_count,
-                    "critic_rounds": critic_rounds,
-                    "data_iq_anomalies": data_iq_anomalies
+                    "agents_active": len(agent_calls),
+                    "total_errors": sum(agent_errors.values())
                 }
             })
             
@@ -1190,7 +1218,7 @@ def _parse_qkey(qkey: str):
 def stop_dab_all():
     """Cancel a running DAB batch job."""
     global DAB_CANCEL_FLAG
-    DAB_CANCEL_FLAG = True
+    DAB_CANCEL_FLAG.set(True)
     
     # Try to cancel any background tasks managed by TaskManager
     try:
@@ -1441,9 +1469,14 @@ def get_dab_runs(request: Request):
     
     db = SessionLocal()
     try:
+        import agent.app.dab.dab_evaluator as de
+        active_run_id = de.DAB_RUN_ID
+
         # Identify runs needing rebuild without doing the rebuild synchronously
         runs_needing_rebuild = []
         for run_id in last_5_runs:
+            if run_id == active_run_id:
+                continue
             count = db.query(Evaluation).filter(
                 Evaluation.run_id == run_id,
                 Evaluation.username == username
@@ -1465,9 +1498,6 @@ def get_dab_runs(request: Request):
                 finally:
                     _db.close()
             threading.Thread(target=_bg_rebuild, daemon=True).start()
-                
-        import agent.app.dab.dab_evaluator as de
-        active_run_id = de.DAB_RUN_ID
         
         runs = [
             {"id": "all", "label": "All Runs", "date": "All", "is_active": False}
@@ -1640,7 +1670,7 @@ def run_dab_all(request: Request, payload: DabRunAllPayload = DabRunAllPayload()
     from datetime import datetime
     
     global DAB_CANCEL_FLAG
-    DAB_CANCEL_FLAG = False
+    DAB_CANCEL_FLAG.set(False)
 
     from agent.app.db.models import Evaluation
     from agent.app.db.database import SessionLocal
@@ -1658,10 +1688,13 @@ def run_dab_all(request: Request, payload: DabRunAllPayload = DabRunAllPayload()
     end_dt = start_dt + timedelta(days=1)
 
     # Generate or reuse timestamped run_id for the current run
+    # Capture a single fixed "now" so that run_id and the archive fallback
+    # always reference the SAME moment — no second datetime.now() call.
+    _run_start_time = datetime.now()
     if payload.mode == "continue" and payload.run_id:
         run_id = payload.run_id
     else:
-        run_id = datetime.now().strftime("run_%Y%m%d_%H%M%S")
+        run_id = _run_start_time.strftime("run_%Y%m%d_%H%M%S")
 
     # Set run date + username override in dab_evaluator module so all new evals
     # are timestamped correctly and attributed to this user.
@@ -1711,7 +1744,7 @@ def run_dab_all(request: Request, payload: DabRunAllPayload = DabRunAllPayload()
             logger.info(f"Continue mode: {len(completed_keys)} already-completed slots found for user={username}.")
         else:
             logger.info(f"DAB run_all: Starting a fresh run for {run_date_str} (user={username}).")
-            # Find the timestamp of the existing live records to use as the archive run ID
+            # 1. Check if there are live database records to archive
             first_record_query = db.query(Evaluation).filter(
                 Evaluation.username == username,
                 (Evaluation.run_id == "live") | (Evaluation.run_id == None)
@@ -1720,38 +1753,49 @@ def run_dab_all(request: Request, payload: DabRunAllPayload = DabRunAllPayload()
                 first_record_query = first_record_query.filter(Evaluation.dataset == payload.dataset_scope)
             first_record = first_record_query.order_by(Evaluation.timestamp.asc()).first()
             
-            if first_record and first_record.timestamp:
-                archive_run_id = first_record.timestamp.strftime("run_%Y%m%d_%H%M%S")
-            else:
-                archive_run_id = datetime.now().strftime("run_%Y%m%d_%H%M%S")
-                if archive_run_id == run_id:
-                    import time
-                    time.sleep(1)
-                    archive_run_id = datetime.now().strftime("run_%Y%m%d_%H%M%S")
-
-            # Fresh run: archive files on disk and update database records
-            archive_dir = DAB_RESULTS_DIR / "_archive" / archive_run_id
-            archive_dir.mkdir(parents=True, exist_ok=True)
-            
-            # Move all items to archive, except the _archive folder itself
-            if DAB_RESULTS_DIR.exists():
-                for item in DAB_RESULTS_DIR.iterdir():
+            # 2. Check if there are files on disk to archive in user's results folder
+            from agent.app.core.config import get_user_dab_results_dir
+            user_dab_dir = get_user_dab_results_dir(username)
+            files_to_move = []
+            if user_dab_dir.exists():
+                for item in user_dab_dir.iterdir():
                     if item.name != "_archive":
-                        try:
-                            if not payload.dataset_scope or item.name == payload.dataset_scope:
-                                shutil.move(str(item), str(archive_dir / item.name))
-                        except Exception:
-                            pass
+                        if not payload.dataset_scope or item.name == payload.dataset_scope:
+                            files_to_move.append(item)
 
-            # Update this user's live records to have the archived run_id
-            update_query = db.query(Evaluation).filter(
-                Evaluation.username == username,
-                (Evaluation.run_id == "live") | (Evaluation.run_id == None)
-            )
-            if payload.dataset_scope:
-                update_query = update_query.filter(Evaluation.dataset == payload.dataset_scope)
-            update_query.update({Evaluation.run_id: archive_run_id}, synchronize_session=False)
-            db.commit()
+            # 3. Only archive if there is actually data to archive
+            if first_record or files_to_move:
+                if first_record and first_record.timestamp:
+                    archive_run_id = first_record.timestamp.strftime("run_%Y%m%d_%H%M%S")
+                else:
+                    # Fallback: use the pre-captured start time minus 1 second so it
+                    # is always strictly earlier than run_id and never triggers a
+                    # second datetime.now() call that shows up as a separate UI entry.
+                    from datetime import timedelta as _td
+                    _archive_time = _run_start_time - _td(seconds=1)
+                    archive_run_id = _archive_time.strftime("run_%Y%m%d_%H%M%S")
+
+                # Move files on disk to user's archive
+                archive_dir = user_dab_dir / "_archive" / archive_run_id
+                archive_dir.mkdir(parents=True, exist_ok=True)
+                for item in files_to_move:
+                    try:
+                        shutil.move(str(item), str(archive_dir / item.name))
+                    except Exception as e:
+                        logger.error(f"Failed to archive file/folder {item}: {e}")
+
+                # Update this user's live database records to have the archived run_id
+                update_query = db.query(Evaluation).filter(
+                    Evaluation.username == username,
+                    (Evaluation.run_id == "live") | (Evaluation.run_id == None)
+                )
+                if payload.dataset_scope:
+                    update_query = update_query.filter(Evaluation.dataset == payload.dataset_scope)
+                updated = update_query.update({Evaluation.run_id: archive_run_id}, synchronize_session=False)
+                db.commit()
+                logger.info(f"Archived previous run to {archive_run_id} ({updated} DB records, {len(files_to_move)} folders/files).")
+            else:
+                logger.info("Nothing to archive from previous runs.")
             
     except Exception as e:
         logger.error(f"Failed to setup DAB run (mode={payload.mode}, date={run_date_str}, user={username}): {e}")
@@ -1848,6 +1892,40 @@ def run_dab_all(request: Request, payload: DabRunAllPayload = DabRunAllPayload()
         de.DAB_RUN_DATE = None
         de.DAB_RUN_ID = None
 
+        # ── Auto Self-Improvement (Fix 1) ───────────────────────────────────
+        # After every benchmark batch completes, automatically extract rules from
+        # failures and promote them to dynamic_lessons.json so the pipeline learns
+        # without any manual intervention.
+        if not DAB_CANCEL_FLAG:
+            def _auto_self_improve():
+                try:
+                    from agent.app.core.rules.self_improving_loop import SelfImprovingLoop
+                    from agent.app.core.config import DAB_REPO as _DAB_REPO
+                    logger.info("[AutoSelfImprove] Batch complete — starting self-improvement round.")
+                    sil = SelfImprovingLoop(dab_repo=str(_DAB_REPO))
+                    result = sil.run_daily()
+                    status = result.get("status", "unknown")
+                    run_info = result.get("run", {})
+                    rounds = run_info.get("rounds", [])
+                    logger.info(
+                        f"[AutoSelfImprove] Completed. status={status}, "
+                        f"rounds={len(rounds)}, "
+                        f"pass_rate={run_info.get('pass_rate', 'N/A')}%"
+                    )
+                    for r in rounds:
+                        logger.info(
+                            f"[AutoSelfImprove] Round {r['round']}: {r['status']} "
+                            f"delta={r.get('delta', 0):+d} rules_added={r.get('new_rules_added', 0)}"
+                        )
+                except Exception as _sie:
+                    import traceback as _tb
+                    logger.error(f"[AutoSelfImprove] Failed: {_sie}\n{_tb.format_exc()}")
+
+            import threading as _threading
+            _si_thread = _threading.Thread(target=_auto_self_improve, daemon=True, name="auto_self_improve")
+            _si_thread.start()
+            logger.info("[AutoSelfImprove] Self-improvement thread launched.")
+
     logger.info(
         f"DAB run_all: Submitting batch run with {len(to_run)} queries to execution pool. "
         f"Workers={num_workers}, scope={payload.dataset_scope}, model={payload.model}, temp={payload.temperature}"
@@ -1861,7 +1939,7 @@ def run_dab_all(request: Request, payload: DabRunAllPayload = DabRunAllPayload()
 
 
 @router.get("/api/dab/results/recent")
-def get_dab_recent_results(request: Request, limit: int = 15, date: str = "all", run_id: Optional[str] = None):
+def get_dab_recent_results(request: Request, limit: int = 15, date: str = "all", run_id: Optional[str] = None, force: bool = False):
     username = _get_username_from_request(request)
     run_id = _resolve_live_run_id(run_id, username)
     from agent.app.db.database import SessionLocal

@@ -530,7 +530,7 @@ const parseLiveStepsFromMd = (content) => {
 const DabStudio = ({ onBack, onHome, autoOpenDetails, clearAutoOpenDetails, user, onLogout, theme, setTheme }) => {
   const [selectedModel, setSelectedModel] = useState(() => localStorage.getItem('dab_settings_model') || 'bedrock/openai.gpt-oss-safeguard-120b');
   const [temperature, setTemperature] = useState(() => Number(localStorage.getItem('dab_settings_temp') || '0.0'));
-  const [workers, setWorkers] = useState(() => Number(localStorage.getItem('dab_settings_workers') || '3'));
+  const [workers, setWorkers] = useState(3);
 
   useEffect(() => {
     localStorage.setItem('dab_settings_model', selectedModel);
@@ -931,15 +931,16 @@ const DabStudio = ({ onBack, onHome, autoOpenDetails, clearAutoOpenDetails, user
 
     try {
       const res = await axios.get(`${API_BASE}/dab/status`, { timeout: 4000 });
-      const backendRunning = res.data.running || []; // e.g. ["deps_dev_v1_q1"]
+      const backendRunning = res.data.executing || []; // specifically the currently executing tasks up to max_workers
+      const allQueued = res.data.running || [];
       const count = res.data.count || 0;
 
       // Reconcile runningInstances with backend truth
       setRunningInstances(prev => {
         const next = { ...prev };
-        // Add any that backend says are running but frontend doesn't know about
+        // Add any that backend says are actively executing but frontend doesn't know about
         backendRunning.forEach(key => { next[key] = true; });
-        // Remove any that backend says are finished
+        // Remove any that backend says are no longer executing (finished or not yet started)
         Object.keys(next).forEach(key => {
           if (!backendRunning.includes(key)) delete next[key];
         });
@@ -1505,13 +1506,12 @@ const DabStudio = ({ onBack, onHome, autoOpenDetails, clearAutoOpenDetails, user
       q.question.toLowerCase().includes(analyticsSearchQuery.toLowerCase())
     );
 
-    const agentScoresData = [
-      { name: 'Schema Linker', score: avg_scores.schema_linker, color: '#3b82f6' },
-      { name: 'SQL Generator', score: avg_scores.sql_generator, color: '#a855f7' },
-      { name: 'Critic', score: avg_scores.critic, color: '#ec4899' },
-      { name: 'Self Corrector', score: avg_scores.self_corrector, color: '#eab308' },
-      { name: 'Data IQ', score: avg_scores.data_iq, color: '#10b981' }
-    ];
+    const baseColors = ['#3b82f6', '#a855f7', '#ec4899', '#eab308', '#10b981', '#f97316', '#06b6d4', '#8b5cf6', '#14b8a6', '#f43f5e', '#6366f1'];
+    const agentScoresData = Object.entries(avg_scores).map(([key, score], idx) => ({
+      name: key.split('_').map((w: string) => w.charAt(0).toUpperCase() + w.slice(1).toLowerCase()).join(' '),
+      score: score,
+      color: baseColors[idx % baseColors.length]
+    })).sort((a: any, b: any) => b.score - a.score);
 
     const difficultyData = [
       { name: 'Easy', failedPct: difficulty_metrics.easy.pct_failed, total: difficulty_metrics.easy.total, color: '#10b981' },
@@ -1601,11 +1601,11 @@ const DabStudio = ({ onBack, onHome, autoOpenDetails, clearAutoOpenDetails, user
                   <YAxis domain={[0, 100]} stroke="#64748b" fontSize={9} tickLine={false} />
                   <CartesianGrid stroke="#1c1833" vertical={false} strokeDasharray="3 3" />
                   <Tooltip content={<CustomTooltip />} cursor={{ fill: 'rgba(255,255,255,0.03)' }} />
-                  <Bar dataKey="score" radius={[4, 4, 0, 0]} name="Performance Score">
-                    {agentScoresData.map((entry, index) => (
+                  <Bar dataKey="score" radius={[4, 4, 0, 0]} name="Performance Score" isAnimationActive={false}>
+                    {agentScoresData.map((entry: any, index: number) => (
                       <Cell key={`cell-${index}`} fill={entry.color} />
                     ))}
-                    <LabelList dataKey="score" position="top" fill="#cbd5e1" fontSize={10} fontFamily="monospace" formatter={(val) => val != null ? `${val}%` : ''} />
+                    <LabelList dataKey="score" position="top" fill="#cbd5e1" fontSize={10} fontFamily="monospace" formatter={(val: any) => val != null ? `${val}%` : ''} />
                   </Bar>
                 </BarChart>
               </ResponsiveContainer>
@@ -1624,7 +1624,7 @@ const DabStudio = ({ onBack, onHome, autoOpenDetails, clearAutoOpenDetails, user
                   <YAxis domain={[0, 100]} stroke="#64748b" fontSize={9} tickLine={false} />
                   <CartesianGrid stroke="#1c1833" vertical={false} strokeDasharray="3 3" />
                   <Tooltip content={<CustomTooltip />} cursor={{ fill: 'rgba(255,255,255,0.03)' }} />
-                  <Bar dataKey="failedPct" radius={[4, 4, 0, 0]} name="Failure Rate">
+                  <Bar dataKey="failedPct" radius={[4, 4, 0, 0]} name="Failure Rate" isAnimationActive={false}>
                     {difficultyData.map((entry, index) => (
                       <Cell key={`cell-${index}`} fill={entry.color} />
                     ))}
@@ -1912,10 +1912,10 @@ const DabStudio = ({ onBack, onHome, autoOpenDetails, clearAutoOpenDetails, user
               <input
                 type="range"
                 min="1"
-                max="5"
+                max="10"
                 step="1"
                 value={workers}
-                onChange={e => setWorkers(Number(e.target.value))}
+                onChange={e => setWorkers(Math.min(10, Math.max(1, Number(e.target.value))))}
                 className="w-full h-1 bg-[#1b2738] rounded-lg appearance-none cursor-pointer accent-violet-500"
               />
             </div>

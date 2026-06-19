@@ -23,9 +23,12 @@ from agent.app.utils.logger import logger
 
 DYNAMIC_LESSONS_FILE = MEMORY_DIR / "dynamic_lessons.json"
 
-MAX_RULES = 120  # raised: was 60, filled up causing silent drops
-COVER_THRESHOLD = 0.42  # slightly stricter dedup (was 0.38) Ã¢â‚¬â€ avoids over-blocking
-TRIED_THRESHOLD = 0.70  # slightly stricter tried-before guard (was 0.65)
+# Rules are consolidated (LLM-merged) once this threshold is reached.
+# After consolidation the count drops significantly, making room for new learning.
+MAX_RULES          = 80   # hard upper bound — never exceeded
+CONSOLIDATE_AT     = 64   # trigger LLM merge when active+candidate hits this (80% of 80)
+COVER_THRESHOLD    = 0.42  # slightly stricter dedup (was 0.38) — avoids over-blocking
+TRIED_THRESHOLD    = 0.70  # slightly stricter tried-before guard (was 0.65)
 DEPRECATE_MIN_APPS = 3  # evict poor rules faster (was 5) to free slots
 DEPRECATE_SUCCESS_RATE = 0.15
 
@@ -126,19 +129,46 @@ class DynamicRuleStore:
         category: str,
         source_failure: str,
         db_name: str = "",
+        llm_client=None,
     ) -> Optional[str]:
         """
         Add a CANDIDATE rule if not already covered or tried.
-        Returns the new lesson_id, or None if skipped.
+        When active+candidate count reaches CONSOLIDATE_AT, triggers an LLM
+        consolidation pass to merge/compress semantically similar rules before
+        adding more. Returns the new lesson_id, or None if skipped.
         """
         with self._lock:
             if self.is_covered(generic_rule) or self.was_tried_before(generic_rule):
                 return None
+
             active_candidate_count = sum(
                 1 for r in self._rules if r.get("status") in ("ACTIVE", "CANDIDATE")
             )
+
+            # ── Consolidation trigger ─────────────────────────────────────
+            if active_candidate_count >= CONSOLIDATE_AT:
+                if llm_client is not None:
+                    logger.info(
+                        f"[DynamicRuleStore] Threshold {CONSOLIDATE_AT} reached "
+                        f"({active_candidate_count} rules). Running LLM consolidation."
+                    )
+                    self._consolidate(llm_client)
+                    # Re-count after consolidation
+                    active_candidate_count = sum(
+                        1 for r in self._rules if r.get("status") in ("ACTIVE", "CANDIDATE")
+                    )
+                else:
+                    logger.info(
+                        "[DynamicRuleStore] Threshold reached but no LLM client available. "
+                        "Will consolidate on next add_rule call that provides a client."
+                    )
+
+            # Hard cap — safety net only (should rarely trigger after consolidation)
             if active_candidate_count >= MAX_RULES:
-                logger.warning("DynamicRuleStore: MAX_RULES reached, skipping new rule")
+                logger.warning(
+                    "[DynamicRuleStore] MAX_RULES hard cap reached after consolidation. "
+                    "Skipping new rule."
+                )
                 return None
 
             lesson_id = f"dyn_{int(time.time() * 1000) % 10_000_000_000}_{hashlib.sha256(generic_rule.encode()).hexdigest()[:6]}"
@@ -160,6 +190,113 @@ class DynamicRuleStore:
                 f"DynamicRuleStore: added CANDIDATE '{rule_title}' [{lesson_id}]"
             )
             return lesson_id
+
+    # ------------------------------------------------------------------
+    # LLM-based rule consolidation
+    # ------------------------------------------------------------------
+
+    _CONSOLIDATION_SYSTEM = """You are a SQL rule deduplication and compression expert.
+Your job is to consolidate a list of learned SQL rules into a smaller, higher-quality set.
+
+For each rule you receive, decide:
+- KEEP  — unique insight, no overlap with others
+- MERGE — semantically equivalent or redundant with another rule (provide merged text)
+- DROP  — too vague, incorrect, or superseded by a KEEP rule
+
+Output a JSON array of consolidated rules. Each element:
+{
+  "rule_title": "<concise title>",
+  "generic_rule": "<single most-general statement, <=80 words>",
+  "intent_pattern": "<3-6 space-separated keywords that identify when this rule applies>",
+  "category": "<original category>"
+}
+
+CRITICAL constraints:
+- Output ONLY valid JSON. No markdown, no commentary.
+- Preserve the most specific and actionable rules.
+- Merge rules that express the same fix in different words.
+- Drop rules that are obvious SQL basics or already covered by a more specific rule.
+- Target: reduce rule count by at least 30% while retaining all unique insights."""
+
+    def _consolidate(self, llm_client) -> None:
+        """Call the LLM to merge/compress/deduplicate ACTIVE rules in place."""
+        import json as _json
+
+        active_rules = [r for r in self._rules if r.get("status") == "ACTIVE"]
+        if len(active_rules) < 10:
+            return  # not enough rules to bother
+
+        # Build compact representation to minimize tokens
+        compact = [
+            {
+                "id": r["lesson_id"],
+                "title": r.get("rule_title", ""),
+                "rule": r.get("generic_rule", ""),
+                "pattern": r.get("intent_pattern", ""),
+                "category": r.get("category", ""),
+            }
+            for r in active_rules
+        ]
+
+        user_prompt = (
+            f"Consolidate these {len(compact)} SQL rules into the minimal set.\n\n"
+            + _json.dumps(compact, ensure_ascii=False)
+        )
+
+        try:
+            raw = llm_client.generate(
+                system_prompt=self._CONSOLIDATION_SYSTEM,
+                user_prompt=user_prompt,
+            )
+            # Strip any think tags
+            import re as _re
+            raw = _re.sub(r"<think>.*?</think>", "", raw, flags=_re.S).strip()
+            # Extract JSON array
+            start = raw.find("[")
+            end   = raw.rfind("]") + 1
+            if start == -1 or end == 0:
+                logger.warning("[DynamicRuleStore] Consolidation: no JSON array in LLM output.")
+                return
+
+            consolidated = _json.loads(raw[start:end])
+            if not isinstance(consolidated, list) or not consolidated:
+                logger.warning("[DynamicRuleStore] Consolidation: empty or invalid result.")
+                return
+
+            before = len(active_rules)
+            # Mark all old ACTIVE rules as INACTIVE (they're superseded)
+            old_ids = {r["lesson_id"] for r in active_rules}
+            for r in self._rules:
+                if r["lesson_id"] in old_ids:
+                    r["status"] = "INACTIVE"
+
+            # Insert the consolidated rules as new ACTIVE rules
+            for new_r in consolidated:
+                if not new_r.get("generic_rule"):
+                    continue
+                lid = f"con_{int(time.time() * 1000) % 10_000_000_000}_{hashlib.sha256(new_r['generic_rule'].encode()).hexdigest()[:6]}"
+                self._rules.append({
+                    "lesson_id":      lid,
+                    "rule_title":     new_r.get("rule_title", "consolidated"),
+                    "generic_rule":   new_r["generic_rule"],
+                    "intent_pattern": new_r.get("intent_pattern", ""),
+                    "category":       new_r.get("category", "consolidated"),
+                    "source_failures":["consolidation"],
+                    "db_name":        "",
+                    "status":         "ACTIVE",
+                    "applications":   0,
+                    "successes":      0,
+                })
+
+            self._save()
+            after = sum(1 for r in self._rules if r.get("status") == "ACTIVE")
+            logger.info(
+                f"[DynamicRuleStore] Consolidation complete: {before} → {after} ACTIVE rules "
+                f"({before - after} removed, {len(consolidated)} consolidated rules added)."
+            )
+
+        except Exception as e:
+            logger.warning(f"[DynamicRuleStore] Consolidation failed (non-fatal): {e}")
 
     def activate_candidates(self, lesson_ids: Optional[List[str]] = None) -> int:
         """Promote CANDIDATE Ã¢â€ â€™ ACTIVE. Returns count promoted."""

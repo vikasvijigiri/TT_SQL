@@ -56,7 +56,10 @@ class ValueMapping(BaseModel):
         None,
         description="The exact corresponding value from the semantic context sample values (e.g., 'luad'). May be empty if no exact match was found. Can be a string or list of strings.",
     )
-    column: str = Field(description="The column this value belongs to.")
+    column: Optional[str] = Field(
+        None, 
+        description="The column this value belongs to. Can be null if the mapping is unresolved."
+    )
 
 
 class SchemaLinkerOutput(BaseModel):

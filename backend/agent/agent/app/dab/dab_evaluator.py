@@ -137,10 +137,13 @@ def evaluate_answer(
         passed, reason = _run_static_validate(ground_truth, agent_answer)
         method = "static_contains_check"
 
+    import sys
+    wrapper = sys.modules[__name__]
+    
     now_time = datetime.now()
-    if DAB_RUN_DATE:
+    if wrapper.DAB_RUN_DATE:
         try:
-            target_d = datetime.strptime(DAB_RUN_DATE, "%Y-%m-%d")
+            target_d = datetime.strptime(wrapper.DAB_RUN_DATE, "%Y-%m-%d")
             now_time = now_time.replace(year=target_d.year, month=target_d.month, day=target_d.day)
         except Exception:
             pass
@@ -178,8 +181,8 @@ def evaluate_answer(
                 input_tokens=input_tokens,
                 output_tokens=output_tokens,
                 timestamp=datetime.fromisoformat(ts_str) if ts_str else datetime.utcnow(),
-                run_id=DAB_RUN_ID or "live",
-                username=DAB_RUN_USERNAME or DEFAULT_USERNAME
+                run_id=wrapper.DAB_RUN_ID or "live",
+                username=wrapper.DAB_RUN_USERNAME or DEFAULT_USERNAME
             )
             db.add(eval_record)
             db.commit()

@@ -91,7 +91,7 @@ class DialectRuleRetriever:
             return {}
 
     def get_adaptive_rules(
-        self, profile: QueryCapabilityProfile, max_rules: int = 15
+        self, profile: QueryCapabilityProfile, max_rules: int = 20
     ) -> List[str]:
         """
         Executes Task 1 (Rule Families), Task 9 (Prioritization), and Task 11 (Summarization).
@@ -104,7 +104,7 @@ class DialectRuleRetriever:
         # Rank by priority
         ranked = RulePriorityRanker.rank_rules(active_rules)
 
-        # Trim if needed
+        # Trim if needed (raised cap: 15→20 so fewer rules are dropped)
         retained = RulePriorityRanker.trim_rules_by_priority(
             ranked, max_rules=max_rules
         )

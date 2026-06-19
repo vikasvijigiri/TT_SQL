@@ -1,4 +1,4 @@
-﻿import typing
+import typing
 from agent.app.utils.logger import logger
 from agent.app.utils.llm import LLMClient
 from agent.app.services.semantic_engine import SemanticContextEngine
@@ -1382,12 +1382,41 @@ class SemanticDINOrchestrator:
                 )
 
                 unpruned_tables = linked_schema.selected_tables
-                if (
-                    "invalid identifier" in error_context.lower()
-                    or "does not exist" in error_context.lower()
-                    or "unknown table" in error_context.lower()
-                    or attempts >= 1
-                ):
+                error_lower = error_context.lower()
+                
+                # If the error is a missing schema object, forcefully re-run the schema linker 
+                # so it can learn from the error message and link the correct tables AND columns.
+                needs_relink = any(kw in error_lower for kw in ["catalog error", "does not exist", "invalid identifier", "unknown table"])
+                if needs_relink:
+                    logger.info(
+                        "Missing schema object detected in error. Re-running SCHEMA_LINKER to find the correct tables and columns."
+                    )
+                    try:
+                        linked_schema = self.schema_linker.link_schema(
+                            user_query,
+                            dialect=self.executor.dialect,
+                            lessons=lessons_context + f"\n\nERROR WE MUST FIX:\n{error_context}",
+                            force_full=True,
+                            relevant_tables=None,
+                            table_columns=None,
+                        )
+                        unpruned_tables = linked_schema.selected_tables
+                        
+                        # Update table_columns_map for the new linked schema
+                        table_columns_map = {}
+                        if linked_schema.selected_columns:
+                            for fqn in linked_schema.selected_columns:
+                                if "." in fqn:
+                                    parts = fqn.split(".")
+                                    t_name = ".".join(parts[:-1])
+                                    c_name = parts[-1]
+                                    if t_name not in table_columns_map:
+                                        table_columns_map[t_name] = []
+                                    table_columns_map[t_name].append(c_name)
+                    except Exception as sl_err:
+                        logger.warning(f"Re-linking failed: {sl_err}")
+
+                if needs_relink or attempts >= 1:
                     logger.info(
                         "Dynamic Schema Unpruning: Expanding schema context to full database view for recovery discovery."
                     )

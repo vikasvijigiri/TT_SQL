@@ -69,7 +69,7 @@ Write-Host "[2/4] Launching Python Agent (:8010)..." -ForegroundColor Yellow
 Start-Process powershell -ArgumentList "-NoExit", "-Command", @"
   Set-Location '$ROOT\backend\agent'
   Write-Host '=== NQuire Agent (Python :8010) ===' -ForegroundColor Cyan
-  python -m uvicorn agent.app.api:app --host 0.0.0.0 --port 8010 --workers 4
+  .\venv\Scripts\python.exe -m uvicorn agent.app.api:app --host 0.0.0.0 --port 8010 --workers 4
 "@
 
 # ── 3. Go Gateway (:8002) ────────────────────────────────────────────────────

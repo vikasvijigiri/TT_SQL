@@ -28,6 +28,12 @@ class RulePriorityRanker:
         "null",
         "strptime",
         "try_cast",
+        # DuckDB attached-database qualifiers — must never be trimmed
+        "db_alias",
+        "attached",
+        "qualify",
+        "duckdb only",
+        "always qualify",
     )
     LOW_KWS = (
         "srid",
@@ -57,7 +63,7 @@ class RulePriorityRanker:
 
     @classmethod
     def trim_rules_by_priority(
-        cls, ranked_rules: List[Tuple[str, str]], max_rules: int
+        cls, ranked_rules: List[Tuple[str, str]], max_rules: int = 20
     ) -> List[str]:
         if len(ranked_rules) <= max_rules:
             return [r[0] for r in ranked_rules]

@@ -71,17 +71,22 @@ In short: if a SQL LIKE/ILIKE/regex filter can reliably detect the concept, use 
 2. ENTITY vs EVENT: If the question asks for "number of X" and X is a base entity (e.g. "users"), perform `COUNT(DISTINCT id)`. If X is an event (e.g. "logins"), perform `COUNT(*)`. If unclear, default to the most logical granular count.
 3. STRUCTURED TEXT IS SQL: If structured text (logs, JSON, CSV-in-col) contains the answer, `enriched_sql` is mandatory. Do NOT return `cannot_answer` for data that is programmatically parseable.
 
-## MULTI-DATABASE SQL Ã¢â‚¬â€ mandatory when schema spans multiple databases
+## MULTI-DATABASE SQL — mandatory when schema spans multiple databases
 When the schema includes tables from both DuckDB and an attached SQLite database, ALL SQL you
 generate (fetch_sql, enriched_context SQL examples) MUST use the attached-database prefix for
 SQLite tables. The attached prefix is shown in the schema hints or error messages.
-Example: if hints say "repo_metadata_db.languages" Ã¢â‚¬â€ use that exact prefix in all SQL:
+Example: if hints say "repo_metadata_db.languages" — use that exact prefix in all SQL:
   `repo_metadata_db.languages`, `repo_metadata_db.repos`, `repo_metadata_db.licenses`
 NEVER reference SQLite tables without their attached database prefix in DuckDB SQL.
 
-## NARROW JOIN PROTOCOL Ã¢â‚¬â€ mandatory when exploration shows "*** NARROW JOIN"
+## MONGODB TEXT COLLECTIONS — cross-db execution support
+If the exploration shows that the required text data lives in a MongoDB collection (e.g. 'articles_database (mongo)'), you MUST NOT return `cannot_answer`. The execution engine has a built-in cross-database orchestrator that seamlessly joins MongoDB with SQL using Python under the hood.
+- Strategy MUST be `text_classify_aggregate` (if semantic logic is needed) or `enriched_sql` (if pattern matching).
+- `fetch_sql` should simply fetch the IDs/metadata from the SQL database. The orchestrator will automatically pull the corresponding text from MongoDB during execution.
+
+## NARROW JOIN PROTOCOL — mandatory when exploration shows "*** NARROW JOIN"
 If SchemaExplorer reports `*** NARROW JOIN` between table A and table B on column C:
-- The join `A.C = B.C` is the **only correct data anchor** Ã¢â‚¬â€ it defines the real queryable universe
+- The join `A.C = B.C` is the **only correct data anchor** — it defines the real queryable universe
 - Scanning A alone or B alone returns WRONG results
 - Your `enriched_context` MUST include:
   ```
@@ -176,6 +181,7 @@ class StrategyRouter:
         if the LLM call or parse fails.
         """
         logger.set_agent("STRATEGY_ROUTER")
+        logger.info("> AGENT EXECUTION: STRATEGY_ROUTER")
         try:
             gap_report = json.dumps(
                 {

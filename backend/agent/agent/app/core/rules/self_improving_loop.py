@@ -252,6 +252,7 @@ class SelfImprovingLoop:
                             category=rule["category"],
                             source_failure=f"{dataset}_q{query_id}",
                             db_name=dataset.upper(),
+                            llm_client=self._llm,   # enables automatic consolidation
                         )
                         if lid:
                             new_candidate_ids.append(lid)

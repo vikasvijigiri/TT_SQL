@@ -45,9 +45,9 @@ def _clean_html_text(text: str) -> str:
     return val.strip()
 
 
-# Rows per LLM classification call Ã¢â‚¬â€ 50 rows fit comfortably in a single LLM call
-# with no quality loss; reduces 133 calls Ã¢â€ â€™ ~40 calls for 2000-row datasets.
-BATCH_SIZE = 50
+# Rows per LLM classification call — 10 rows fit comfortably in an 8k context window.
+# We lowered this from 50 to 10 because 50 full articles can easily exceed 15k tokens, causing instant AWS ValidationExceptions.
+BATCH_SIZE = 10
 # Max rows to classify before switching to sampling (controls cost + latency)
 MAX_ROWS_EXACT = 500
 MAX_ROWS_SAMPLE = 2000
@@ -227,14 +227,24 @@ class TextClassifyExecutor:
 
         # Inject order by into fetch_sql if not already present
         has_existing_order = "order by" in fetch_sql.lower()
+        rows = None
+        ok = False
+        err = ""
+        
         if sql_sort and not has_existing_order:
-            fetch_sql = f"{fetch_sql.rstrip(';')}{sql_sort}"
+            sorted_fetch_sql = f"{fetch_sql.rstrip(';')}{sql_sort}"
+            logger.info(f"[TextClassifyExecutor] Attempting sorted fetch: {sorted_fetch_sql[:120]}...")
+            ok, err, rows = executor.execute_direct(sorted_fetch_sql)
+            if ok and rows:
+                fetch_sql = sorted_fetch_sql
+                logger.info("[TextClassifyExecutor] Sorted fetch succeeded.")
+            else:
+                logger.warning(f"[TextClassifyExecutor] Sorted fetch failed: {err}. Falling back to unsorted fetch.")
 
-        # ------------------------------------------------------------------
-        # Step 1: Fetch rows
-        # ------------------------------------------------------------------
-        logger.info(f"[TextClassifyExecutor] Fetching rows: {fetch_sql[:120]}...")
-        ok, err, rows = executor.execute_direct(fetch_sql)
+        if not ok or not rows:
+            logger.info(f"[TextClassifyExecutor] Fetching rows (unsorted): {fetch_sql[:120]}...")
+            ok, err, rows = executor.execute_direct(fetch_sql)
+
         if not ok or not rows:
             raise RuntimeError(f"fetch_sql failed: {err}")
         df = pd.DataFrame(rows)

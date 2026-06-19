@@ -1,3 +1,7 @@
+import warnings
+# Suppress Python 3.14 / LangChain / Pydantic compatibility warnings
+warnings.filterwarnings("ignore")
+
 import typing
 from agent.app.utils import logger
 import os
@@ -5,7 +9,6 @@ import sys
 import json
 import re
 import math
-import warnings
 import pandas as pd
 import numpy as np
 import asyncio
@@ -23,10 +26,6 @@ from datetime import datetime
 from functools import lru_cache
 from concurrent.futures import ThreadPoolExecutor
 
-# Suppress Python 3.14 / LangChain / Pydantic compatibility warnings
-warnings.filterwarnings("ignore", category=UserWarning)
-warnings.filterwarnings("ignore", message=".*urllib3.*")
-warnings.filterwarnings("ignore", message=".*Pydantic.*")
 
 # ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ LangSmith: set env vars before any langchain import so tracing is active ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬
 from dotenv import load_dotenv

@@ -149,12 +149,27 @@ def main():
     for db_path, db_type in sorted(seen.items()):
         out_dir = Path(db_path).parent
         db_short = Path(db_path).name
-        # Check if already done (any .json exists in that dir)
-        existing = list(out_dir.glob("*.json"))
-        if existing:
-            print(f"  SKIP  {db_short} ({len(existing)} JSON files already in {out_dir.name}/)")
-            skipped += 1
-            continue
+        # We only skip if all tables in this database already have their JSON files
+        import sqlite3
+        try:
+            if db_type == "sqlite":
+                conn = sqlite3.connect(db_path)
+                c = conn.cursor()
+                c.execute("SELECT name FROM sqlite_master WHERE type='table'")
+                db_tables = [r[0] for r in c.fetchall()]
+                conn.close()
+            else:
+                import duckdb
+                conn = duckdb.connect(db_path, read_only=True)
+                db_tables = [r[0] for r in conn.execute("SHOW TABLES").fetchall()]
+                conn.close()
+            
+            if db_tables and all((out_dir / f"{t}.json").exists() for t in db_tables):
+                print(f"  SKIP  {db_short} (all table JSON files already exist)")
+                skipped += 1
+                continue
+        except Exception:
+            pass
         print(f"  [{db_type.upper()}] {db_short}")
         print(f"         -> {out_dir}")
         try:

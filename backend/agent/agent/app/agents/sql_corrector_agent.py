@@ -15,13 +15,13 @@ PROMPT_PATH = get_prompt_path("self_corrector.yaml")
 # ---------------------------------------------------------------------------
 # Error-pattern Ã¢â€ â€™ correction-hint mapping.
 # Each entry is (compiled_regex, hint_text).  Matched at runtime from the
-# actual execution error Ã¢â‚¬â€ no dialect or dataset values are hard-coded here.
+# actual execution error Ã¢â‚¬â€  no dialect or dataset values are hard-coded here.
 # ---------------------------------------------------------------------------
 _ERROR_PATTERNS: List[Tuple[re.Pattern, str]] = [
     (
         re.compile(r"could not parse string .+ according to format specifier", re.I),
         "ROOT CAUSE DETECTED: STRPTIME raised an error because the date string did not "
-        "match the format pattern.  STRPTIME is strict Ã¢â‚¬â€ it throws on any mismatch.  "
+        "match the format pattern.  STRPTIME is strict Ã¢â‚¬â€  it throws on any mismatch.  "
         "MANDATORY FIX: replace every STRPTIME(...) call with TRY_STRPTIME(...) and wrap "
         "multiple patterns in COALESCE so rows with different formats are all handled.  "
         "Example: COALESCE(TRY_STRPTIME(col, fmt1), TRY_STRPTIME(col, fmt2), ...).",
@@ -45,7 +45,7 @@ _ERROR_PATTERNS: List[Tuple[re.Pattern, str]] = [
     (
         re.compile(r"repetition error", re.I),
         "ROOT CAUSE DETECTED: The corrected SQL was identical to a previously failed attempt.  "
-        "MANDATORY FIX: write structurally different SQL Ã¢â‚¬â€ change the join strategy, "
+        "MANDATORY FIX: write structurally different SQL Ã¢â‚¬â€  change the join strategy, "
         "aggregation approach, or CTE decomposition.",
     ),
     (
@@ -54,13 +54,24 @@ _ERROR_PATTERNS: List[Tuple[re.Pattern, str]] = [
         "MANDATORY FIX: ensure the sql field in your JSON output contains a complete, "
         "non-empty SELECT statement.",
     ),
+    (
+        # DuckDB Catalog Error — 'Did you mean "alias"."table"?'
+        # Extract the exact alias.table suggestion from the error message and mandate its use.
+        re.compile(r"catalog error.*does not exist|schema.*does not exist", re.I),
+        "ROOT CAUSE DETECTED: DuckDB Catalog/Schema Error — the table qualifier is wrong.  "
+        "MANDATORY FIX: look for 'Did you mean \"<alias>\".\"<table>\"?' in the error below.  "
+        "If found, rewrite EVERY occurrence of the wrong table reference using EXACTLY that "
+        "alias and table name (both double-quoted).  "
+        "If no suggestion appears, run SHOW ALL TABLES to discover the correct alias, then "
+        "qualify all table references as \"<alias>\".\"<table>\".",
+    ),
 ]
 
 
 def _enrich_error_context(error_message: str) -> str:
     """
     Detect known execution-error patterns and prepend a targeted correction hint.
-    The hint is derived solely from the error text Ã¢â‚¬â€ no dataset or dialect values
+    The hint is derived solely from the error text Ã¢â‚¬â€  no dataset or dialect values
     are hard-coded.  Returns the (possibly enriched) error string.
     """
     for pattern, hint in _ERROR_PATTERNS:

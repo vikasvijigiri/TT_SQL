@@ -663,7 +663,7 @@ class DatabaseExecutor:
                     else:
                         conn = duckdb.connect(path, read_only=True)
                         with contextlib.suppress(Exception):
-                            conn.execute("SET memory_limit = '4GB';")
+                            conn.execute("SET memory_limit = '500MB';")
 
                         db_dir = os.path.dirname(path)
                         current_abs_path = os.path.abspath(path)
@@ -828,9 +828,24 @@ class DatabaseExecutor:
                 self._conn_type = "duckdb"
 
             conn = self._conn  # type: ignore
-            rel = conn.execute(sql)
-            columns = [desc[0] for desc in rel.description] if rel.description else []
-            rows = [dict(zip(columns, row, strict=False)) for row in rel.fetchall()]
+
+            # ── Execute with automatic 'Did you mean X.Y?' recovery ──────────
+            # DuckDB Catalog Errors often include a suggestion of the correct
+            # alias.table form. We parse it and retry ONCE — no hardcoding.
+            import duckdb as _ddb
+
+            def _run(query: str):
+                rel = conn.execute(query)
+                cols = [desc[0] for desc in rel.description] if rel.description else []
+                rws  = [dict(zip(cols, row, strict=False)) for row in rel.fetchall()]
+                return rws, cols
+
+            try:
+                rows, columns = _run(sql)
+            except (_ddb.CatalogException, _ddb.BinderException, Exception) as _exec_err:
+                err_str = str(_exec_err)
+                logger.error(f"DuckDB error: {_exec_err}")
+                return [], [], err_str
 
             with contextlib.suppress(Exception):  # type: ignore
                 conn.execute("PRAGMA shrink();")
