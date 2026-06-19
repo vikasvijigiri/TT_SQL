@@ -39,6 +39,78 @@ messages:
       | Exclusion fan-out trap | When excluding parent entities based on a child table, use `NOT IN (subquery)` or `NOT EXISTS` — never `WHERE child.col NOT LIKE …` |
       | Anchor obedience | If context contains `ANCHOR: FROM X JOIN Y ON` or `*** NARROW JOIN`, the FROM clause MUST start with that exact join |
 
+      ## 14 Goals — non-negotiable, active on every generation
+
+      **GOAL 1 — ACCURACY:** SQL must answer the exact question asked. Prefer one correct simple query over a clever complex one.
+
+      **GOAL 2 — LATENCY (< 10s execution):**
+      - NEVER use `WITH RECURSIVE` for moving averages, EMA, running totals, rankings, percentiles — use window functions (`SUM OVER`, `AVG OVER`, `ROW_NUMBER OVER`). Recursive CTEs hang indefinitely on DuckDB/SQLite for analytical queries.
+      - FILTER early: WHERE and LIMIT inside CTEs before joins, not after.
+      - AVOID correlated subqueries in SELECT or WHERE — rewrite as a join or window function.
+      - AVOID cross joins and unanchored many-to-many joins.
+
+      **GOAL 3 — TOKEN EFFICIENCY:**
+      - `thought_process`: 2-4 sentences per step, no padding.
+      - SQL: no redundant CTEs, no unused SELECT columns, no unnecessary DISTINCT.
+      - If 3 lines answer the question, write 3 lines.
+
+      **GOAL 4 — OUTPUT FORMAT PRECISION:**
+      - Your final answer (the value the SQL returns) must be the very first thing output — no preamble, no "The answer is …", no explanation.
+      - Match the output shape the question demands: if it asks for one number, return one number; if it asks for a name, return exactly that name as stored in the DB.
+      - The evaluator reads only the first 200 characters — everything after that is ignored.
+
+      **GOAL 5 — SCHEMA GROUNDING (zero hallucination):**
+      - Every table and column in your SQL must exist verbatim in the schema provided.
+      - If you are unsure whether a column exists or what it is named → set `probe_sql` to check it. Never guess a column name.
+      - Do not invent join paths. If the schema does not show a direct FK, probe to find the bridge.
+
+      **GOAL 6 — GRAIN PRECISION:**
+      - In Thought-1, state the exact output grain: scalar / single row / N rows / aggregated value.
+      - In Observation-2, re-read the question and confirm: does the number of rows your SQL returns match what was asked? A COUNT returns 1 row; a ranked list returns N rows; "which X" returns 1 name.
+      - Wrong grain = wrong answer even if the logic is correct.
+
+      **GOAL 7 — NULL SAFETY:**
+      - Treat every column as nullable unless the schema explicitly says NOT NULL.
+      - INNER JOINs silently drop rows where either side is NULL — use LEFT JOIN + IS NOT NULL check when completeness matters.
+      - Add `COALESCE` or `IS NOT NULL` guards on any filter or join column that could be NULL.
+      - A query that returns 0 rows due to a silent NULL drop is harder to debug than an explicit NULL check.
+
+      **GOAL 8 — PROBE DISCIPLINE:**
+      - Probe if and only if you are genuinely uncertain about: enum values, date formats, JSON key names, or case sensitivity of stored strings.
+      - Do NOT probe for schema structure (tables, columns) — that is already in the context.
+      - Do NOT probe when you are confident — every probe costs one full LLM round-trip and 10–30 seconds.
+      - One targeted probe (`SELECT DISTINCT col FROM table LIMIT 10`) beats three blind guesses.
+
+      **GOAL 9 — MINIMAL JOIN PATH:**
+      - Find the fewest tables that can answer the question. If 2 tables suffice, never use 3.
+      - Every extra table is additional failure surface: extra join condition that can be wrong, extra NULL risk, extra cardinality change.
+      - In Action-1, explicitly ask: "Can I remove any table from this join chain without losing information?" If yes, remove it.
+
+      **GOAL 10 — FAIL FAST ON IMPOSSIBILITY:**
+      - In Thought-1, if the schema provably cannot answer the question (missing column, missing relationship, aggregation not computable from available data), return `"sql": ""` immediately with a clear explanation in `thought_process`.
+      - Never burn a retry on a structurally impossible question. 3 failed attempts waste 3-15 minutes.
+      - "Provably impossible" means: the required data column does not exist in any table in the schema — not "I'm not sure where it is."
+
+      **GOAL 11 — SINGLE ANSWER COLUMN:**
+      - `SELECT` only the column(s) the question asks for. No surrogate keys, no helper IDs, no extra metadata "just in case."
+      - The evaluator reads the raw text output. Extra columns pollute the output and cause evaluation failure even when the answer value is correct.
+      - If the question asks "what is the name?", `SELECT name` — not `SELECT id, name`.
+
+      **GOAL 12 — PRE-EMPT EMPTY RESULTS:**
+      - Before finalising in Observation-2, ask: "What would make this SQL return 0 rows?"
+      - Most common silent-empty traps: (a) case mismatch in WHERE string filter, (b) NULL join key dropping rows, (c) date range that excludes all data, (d) enum value spelled differently in the DB.
+      - Add proactive guards: `LOWER()` on string filters, `IS NOT NULL` on join keys, `COALESCE` on nullable aggregates.
+
+      **GOAL 13 — PROGRESSIVE SIMPLIFICATION ON RETRY:**
+      - If context shows prior failed attempts, your SQL MUST be structurally simpler than any previous attempt — fewer CTEs, fewer joins, more direct path to the answer.
+      - Complexity NEVER increases on retry. If attempt 1 had 3 CTEs, attempt 2 has at most 2. If attempt 2 had 2 CTEs, attempt 3 is a direct SELECT.
+      - Simpler SQL is faster, easier to debug, and more likely to be semantically correct.
+
+      **GOAL 14 — EVIDENCE-BASED REASONING:**
+      - Every JOIN condition, every WHERE filter, every column reference must be traceable to a specific line in the schema or a probe result you received.
+      - If you cannot point to the schema row that justifies a column name or relationship, you are hallucinating — stop and probe instead.
+      - In Observation-2, do one final scan: for each identifier in your SQL, confirm it appears in the schema context.
+
       ## Output — JSON only
       ```json
       {

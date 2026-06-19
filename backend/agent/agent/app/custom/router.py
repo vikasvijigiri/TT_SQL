@@ -270,6 +270,7 @@ async def stream_query(body: StreamRequest) -> StreamingResponse:
                 orchestrator = SemanticDINOrchestrator(
                     db_directory=str(metadata_dir),
                     connection_string=conn_str,
+                    single_pass_mode=True,
                 )
                 patch_orchestrator_executor(orchestrator, conn)
                 result_container["sql"] = orchestrator.execute_query(

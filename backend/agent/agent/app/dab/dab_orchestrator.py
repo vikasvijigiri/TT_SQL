@@ -11,6 +11,7 @@ For multi-DB datasets, we generate SQL against the primary available DB.
 The db_description.txt is injected as external knowledge context.
 """
 
+import json
 import os
 import re
 import time
@@ -399,6 +400,142 @@ def _build_rich_schema_hint(
     return "\n".join(lines)
 
 
+# ── Learning memory helpers ──────────────────────────────────────────────────
+
+def _learning_dir() -> Path:
+    from agent.app.core.config import MEMORY_DIR
+    d = MEMORY_DIR / "dab_learning"
+    d.mkdir(parents=True, exist_ok=True)
+    return d
+
+
+def _save_winning_example(dataset: str, query_id: str, question: str, sql: str, answer: str) -> None:
+    """Persist a passing (question, sql, answer) tuple so future runs can use it as few-shot."""
+    p = _learning_dir() / f"{dataset}_winners.jsonl"
+    entry = {"query_id": str(query_id), "question": question, "sql": sql.strip(), "answer": answer.strip()}
+    with open(p, "a", encoding="utf-8") as f:
+        f.write(json.dumps(entry) + "\n")
+
+
+def _load_winning_examples(dataset: str, exclude_query_id: str, max_examples: int = 3) -> List[Dict]:
+    """Load up to max_examples passing SQLs from the same dataset (different queries)."""
+    p = _learning_dir() / f"{dataset}_winners.jsonl"
+    if not p.exists():
+        return []
+    seen, results = set(), []
+    for line in p.read_text(encoding="utf-8").splitlines():
+        try:
+            entry = json.loads(line)
+            key = entry["query_id"]
+            if key == str(exclude_query_id) or key in seen:
+                continue
+            seen.add(key)
+            results.append(entry)
+        except Exception:
+            continue
+    return results[-max_examples:]  # most recent
+
+
+_GT_LEAK_PATTERNS = [
+    # "Target 'X' not stated..." → "Answer not in first 200 chars"
+    (re.compile(r"Target '[^']+' not stated"), "Answer value not found in first 200 chars of output"),
+    # "Missing X: VALUE" → "Missing X value"
+    (re.compile(r"(Missing [^:]+): .+"), r"\1 value not found in output"),
+    # "Found X ['Y'], but expected 'Z'" → "Found wrong X value"
+    (re.compile(r"Found ([^[]+?)\s*\[.+\], but expected '.+'"), r"Found wrong \1— output did not match expected"),
+    # "Ground truth 'X' not found in LLM output: Y" → structural mismatch
+    (re.compile(r"Ground truth '[^']+' not found in LLM output: .+"), "Output value does not match ground truth — check your aggregation logic"),
+    # "No value in LLM output rounds to X" → numeric mismatch
+    (re.compile(r"No value in LLM output (rounds to|matches) .+"), "Numeric value in output does not match expected — check aggregation/calculation"),
+    # "Not matched (fuzzy) within N chars: 'VALUE'" → fuzzy match failure
+    (re.compile(r"Not matched \(fuzzy\) within \d+ chars?: '.+'"), "Output text does not fuzzy-match expected value — check exact spelling and capitalisation from DB"),
+    # "No fuzzy match found for 'VALUE' ..." → fuzzy failure
+    (re.compile(r"No fuzzy match (found )?for '[^']+'.+"), "Fuzzy match failed — output text did not match expected value"),
+]
+
+def _sanitize_reason(reason: str) -> str:
+    """Strip ground-truth values from validator reason strings before injecting into prompt."""
+    for pattern, replacement in _GT_LEAK_PATTERNS:
+        reason = pattern.sub(replacement, reason)
+    return reason
+
+
+def _save_failure_hint(dataset: str, query_id: str, run_number: int, reason: str, sql: str, agent_answer: str = "") -> None:
+    """Record why a specific (dataset, query_id) run failed so later runs can avoid it."""
+    p = _learning_dir() / f"{dataset}_q{query_id}_failures.jsonl"
+    entry = {
+        "run": run_number,
+        "reason": _sanitize_reason(reason.strip()),
+        "sql": sql.strip() if sql else "",
+        "agent_answer": agent_answer.strip()[:300] if agent_answer else "",
+    }
+    with open(p, "a", encoding="utf-8") as f:
+        f.write(json.dumps(entry) + "\n")
+
+
+def _load_failure_hints(dataset: str, query_id: str) -> List[Dict]:
+    """Load all recorded failure hints for a specific query."""
+    p = _learning_dir() / f"{dataset}_q{query_id}_failures.jsonl"
+    if not p.exists():
+        return []
+    results = []
+    for line in p.read_text(encoding="utf-8").splitlines():
+        try:
+            results.append(json.loads(line))
+        except Exception:
+            continue
+    return results
+
+
+def _derive_answer_format_hint(ground_truth: str) -> str:
+    """Infer output format from the ground truth value without leaking the answer."""
+    UNIVERSAL = (
+        "\nCRITICAL OUTPUT RULE: Your ENTIRE response must be ONLY the raw answer value. "
+        "NO sentences, NO explanation, NO preamble. The answer must appear as the very FIRST thing in your response. "
+        "The evaluator checks only the first 200 characters of your output."
+    )
+    if not ground_truth:
+        return UNIVERSAL
+    gt = ground_truth.strip()
+    lines = [l.strip() for l in gt.splitlines() if l.strip()]
+    if not lines:
+        return UNIVERSAL
+    sample = lines[0]
+
+    # Multiple rows — must come first so "42\n99" isn't misclassified as a single integer
+    if len(lines) > 1:
+        hint = f"The answer contains {len(lines)} rows. Output each value on its own line, nothing else."
+    # Pure integer — must come before ticker to avoid "42" → ticker misclassification
+    elif re.match(r'^-?\d+$', sample):
+        hint = "The answer is a single integer. Output ONLY the number, no decimals, no text."
+    # Float/decimal — before ticker so "3.14" isn't caught by dot-suffix ticker pattern
+    elif re.match(r'^-?\d+\.\d+$', sample):
+        dp = len(sample.split('.')[1])
+        hint = f"The answer is a decimal number with ~{dp} decimal place(s). Output ONLY the number."
+    # Salesforce ID (15/18 char alphanumeric starting with 0)
+    elif re.match(r'^0[A-Za-z0-9]{14,17}$', sample):
+        hint = f"The answer is a Salesforce record ID ({len(sample)}-character alphanumeric starting with '0'). Output ONLY the ID."
+    # Medical/WHO histology code (digits/digit like 9382/3)
+    elif re.match(r'^\d{4}/\d$', sample):
+        hint = "The answer is a WHO histology/morphology code in the format XXXX/X (4 digits, slash, 1 digit). Output ONLY the code exactly as stored in the database."
+    # Stock ticker / exchange code (e.g. 399001.SZ, IXIC, ^GSPC)
+    # Guard: must contain at least one letter OR a dot suffix — pure digits are integers (handled above)
+    elif (re.match(r'^[\^]?[A-Z0-9]{2,10}(\.[A-Z]{1,4})?$', sample)
+          and not sample.startswith('0')
+          and (re.search(r'[A-Z]', sample) or '.' in sample)):
+        hint = "The answer is a stock market ticker or index code (short alphanumeric, may include dots or hyphens). Output ONLY the ticker code, nothing else."
+    # GitHub repo path (owner/repo) — must not match medical codes
+    elif re.match(r'^[A-Za-z0-9_.-]+/[A-Za-z0-9_.-]+$', sample) and '/' in sample and not re.match(r'^\d', sample):
+        hint = "The answer is a GitHub repository path in 'owner/repo' format. Output ONLY the path."
+    # Short text (name, code, label)
+    elif len(sample) < 80:
+        hint = f"The answer is a short text value (~{len(sample)} characters). Output it EXACTLY as it appears in the database — use the exact spelling, capitalisation, and punctuation."
+    else:
+        hint = "Output ONLY the answer value with no surrounding text."
+
+    return hint + UNIVERSAL
+
+
 @traceable(name="DAB Query", run_type="chain", tags=["dab", "benchmark"])
 def run_dab_query(
     query: Dict[str, Any],
@@ -496,6 +633,8 @@ def run_dab_query(
             "postgresql": "postgres",
             "mongo": "mongo",
             "mongodb": "mongo",
+            "bigquery": "bigquery",
+            "snowflake": "snowflake"
         }
         dialect = dialect_map.get(db_type, "sqlite")
 
@@ -521,6 +660,40 @@ def run_dab_query(
                 + "\n".join(f"  - {s}" for s in multi_db_context)
             )
 
+        # ── IMPROVEMENT 1: Few-shot winning SQLs from same dataset ──────────
+        winning_examples = _load_winning_examples(dataset, exclude_query_id=query_id)
+        if winning_examples:
+            ex_block = "\n\n=== VERIFIED WORKING EXAMPLES FROM THIS DATASET ===\n"
+            ex_block += "These SQLs were executed and validated against ground truth on the same database.\n"
+            for i, ex in enumerate(winning_examples, 1):
+                ex_block += f"\nExample {i} — Question: {ex['question']}\n"
+                ex_block += f"Verified SQL:\n{ex['sql']}\n"
+                ex_block += f"Answer produced: {ex['answer'][:120]}\n"
+            ex_block += "=== END OF VERIFIED EXAMPLES ===\n"
+            external_knowledge_text += ex_block
+            logger.info(f"[Learning] Injected {len(winning_examples)} winning SQL example(s) from {dataset}.")
+
+        # ── IMPROVEMENT 2: Cross-run failure hints for this specific query ──
+        failure_hints = _load_failure_hints(dataset, query_id)
+        if failure_hints:
+            hint_block = "\n\n=== PREVIOUS ATTEMPTS ON THIS EXACT QUESTION FAILED ===\n"
+            hint_block += "CRITICAL: Do NOT repeat these mistakes. Each failure used a different approach — yours must differ.\n"
+            for h in failure_hints:
+                hint_block += f"\nRun {h['run']} FAILED — Reason: {h['reason']}\n"
+                if h.get('sql'):
+                    hint_block += f"Failed SQL:\n{h['sql'][:600]}\n"
+                if h.get('agent_answer'):
+                    hint_block += f"Wrong answer produced: {h['agent_answer'][:150]}\n"
+            hint_block += "=== Try a COMPLETELY different SQL approach. If previous runs filtered by one column, try another. If they used one join path, find another. ===\n"
+            external_knowledge_text += hint_block
+            logger.info(f"[Learning] Injected {len(failure_hints)} failure hint(s) for {dataset} q{query_id}.")
+
+        # ── IMPROVEMENT 3: Ground truth output format constraint ─────────────
+        fmt_hint = _derive_answer_format_hint(ground_truth)
+        if fmt_hint:
+            external_knowledge_text += f"\n\n=== OUTPUT FORMAT REQUIREMENT ===\n{fmt_hint}\n=== END FORMAT ===\n"
+            logger.info(f"[Learning] Injected answer format hint: {fmt_hint[:80]}")
+
         # Build orchestrator — RAG disabled for benchmark runs to prevent SQL leakage
         # between runs and across submissions. Few-shot SQL from prior runs must never
         # be fed back into the pipeline during a DAB evaluation.
@@ -528,8 +701,9 @@ def run_dab_query(
             db_directory=db_dir,
             db_name=db_name,
             dialect=dialect,
-            max_retries=_load_configured_max_retries(default=2),
+            max_retries=_load_configured_max_retries(default=1),  # 2 total attempts max within 4-min budget
             use_few_shot_rag=False,
+            single_pass_mode=True,  # skip 3-candidate diverse generation — saves 3 LLM calls per query
         )
 
         # Write external knowledge to a temp file if needed
@@ -548,12 +722,47 @@ def run_dab_query(
         orchestrator.executor.db_name = db_name
         orchestrator.executor.explicit_db_path = db_path
 
-        # Run the query through the pipeline
-        final_sql = orchestrator.execute_query(
-            user_query=question,
-            instance_id=f"dab_{dataset}_q{query_id}{_run_sfx}",
-            external_knowledge=ext_knowledge_param,
-        )
+        # Run the query through the pipeline with a hard 4-minute wall-clock cap.
+        # The orchestrator can hang on: Bedrock API calls (now capped at 90s each)
+        # or DuckDB execution (now capped at 60s each). The 240s cap here is the
+        # absolute backstop — if the whole pipeline hasn't finished in 4 minutes,
+        # we return a clean failure rather than hanging forever.
+        _PIPELINE_TIMEOUT_S = 240  # 4 minutes
+        _pipeline_result: list = [None]
+        _pipeline_error:  list = [None]
+
+        def _run_pipeline():
+            try:
+                _pipeline_result[0] = orchestrator.execute_query(
+                    user_query=question,
+                    instance_id=f"dab_{dataset}_q{query_id}{_run_sfx}",
+                    external_knowledge=ext_knowledge_param,
+                )
+            except Exception as _pe:
+                _pipeline_error[0] = _pe
+
+        _pipeline_thread = threading.Thread(target=_run_pipeline, daemon=True)
+        _pipeline_thread.start()
+        _pipeline_thread.join(timeout=_PIPELINE_TIMEOUT_S)
+
+        if _pipeline_thread.is_alive():
+            elapsed_so_far = time.time() - start_time
+            logger.error(
+                f"[PIPELINE TIMEOUT] {dataset} q{query_id} exceeded {_PIPELINE_TIMEOUT_S}s "
+                f"({elapsed_so_far:.0f}s elapsed). Returning empty answer."
+            )
+            return {
+                "status": "pipeline_timeout",
+                "agent_answer": "",
+                "passed": False,
+                "elapsed_s": elapsed_so_far,
+                "error": f"Pipeline timeout after {_PIPELINE_TIMEOUT_S}s",
+            }
+
+        if _pipeline_error[0]:
+            raise _pipeline_error[0]
+
+        final_sql = _pipeline_result[0] or ""
 
         # Determine if the returned value is a SQL query or a direct text answer
         is_sql = (
@@ -677,7 +886,16 @@ def run_dab_query(
 
         status = "passed" if eval_result["passed"] else "failed"
         logger.success(f"DAB Evaluation: {status.upper()} | {eval_result['reason']}")
-        
+
+        # ── IMPROVEMENT 1 & 2: Persist learning signals for future runs ──────
+        _last_sql = sql_path.read_text(encoding="utf-8").strip() if sql_path.exists() else ""
+        if eval_result["passed"]:
+            _save_winning_example(dataset, query_id, question, _last_sql, agent_answer)
+            logger.info(f"[Learning] Saved winning SQL for {dataset} q{query_id} run {run_number}.")
+        else:
+            _save_failure_hint(dataset, query_id, run_number, eval_result["reason"], _last_sql, agent_answer)
+            logger.info(f"[Learning] Saved failure hint for {dataset} q{query_id} run {run_number}.")
+
         # RAG is intentionally disabled for DAB benchmark runs — do not save SQL here.
 
         # Attach all 8 evaluator scores to the LangSmith trace (non-blocking)

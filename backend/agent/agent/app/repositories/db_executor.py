@@ -248,7 +248,7 @@ class DatabaseExecutor:
             if sqlite_path:
                 rows, columns, error = self._execute_sqlite(stmt, sqlite_path, timeout=timeout)
             elif duckdb_path:
-                rows, columns, error = self._execute_duckdb(stmt, duckdb_path)
+                rows, columns, error = self._execute_duckdb(stmt, duckdb_path, timeout=timeout)
             elif pg_conn_str:
                 rows, columns, error = self._execute_postgres(stmt, pg_conn_str)
             elif self._needs_sqlalchemy():
@@ -374,12 +374,13 @@ class DatabaseExecutor:
 
     def execute_direct(self, sql: str, timeout: int | None = None) -> Tuple[bool, str, List[Dict[str, Any]]]:
         """Executes a query directly and returns the raw rows without persisting to CSV."""
+        sql = sql.strip().rstrip(";")
         sqlite_path, duckdb_path, pg_conn_str = self._resolve_paths()
 
         if sqlite_path:
             rows, columns, error = self._execute_sqlite(sql, sqlite_path, timeout=timeout)
         elif duckdb_path:
-            rows, columns, error = self._execute_duckdb(sql, duckdb_path)
+            rows, columns, error = self._execute_duckdb(sql, duckdb_path, timeout=timeout)
         elif pg_conn_str:
             rows, columns, error = self._execute_postgres(sql, pg_conn_str)
         elif self._needs_sqlalchemy():
@@ -424,14 +425,10 @@ class DatabaseExecutor:
                     
                     columns = []
                     for col in cols_info:
-                        if isinstance(col, dict):
-                            cname = col.get("name")
-                        else:
-                            # sqlite3.Row supports key access but not .get(); fall back to positional
-                            try:
-                                cname = col["name"]
-                            except (IndexError, KeyError, TypeError):
-                                cname = col[1] if len(col) > 1 else None
+                        try:
+                            cname = col["name"]
+                        except (IndexError, KeyError, TypeError):
+                            cname = col[1] if len(col) > 1 else None
                         if cname:
                             columns.append(cname)
                             col_lower = cname.lower()
@@ -452,13 +449,10 @@ class DatabaseExecutor:
                     cur.execute(f"PRAGMA {prefix}foreign_key_list(\"{t_name}\");")
                     fks = cur.fetchall()
                     for fk in fks:
-                        if isinstance(fk, dict):
-                            fk_from = fk.get("from")
-                        else:
-                            try:
-                                fk_from = fk["from"]
-                            except (IndexError, KeyError, TypeError):
-                                fk_from = fk[3] if len(fk) > 3 else None
+                        try:
+                            fk_from = fk["from"]
+                        except (IndexError, KeyError, TypeError):
+                            fk_from = fk[3] if len(fk) > 3 else None
                         if fk_from:
                             fk_cols.add(fk_from.lower())
                 except Exception:
@@ -470,25 +464,19 @@ class DatabaseExecutor:
                     cur.execute(f"PRAGMA {prefix}index_list(\"{t_name}\");")
                     existing_indexes = cur.fetchall()
                     for idx in existing_indexes:
-                        if isinstance(idx, dict):
-                            idx_name = idx.get("name")
-                        else:
-                            try:
-                                idx_name = idx["name"]
-                            except (IndexError, KeyError, TypeError):
-                                idx_name = idx[1] if len(idx) > 1 else None
+                        try:
+                            idx_name = idx["name"]
+                        except (IndexError, KeyError, TypeError):
+                            idx_name = idx[1] if len(idx) > 1 else None
                         
                         if idx_name:
                             try:
                                 cur.execute(f"PRAGMA {prefix}index_info(\"{idx_name}\");")
                                 for idx_col in cur.fetchall():
-                                    if isinstance(idx_col, dict):
-                                        cname = idx_col.get("name")
-                                    else:
-                                        try:
-                                            cname = idx_col["name"]
-                                        except (IndexError, KeyError, TypeError):
-                                            cname = idx_col[2] if len(idx_col) > 2 else None
+                                    try:
+                                        cname = idx_col["name"]
+                                    except (IndexError, KeyError, TypeError):
+                                        cname = idx_col[2] if len(idx_col) > 2 else None
                                     if cname:
                                         indexed_cols.add(cname.lower())
                             except Exception:
@@ -515,7 +503,8 @@ class DatabaseExecutor:
                             logger.debug(f"[IndexSeeding] Could not create index on {db_alias}.{t_name}.{col}: {ie}")
             conn.commit()
         except Exception as e:
-            logger.warning(f"[IndexSeeding] SQLite dynamic index seeding failed: {e}")
+            import traceback
+            logger.warning(f"[IndexSeeding] SQLite dynamic index seeding failed: {e}\n{traceback.format_exc()}")
 
     def _execute_sqlite(
         self, sql: str, path: str, timeout: int | None = None
@@ -645,7 +634,7 @@ class DatabaseExecutor:
             return [], [], str(e)
 
     def _execute_duckdb(
-        self, sql: str, path: str
+        self, sql: str, path: str, timeout: int | None = None
     ) -> Tuple[List[Dict], List[str], Optional[str]]:
         """Execute SQL against a DuckDB file."""
         logger.info(f"Executing on DuckDB ({path})")
@@ -740,16 +729,16 @@ class DatabaseExecutor:
                                     t_name = row[2]
                                     try:
                                         conn.execute(
-                                            f'CREATE OR REPLACE TEMPORARY VIEW "{t_name}" AS '
+                                            f'CREATE OR REPLACE TEMPORARY TABLE "{t_name}" AS '
                                             f'SELECT * FROM "{db_alias}"."{t_name}";'
                                         )
                                         attached_view_names.add(t_name)
                                         logger.info(
-                                            f"Auto-created temp view '{t_name}' from attached DB '{db_alias}'"
+                                            f"Auto-created temp table '{t_name}' from attached DB '{db_alias}'"
                                         )
                                     except Exception as ve:
                                         logger.warning(
-                                            f"Failed to create view for '{t_name}' from '{db_alias}': {ve}"
+                                            f"Failed to create table for '{t_name}' from '{db_alias}': {ve}"
                                         )
                             except Exception as e:
                                 logger.warning(
@@ -842,8 +831,41 @@ class DatabaseExecutor:
                 rws  = [dict(zip(cols, row, strict=False)) for row in rel.fetchall()]
                 return rws, cols
 
+            # Hard 60-second timeout for DuckDB execution.
+            # DuckDB's Python API blocks the calling thread with no built-in timeout.
+            # We run the query in a daemon thread; on expiry we call conn.interrupt()
+            # which signals DuckDB's C++ engine to abort the running query, allowing
+            # the thread to unblock and terminate cleanly.
+            _DUCKDB_EXEC_TIMEOUT = timeout if timeout is not None else 60
+            _result_holder: list = [None]
+            _error_holder:  list = [None]
+
+            def _run_in_thread():
+                try:
+                    _result_holder[0] = _run(sql)
+                except Exception as _te:
+                    _error_holder[0] = str(_te)
+
+            _exec_thread = threading.Thread(target=_run_in_thread, daemon=True)
+            _exec_thread.start()
+            _exec_thread.join(timeout=_DUCKDB_EXEC_TIMEOUT)
+
+            if _exec_thread.is_alive():
+                with contextlib.suppress(Exception):
+                    conn.interrupt()  # ask DuckDB to abort the running query
+                _exec_thread.join(5)  # brief grace period for clean unblock
+                logger.error(f"DuckDB query timeout after {_DUCKDB_EXEC_TIMEOUT}s — query cancelled")
+                return [], [], f"DuckDB query timeout after {_DUCKDB_EXEC_TIMEOUT}s — query was cancelled. Simplify the SQL (avoid recursive CTEs, reduce joins)."
+
+            if _error_holder[0]:
+                err_str = _error_holder[0]
+                logger.error(f"DuckDB error: {err_str}")
+                return [], [], err_str
+
+            rows, columns = _result_holder[0]
+
             try:
-                rows, columns = _run(sql)
+                pass  # placeholder so the except below still catches ImportError/Exception
             except (_ddb.CatalogException, _ddb.BinderException, Exception) as _exec_err:
                 err_str = str(_exec_err)
                 logger.error(f"DuckDB error: {_exec_err}")

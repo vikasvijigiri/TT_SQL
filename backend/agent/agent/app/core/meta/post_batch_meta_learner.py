@@ -8,11 +8,17 @@ from agent.app.utils.llm import LLMClient
 from agent.app.core.config import DAB_RESULTS_DIR, MEMORY_DIR
 from agent.app.core.rules.dynamic_rule_store import DynamicRuleStore
 
+class SuggestedRule(BaseModel):
+    rule_title: str = Field(description="A short, descriptive title for the rule.")
+    generic_rule: str = Field(description="The generic rule text.")
+    intent_pattern: str = Field(description="Regex pattern for when this rule applies.")
+    category: str = Field(description="Category of the rule (e.g. schema, joins, filters).")
+
 class Reflection(BaseModel):
     react_analysis: str = Field(description="Step-by-step reflection on what went wrong across the failures, why the pipeline struggled, and what core roadblocks exist.")
     overall_smartness_rating: float = Field(description="Rate the overall intelligence and adaptability of the pipeline out of 100 based on this batch run. Every failure is a setback. Penalize silly mistakes heavily.")
     identified_roadblocks: List[str] = Field(description="List of specific, recurring error patterns or conceptual roadblocks.")
-    suggested_rules: List[dict] = Field(description="List of new rules to inject. Each dict MUST have 'rule_title', 'generic_rule', 'intent_pattern', and 'category'.")
+    suggested_rules: List[SuggestedRule] = Field(description="List of new rules to inject.")
 
 class PostBatchMetaLearner:
     def __init__(self, llm_client: LLMClient = None):
@@ -101,10 +107,10 @@ class PostBatchMetaLearner:
         added_rules = 0
         for rule in reflection_obj.suggested_rules:
             # Ensure required fields are present
-            title = rule.get("rule_title", "Meta Rule")
-            generic_rule = rule.get("generic_rule", "Always check context.")
-            intent = rule.get("intent_pattern", ".*")
-            cat = rule.get("category", "meta")
+            title = rule.rule_title
+            generic_rule = rule.generic_rule
+            intent = rule.intent_pattern
+            cat = rule.category
             
             lid = self.store.add_rule(
                 rule_title=title,

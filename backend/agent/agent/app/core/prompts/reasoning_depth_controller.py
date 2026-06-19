@@ -32,7 +32,7 @@ class ReasoningDepthController:
     @classmethod
     def get_directives(
         cls,
-        query: str,
+        _query: str,
         profile: QueryCapabilityProfile,
         domain: str = "General Enterprise",
         dialect: str = "snowflake",
@@ -41,7 +41,6 @@ class ReasoningDepthController:
         if (
             profile.requires_variants
             or (profile.requires_windows and profile.requires_joins)
-            or len(query.split()) > 25
         ):
             mode = "deep_reasoning"
             directives = cls.DIRECTIVES_DEEP

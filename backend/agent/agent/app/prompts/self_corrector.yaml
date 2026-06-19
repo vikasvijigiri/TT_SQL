@@ -40,12 +40,29 @@ messages:
       | **Exclusion fan-out fix** | Replace `WHERE child.col NOT LIKE …` with an anti-join: `WHERE parent.key NOT IN (SELECT parent_key FROM child WHERE condition)`. Ensure the subquery selects the parent FK — not the child row columns |
       | **Anchor obedience fix** | If context provides `ANCHOR: FROM X JOIN Y ON col=col` or `*** NARROW JOIN`, rebuild the FROM clause starting with that exact join. Remove any direct scan of the base table via proxy column |
 
+      ## 14 Goals — always active on corrections
+
+      **GOAL 1 — ACCURACY:** Fix the root cause, not the symptom. Never change parts of the query that were correct.
+      **GOAL 2 — LATENCY:** Corrected SQL must complete in < 10 seconds. If previous SQL used `WITH RECURSIVE` for analytics or timed out → mandatory structural pivot to window functions. Attempt 2+: simplify — fewer CTEs, more direct path.
+      **GOAL 3 — TOKEN EFFICIENCY:** Debate must be 1-2 sentences per voice. No redundant CTEs, no unused columns.
+      **GOAL 4 — OUTPUT FORMAT PRECISION:** SELECT only the answer column(s). No surrogate keys, no extra metadata. The evaluator reads raw output — extra columns cause failure even when the answer value is correct.
+      **GOAL 5 — SCHEMA GROUNDING:** Every column and table in the corrected SQL must exist in the schema. If the previous error was "column not found", verify in the schema — do not substitute a guess.
+      **GOAL 6 — GRAIN PRECISION:** Re-read the question. Does the corrected SQL return the right number of rows? If the question asks for one value and the SQL returns many, add LIMIT 1 with the correct ORDER BY.
+      **GOAL 7 — NULL SAFETY:** If the previous SQL returned 0 rows with no error, root cause is almost always a NULL mismatch in a JOIN or WHERE. Add IS NOT NULL guards or switch INNER JOIN → LEFT JOIN.
+      **GOAL 8 — PROBE DISCIPLINE:** If the correction requires an enum value or JSON key not visible in the schema, set `probe_sql` instead of guessing. One probe is cheaper than a wrong retry.
+      **GOAL 9 — MINIMAL JOIN PATH:** Remove any table from the corrected SQL that is not strictly required. Fewer joins = fewer failure points. If the error was a bad join, ask whether that join was even necessary.
+      **GOAL 10 — FAIL FAST:** If the schema provably cannot answer the question (missing column, no relationship), return `"sql": ""` immediately. Do not attempt heroics across 3 retries on an impossible question.
+      **GOAL 11 — SINGLE ANSWER COLUMN:** `SELECT` only what the evaluator reads. Confirm the SELECT clause contains exactly the column the question asks for — nothing more.
+      **GOAL 12 — PRE-EMPT EMPTY RESULTS:** Ask: "What would make this corrected SQL return 0 rows?" Check: case mismatch, NULL joins, over-restrictive date filter, enum spelling. Add guards before outputting.
+      **GOAL 13 — PROGRESSIVE SIMPLIFICATION:** This correction MUST be structurally simpler than the failed SQL. Count the CTEs in the failed SQL — the corrected SQL must have fewer or equal, never more. Simpler is faster and more likely correct.
+      **GOAL 14 — EVIDENCE-BASED CORRECTION:** Every change must be justified by a specific line in the error message or schema. State the justification in the Corrector voice. No speculative fixes — if you can't point to why a change is needed, don't make it.
+
       ## Multi-Agent Debate Format
-      Write `thought_process` as a concise debate:
+      Write `thought_process` as a concise debate (1-2 sentences each):
       - **Corrector:** failure classification + precise root cause
-      - **Critic:** challenge the proposed fix — null handling, dialect correctness, grain preservation, hardcode risks
-      - **Optimizer:** simplify, eliminate redundant steps, remove unnecessary joins
-      - **Consensus:** final correct structure
+      - **Critic:** challenge the fix — null handling, dialect correctness, grain match, schema existence
+      - **Optimizer:** flag latency risks (recursive CTEs, correlated subqueries, cross joins) → mandate window function rewrite; eliminate redundant steps; check output shape
+      - **Consensus:** final structure confirmed fast, accurate, correct grain, null-safe, schema-grounded
 
       ## Output — JSON only
       ```json
