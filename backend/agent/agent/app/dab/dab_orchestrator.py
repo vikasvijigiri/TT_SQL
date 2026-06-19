@@ -421,6 +421,13 @@ def run_dab_query(
     Returns:
         Result dict with: status, agent_answer, passed, elapsed_s, error
     """
+    try:
+        from agent.app.utils.cache import DAB_CANCEL_FLAG, SPIDER_CANCEL_FLAG
+        if DAB_CANCEL_FLAG or SPIDER_CANCEL_FLAG:
+            raise KeyboardInterrupt("Run stopped by user")
+    except Exception:
+        pass
+
     from agent.app.core.orchestrator import SemanticDINOrchestrator
 
     dataset = query["dataset"]
@@ -573,14 +580,18 @@ def run_dab_query(
                 instance_id=instance_id,
             )
         else:
-            # Direct text answer from diagnostic layer — use it verbatim, no CSV needed.
-            # Writing through extract_answer risks reading a stale CSV from a prior run.
+            # Non-SQL text came back — treat as an empty answer so the schema-grounded
+            # retry below gets a chance to produce real SQL.
             agent_answer = final_sql.strip()
             csv_path.write_text(f'result\n"{agent_answer}"\n', encoding="utf-8")
+            logger.warning(
+                f"[DABOrchestrator] execute_query returned non-SQL text. "
+                f"Will attempt schema-grounded SQL retry. Text: {agent_answer[:120]}"
+            )
 
-        # Schema-grounded retry: when the first pass returns empty results, inject real
-        # sample data from the live DB so the LLM can see actual table/column names.
-        if _is_empty_answer(agent_answer):
+        # Schema-grounded retry: when the first pass returns empty results OR non-SQL text,
+        # inject real sample data from the live DB so the LLM can see actual table/column names.
+        if _is_empty_answer(agent_answer) or not is_sql:
             logger.info(
                 "[EmptyRetry] First attempt returned empty answer — injecting real schema evidence for retry."
             )
@@ -689,12 +700,26 @@ def run_dab_query(
             "error": None,
         }
 
-    except Exception as e:
+    except (Exception, KeyboardInterrupt) as e:
+        # KeyboardInterrupt is raised by the cancel-flag check ("Run stopped by user").
+        # It is BaseException, not Exception, so it must be listed explicitly here so
+        # the verdict line and finally block always run even on user-initiated cancels.
+        # Real Ctrl+C (no "stopped by user" message) is re-raised after cleanup.
+        _is_cancel = isinstance(e, KeyboardInterrupt)
+        if _is_cancel and "stopped by user" not in str(e).lower():
+            # True SIGINT — write a brief note and re-raise so the server can shut down
+            logger.error("DAB Evaluation: CANCELLED | Server interrupt received")
+            raise
+
         elapsed = round(time.time() - start_time, 1)
         in_t, out_t = get_tokens()
-        err_msg = str(e)
-        logger.error(f"DAB query failed: {err_msg}")
-        traceback.print_exc()
+        err_msg = str(e) if str(e) else type(e).__name__
+        tb_str = traceback.format_exc()
+        logger.error(
+            f"DAB query {'CANCELLED' if _is_cancel else 'FAILED'} "
+            f"({type(e).__name__}): {err_msg}\n"
+            f"Full traceback:\n{tb_str}"
+        )
 
         # Save error result
         eval_result = evaluate_answer(
@@ -714,20 +739,23 @@ def run_dab_query(
         if run_tree and _LANGSMITH_AVAILABLE:
             _push_evaluator_feedback(str(run_tree.id), eval_result)
 
+        _status_label = "CANCELLED" if _is_cancel else "ERROR"
         res = {
             "dataset": dataset,
             "query_id": query_id,
             "instance_id": instance_id,
-            "status": "error",
+            "status": _status_label.lower(),
             "passed": False,
             "agent_answer": "",
             "ground_truth": ground_truth,
-            "reason": f"Execution error: {err_msg}",
+            "reason": f"Execution {_status_label.lower()}: {err_msg}",
             "elapsed_s": elapsed,
             "input_tokens": in_t,
             "output_tokens": out_t,
             "error": err_msg,
         }
+        # Always write the final verdict line — canonical end-of-pipeline signal
+        logger.error(f"DAB Evaluation: {_status_label} | {err_msg[:200]}")
     finally:
         if "orchestrator" in dir():
             with contextlib.suppress(Exception):

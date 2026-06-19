@@ -45,12 +45,11 @@ def _clean_html_text(text: str) -> str:
     return val.strip()
 
 
-# Rows per LLM classification call — 10 rows fit comfortably in an 8k context window.
-# We lowered this from 50 to 10 because 50 full articles can easily exceed 15k tokens, causing instant AWS ValidationExceptions.
-BATCH_SIZE = 10
+# Rows per LLM classification call — dynamically scaled between 50 and 70 based on text length.
+BATCH_SIZE = 70
 # Max rows to classify before switching to sampling (controls cost + latency)
 MAX_ROWS_EXACT = 500
-MAX_ROWS_SAMPLE = 2000
+MAX_ROWS_SAMPLE = 500
 
 # ---------------------------------------------------------------------------
 # Prompts
@@ -94,6 +93,207 @@ Aggregated data:
 {agg_table}
 
 What is the answer?"""
+
+
+def _fetch_from_mongodb(executor, id_col: str, ids: list, cols: list) -> dict:
+    """Fetch documents from MongoDB for cross-database join support."""
+    import os
+    import pymongo
+    import contextlib
+    from pathlib import Path
+
+    # Map database name (e.g. AGNEWS -> articles_db)
+    db_name_raw = getattr(executor, "db_name", "UNKNOWN").upper().lower()
+    
+    MONGO_MAPPING = {
+        "agnews": {"db": "articles_db", "collection": "articles"},
+        "yelp": {"db": "yelp_db", "collection": "business"},
+        "krama": {"db": "domain_docs_db", "collection": "domain_docs"},
+        "usaspending": {"db": "descriptions_db", "collection": "descriptions"},
+        "cve": {"db": "descriptions_db", "collection": "descriptions"},
+    }
+
+    mapping = MONGO_MAPPING.get(db_name_raw)
+    if mapping:
+        db_name = mapping["db"]
+        collection_name = mapping["collection"]
+    else:
+        db_name = f"{db_name_raw}_db"
+        collection_name = db_name_raw
+
+    # Try loading .env from DataAgentBench repository if MONGO_URI is not in current environment
+    if not os.getenv("MONGO_URI"):
+        with contextlib.suppress(Exception):
+            from agent.app.core.config import DAB_REPO
+            from dotenv import load_dotenv
+            dab_env = Path(DAB_REPO) / ".env"
+            if dab_env.exists():
+                load_dotenv(str(dab_env))
+
+    mongo_uri = os.getenv("MONGO_URI", "mongodb://localhost:27017/")
+    logger.info(f"[TextClassifyExecutor] Connecting to MongoDB: {mongo_uri} | DB: {db_name} | Collection: {collection_name}")
+
+    try:
+        with pymongo.MongoClient(mongo_uri, serverSelectionTimeoutMS=2000) as client:
+            db = client[db_name]
+            
+            # Find the actual collection name case-insensitively
+            col_list = db.list_collection_names()
+            actual_col = None
+            for c in col_list:
+                if c.lower() == collection_name.lower():
+                    actual_col = c
+                    break
+            
+            if not actual_col:
+                # Try fallback: first non-system collection
+                for c in col_list:
+                    if not c.startswith("system."):
+                        actual_col = c
+                        break
+            
+            if not actual_col:
+                logger.warning(f"[TextClassifyExecutor] Collection '{collection_name}' not found in MongoDB DB '{db_name}'")
+                return {}
+                
+            collection = db[actual_col]
+            
+            # Inspect keys from a sample document
+            sample_doc = collection.find_one()
+            if not sample_doc:
+                logger.warning(f"[TextClassifyExecutor] Collection '{actual_col}' is empty in MongoDB")
+                return {}
+                
+            # Find key in MongoDB that matches id_col
+            mongo_id_key = None
+            for k in sample_doc.keys():
+                if k.lower() == id_col.lower():
+                    mongo_id_key = k
+                    break
+            
+            if not mongo_id_key:
+                if "_id" in sample_doc:
+                    mongo_id_key = "_id"
+                else:
+                    logger.warning(f"[TextClassifyExecutor] ID column '{id_col}' not found in MongoDB keys: {list(sample_doc.keys())}")
+                    return {}
+            
+            # Query documents by matching ID in list
+            # Create variations (int, str, raw) of IDs to ensure type matching
+            id_list = []
+            for idx in ids:
+                id_list.append(idx)
+                with contextlib.suppress(Exception):
+                    id_list.append(int(idx))
+                with contextlib.suppress(Exception):
+                    id_list.append(str(idx))
+            
+            query = {mongo_id_key: {"$in": id_list}}
+            
+            # Build projection
+            projection = {mongo_id_key: 1}
+            for col in cols:
+                for k in sample_doc.keys():
+                    if k.lower() == col.lower():
+                        projection[k] = 1
+            
+            cursor = collection.find(query, projection)
+            
+            # Map results
+            res_map = {}
+            for doc in cursor:
+                doc_id = doc.get(mongo_id_key)
+                vals = {}
+                for col in cols:
+                    for k, v in doc.items():
+                        if k.lower() == col.lower():
+                            vals[col] = v
+                            break
+                res_map[doc_id] = vals
+                res_map[str(doc_id)] = vals
+                with contextlib.suppress(Exception):
+                    res_map[int(doc_id)] = vals
+            
+            logger.info(f"[TextClassifyExecutor] Fetched {len(res_map) // 3} matching documents from MongoDB.")
+            return res_map
+    except Exception as e:
+        logger.warning(f"[TextClassifyExecutor] Failed to fetch missing columns from MongoDB: {e}")
+        return {}
+
+
+def _fetch_missing_columns(df, id_col, missing_cols, executor):
+    if id_col not in df.columns:
+        return df
+
+    ids = df[id_col].dropna().unique().tolist()
+    if not ids:
+        return df
+
+    ok, err, tbl_rows = executor.execute_direct(
+        "SELECT name FROM sqlite_master WHERE type IN ('table', 'view') "
+        "UNION "
+        "SELECT name FROM sqlite_temp_master WHERE type IN ('table', 'view')"
+    )
+    is_sqlite = ok
+    if not ok:
+        ok, err, tbl_rows = executor.execute_direct("SHOW TABLES")
+        is_sqlite = False
+        if not ok:
+            logger.warning(f"Failed to list tables for missing columns: {err}")
+            return df
+
+    tables = []
+    if is_sqlite:
+        tables = [r["name"] for r in tbl_rows]
+    else:
+        if tbl_rows:
+            col_name = list(tbl_rows[0].keys())[0]
+            tables = [r[col_name] for r in tbl_rows]
+
+    table_columns = {}
+    for tbl in tables:
+        if is_sqlite:
+            ok, err, col_rows = executor.execute_direct(f'PRAGMA table_info("{tbl}")')
+            if ok:
+                table_columns[tbl] = [r["name"] for r in col_rows]
+        else:
+            ok, err, col_rows = executor.execute_direct(f'DESCRIBE "{tbl}"')
+            if ok:
+                table_columns[tbl] = [r["column_name"] if "column_name" in r else r[list(r.keys())[0]] for r in col_rows]
+
+    table_to_cols = {}
+    for col in missing_cols:
+        for tbl, cols in table_columns.items():
+            if id_col in cols and col in cols:
+                table_to_cols.setdefault(tbl, []).append(col)
+                break
+
+    # If no SQL tables contain the missing columns, attempt fallback to MongoDB
+    if not table_to_cols:
+        logger.info(f"[TextClassifyExecutor] Columns {missing_cols} not found in SQL tables. Attempting MongoDB lookup...")
+        mongo_data = _fetch_from_mongodb(executor, id_col, ids, missing_cols)
+        if mongo_data:
+            for col in missing_cols:
+                # Map retrieved values from MongoDB to the DataFrame
+                val_map = {id_val: item.get(col) for id_val, item in mongo_data.items() if item}
+                df[col] = df[id_col].map(val_map)
+            logger.info(f"[TextClassifyExecutor] Successfully loaded {missing_cols} from MongoDB.")
+            return df
+
+    for tbl, cols in table_to_cols.items():
+        col_list_str = ", ".join(f'"{c}"' for c in cols)
+        id_list_str = ", ".join(f"'{x}'" if isinstance(x, str) else str(x) for x in ids)
+        fetch_sql = f'SELECT "{id_col}", {col_list_str} FROM "{tbl}" WHERE "{id_col}" IN ({id_list_str})'
+        logger.info(f"[TextClassifyExecutor] Auto-fetching missing columns {cols} from table '{tbl}' using: {fetch_sql[:120]}")
+        ok, err, fetched_rows = executor.execute_direct(fetch_sql)
+        if ok and fetched_rows:
+            for col in cols:
+                val_map = {r[id_col]: r[col] for r in fetched_rows if id_col in r and col in r}
+                df[col] = df[id_col].map(val_map)
+        else:
+            logger.warning(f"[TextClassifyExecutor] Failed to fetch missing columns {cols}: {err}")
+
+    return df
 
 
 class TextClassifyExecutor:
@@ -251,6 +451,22 @@ class TextClassifyExecutor:
         if df is None or df.empty:
             return "No data found for the query. Cannot determine the answer."
 
+        # Auto-fetch any missing text_columns from database
+        missing_cols = [c for c in text_cols if c not in df.columns]
+        if missing_cols:
+            id_col = classify_spec.get("id_column", "") or group_col
+            if not id_col:
+                for col_name in df.columns:
+                    if "id" in str(col_name).lower():
+                        id_col = col_name
+                        break
+            if not id_col and not df.empty:
+                id_col = df.columns[0]
+
+            if id_col and id_col in df.columns:
+                logger.info(f"[TextClassifyExecutor] Found missing columns {missing_cols}. Attempting auto-fetch using ID column '{id_col}'...")
+                df = _fetch_missing_columns(df, id_col, missing_cols, executor)
+
         total_rows = len(df)
         sampled = False
 
@@ -311,10 +527,42 @@ class TextClassifyExecutor:
         # Step 2: Batch-classify
         # ------------------------------------------------------------------
         df["_category"] = None
-        n_batches = math.ceil(len(df) / BATCH_SIZE)
+
+        # Calculate dynamic batch size based on average text length in requested columns
+        avg_len = 0
+        if not df.empty and text_cols:
+            total_len = 0
+            count = 0
+            for col in text_cols:
+                if col in df.columns:
+                    total_len += df[col].fillna("").astype(str).str.len().sum()
+                    count += len(df)
+            if count > 0:
+                avg_len = total_len / count
+
+        # Dynamic batch sizing logic, using judgement on the fly (minimum 50, maximum 70)
+        if avg_len < 150:
+            batch_size = 70
+        elif avg_len < 300:
+            batch_size = 60
+        else:
+            batch_size = 50
+
+        logger.info(
+            f"[TextClassifyExecutor] Calculated dynamic batch size: {batch_size} (average length: {avg_len:.1f} chars)"
+        )
+
+        n_batches = math.ceil(len(df) / batch_size)
 
         for batch_idx in range(n_batches):
-            batch = df.iloc[batch_idx * BATCH_SIZE : (batch_idx + 1) * BATCH_SIZE]
+            try:
+                from agent.app.utils.cache import DAB_CANCEL_FLAG, SPIDER_CANCEL_FLAG
+                if DAB_CANCEL_FLAG or SPIDER_CANCEL_FLAG:
+                    raise KeyboardInterrupt("Run stopped by user")
+            except Exception:
+                pass
+
+            batch = df.iloc[batch_idx * batch_size : (batch_idx + 1) * batch_size]
             items = []
             for _, row in batch.iterrows():
                 text_parts = {

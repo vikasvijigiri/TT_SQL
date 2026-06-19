@@ -39,7 +39,7 @@ if os.getenv("USE_LLM_CACHE", "true").lower() == "true":
 
 import threading
 
-# Bedrock transient errors that are safe to retry
+# Bedrock transient errors that are safe to retry (and should count toward the CB)
 _RETRYABLE_ERRORS = (
     "ThrottlingException",
     "ModelTimeoutException",
@@ -53,50 +53,132 @@ _RETRYABLE_ERRORS = (
     "ConnectionError",
     "ConnectTimeoutError",
     "NewConnectionError",
+    "Connection was closed",
+    "Connection reset",
+    "RemoteDisconnected",
+    "BrokenPipeError",
+    "IncompleteRead",
+    "ProtocolError",
 )
 
 thread_local = threading.local()
 
 # ---------------------------------------------------------------------------
 # Module-level circuit breaker for Bedrock / LLM backend
-# Opens after CB_FAILURE_THRESHOLD consecutive non-retryable failures;
-# auto-resets after CB_RESET_AFTER_S seconds so the system self-heals.
+#
+# Design goals:
+#   • Open after CB_FAILURE_THRESHOLD consecutive non-retryable failures.
+#   • When open, callers BLOCK (not raise) inside _cb_wait_until_clear()
+#     so the pipeline thread stays alive and the log keeps accumulating.
+#   • After CB_RESET_AFTER_S seconds exactly ONE thread is granted a probe;
+#     all others keep blocking on _cb_probe_event to prevent thundering-herd
+#     re-opens where 3 parallel workers all probe, all fail, reopen immediately.
+#   • Total patience budget = CB_MAX_WAIT_S (10 min). Only after that does
+#     the caller raise so the query is recorded as a genuine failure.
 # ---------------------------------------------------------------------------
-CB_FAILURE_THRESHOLD: int = 5
-CB_RESET_AFTER_S: float = 60.0
+CB_FAILURE_THRESHOLD: int = 10     # raised for 8-10 parallel workers
+CB_RESET_AFTER_S: float = 120.0    # lockout window per open event
+CB_MAX_WAIT_S: float = 1800.0      # give up after 30 minutes of total waiting
 
 _cb_lock = threading.Lock()
 _cb_failures: int = 0
 _cb_opened_at: float = 0.0
+_cb_probing: bool = False
+_cb_probe_event = threading.Event()
+_cb_probe_event.set()   # SET = no active lockout; CLEAR = lockout active
 
 
 def _cb_record_failure() -> None:
-    global _cb_failures, _cb_opened_at
+    global _cb_failures, _cb_opened_at, _cb_probing
     with _cb_lock:
         _cb_failures += 1
         if _cb_failures >= CB_FAILURE_THRESHOLD and _cb_opened_at == 0.0:
             _cb_opened_at = time.time()
+            _cb_probe_event.clear()   # signal lockout — blocks waiting threads
+        if _cb_probing:
+            # Probe just failed: reset the lockout clock so the NEXT probe must
+            # wait a full CB_RESET_AFTER_S window (prevents back-to-back probing
+            # by all N waiting workers when Bedrock is down).
+            _cb_probing = False
+            _cb_opened_at = time.time()   # fresh 120s window before next probe
+            # Keep event CLEAR — waiting threads stay blocked for the new window
 
 
 def _cb_record_success() -> None:
-    global _cb_failures, _cb_opened_at
+    global _cb_failures, _cb_opened_at, _cb_probing
     with _cb_lock:
         _cb_failures = 0
         _cb_opened_at = 0.0
+        _cb_probing = False
+        _cb_probe_event.set()   # unblock all waiting threads
 
 
 def _cb_is_open() -> bool:
-    """Returns True when the circuit is open (calls should be rejected fast)."""
-    global _cb_failures, _cb_opened_at
+    """Pure state check — does NOT block. Use _cb_wait_until_clear() to block.
+
+    When the reset window elapses, exactly ONE thread is granted the probe slot
+    (_cb_probing = True) and allowed through (returns False).  All other threads
+    keep seeing True while _cb_probing is set, so they stay blocked in
+    _cb_wait_until_clear().  This prevents the thundering-herd re-open where
+    multiple workers probe simultaneously, all fail, and immediately re-open.
+
+    Crucially, the probe does NOT reset _cb_failures here — only
+    _cb_record_success() does that.  If we reset early, all threads calling
+    _cb_is_open() would see failures=0 < threshold and rush through at once.
+    """
+    global _cb_probing
     with _cb_lock:
         if _cb_failures < CB_FAILURE_THRESHOLD:
-            return False
-        if time.time() - _cb_opened_at >= CB_RESET_AFTER_S:
-            # Reset window elapsed — allow one probe through (half-open)
-            _cb_failures = 0
-            _cb_opened_at = 0.0
-            return False
-        return True
+            return False   # CB closed — allow through
+
+        if _cb_probing:
+            return True   # another thread already probing — keep this one blocked
+
+        elapsed = time.time() - _cb_opened_at
+        if elapsed >= CB_RESET_AFTER_S:
+            # Reset window elapsed — grant this ONE thread the probe slot.
+            # DO NOT touch _cb_failures / _cb_opened_at here; only success clears those.
+            _cb_probing = True
+            return False   # probe thread allowed through
+
+        return True   # still within lockout window
+
+
+def _cb_wait_until_clear(max_wait_s: float = CB_MAX_WAIT_S) -> None:
+    """Block the calling thread until the circuit breaker clears or max_wait_s
+    elapses.  Raises RuntimeError only after the patience budget is exhausted.
+
+    Behaviour:
+    - CB closed → returns immediately (no-op).
+    - CB open, reset window not elapsed → waits on _cb_probe_event (efficient;
+      wakes early when probe succeeds and sets the event).
+    - CB open, reset window elapsed, no probe in-flight → this thread becomes
+      the probe (returns immediately so it can make the real LLM call).
+    - CB open, probe already in-flight → keeps waiting; probe result (success
+      or new lockout) determines next action.
+    """
+    deadline = time.time() + max_wait_s
+    while True:
+        if not _cb_is_open():
+            return   # clear — proceed with the LLM call
+
+        remaining = deadline - time.time()
+        if remaining <= 0:
+            raise RuntimeError(
+                f"LLM circuit breaker remained open for {max_wait_s:.0f}s "
+                f"({CB_FAILURE_THRESHOLD} consecutive Bedrock failures). "
+                "Giving up on this query."
+            )
+
+        # Block efficiently — wakes when probe_event is SET (probe succeeded)
+        # or after min(CB_RESET_AFTER_S, remaining) seconds (next probe window)
+        wait_s = min(CB_RESET_AFTER_S + 5, remaining)
+        logger.warning(
+            f"[CircuitBreaker] Bedrock endpoint unreachable — "
+            f"blocking {wait_s:.0f}s (budget left: {remaining:.0f}s) ..."
+        )
+        _cb_probe_event.wait(timeout=wait_s)
+        # After waking (event set OR timeout), loop and re-check _cb_is_open()
 
 
 def reset_token_counters():
@@ -147,14 +229,14 @@ class LLMClient:
                 "model", "bedrock/openai.gpt-oss-safeguard-120b"
             )
             self._max_tokens = int(llm_cfg.get("max_tokens", 8000))
-            self._max_retries = int(llm_cfg.get("max_retries", 3))
-            self._retry_base_delay = float(llm_cfg.get("retry_base_delay_s", 1.0))
+            self._max_retries = int(llm_cfg.get("max_retries", 5))
+            self._retry_base_delay = float(llm_cfg.get("retry_base_delay_s", 3.0))
         except Exception:
             sys_temp = 0.0
             sys_model = "bedrock/openai.gpt-oss-safeguard-120b"
             self._max_tokens = 8000
-            self._max_retries = 3
-            self._retry_base_delay = 1.0
+            self._max_retries = 5
+            self._retry_base_delay = 3.0
 
         temp = temperature if temperature is not None else sys_temp
         self.full_model_name = model or os.getenv("LLM_MODEL", sys_model)
@@ -415,11 +497,16 @@ class LLMClient:
 
     def generate(self, system_prompt: str, user_prompt: str) -> str:
         """Simple text completion with exponential-backoff retry on transient Bedrock errors."""
-        if _cb_is_open():
-            raise RuntimeError(
-                f"LLM circuit breaker is open after {CB_FAILURE_THRESHOLD} consecutive "
-                f"failures. Retrying in {CB_RESET_AFTER_S:.0f}s."
-            )
+        try:
+            from agent.app.utils.cache import DAB_CANCEL_FLAG, SPIDER_CANCEL_FLAG
+            if DAB_CANCEL_FLAG or SPIDER_CANCEL_FLAG:
+                raise KeyboardInterrupt("Run stopped by user")
+        except Exception:
+            pass
+
+        # Block (not raise) until the circuit breaker clears or patience runs out.
+        # This keeps the pipeline thread alive so the log keeps accumulating.
+        _cb_wait_until_clear()
 
         logger.debug(
             f"LLM Prompt lengths | System: {len(system_prompt)} | User: {len(user_prompt)}"
@@ -478,16 +565,21 @@ class LLMClient:
 
                 last_exc = e
                 if self._is_retryable(e) and attempt < self._max_retries:
-                    delay = self._retry_base_delay * (2**attempt)
+                    delay = min(self._retry_base_delay * (2**attempt), 120.0)
                     logger.warning(
-                        f"Transient Bedrock error (attempt {attempt + 1}/{self._max_retries}): {e}. Retrying in {delay:.1f}s..."
+                        f"[LLM] Transient Bedrock error (attempt {attempt + 1}/{self._max_retries + 1}): "
+                        f"{type(e).__name__}: {e}. Retrying in {delay:.1f}s..."
                     )
                     time.sleep(delay)
                 else:
                     break
         if last_exc:
-            _cb_record_failure()
-            logger.error(f"Bedrock generation failed after {self._max_retries} retries: {last_exc}")
+            if self._is_retryable(last_exc):
+                _cb_record_failure()
+            logger.error(
+                f"[LLM] generate() exhausted {self._max_retries} retries: "
+                f"{type(last_exc).__name__}: {last_exc}"
+            )
             raise last_exc
         return ""
 
@@ -556,12 +648,29 @@ class LLMClient:
 
     async def agenerate(self, system_prompt: str, user_prompt: str) -> str:
         """Asynchronous text completion with exponential-backoff retry."""
+        try:
+            from agent.app.utils.cache import DAB_CANCEL_FLAG, SPIDER_CANCEL_FLAG
+            if DAB_CANCEL_FLAG or SPIDER_CANCEL_FLAG:
+                raise KeyboardInterrupt("Run stopped by user")
+        except Exception:
+            pass
+
         import asyncio
-        if _cb_is_open():
-            raise RuntimeError(
-                f"LLM circuit breaker is open after {CB_FAILURE_THRESHOLD} consecutive "
-                f"failures. Retrying in {CB_RESET_AFTER_S:.0f}s."
+        # Async-safe CB wait: poll with asyncio.sleep so the event loop stays free.
+        _waited = 0.0
+        while _cb_is_open():
+            if _waited >= CB_MAX_WAIT_S:
+                raise RuntimeError(
+                    f"LLM circuit breaker remained open for {CB_MAX_WAIT_S:.0f}s. "
+                    "Giving up on this query."
+                )
+            _sleep = min(CB_RESET_AFTER_S + 5, CB_MAX_WAIT_S - _waited)
+            logger.warning(
+                f"[CircuitBreaker] async path — Bedrock unreachable, "
+                f"sleeping {_sleep:.0f}s (waited {_waited:.0f}s so far) ..."
             )
+            await asyncio.sleep(_sleep)
+            _waited += _sleep
 
         logger.debug(f"LLM Prompt lengths | System: {len(system_prompt)} | User: {len(user_prompt)}")
 
@@ -618,13 +727,20 @@ class LLMClient:
 
                 last_exc = e
                 if self._is_retryable(e) and attempt < self._max_retries:
-                    delay = self._retry_base_delay * (2**attempt)
-                    logger.warning(f"Transient Bedrock error (attempt {attempt + 1}/{self._max_retries}): {e}. Retrying in {delay:.1f}s...")
+                    delay = min(self._retry_base_delay * (2**attempt), 120.0)
+                    logger.warning(
+                        f"[LLM] Transient Bedrock error async (attempt {attempt + 1}/{self._max_retries + 1}): "
+                        f"{type(e).__name__}: {e}. Retrying in {delay:.1f}s..."
+                    )
                     await asyncio.sleep(delay)
                 else:
                     break
         if last_exc:
-            _cb_record_failure()
-            logger.error(f"Bedrock async generation failed after {self._max_retries} retries: {last_exc}")
+            if self._is_retryable(last_exc):
+                _cb_record_failure()
+            logger.error(
+                f"[LLM] agenerate() exhausted {self._max_retries} retries: "
+                f"{type(last_exc).__name__}: {last_exc}"
+            )
             raise last_exc
         return ""

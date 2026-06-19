@@ -253,6 +253,12 @@ class SemanticDINOrchestrator:
         _stage_log: list[dict] = []
 
         def _emit(stage: str, status: str = "running") -> None:
+            try:
+                from agent.app.utils.cache import DAB_CANCEL_FLAG, SPIDER_CANCEL_FLAG
+                if DAB_CANCEL_FLAG or SPIDER_CANCEL_FLAG:
+                    raise KeyboardInterrupt("Run stopped by user")
+            except Exception:
+                pass
             _stage_log.append({"stage": stage, "status": status, "ts": int(time.time() * 1000)})
             if pipeline_callback:
                 try:
@@ -634,11 +640,32 @@ class SemanticDINOrchestrator:
                     )
                     classify_spec = strategy.get("classify_spec", {})
                     try:
-                        _diagnostic_answer = self.text_classify_executor.execute(
+                        _classify_result = self.text_classify_executor.execute(
                             question=user_query,
                             classify_spec=classify_spec,
                             executor=self.executor,
                         )
+                        # Only use the classification result if it actually found matching rows.
+                        # "no rows matched" means the classifier found nothing useful — fall through
+                        # to SQL generation which can use LIKE/LOWER patterns as a better approach.
+                        _empty_classify = (
+                            "no rows matched" in _classify_result.lower()
+                            or "cannot determine" in _classify_result.lower()
+                        )
+                        if _empty_classify:
+                            logger.info(
+                                "[DiagnosticLayer] text_classify_aggregate found no matching rows — "
+                                "falling through to SQL generation with LIKE-pattern hint."
+                            )
+                            lessons_context += (
+                                f"\n\nDIAGNOSTIC CONTEXT (text classify found no rows):\n"
+                                f"Classification result: {_classify_result}\n"
+                                f"{strategy.get('enriched_context', '')}\n\n"
+                                f"EXPLORATION FINDINGS:\n{exploration}\n"
+                                f"Approximate the category filter with LIKE or LOWER() on text columns.\n"
+                            )
+                        else:
+                            _diagnostic_answer = _classify_result
                     except Exception as tce:
                         logger.warning(
                             f"[DiagnosticLayer] text_classify_aggregate failed ({tce}), "

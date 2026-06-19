@@ -76,7 +76,7 @@ from agent.app.core.validation.schema_completeness import check_schema_completen
 import threading
 from agent.app.core.dependencies import EXECUTION_POOL
 RUNNING_TASKS: set[str] = set()
-SPIDER_CANCEL_FLAG = False
+from agent.app.utils.cache import SPIDER_CANCEL_FLAG
 GLOBAL_AUDIT_RUNNING = False
 
 # Live run session Ã¢â‚¬â€ tracks progress of the current /api/run_all batch
@@ -2045,8 +2045,7 @@ def run_all_snowflake(
                     except Exception:
                         pass
     
-    global SPIDER_CANCEL_FLAG
-    SPIDER_CANCEL_FLAG = False
+    SPIDER_CANCEL_FLAG.set(False)
 
     total = len(target_examples)
     run_date = datetime.now().strftime("%Y-%m-%d")
@@ -2141,9 +2140,7 @@ def get_run_status():
 
 @app.post("/api/stop")
 def stop_spider_all():
-    """Cancel a running Spider batch job."""
-    global SPIDER_CANCEL_FLAG
-    SPIDER_CANCEL_FLAG = True
+    SPIDER_CANCEL_FLAG.set(True)
     
     RUNNING_TASKS.clear()
     with _SESSION_LOCK:

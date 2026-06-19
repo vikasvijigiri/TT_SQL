@@ -3,6 +3,7 @@ import json
 import time
 import threading
 from typing import Any, Optional
+import collections.abc
 
 class MemoryCache:
     """A thread-safe in-memory cache with TTL support."""
@@ -119,3 +120,100 @@ class CacheService:
         return self._backend_type
 
 cache_service = CacheService()
+
+
+class RedisSet(collections.abc.MutableSet):
+    def __init__(self, key):
+        self.key = key
+
+    def _get(self):
+        try:
+            val = cache_service.get(self.key)
+            return set(val) if val is not None else set()
+        except Exception:
+            if not hasattr(self, '_local_set'):
+                self._local_set = set()
+            return self._local_set
+
+    def _set(self, s):
+        try:
+            cache_service.set(self.key, list(s), ttl=86400)
+        except Exception:
+            self._local_set = s
+
+    def __contains__(self, item):
+        return item in self._get()
+
+    def __iter__(self):
+        return iter(self._get())
+
+    def __len__(self):
+        return len(self._get())
+
+    def add(self, item):
+        s = self._get()
+        s.add(item)
+        self._set(s)
+
+    def discard(self, item):
+        s = self._get()
+        s.discard(item)
+        self._set(s)
+
+    def clear(self):
+        self._set(set())
+
+
+class RedisBool:
+    def __init__(self, key, default=False):
+        self.key = key
+        self.default = default
+
+    def get(self):
+        try:
+            val = cache_service.get(self.key)
+            return self.default if val is None else bool(val)
+        except Exception:
+            if not hasattr(self, '_local_val'):
+                self._local_val = self.default
+            return self._local_val
+
+    def set(self, val):
+        try:
+            cache_service.set(self.key, bool(val), ttl=86400)
+        except Exception:
+            self._local_val = val
+
+    def __bool__(self):
+        return self.get()
+
+
+class RedisInt:
+    def __init__(self, key, default=0):
+        self.key = key
+        self.default = default
+
+    def get(self):
+        try:
+            val = cache_service.get(self.key)
+            return self.default if val is None else int(val)
+        except Exception:
+            if not hasattr(self, '_local_val'):
+                self._local_val = self.default
+            return self._local_val
+
+    def set(self, val):
+        try:
+            cache_service.set(self.key, int(val), ttl=86400)
+        except Exception:
+            self._local_val = val
+
+
+# Shared Redis-backed flags/states
+DAB_RUNNING_TASKS = RedisSet("shared_DAB_RUNNING_TASKS")
+DAB_EXECUTING_TASKS = RedisSet("shared_DAB_EXECUTING_TASKS")
+DAB_CANCEL_FLAG = RedisBool("shared_DAB_CANCEL_FLAG", False)
+DAB_TOTAL_TASKS = RedisInt("shared_DAB_TOTAL_TASKS", 0)
+
+SPIDER_CANCEL_FLAG = RedisBool("shared_SPIDER_CANCEL_FLAG", False)
+

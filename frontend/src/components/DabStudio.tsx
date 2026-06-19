@@ -531,6 +531,7 @@ const DabStudio = ({ onBack, onHome, autoOpenDetails, clearAutoOpenDetails, user
   const [selectedModel, setSelectedModel] = useState(() => localStorage.getItem('dab_settings_model') || 'bedrock/openai.gpt-oss-safeguard-120b');
   const [temperature, setTemperature] = useState(() => Number(localStorage.getItem('dab_settings_temp') || '0.0'));
   const [workers, setWorkers] = useState(3);
+  const [runs, setRuns] = useState(() => Number(localStorage.getItem('dab_settings_runs') || '5'));
 
   useEffect(() => {
     localStorage.setItem('dab_settings_model', selectedModel);
@@ -543,6 +544,10 @@ const DabStudio = ({ onBack, onHome, autoOpenDetails, clearAutoOpenDetails, user
   useEffect(() => {
     localStorage.setItem('dab_settings_workers', String(workers));
   }, [workers]);
+
+  useEffect(() => {
+    localStorage.setItem('dab_settings_runs', String(runs));
+  }, [runs]);
 
   const [currentView, setCurrentView] = useState(() => {
     return localStorage.getItem('dab_current_view') || 'dashboard';
@@ -562,7 +567,7 @@ const DabStudio = ({ onBack, onHome, autoOpenDetails, clearAutoOpenDetails, user
   const [dateFilter, setDateFilter] = useState<string>(''); // Default to empty, wait for dates to load
   const [allDates, setAllDates] = useState<{ id: string; label: string; date: string; is_active: boolean }[]>([]);
   const [recentRuns, setRecentRuns] = useState([]);
-  const [runningInstances, setRunningInstances] = useState({});
+  const [runningInstances, setRunningInstances] = useState<Record<string, boolean>>({});
   const [runningDbs, setRunningDbs] = useState({});
   const [toast, setToast] = useState<{ message: string; type: 'success' | 'error' } | null>(null);
   const [isDeleting, setIsDeleting] = useState(false);
@@ -937,12 +942,10 @@ const DabStudio = ({ onBack, onHome, autoOpenDetails, clearAutoOpenDetails, user
 
       // Reconcile runningInstances with backend truth
       setRunningInstances(prev => {
-        const next = { ...prev };
-        // Add any that backend says are actively executing but frontend doesn't know about
-        backendRunning.forEach(key => { next[key] = true; });
-        // Remove any that backend says are no longer executing (finished or not yet started)
-        Object.keys(next).forEach(key => {
-          if (!backendRunning.includes(key)) delete next[key];
+        const next: Record<string, boolean> = {};
+        backendRunning.forEach(key => {
+          const baseKey = key.split('_run')[0];
+          next[baseKey] = true;
         });
         return next;
       });
@@ -1192,6 +1195,7 @@ const DabStudio = ({ onBack, onHome, autoOpenDetails, clearAutoOpenDetails, user
         dataset_scope: dbName,
         force_rerun: true,
         workers: workers,
+        runs: runs,
         mode: 'fresh',
         date: targetDate,
         run_id: runIdToPass,
@@ -1231,6 +1235,7 @@ const DabStudio = ({ onBack, onHome, autoOpenDetails, clearAutoOpenDetails, user
       const payload = { 
         force_rerun: true, 
         workers: workers, 
+        runs: runs,
         mode, 
         date: targetDate,
         run_id: runIdToPass,
@@ -1286,7 +1291,8 @@ const DabStudio = ({ onBack, onHome, autoOpenDetails, clearAutoOpenDetails, user
         id: inst.instance_id,
         db: inst.dataset,
         status: inst.status,
-        gold_status: inst.status === 'passed' ? 'gold_pass' : 'gold_fail',
+        run_0_passed: inst.run_0_passed,
+        gold_status: inst.run_0_passed ? 'gold_pass' : 'gold_fail',
         latency: inst.latency || 0,
         corrections: 0
       })));
@@ -1493,30 +1499,38 @@ const DabStudio = ({ onBack, onHome, autoOpenDetails, clearAutoOpenDetails, user
       );
     }
 
-    const { avg_scores, difficulty_metrics, queries } = agentAnalytics;
+    const { avg_scores, difficulty_metrics, error_metrics, queries } = agentAnalytics;
     
+    const avgScoresObj = avg_scores || {};
     // Calculate global average score
-    const totalScores: number = (Object.values(avg_scores) as number[]).reduce((acc: number, val: number) => acc + val, 0);
-    const globalAvgScore = Math.round(totalScores / Object.keys(avg_scores).length);
+    const totalScores: number = (Object.values(avgScoresObj) as number[]).reduce((acc: number, val: number) => acc + val, 0);
+    const globalAvgScore = Object.keys(avgScoresObj).length > 0 
+      ? Math.round(totalScores / Object.keys(avgScoresObj).length)
+      : 0;
 
     // Filtered queries
-    const filteredQueries = queries.filter(q => 
+    const filteredQueries = (queries || []).filter(q => 
       q.id.toLowerCase().includes(analyticsSearchQuery.toLowerCase()) ||
       q.dataset.toLowerCase().includes(analyticsSearchQuery.toLowerCase()) ||
       q.question.toLowerCase().includes(analyticsSearchQuery.toLowerCase())
     );
 
     const baseColors = ['#3b82f6', '#a855f7', '#ec4899', '#eab308', '#10b981', '#f97316', '#06b6d4', '#8b5cf6', '#14b8a6', '#f43f5e', '#6366f1'];
-    const agentScoresData = Object.entries(avg_scores).map(([key, score], idx) => ({
+    const agentScoresData = Object.entries(avgScoresObj).map(([key, score], idx) => ({
       name: key.split('_').map((w: string) => w.charAt(0).toUpperCase() + w.slice(1).toLowerCase()).join(' '),
       score: score,
       color: baseColors[idx % baseColors.length]
     })).sort((a: any, b: any) => b.score - a.score);
 
+    const difficulty_metrics_safe = difficulty_metrics || {
+      easy: { pct_failed: 0, total: 0 },
+      medium: { pct_failed: 0, total: 0 },
+      tough: { pct_failed: 0, total: 0 }
+    };
     const difficultyData = [
-      { name: 'Easy', failedPct: difficulty_metrics.easy.pct_failed, total: difficulty_metrics.easy.total, color: '#10b981' },
-      { name: 'Medium', failedPct: difficulty_metrics.medium.pct_failed, total: difficulty_metrics.medium.total, color: '#f59e0b' },
-      { name: 'Tough', failedPct: difficulty_metrics.tough.pct_failed, total: difficulty_metrics.tough.total, color: '#ef4444' }
+      { name: 'Easy', failedPct: difficulty_metrics_safe.easy.pct_failed, total: difficulty_metrics_safe.easy.total, color: '#10b981' },
+      { name: 'Medium', failedPct: difficulty_metrics_safe.medium.pct_failed, total: difficulty_metrics_safe.medium.total, color: '#f59e0b' },
+      { name: 'Tough', failedPct: difficulty_metrics_safe.tough.pct_failed, total: difficulty_metrics_safe.tough.total, color: '#ef4444' }
     ];
 
     const CustomTooltip = ({ active, payload, label }: any) => {
@@ -1635,6 +1649,38 @@ const DabStudio = ({ onBack, onHome, autoOpenDetails, clearAutoOpenDetails, user
             </div>
           </div>
         </div>
+
+        {/* Forensic Error Analytics */}
+        {error_metrics && (
+          <div className="bg-[#0b0a12] border border-[#1e1933] rounded-xl p-4.5 flex flex-col shadow-lg">
+            <h2 className="text-xs font-mono font-bold pb-3 mb-3 border-b border-[#1e1933] uppercase tracking-wider text-slate-400 flex items-center gap-2 animate-pulse">
+              <AlertTriangle className="w-3.5 h-3.5 text-rose-500" />
+              Forensic Error Analysis (Root Cause Distribution)
+            </h2>
+            <div className="grid grid-cols-2 sm:grid-cols-4 lg:grid-cols-8 gap-3">
+              {[
+                { label: 'Rate Limit', key: 'llm_rate_limit', color: 'text-amber-400 bg-amber-500/10 border-amber-500/20', icon: Zap },
+                { label: 'LLM Timeout', key: 'llm_timeout', color: 'text-rose-400 bg-rose-500/10 border-rose-500/20', icon: Clock },
+                { label: 'LLM Format', key: 'llm_generation', color: 'text-orange-400 bg-orange-500/10 border-orange-500/20', icon: FileCode },
+                { label: 'DB Conn', key: 'db_connection', color: 'text-blue-400 bg-blue-500/10 border-blue-500/20', icon: Database },
+                { label: 'SQL Syntax', key: 'sql_syntax', color: 'text-purple-400 bg-purple-500/10 border-purple-500/20', icon: Terminal },
+                { label: 'Exec Timeout', key: 'execution_timeout', color: 'text-red-500 bg-red-500/10 border-red-500/20', icon: XCircle },
+                { label: 'Pruner Trunc', key: 'schema_pruning', color: 'text-cyan-400 bg-cyan-500/10 border-cyan-500/20', icon: Sliders },
+                { label: 'Other Gaps', key: 'other_errors', color: 'text-slate-400 bg-slate-500/10 border-slate-500/20', icon: AlertTriangle },
+              ].map(err => {
+                const count = error_metrics[err.key] || 0;
+                const Icon = err.icon;
+                return (
+                  <div key={err.key} className={`p-3 rounded-lg border flex flex-col items-center justify-center text-center gap-1.5 transition-all hover:scale-[1.03] ${err.color}`}>
+                    <Icon className="w-5 h-5 shrink-0" />
+                    <span className="text-[10px] font-mono font-bold whitespace-nowrap uppercase tracking-wider">{err.label}</span>
+                    <span className="text-lg font-mono font-black">{count}</span>
+                  </div>
+                );
+              })}
+            </div>
+          </div>
+        )}
 
         {/* Live Ratings Feed Table */}
         <div className="bg-[#0b0a12] border border-[#1e1933] rounded-xl p-4 flex flex-col shadow-lg">
@@ -1919,6 +1965,23 @@ const DabStudio = ({ onBack, onHome, autoOpenDetails, clearAutoOpenDetails, user
                 className="w-full h-1 bg-[#1b2738] rounded-lg appearance-none cursor-pointer accent-violet-500"
               />
             </div>
+
+            {/* Runs selection */}
+            <div className="flex flex-col gap-1">
+              <div className="flex justify-between items-center">
+                <label className="text-[8px] font-mono font-bold text-slate-500 uppercase tracking-wider">Passes per Query</label>
+                <span className="text-[9px] font-mono text-purple-400 font-bold">{runs} Runs</span>
+              </div>
+              <input
+                type="range"
+                min="1"
+                max="5"
+                step="1"
+                value={runs}
+                onChange={e => setRuns(Math.min(5, Math.max(1, Number(e.target.value))))}
+                className="w-full h-1 bg-[#1b2738] rounded-lg appearance-none cursor-pointer accent-violet-500"
+              />
+            </div>
           </div>
         </div>
 
@@ -2152,7 +2215,8 @@ const DabStudio = ({ onBack, onHome, autoOpenDetails, clearAutoOpenDetails, user
               <>
                 {/* Metrics Grid */}
                 {metrics && (
-                  <MetricsGrid 
+                  <MetricsGrid
+                    theme={theme}
                     metrics={[
                         { label: 'TOTAL', value: metrics.total_queries || 0, color: 'blue', type: 'total', sub: 'QUERIES' },
                         { label: 'EVALUATED', value: metrics.evaluated || 0, color: 'indigo', type: 'evaluated', sub: 'RUNS' },
@@ -2183,7 +2247,7 @@ const DabStudio = ({ onBack, onHome, autoOpenDetails, clearAutoOpenDetails, user
 
                     <div className="space-y-2 max-h-[460px] overflow-y-auto pr-1 no-scrollbar">
                       {filteredDatabases.map((db) => {
-                        const totalTargetRuns = db.total_questions * 5;
+                        const totalTargetRuns = db.total_questions * runs;
                         const totalProcessed = db.run_slots || 0;
                         
                         const passK = db.results_count;
@@ -2191,6 +2255,7 @@ const DabStudio = ({ onBack, onHome, autoOpenDetails, clearAutoOpenDetails, user
                         const passKPct = db.total_questions ? (passK / db.total_questions) * 100 : 0;
                         const failKPct = db.total_questions ? (failK / db.total_questions) * 100 : 0;
                         
+                        const pass1Pct = db.run_slots ? (db.passing_slots / db.run_slots) * 100 : 0;
                         const executionPct = totalTargetRuns ? (totalProcessed / totalTargetRuns) * 100 : 0;
 
                         return (
@@ -2234,9 +2299,10 @@ const DabStudio = ({ onBack, onHome, autoOpenDetails, clearAutoOpenDetails, user
 
                                 <div className="flex items-center justify-between text-[10px] font-mono text-slate-400">
                                   <span className="text-slate-500">Done: {totalProcessed}/{totalTargetRuns} Runs</span>
-                                  <div className="flex items-center gap-2 font-bold" title="Pass@K (At least 1 pass per query)">
-                                    <span className="text-emerald-400">{passKPct.toFixed(0)}% P@K</span>
-                                    <span className="text-rose-500">{failKPct.toFixed(0)}% Fail</span>
+                                  <div className="flex items-center gap-2.5 font-bold">
+                                    <span className="text-purple-400" title="Pass@1: Run-level success rate">{pass1Pct.toFixed(0)}% P@1</span>
+                                    <span className="text-emerald-400" title="Pass@K: Query-level success rate (any run passes)">{passKPct.toFixed(0)}% P@K</span>
+                                    <span className="text-rose-500" title="Fail rate">{failKPct.toFixed(0)}% Fail</span>
                                   </div>
                                 </div>
                               </div>

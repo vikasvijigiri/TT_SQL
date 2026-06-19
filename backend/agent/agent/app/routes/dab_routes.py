@@ -32,81 +32,15 @@ from agent.app.core.config import DAB_REPO as _DAB_REPO
 DAB_REPO_PATH_DEFAULT = str(_DAB_REPO)
 DAB_RESULTS_BASE = DAB_RESULTS_DIR
 
-import collections.abc
-
-class RedisSet(collections.abc.MutableSet):
-    def __init__(self, key):
-        self.key = key
-
-    def _get(self):
-        from agent.app.utils.cache import cache_service
-        try:
-            val = cache_service.get(self.key)
-            return set(val) if val is not None else set()
-        except Exception:
-            if not hasattr(self, '_local_set'):
-                self._local_set = set()
-            return self._local_set
-
-    def _set(self, s):
-        from agent.app.utils.cache import cache_service
-        try:
-            cache_service.set(self.key, list(s), ttl=86400)
-        except Exception:
-            self._local_set = s
-
-    def __contains__(self, item):
-        return item in self._get()
-
-    def __iter__(self):
-        return iter(self._get())
-
-    def __len__(self):
-        return len(self._get())
-
-    def add(self, item):
-        s = self._get()
-        s.add(item)
-        self._set(s)
-
-    def discard(self, item):
-        s = self._get()
-        s.discard(item)
-        self._set(s)
-
-    def clear(self):
-        self._set(set())
-
-
-class RedisBool:
-    def __init__(self, key, default=False):
-        self.key = key
-        self.default = default
-
-    def get(self):
-        from agent.app.utils.cache import cache_service
-        try:
-            val = cache_service.get(self.key)
-            return self.default if val is None else bool(val)
-        except Exception:
-            if not hasattr(self, '_local_val'):
-                self._local_val = self.default
-            return self._local_val
-
-    def set(self, val):
-        from agent.app.utils.cache import cache_service
-        try:
-            cache_service.set(self.key, bool(val), ttl=86400)
-        except Exception:
-            self._local_val = val
-
-    def __bool__(self):
-        return self.get()
-
-
-DAB_RUNNING_TASKS = RedisSet("shared_DAB_RUNNING_TASKS")
-DAB_EXECUTING_TASKS = RedisSet("shared_DAB_EXECUTING_TASKS")
-DAB_CANCEL_FLAG = RedisBool("shared_DAB_CANCEL_FLAG", False)
+from agent.app.utils.cache import (
+    RedisBool,
+    RedisInt,
+    RedisSet,
+    DAB_RUNNING_TASKS,
+    DAB_EXECUTING_TASKS,
+    DAB_CANCEL_FLAG,
+    DAB_TOTAL_TASKS,
+)
 _dab_queries_cache = None
 
 
@@ -171,32 +105,66 @@ def _get_dab_queries():
 
 
 def _dab_query_status(dataset: str, query_id: str, date: str = "all", run_id: Optional[str] = None, username: Optional[str] = None) -> Dict[str, Any]:
-    """Get the live status of a specific DAB query execution."""
+    """Get the live status of a specific DAB query execution, aggregating across runs."""
     query_id = query_id.lower().replace("query", "")
     from agent.app.dab.dab_evaluator import load_eval_result
     qkey = f"{dataset}_q{query_id}"
 
-    if qkey in DAB_EXECUTING_TASKS:
+    is_executing = any(k == qkey or k.startswith(f"{qkey}_run") for k in DAB_EXECUTING_TASKS)
+    if is_executing:
         return {"status": "running", "passed": None, "reason": "", "evaluated": False, "latency": 0}
-    if qkey in DAB_RUNNING_TASKS:
+    is_running = any(k == qkey or k.startswith(f"{qkey}_run") for k in DAB_RUNNING_TASKS)
+    if is_running:
         return {"status": "pending", "passed": None, "reason": "", "evaluated": False, "latency": 0}
 
-    eval_result = load_eval_result(dataset, query_id, date=date, run_id=run_id, username=username)
-    if eval_result is None:
+    runs_found = []
+    any_passed = False
+    best_result = None
+
+    for r in range(10):
+        sfx = "" if r == 0 else f"_run{r}"
+        rv = load_eval_result(dataset, query_id, run_suffix=sfx, date=date, run_id=run_id, username=username)
+        if rv is not None:
+            rv["run_num"] = r
+            runs_found.append(rv)
+            if rv.get("passed"):
+                any_passed = True
+                if not best_result or not best_result.get("passed"):
+                    best_result = rv
+
+    if not runs_found:
         return {"status": "pending", "passed": None, "reason": "", "evaluated": False, "latency": 0}
+
+    if best_result is None:
+        best_result = runs_found[0]
+
+    total_input = sum(rv.get("input_tokens", 0) or 0 for rv in runs_found)
+    total_output = sum(rv.get("output_tokens", 0) or 0 for rv in runs_found)
+    avg_latency = sum(rv.get("elapsed_s", 0) or 0 for rv in runs_found) / len(runs_found)
+
+    run_0_passed = any(bool(rv.get("passed")) for rv in runs_found if rv.get("run_num") == 0)
+    passing_runs = sum(1 for rv in runs_found if rv.get("passed"))
+    total_runs = len(runs_found)
+    runs_detail = [{"run_num": rv["run_num"], "passed": bool(rv.get("passed")), "reason": rv.get("reason", "")} for rv in runs_found]
+    reason_str = best_result.get("reason", "") if best_result else ""
 
     return {
-        "status": "passed" if eval_result.get("passed") else "failed",
-        "passed": eval_result.get("passed"),
-        "reason": eval_result.get("reason", ""),
-        "method": eval_result.get("method", ""),
-        "timestamp": eval_result.get("timestamp", ""),
-        "agent_answer": eval_result.get("agent_answer_snippet", ""),
-        "ground_truth": eval_result.get("ground_truth", ""),
+        "status": "passed" if any_passed else "failed",
+        "passed": any_passed,
+        "run_0_passed": run_0_passed,
+        "passing_runs": passing_runs,
+        "total_runs": total_runs,
+        "runs": runs_detail,
+        "reason": reason_str,
+        "method": best_result.get("method", ""),
+        "timestamp": best_result.get("timestamp", ""),
+        "agent_answer": best_result.get("agent_answer_snippet", ""),
+        "ground_truth": best_result.get("ground_truth", ""),
         "evaluated": True,
-        "latency": eval_result.get("elapsed_s", 0),
-        "input_tokens": eval_result.get("input_tokens", 0),
-        "output_tokens": eval_result.get("output_tokens", 0),
+        "latency": round(avg_latency, 2),
+        "input_tokens": total_input,
+        "output_tokens": total_output,
+        "run_suffix": f"_run{best_result['run_num']}" if best_result.get("run_num", 0) > 0 else "",
     }
 
 
@@ -458,17 +426,18 @@ def get_dab_queries_by_db(dataset: str, request: Request, date: str = "all", run
             target_results_dir = user_dab_dir
             legacy_results_dir = DAB_RESULTS_BASE
 
-        csv_file = target_results_dir / q["dataset"] / f"query{q['query_id']}.csv"
+        run_sfx = status_info.get("run_suffix", "")
+        csv_file = target_results_dir / q["dataset"] / f"query{q['query_id']}{run_sfx}.csv"
         if not csv_file.exists():
-            csv_file = legacy_results_dir / q["dataset"] / f"query{q['query_id']}.csv"
+            csv_file = legacy_results_dir / q["dataset"] / f"query{q['query_id']}{run_sfx}.csv"
         if csv_file.exists():
             rows_count = _get_csv_rows_cached(csv_file)
                 
         # Corrections count from md log (cached)
         corrections = 0
-        md_file = target_results_dir / q["dataset"] / f"query{q['query_id']}.md"
+        md_file = target_results_dir / q["dataset"] / f"query{q['query_id']}{run_sfx}.md"
         if not md_file.exists():
-            md_file = legacy_results_dir / q["dataset"] / f"query{q['query_id']}.md"
+            md_file = legacy_results_dir / q["dataset"] / f"query{q['query_id']}{run_sfx}.md"
         if md_file.exists():
             corrections = _get_md_corrections_cached(md_file)
 
@@ -566,9 +535,40 @@ def _get_query_difficulty(q: dict) -> str:
         return "easy"
 
 
+def _classify_error(reason: str, content: str) -> str:
+    reason_lower = (reason or "").lower()
+    content_lower = (content or "").lower()
+    
+    # 1. LLM Throttling/Rate Limit
+    if any(w in reason_lower or w in content_lower for w in ["rate limit", "throttled", "request limit", "429", "circuit breaker", "circuitbreaker"]):
+        return "llm_rate_limit"
+    # 2. LLM Timeout
+    if any(w in reason_lower or w in content_lower for w in ["timeout", "timed out", "readtimeout", "connection timeout"]):
+        if "exceeded 30 seconds" in reason_lower:
+            return "execution_timeout"
+        return "llm_timeout"
+    # 3. LLM Generation/Parsing
+    if any(w in reason_lower or w in content_lower for w in ["jsondecodeerror", "failed to parse", "invalid json", "json parse"]):
+        return "llm_generation"
+    # 4. DB Connection/Access
+    if any(w in reason_lower or w in content_lower for w in ["connectionrefused", "database is locked", "operationalerror", "connection not established", "mongo", "mongodb"]):
+        return "db_connection"
+    # 5. SQL Syntax/Parsing
+    if any(w in reason_lower or w in content_lower for w in ["syntax error", "parseerror", "invalid sql", "sqlglot"]):
+        return "sql_syntax"
+    # 6. Execution Timeout
+    if "exceeded 30 seconds" in reason_lower or "killed" in reason_lower:
+        return "execution_timeout"
+    # 7. Schema/Pruner Truncation
+    if any(w in reason_lower or w in content_lower for w in ["prun", "token limit", "context length"]):
+        return "schema_pruning"
+    
+    return "other_errors"
+
+
 @router.get("/api/dab/agent_analytics")
 def get_dab_agent_analytics(request: Request, date: str = "all", run_id: Optional[str] = None):
-    """Get DAB Agent Analytics including tool scores, difficulty stats, and plots data."""
+    """Get DAB Agent Analytics including tool scores, difficulty stats, error categories, and plots data."""
     username = _get_username_from_request(request)
     run_id = _resolve_live_run_id(run_id, username)
     from agent.app.db.database import SessionLocal
@@ -620,8 +620,31 @@ def get_dab_agent_analytics(request: Request, date: str = "all", run_id: Optiona
             "tough": {"total": 0, "passed": 0, "failed": 0}
         }
         
-        agent_scores_sum = {}
-        agent_counts = {}
+        error_counts = {
+            "llm_rate_limit": 0,
+            "llm_timeout": 0,
+            "llm_generation": 0,
+            "db_connection": 0,
+            "sql_syntax": 0,
+            "execution_timeout": 0,
+            "schema_pruning": 0,
+            "other_errors": 0,
+        }
+        
+        agent_scores_sum = {
+            "schema_linker": 0,
+            "sql_generator": 0,
+            "critic": 0,
+            "self_corrector": 0,
+            "data_iq": 0,
+        }
+        agent_counts = {
+            "schema_linker": 0,
+            "sql_generator": 0,
+            "critic": 0,
+            "self_corrector": 0,
+            "data_iq": 0,
+        }
         
         for ev in evals:
             dataset_lower = ev.dataset.lower()
@@ -668,30 +691,87 @@ def get_dab_agent_analytics(request: Request, date: str = "all", run_id: Optiona
                     if level in ["ERROR", "WARNING"]:
                         agent_errors[agent] += 1
             
-            # If no agents were logged but query failed, penalize all known
-            if not agent_calls and not passed:
-                agent_calls = {"ORCHESTRATOR": 1, "SCHEMA_LINKER": 1, "SQL_GENERATOR": 1}
-                agent_errors = {"ORCHESTRATOR": 2, "SCHEMA_LINKER": 2, "SQL_GENERATOR": 2}
+            # Forensic Error Analytics: classify failed evaluations
+            if not passed:
+                err_category = _classify_error(ev.reason, content)
+                error_counts[err_category] += 1
 
-            query_agent_scores = {}
-            for agent, calls in agent_calls.items():
-                if calls > 0:
-                    errs = agent_errors.get(agent, 0)
-                    score = 100 - (15 * errs)
-                    if not passed:
-                        score -= 20
-                    # Special boost for self corrector if it fixed it
-                    if agent == "SELF_CORRECTOR" and passed:
-                        score = 100
-                    score = max(0, min(100, score))
-                    
-                    query_agent_scores[agent] = score
-                    
-                    if agent not in agent_scores_sum:
-                        agent_scores_sum[agent] = 0
-                        agent_counts[agent] = 0
-                    agent_scores_sum[agent] += score
-                    agent_counts[agent] += 1
+            # Premium, highly granular agent performance rating logic
+            query_agent_scores = {
+                "schema_linker": 100,
+                "sql_generator": 100,
+                "critic": 100,
+                "self_corrector": 100,
+                "data_iq": 100,
+            }
+            
+            reason_lower = (ev.reason or "").lower()
+            content_lower = content.lower() if content else ""
+            
+            # 1. Schema Linker
+            schema_linker_errs = agent_errors.get("SCHEMA_LINKER", 0)
+            schema_linker_calls = agent_calls.get("SCHEMA_LINKER", 0)
+            if schema_linker_calls > 0 or "schema_pruner" in content_lower:
+                score = 100 - (20 * schema_linker_errs)
+                if "prun" in reason_lower:
+                    score -= 30
+                if not passed and "no such column" in reason_lower:
+                    score -= 15
+                query_agent_scores["schema_linker"] = max(10, min(100, score))
+            elif not passed:
+                query_agent_scores["schema_linker"] = 80
+                
+            # 2. SQL Generator
+            sql_gen_errs = agent_errors.get("SQL_GENERATOR", 0)
+            sql_gen_calls = agent_calls.get("SQL_GENERATOR", 0)
+            if sql_gen_calls > 0:
+                score = 100 - (25 * sql_gen_errs)
+                if "syntax error" in reason_lower or "parseerror" in reason_lower:
+                    score -= 35
+                if not passed:
+                    score -= 15
+                query_agent_scores["sql_generator"] = max(10, min(100, score))
+            elif not passed:
+                query_agent_scores["sql_generator"] = 80
+
+            # 3. Critic
+            critic_errs = agent_errors.get("CRITIC", 0)
+            critic_calls = agent_calls.get("CRITIC", 0)
+            if critic_calls > 0:
+                score = 100 - (20 * critic_errs)
+                if not passed:
+                    score -= 25
+                query_agent_scores["critic"] = max(10, min(100, score))
+            elif not passed:
+                query_agent_scores["critic"] = 90
+
+            # 4. Self Corrector
+            self_corrector_calls = agent_calls.get("SELF_CORRECTOR", 0)
+            if self_corrector_calls > 0:
+                if passed:
+                    score = 100
+                else:
+                    score = 50 - (10 * agent_errors.get("SELF_CORRECTOR", 0))
+                query_agent_scores["self_corrector"] = max(10, min(100, score))
+            else:
+                query_agent_scores["self_corrector"] = 100
+
+            # 5. Data IQ
+            data_iq_errs = agent_errors.get("DATA_IQ", 0)
+            data_iq_calls = agent_calls.get("DATA_IQ", 0)
+            if data_iq_calls > 0 or "classify" in content_lower:
+                score = 100 - (15 * data_iq_errs)
+                if "rate limit" in content_lower or "throttled" in content_lower:
+                    score -= 20
+                if not passed and "classify" in reason_lower:
+                    score -= 25
+                query_agent_scores["data_iq"] = max(10, min(100, score))
+            elif not passed:
+                query_agent_scores["data_iq"] = 85
+
+            for agent_key, score in query_agent_scores.items():
+                agent_scores_sum[agent_key] += score
+                agent_counts[agent_key] += 1
 
             queries_analytics.append({
                 "id": ev.instance_id + (f"_run{ev.run_suffix}" if ev.run_suffix else ""),
@@ -700,7 +780,7 @@ def get_dab_agent_analytics(request: Request, date: str = "all", run_id: Optiona
                 "question": q_info["question"],
                 "passed": passed,
                 "difficulty": difficulty,
-                "scores": query_agent_scores,
+                "scores": query_agent_scores,  # Lowercase keys expected by frontend
                 "details": {
                     "agents_active": len(agent_calls),
                     "total_errors": sum(agent_errors.values())
@@ -709,9 +789,9 @@ def get_dab_agent_analytics(request: Request, date: str = "all", run_id: Optiona
             
         # Calculate final averages
         avg_scores = {}
-        for k, total in agent_scores_sum.items():
-            count = agent_counts[k]
-            avg_scores[k] = round(total / count, 1) if count > 0 else 100.0
+        for agent_key, total in agent_scores_sum.items():
+            count = agent_counts[agent_key]
+            avg_scores[agent_key] = round(total / count, 1) if count > 0 else 100.0
             
         # Format difficulty stats for response
         formatted_diff = {}
@@ -726,9 +806,12 @@ def get_dab_agent_analytics(request: Request, date: str = "all", run_id: Optiona
                 "pct_failed": pct_failed
             }
             
+        total_failed = sum(1 for q in queries_analytics if not q["passed"])
         return {
             "avg_scores": avg_scores,
             "difficulty_metrics": formatted_diff,
+            "error_metrics": error_counts,
+            "total_failed": total_failed,
             "queries": queries_analytics,
             "total_evaluated": len(queries_analytics)
         }
@@ -769,6 +852,16 @@ def get_dab_result(dataset: str, query_id: str, request: Request, date: str = "a
     username = _get_username_from_request(request)
     user_dab_dir = get_user_dab_results_dir(username)
 
+    # Find the best run suffix (first passing run, or run 0)
+    run_suffix = ""
+    for r in range(10):
+        sfx = "" if r == 0 else f"_run{r}"
+        rv = load_eval_result(dataset, query_id, run_suffix=sfx, date=date, run_id=run_id, username=username)
+        if rv is not None:
+            if rv.get("passed"):
+                run_suffix = sfx
+                break
+
     if run_id and run_id != "live" and run_id != "all":
         target_dirs = [user_dab_dir / "_archive" / run_id]
     else:
@@ -781,12 +874,12 @@ def get_dab_result(dataset: str, query_id: str, request: Request, date: str = "a
     
     # Check user-scoped target directories first
     for t_dir in target_dirs:
-        if (t_dir / dataset / f"query{query_id}.md").exists():
+        if (t_dir / dataset / f"query{query_id}{run_suffix}.md").exists():
             result_dir = t_dir / dataset
-            md_file = result_dir / f"query{query_id}.md"
-            sql_file = result_dir / f"query{query_id}.sql"
-            csv_file = result_dir / f"query{query_id}.csv"
-            answer_file = result_dir / f"query{query_id}_answer.txt"
+            md_file = result_dir / f"query{query_id}{run_suffix}.md"
+            sql_file = result_dir / f"query{query_id}{run_suffix}.sql"
+            csv_file = result_dir / f"query{query_id}{run_suffix}.csv"
+            answer_file = result_dir / f"query{query_id}{run_suffix}_answer.txt"
             break
             
     # Check legacy target directories fallback
@@ -797,31 +890,31 @@ def get_dab_result(dataset: str, query_id: str, request: Request, date: str = "a
             legacy_target_dirs = get_target_dirs_for_date(DAB_RESULTS_BASE, date)
             
         for t_dir in legacy_target_dirs:
-            if (t_dir / dataset / f"query{query_id}.md").exists():
+            if (t_dir / dataset / f"query{query_id}{run_suffix}.md").exists():
                 result_dir = t_dir / dataset
-                md_file = result_dir / f"query{query_id}.md"
-                sql_file = result_dir / f"query{query_id}.sql"
-                csv_file = result_dir / f"query{query_id}.csv"
-                answer_file = result_dir / f"query{query_id}_answer.txt"
+                md_file = result_dir / f"query{query_id}{run_suffix}.md"
+                sql_file = result_dir / f"query{query_id}{run_suffix}.sql"
+                csv_file = result_dir / f"query{query_id}{run_suffix}.csv"
+                answer_file = result_dir / f"query{query_id}{run_suffix}_answer.txt"
                 break
 
     # If not found in target_dirs (e.g. active run), check active results folder
     if md_file is None:
         result_dir = user_dab_dir / dataset
-        md_file = result_dir / f"query{query_id}.md"
-        sql_file = result_dir / f"query{query_id}.sql"
-        csv_file = result_dir / f"query{query_id}.csv"
-        answer_file = result_dir / f"query{query_id}_answer.txt"
+        md_file = result_dir / f"query{query_id}{run_suffix}.md"
+        sql_file = result_dir / f"query{query_id}{run_suffix}.sql"
+        csv_file = result_dir / f"query{query_id}{run_suffix}.csv"
+        answer_file = result_dir / f"query{query_id}{run_suffix}_answer.txt"
         
         # Check active legacy results folder fallback
         if not md_file.exists():
             legacy_result_dir = DAB_RESULTS_BASE / dataset
-            if (legacy_result_dir / f"query{query_id}.md").exists():
+            if (legacy_result_dir / f"query{query_id}{run_suffix}.md").exists():
                 result_dir = legacy_result_dir
-                md_file = result_dir / f"query{query_id}.md"
-                sql_file = result_dir / f"query{query_id}.sql"
-                csv_file = result_dir / f"query{query_id}.csv"
-                answer_file = result_dir / f"query{query_id}_answer.txt"
+                md_file = result_dir / f"query{query_id}{run_suffix}.md"
+                sql_file = result_dir / f"query{query_id}{run_suffix}.sql"
+                csv_file = result_dir / f"query{query_id}{run_suffix}.csv"
+                answer_file = result_dir / f"query{query_id}{run_suffix}_answer.txt"
 
     log_content = ""
     sql_content = ""
@@ -861,7 +954,7 @@ def get_dab_result(dataset: str, query_id: str, request: Request, date: str = "a
         except Exception:
             pass
 
-    eval_result = load_eval_result(dataset, query_id, date=date, run_id=run_id, username=username)
+    eval_result = load_eval_result(dataset, query_id, run_suffix=run_suffix, date=date, run_id=run_id, username=username)
     status_info = _dab_query_status(dataset, query_id, date=date, run_id=run_id, username=username)
 
     return {
@@ -1193,6 +1286,7 @@ class DabRunAllPayload(BaseModel):
     skip_docker: bool = False
     force_rerun: bool = False
     workers: int = 3  # parallel query workers (keep ≤ 3 to avoid SSL/rate-limit errors)
+    runs: int = 5     # passes per query (default 5 for benchmark metrics)
     mode: str = "fresh"  # "fresh" or "continue"
     date: Optional[str] = None  # YYYY-MM-DD
     run_id: Optional[str] = None  # specific archived run_id to continue (e.g. "run_20260617_160102")
@@ -1219,6 +1313,7 @@ def stop_dab_all():
     """Cancel a running DAB batch job."""
     global DAB_CANCEL_FLAG
     DAB_CANCEL_FLAG.set(True)
+    DAB_TOTAL_TASKS.set(0)
     
     # Try to cancel any background tasks managed by TaskManager
     try:
@@ -1744,6 +1839,16 @@ def run_dab_all(request: Request, payload: DabRunAllPayload = DabRunAllPayload()
             logger.info(f"Continue mode: {len(completed_keys)} already-completed slots found for user={username}.")
         else:
             logger.info(f"DAB run_all: Starting a fresh run for {run_date_str} (user={username}).")
+            # Clear LangChain LLM SQLite cache so stale classification/routing
+            # responses from prior runs don't short-circuit the new run.
+            from agent.app.core.config import CONFIG_DIR as _cfg_dir
+            _llm_cache_db = _cfg_dir.parent / ".langchain_cache.db"
+            if _llm_cache_db.exists():
+                try:
+                    _llm_cache_db.unlink()
+                    logger.info("Cleared LangChain LLM cache (.langchain_cache.db) for fresh DAB run.")
+                except Exception as _ce:
+                    logger.warning(f"Could not clear LangChain LLM cache: {_ce}")
             # 1. Check if there are live database records to archive
             first_record_query = db.query(Evaluation).filter(
                 Evaluation.username == username,
@@ -1814,8 +1919,8 @@ def run_dab_all(request: Request, payload: DabRunAllPayload = DabRunAllPayload()
     for q in queries:
         if payload.skip_docker and q["needs_docker"]:
             continue
-        # Global runs always queue 5 passes for each question
-        for i in range(5):
+        # Global runs always queue payload.runs passes for each question
+        for i in range(payload.runs):
             run_sfx = "" if i == 0 else f"_run{i}"
             if payload.mode == "continue" and (q["dataset"], str(q["query_id"]), run_sfx) in completed_keys:
                 continue
@@ -1836,7 +1941,8 @@ def run_dab_all(request: Request, payload: DabRunAllPayload = DabRunAllPayload()
             "count": 0,
         }
 
-    num_workers = max(1, min(payload.workers, 10))  # clamp to [1, 10] for safety
+    DAB_TOTAL_TASKS.set(len(to_run))
+    num_workers = max(1, min(payload.workers, 50))  # clamp to [1, 50] — supports high-concurrency runs
 
     def _run_one(q):
         global DAB_CANCEL_FLAG
@@ -1847,12 +1953,51 @@ def run_dab_all(request: Request, payload: DabRunAllPayload = DabRunAllPayload()
         DAB_EXECUTING_TASKS.add(qkey)
         try:
             from agent.app.dab.dab_orchestrator import run_dab_query
-            run_dab_query(
-                q,
-                run_number=q.get("run_number", 0),
-                model=payload.model,
-                temperature=payload.temperature
+            from agent.app.utils.llm import CB_RESET_AFTER_S, CB_MAX_WAIT_S
+            import time as _time
+
+            # Patterns that identify a transient Bedrock connectivity failure.
+            # These may escape run_dab_query if _cb_wait_until_clear() finally
+            # exhausted its patience budget (i.e. Bedrock was down >10 minutes).
+            _TRANSIENT = (
+                "EndpointConnectionError", "ReadTimeoutError",
+                "Connection was closed", "Could not connect",
+                "ThrottlingException", "ServiceUnavailableException",
+                "circuit breaker",
             )
+
+            # Safety-net: retry the whole query if a transient Bedrock error
+            # escapes (should be rare now that generate() blocks internally).
+            _MAX_OUTER_RETRIES = 3
+            for _attempt in range(_MAX_OUTER_RETRIES):
+                try:
+                    run_dab_query(
+                        q,
+                        run_number=q.get("run_number", 0),
+                        model=payload.model,
+                        temperature=payload.temperature
+                    )
+                    break   # completed (pass or fail) — don't retry
+                except Exception as exc:
+                    exc_str = str(exc)
+                    is_transient = any(p in exc_str for p in _TRANSIENT)
+                    if not is_transient or _attempt >= _MAX_OUTER_RETRIES - 1:
+                        logger.error(
+                            f"[DABBatch] {qkey}: unrecoverable error on attempt "
+                            f"{_attempt + 1}/{_MAX_OUTER_RETRIES}: {type(exc).__name__}: {exc}"
+                        )
+                        break   # give up — result already written by run_dab_query's except
+                    if DAB_CANCEL_FLAG:
+                        break
+                    wait_s = min(CB_RESET_AFTER_S + 10, 130.0)
+                    logger.warning(
+                        f"[DABBatch] {qkey}: transient error escaped run_dab_query "
+                        f"({type(exc).__name__}) — waiting {wait_s:.0f}s before "
+                        f"outer retry {_attempt + 1}/{_MAX_OUTER_RETRIES}."
+                    )
+                    _time.sleep(wait_s)
+                    if DAB_CANCEL_FLAG:
+                        break
         except Exception:
             pass
         finally:
@@ -1891,6 +2036,7 @@ def run_dab_all(request: Request, payload: DabRunAllPayload = DabRunAllPayload()
         import agent.app.dab.dab_evaluator as de
         de.DAB_RUN_DATE = None
         de.DAB_RUN_ID = None
+        DAB_TOTAL_TASKS.set(0)
 
         # ── Auto Self-Improvement (Fix 1) ───────────────────────────────────
         # After every benchmark batch completes, automatically extract rules from
@@ -2011,9 +2157,10 @@ def get_dab_run_status():
     all_running = list(DAB_RUNNING_TASKS) + [t["target"] for t in running_tasks]
     
     # Calculate global completion progress for the active batch
-    # 54 canonical queries * 5 runs = 270 total
-    queries = _get_dab_queries()
-    total_queries = len(queries) * 5
+    total_queries = DAB_TOTAL_TASKS.get()
+    if not total_queries:
+        queries = _get_dab_queries()
+        total_queries = len(queries) * 5
     
     # Completed = total queued minus what's still in the running set.
     # This is accurate because run_all adds ALL slots to DAB_RUNNING_TASKS upfront

@@ -226,6 +226,12 @@ class CustomLogger:
         )
         self.info(f"{indented}\n")
 
+    # Max characters logged per prompt/response section. Prompts can be
+    # 100K+ chars for large schemas; without a cap a single query log reaches
+    # 500MB+, making logs unreadable and wasting disk rapidly.
+    _LOG_PROMPT_MAX = 4000
+    _LOG_RESPONSE_MAX = 3000
+
     def log_agent_call(
         self, name: str, prompt: str, result: str, metrics: Dict[str, Any] | None = None
     ):
@@ -236,6 +242,18 @@ class CustomLogger:
             inp_t = metrics.get("input_tokens", 0)
             out_t = metrics.get("output_tokens", 0)
             self.info(f"{self.YELLOW}Tokens: {inp_t} In / {out_t} Out{self.RESET}")
+
+        # Truncate to keep log files from growing to hundreds of MB on large schemas
+        _full_prompt_len = len(prompt)
+        _full_result_len = len(result)
+        if _full_prompt_len > self._LOG_PROMPT_MAX:
+            prompt = prompt[:self._LOG_PROMPT_MAX] + (
+                f"\n... [{_full_prompt_len - self._LOG_PROMPT_MAX:,} chars omitted — full prompt sent to LLM]"
+            )
+        if _full_result_len > self._LOG_RESPONSE_MAX:
+            result = result[:self._LOG_RESPONSE_MAX] + (
+                f"\n... [{_full_result_len - self._LOG_RESPONSE_MAX:,} chars omitted]"
+            )
 
         self.debug(f"{self.BLUE}{self.BOLD}v PROMPT{self.RESET}")
         indented_prompt = "\n".join(

@@ -186,7 +186,7 @@ class SchemaLinkerAgent:
         # 1. Multi-Tier Table Pruning Check with Progressive Fallback
         if relevant_tables is not None:
             logger.info(f"Using pre-pruned table list with {len(relevant_tables)} tables.")
-        elif force_full or full_tokens <= 4000 or len(all_tables) <= 5:
+        elif force_full or full_tokens <= 20000 or len(all_tables) <= 15:
             logger.info(
                 f"Compact database schema detected (~{full_tokens} tokens, {len(all_tables)} tables). Skipping Table Pruner."
             )
@@ -228,7 +228,7 @@ class SchemaLinkerAgent:
                 )
                 pruned_tokens = len(pruned_context) // 4
 
-            if pruned_tokens <= 4500:
+            if pruned_tokens <= 20000:
                 logger.info(
                     f"Pruned table context is compact (~{pruned_tokens} tokens). Skipping Column Pruner."
                 )

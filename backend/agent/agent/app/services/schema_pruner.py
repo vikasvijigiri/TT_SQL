@@ -322,9 +322,9 @@ class ContextPruner:
 
         try:
             # 1. Table Pruning Check with Progressive Fallback
-            if force_full or full_tokens <= 4000 or len(all_tables) <= 5:
+            if force_full or full_tokens <= 20000 or len(all_tables) <= 15:
                 logger.info(
-                    f"Compact database schema detected (~{full_slim} tokens, {len(all_tables)} tables). Skipping Table Pruner."
+                    f"Compact database schema detected (~{full_tokens} tokens, {len(all_tables)} tables). Skipping Table Pruner."
                 )
                 relevant_tables = all_tables
             else:
@@ -363,7 +363,7 @@ class ContextPruner:
                 pruned_tokens = len(pruned_context) // 4
 
             table_columns = None
-            if pruned_tokens <= 4500:
+            if pruned_tokens <= 20000:
                 logger.info(
                     f"Pruned table context is compact (~{pruned_tokens} tokens). Skipping Column Pruner."
                 )
