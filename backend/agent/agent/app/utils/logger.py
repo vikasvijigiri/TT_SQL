@@ -128,15 +128,6 @@ class CustomLogger:
             task_local.live_file.write(
                 f"\n{'=' * 80}\n--- EXECUTION STARTED AT {datetime.now().strftime('%Y-%m-%d %H:%M:%S')} ---\n{'=' * 80}\n\n"
             )
-
-            # Create a run-specific .log file in the same directory
-            log_file_path = os.path.splitext(file_path)[0] + ".log"
-            task_local.log_file = open(
-                log_file_path, "w", encoding="utf-8", buffering=1
-            )
-            task_local.log_file.write(
-                f"--- DETAILED LOG STARTED AT {datetime.now().strftime('%Y-%m-%d %H:%M:%S')} ---\n"
-            )
         except Exception as e:
             self.logger.error(f"Failed to start live task log at {file_path}: {e}")
 
@@ -150,14 +141,6 @@ class CustomLogger:
                 task_local.live_file.close()
             finally:
                 del task_local.live_file
-        if hasattr(task_local, "log_file"):
-            try:
-                task_local.log_file.write(
-                    f"--- DETAILED LOG FINISHED AT {datetime.now().strftime('%Y-%m-%d %H:%M:%S')} ---\n"
-                )
-                task_local.log_file.close()
-            finally:
-                del task_local.log_file
 
     def _write_live(self, level: str, msg: str):
         """Internal helper to write to the live task file if active."""
@@ -165,12 +148,6 @@ class CustomLogger:
             timestamp = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
             clean_msg = re.sub(r"\033\[[0-9;]*m", "", msg)
             task_local.live_file.write(
-                f"{timestamp} - {self.logger.name} - {level} - {clean_msg}\n"
-            )
-        if hasattr(task_local, "log_file"):
-            timestamp = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
-            clean_msg = re.sub(r"\033\[[0-9;]*m", "", msg)
-            task_local.log_file.write(
                 f"{timestamp} - {self.logger.name} - {level} - {clean_msg}\n"
             )
 
@@ -229,8 +206,8 @@ class CustomLogger:
     # Max characters logged per prompt/response section. Prompts can be
     # 100K+ chars for large schemas; without a cap a single query log reaches
     # 500MB+, making logs unreadable and wasting disk rapidly.
-    _LOG_PROMPT_MAX = 4000
-    _LOG_RESPONSE_MAX = 3000
+    _LOG_PROMPT_MAX = 1500
+    _LOG_RESPONSE_MAX = 1000
 
     def log_agent_call(
         self, name: str, prompt: str, result: str, metrics: Dict[str, Any] | None = None

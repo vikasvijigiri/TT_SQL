@@ -159,11 +159,14 @@ class SemanticDINOrchestrator:
             return "No preview available (0 rows)."
         preview_df = df.head(max_rows).copy()
         for col in preview_df.columns:
-            preview_df[col] = (
-                preview_df[col]
-                .astype(str)
-                .apply(
-                    lambda x: x[:max_col_width] + "..." if len(x) > max_col_width else x
+            preview_df[col] = preview_df[col].apply(
+                lambda x: (
+                    "" if (x is None or (not isinstance(x, (list, dict, set, tuple)) and pd.isna(x)))
+                    else (
+                        str(x).replace("\n", " ").replace("\r", " ")[:max_col_width] + "..."
+                        if len(str(x)) > max_col_width
+                        else str(x).replace("\n", " ").replace("\r", " ")
+                    )
                 )
             )
         md = preview_df.to_markdown(index=False)
@@ -240,6 +243,60 @@ class SemanticDINOrchestrator:
                 lessons += few_shot_context
 
         return lessons
+
+    def _generate_with_react_probe(
+        self,
+        user_query: str,
+        linked_schema,
+        lessons: str,
+        intent,
+        instance_id: str,
+        max_probes: int = 2,
+    ):
+        """
+        ReAct loop for the SQL Generator.
+        If the LLM sets probe_sql (a diagnostic query it wants to run first),
+        execute it, feed the observation back, and call generate() again.
+        At most max_probes rounds before returning whatever the LLM produced last.
+        """
+        augmented_lessons = lessons
+        for probe_round in range(max_probes + 1):
+            result = self.sql_generator.generate(
+                user_query, linked_schema, lessons=augmented_lessons, intent=intent
+            )
+            probe_query = getattr(result, "probe_sql", None)
+            if not probe_query or not probe_query.strip() or probe_round >= max_probes:
+                return result
+
+            probe_query = probe_query.strip()
+            logger.info(
+                f"[ReAct-Generator] Probe {probe_round + 1}/{max_probes}: {probe_query}"
+            )
+            probe_tag = f"{instance_id}_gen_probe_{probe_round + 1}"
+            probe_success, probe_msg, _ = self.executor.execute(probe_query, probe_tag)
+            probe_preview = "No rows returned."
+            if probe_success:
+                probe_csv = os.path.join(
+                    str(RESULTS_DIR), self.db_name, f"{probe_tag}.csv"
+                )
+                if os.path.exists(probe_csv):
+                    try:
+                        df_p = pd.read_csv(probe_csv)
+                        probe_preview = df_p.head(5).to_string(index=False)
+                    except Exception:
+                        probe_preview = "Result available but could not parse."
+            else:
+                probe_preview = f"Probe failed: {probe_msg}"
+
+            logger.info(f"[ReAct-Generator] Probe {probe_round + 1} observation:\n{probe_preview}")
+            augmented_lessons = (
+                f"{augmented_lessons}\n\n"
+                f"[ReAct OBSERVATION — Probe {probe_round + 1}]\n"
+                f"You asked: {probe_query}\n"
+                f"Database answered:\n{probe_preview}\n"
+                "Use this observation to finalize your SQL. Set probe_sql=null and provide the complete sql."
+            )
+        return result  # fallback — shouldn't reach here
 
     def execute_query(
         self,
@@ -821,8 +878,10 @@ class SemanticDINOrchestrator:
                     return "ERROR: SQL Generation Failed"
                 current_sql = candidates[0].sql
 
+                # Give the critic the same profiling data the generator saw — prevents
+                # blind guessing on value formats, enums, date patterns, and casing.
                 critic_schema_context = self.semantic_engine.format_for_prompt(
-                    relevant_tables=linked_schema.selected_tables, include_samples=False
+                    relevant_tables=linked_schema.selected_tables, include_samples=True
                 )
                 
                 import concurrent.futures
@@ -885,11 +944,12 @@ class SemanticDINOrchestrator:
                     lessons_context = self._safeguard_lessons(
                         lessons_context + critic_feedback
                     )
-                    fallback = self.sql_generator.generate(
+                    fallback = self._generate_with_react_probe(
                         user_query,
                         linked_schema,
                         lessons=f"{lessons_context}\n{reference_context}",
                         intent=intent,
+                        instance_id=instance_id,
                     )
                     if fallback and fallback.sql:
                         current_sql = fallback.sql
@@ -898,8 +958,9 @@ class SemanticDINOrchestrator:
                 logger.info(
                     f"Simple query detected ({n_tables} table(s), no joins/windows/variants). Bypassing diverse generation and critic."
                 )
-                generation_result = self.sql_generator.generate(
-                    user_query, linked_schema, lessons=combined_lessons, intent=intent
+                generation_result = self._generate_with_react_probe(
+                    user_query, linked_schema, lessons=combined_lessons, intent=intent,
+                    instance_id=instance_id,
                 )
                 if not generation_result or not generation_result.sql:
                     logger.error(
@@ -925,8 +986,9 @@ class SemanticDINOrchestrator:
                     else linked_schema.selected_tables
                 )
                 expanded_schema.selected_columns = []  # let PromptAssembler use all columns
-                recovery = self.sql_generator.generate(
-                    user_query, expanded_schema, lessons=combined_lessons, intent=intent
+                recovery = self._generate_with_react_probe(
+                    user_query, expanded_schema, lessons=combined_lessons, intent=intent,
+                    instance_id=instance_id,
                 )
                 if recovery and recovery.sql and recovery.sql.strip():
                     current_sql = recovery.sql

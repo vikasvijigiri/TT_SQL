@@ -459,7 +459,8 @@ def run_dab_query(
     csv_path = result_dir / f"query{query_id}{_run_sfx}.csv"
     sql_path = result_dir / f"query{query_id}{_run_sfx}.sql"
 
-    for p in (md_path, csv_path, sql_path):
+    log_path = result_dir / f"query{query_id}{_run_sfx}.log"
+    for p in (md_path, csv_path, sql_path, log_path):
         if p.exists():
             with contextlib.suppress(Exception):
                 p.unlink()

@@ -276,14 +276,16 @@ class DatabaseExecutor:
             logger.info("### Final Result Preview (Top 5 Rows):")
             preview_df = df.head(5).copy()
             for col in preview_df.columns:
-                if preview_df[col].dtype == object:
-                    preview_df[col] = preview_df[col].apply(
-                        lambda x: (
-                            str(x)[:100] + "..."
-                            if isinstance(x, str) and len(x) > 100
-                            else x
+                preview_df[col] = preview_df[col].apply(
+                    lambda x: (
+                        "" if (x is None or (not isinstance(x, (list, dict, set, tuple)) and pd.isna(x)))
+                        else (
+                            str(x).replace("\n", " ").replace("\r", " ")[:100] + "..."
+                            if len(str(x)) > 100
+                            else str(x).replace("\n", " ").replace("\r", " ")
                         )
                     )
+                )
             logger.info(f"\n{preview_df.to_markdown(index=False)}")
         else:
             logger.warning("### Final Result: [EMPTY SET]")

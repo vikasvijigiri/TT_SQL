@@ -150,10 +150,15 @@ class ExecutionStabilizer:
                 if df.empty:
                     return "No sample rows found."
                 for col in df.columns:
-                    df[col] = (
-                        df[col]
-                        .astype(str)
-                        .apply(lambda x: x[:100] + "..." if len(x) > 100 else x)
+                    df[col] = df[col].apply(
+                        lambda x: (
+                            "" if (x is None or (not isinstance(x, (list, dict, set, tuple)) and pd.isna(x)))
+                            else (
+                                str(x).replace("\n", " ").replace("\r", " ")[:100] + "..."
+                                if len(str(x)) > 100
+                                else str(x).replace("\n", " ").replace("\r", " ")
+                            )
+                        )
                     )
                 md = df.to_markdown(index=False)
                 if len(md) > 3000:

@@ -89,9 +89,18 @@ class SQLGeneratorOutput(BaseModel):
         validation_alias=AliasChoices(
             "thought_process", "reasoning", "analysis", "thought"
         ),
-        description="Detailed step-by-step logic on how the SQL is constructed using the mapped schema.",
+        description="ReAct-style reasoning trace: Thought → Action → Observation cycles before producing SQL.",
     )
-    sql: str = Field(description="The final executable SQL query.")
+    probe_sql: Optional[str] = Field(
+        None,
+        description=(
+            "ReAct probe: a targeted SQL to execute BEFORE finalising the main SQL. "
+            "Use to verify a value exists, check a data format, or confirm join cardinality. "
+            "If probe is set, leave `sql` as an empty string — the framework will run the probe, "
+            "feed you the result, and call you again with the observation."
+        ),
+    )
+    sql: str = Field(description="The final executable SQL query. Empty string if probe_sql is set.")
 
 
 class SelfCorrectorOutput(BaseModel):
