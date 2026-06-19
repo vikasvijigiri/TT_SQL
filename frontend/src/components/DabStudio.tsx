@@ -1,7 +1,7 @@
 import { MetricsGrid } from './common/MetricsGrid';
 import React, { useState, useEffect, useRef } from 'react';
 import axios from 'axios';
-import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer, Cell, LabelList } from 'recharts';
+import { BarChart, Bar, LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer, Cell, LabelList, ReferenceLine } from 'recharts';
 import {
   BarChart3,
   Database,
@@ -556,6 +556,7 @@ const DabStudio = ({ onBack, onHome, autoOpenDetails, clearAutoOpenDetails, user
   const [agentAnalytics, setAgentAnalytics] = useState(null);
   const [loadingAgentAnalytics, setLoadingAgentAnalytics] = useState(false);
   const [analyticsSearchQuery, setAnalyticsSearchQuery] = useState('');
+  const [smartnessTimeseries, setSmartnessTimeseries] = useState<{ smartness: any[]; accuracy: any[]; total_runs: number; total_batches?: number; latest_batch?: any } | null>(null);
   const [databases, setDatabases] = useState([]);
   const [selectedDb, setSelectedDb] = useState(() => {
     return localStorage.getItem('dab_selected_db') || null;
@@ -915,8 +916,12 @@ const DabStudio = ({ onBack, onHome, autoOpenDetails, clearAutoOpenDetails, user
     if (!activeDate) return;
     if (showSpinner) setLoadingAgentAnalytics(true);
     try {
-      const res = await axios.get(`${API_BASE}/dab/agent_analytics?run_id=${activeDate}`);
-      if (res.data) setAgentAnalytics(res.data);
+      const [analyticsRes, timeseriesRes] = await Promise.all([
+        axios.get(`${API_BASE}/dab/agent_analytics?run_id=${activeDate}`),
+        axios.get(`${API_BASE}/dab/smartness_timeseries`).catch(() => null),
+      ]);
+      if (analyticsRes.data) setAgentAnalytics(analyticsRes.data);
+      if (timeseriesRes?.data) setSmartnessTimeseries(timeseriesRes.data);
     } catch (err) {
       console.error("Failed to load agent analytics", err);
     } finally {
@@ -1803,6 +1808,183 @@ const DabStudio = ({ onBack, onHome, autoOpenDetails, clearAutoOpenDetails, user
             </table>
           </div>
         </div>
+
+        {/* ── Smartness & Accuracy Time-Series Charts ─────────────────────────── */}
+        {smartnessTimeseries && (smartnessTimeseries.total_runs > 0 || smartnessTimeseries.total_batches > 0) && (() => {
+          const smData = smartnessTimeseries.smartness;
+          const accData = smartnessTimeseries.accuracy;
+          const lb = (smartnessTimeseries as any).latest_batch || {};
+
+          const SmartTooltip = ({ active, payload, label }: any) => {
+            if (!active || !payload?.length) return null;
+            const d = payload[0]?.payload;
+            return (
+              <div className="bg-[#0b0a12] border border-[#231d36] rounded-xl p-3 shadow-2xl font-mono text-xs text-slate-300 max-w-[220px]">
+                <p className="font-bold text-white mb-1">{d?.instance_id || label}</p>
+                <p className="text-[10px] text-slate-500 mb-2">{d?.date}</p>
+                {payload.map((p: any) => (
+                  <p key={p.name} className="flex items-center gap-1.5 mb-0.5">
+                    <span className="w-2 h-2 rounded-full shrink-0" style={{ backgroundColor: p.color }} />
+                    <span>{p.name}: <strong className="text-white">{typeof p.value === 'number' ? p.value.toFixed(1) : p.value}</strong></span>
+                  </p>
+                ))}
+                {d?.grade && (
+                  <p className="text-[10px] mt-1.5 text-purple-400 font-bold uppercase">{d.grade}</p>
+                )}
+                {d?.final_verdict && (
+                  <p className={`text-[10px] mt-0.5 font-bold uppercase ${d.final_verdict === 'SOLVED' ? 'text-emerald-400' : d.final_verdict === 'PARTIAL' ? 'text-amber-400' : 'text-rose-400'}`}>
+                    {d.final_verdict}
+                  </p>
+                )}
+              </div>
+            );
+          };
+
+          const AccTooltip = ({ active, payload, label }: any) => {
+            if (!active || !payload?.length) return null;
+            const d = payload[0]?.payload;
+            const byDs = d?.by_dataset || {};
+            return (
+              <div className="bg-[#0b0a12] border border-[#231d36] rounded-xl p-3 shadow-2xl font-mono text-xs text-slate-300 max-w-[240px]">
+                <p className="font-bold text-white mb-0.5">{d?.label || label}</p>
+                <p className="text-[10px] text-slate-500 mb-2">{d?.date}</p>
+                <p className="flex items-center gap-1.5 mb-1">
+                  <span className="w-2 h-2 rounded-full bg-emerald-400 shrink-0" />
+                  <span>Accuracy: <strong className="text-white">{d?.accuracy}%</strong></span>
+                  <span className="text-slate-600 ml-1">({d?.passed}/{d?.total})</span>
+                </p>
+                {Object.keys(byDs).length > 0 && (
+                  <div className="mt-1.5 pt-1.5 border-t border-[#231d36] space-y-0.5">
+                    {Object.entries(byDs).map(([ds, v]: any) => (
+                      <p key={ds} className="text-[9px] flex justify-between gap-3">
+                        <span className="text-slate-500 truncate max-w-[120px]">{ds}</span>
+                        <span className={v.accuracy >= 50 ? 'text-emerald-400' : 'text-rose-400'}>
+                          {v.passed}/{v.total} ({v.accuracy}%)
+                        </span>
+                      </p>
+                    ))}
+                  </div>
+                )}
+              </div>
+            );
+          };
+
+          return (
+            <div className="space-y-4 mt-6">
+              {/* Latest batch summary banner */}
+              {lb.total > 0 && (
+                <div className="bg-[#0a0912] border border-[#1e1933] rounded-xl px-5 py-3 flex flex-wrap items-center gap-x-8 gap-y-2">
+                  <div>
+                    <span className="text-[9px] font-mono font-bold text-slate-500 uppercase tracking-widest">Latest Batch</span>
+                    <p className="text-[10px] font-mono text-slate-400 mt-0.5">{lb.date}</p>
+                  </div>
+                  <div>
+                    <span className="text-[9px] font-mono text-slate-500 uppercase tracking-widest">Ground-Truth Accuracy</span>
+                    <p className="text-xl font-mono font-black mt-0.5" style={{ color: lb.accuracy >= 50 ? '#10b981' : lb.accuracy >= 30 ? '#f59e0b' : '#ef4444' }}>
+                      {lb.accuracy}%
+                    </p>
+                  </div>
+                  <div>
+                    <span className="text-[9px] font-mono text-slate-500 uppercase tracking-widest">Passed / Total</span>
+                    <p className="text-sm font-mono font-bold text-white mt-0.5">{lb.passed} / {lb.total}</p>
+                  </div>
+                  <div>
+                    <span className="text-[9px] font-mono text-slate-500 uppercase tracking-widest">Failed</span>
+                    <p className="text-sm font-mono font-bold text-rose-400 mt-0.5">{lb.failed}</p>
+                  </div>
+                  {lb.by_dataset && Object.keys(lb.by_dataset).length > 0 && (
+                    <div className="flex flex-wrap gap-1.5 mt-1 w-full">
+                      {Object.entries(lb.by_dataset).map(([ds, v]: any) => (
+                        <span key={ds} className={`px-2 py-0.5 rounded text-[9px] font-mono font-bold border ${v.accuracy >= 50 ? 'text-emerald-400 bg-emerald-500/10 border-emerald-500/20' : 'text-rose-400 bg-rose-500/10 border-rose-500/20'}`}>
+                          {ds}: {v.passed}/{v.total}
+                        </span>
+                      ))}
+                    </div>
+                  )}
+                </div>
+              )}
+
+              <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                {/* Chart 1: Smartness Score over Runs */}
+                {smData.length > 0 && (
+                  <div className="bg-[#0b0a12] border border-[#1e1933] rounded-xl p-4.5 flex flex-col shadow-lg">
+                    <div className="pb-3 mb-3 border-b border-[#1e1933]">
+                      <h2 className="text-xs font-mono font-bold uppercase tracking-wider text-slate-400 flex items-center gap-2">
+                        <span className="w-2 h-2 rounded-full bg-purple-500 shrink-0" />
+                        Self-Learning Smartness Score
+                      </h2>
+                      <p className="text-[10px] font-mono text-slate-500 mt-1">
+                        Per-run score (dots) · Weighted cumulative trend (line) · {smartnessTimeseries.total_runs} runs recorded
+                      </p>
+                    </div>
+                    <div className="h-64 w-full">
+                      <ResponsiveContainer width="100%" height="100%">
+                        <LineChart data={smData} margin={{ top: 10, right: 16, left: -20, bottom: 0 }}>
+                          <CartesianGrid stroke="#1c1833" vertical={false} strokeDasharray="3 3" />
+                          <XAxis dataKey="label" stroke="#64748b" fontSize={8} tickLine={false} interval="preserveStartEnd" />
+                          <YAxis domain={[0, 100]} stroke="#64748b" fontSize={9} tickLine={false} />
+                          <Tooltip content={<SmartTooltip />} />
+                          <ReferenceLine y={50} stroke="#3b3060" strokeDasharray="4 4" />
+                          <Line type="monotone" dataKey="smartness_score" name="Run Score"
+                            stroke="#8b5cf6" strokeWidth={0}
+                            dot={{ r: 3, fill: '#8b5cf6', strokeWidth: 0 }}
+                            activeDot={{ r: 5, fill: '#a78bfa' }} isAnimationActive={false} />
+                          <Line type="monotone" dataKey="cumulative_avg" name="Cumulative Avg"
+                            stroke="#a855f7" strokeWidth={2} dot={false}
+                            activeDot={{ r: 4, fill: '#c084fc' }} isAnimationActive={false} />
+                        </LineChart>
+                      </ResponsiveContainer>
+                    </div>
+                    <div className="flex items-center gap-4 mt-3 pt-2 border-t border-[#1c1833]">
+                      <span className="flex items-center gap-1.5 text-[10px] font-mono text-slate-500">
+                        <span className="w-2 h-2 rounded-full bg-[#8b5cf6]" /> Per-run score
+                      </span>
+                      <span className="flex items-center gap-1.5 text-[10px] font-mono text-slate-500">
+                        <span className="w-5 h-0.5 bg-[#a855f7] inline-block" /> Cumulative trend
+                      </span>
+                    </div>
+                  </div>
+                )}
+
+                {/* Chart 2: Accuracy per Batch (ground truth from Evaluation table) */}
+                {accData.length > 0 && (
+                  <div className="bg-[#0b0a12] border border-[#1e1933] rounded-xl p-4.5 flex flex-col shadow-lg">
+                    <div className="pb-3 mb-3 border-b border-[#1e1933]">
+                      <h2 className="text-xs font-mono font-bold uppercase tracking-wider text-slate-400 flex items-center gap-2">
+                        <span className="w-2 h-2 rounded-full bg-emerald-500 shrink-0" />
+                        Accuracy Over Batches
+                      </h2>
+                      <p className="text-[10px] font-mono text-slate-500 mt-1">
+                        Ground-truth pass rate per batch · {(smartnessTimeseries as any).total_batches} batches · should rise as pipeline learns
+                      </p>
+                    </div>
+                    <div className="h-64 w-full">
+                      <ResponsiveContainer width="100%" height="100%">
+                        <LineChart data={accData} margin={{ top: 10, right: 16, left: -20, bottom: 0 }}>
+                          <CartesianGrid stroke="#1c1833" vertical={false} strokeDasharray="3 3" />
+                          <XAxis dataKey="label" stroke="#64748b" fontSize={8} tickLine={false} interval="preserveStartEnd" />
+                          <YAxis domain={[0, 100]} stroke="#64748b" fontSize={9} tickLine={false} tickFormatter={(v) => `${v}%`} />
+                          <Tooltip content={<AccTooltip />} />
+                          <ReferenceLine y={50} stroke="#1a4040" strokeDasharray="4 4" />
+                          <Line type="monotone" dataKey="accuracy" name="Batch Accuracy"
+                            stroke="#10b981" strokeWidth={2}
+                            dot={{ r: 4, fill: '#10b981', strokeWidth: 0 }}
+                            activeDot={{ r: 6, fill: '#34d399' }} isAnimationActive={false} />
+                        </LineChart>
+                      </ResponsiveContainer>
+                    </div>
+                    <div className="flex items-center gap-4 mt-3 pt-2 border-t border-[#1c1833]">
+                      <span className="flex items-center gap-1.5 text-[10px] font-mono text-slate-500">
+                        <span className="w-5 h-0.5 bg-emerald-500 inline-block" /> Ground-truth accuracy (Evaluation table)
+                      </span>
+                    </div>
+                  </div>
+                )}
+              </div>
+            </div>
+          );
+        })()}
+
       </div>
     );
   };

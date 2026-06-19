@@ -242,6 +242,14 @@ class SemanticDINOrchestrator:
             if few_shot_context:
                 lessons += few_shot_context
 
+        ledger_path = MEMORY_DIR / f"{self.db_name}_failures_ledger.md"
+        if ledger_path.exists():
+            try:
+                ledger_content = ledger_path.read_text(encoding="utf-8")
+                lessons += f"\n\n=== DATASET ERROR LEDGER ({self.db_name.upper()}) ===\n{ledger_content}\n"
+            except Exception as e:
+                logger.warning(f"Failed to read Error Ledger for {self.db_name}: {e}")
+
         return lessons
 
     def _generate_with_react_probe(
@@ -1062,6 +1070,16 @@ class SemanticDINOrchestrator:
         telemetry.start_stage("execution_and_audit")
 
         # Module 4: Execution & Self-Correction Loop
+        # ── EvolutionTracker: records one dict per attempt ──────────────────────
+        _evolution: list[dict] = []
+        _termination_reason: str = "MAX_RETRIES_REACHED"
+        _best_sql: str = current_sql
+        _best_row_count: int = 0
+        _best_quality: float = -1.0
+        _satisfaction_score: float | None = None
+        _final_verdict: str = "FAILED"
+        # ────────────────────────────────────────────────────────────────────────
+
         attempts = 0
         success = False
         row_count = 0
@@ -1069,7 +1087,7 @@ class SemanticDINOrchestrator:
         initial_failed_sql = None
         initial_error_context = None
         while attempts <= self.max_retries:
-            logger.info(f"Execution Attempt {attempts + 1}/{self.max_retries + 1}")
+            logger.info(f"Execution Attempt {attempts + 1}/{self.max_retries + 1} [smart-loop]")
             result_msg = ""
 
             if "error_context" in locals() and error_context and attempts == 0:
@@ -1353,14 +1371,37 @@ class SemanticDINOrchestrator:
                     "Data IQ Audit Reasoning", validation.audit_reasoning
                 )
 
-                if validation.is_valid or attempts == self.max_retries:
+                # ── Record this attempt's snapshot ───────────────────────────
+                _q_signal = (1.0 if row_count > 0 else 0.5) + (0.3 if validation.is_valid else 0.0)
+                _sql_hash_now = self.stabilizer.get_sql_hash(current_sql)
+                _evolution.append({
+                    "attempt": attempts + 1,
+                    "sql_hash": _sql_hash_now,
+                    "success": True,
+                    "row_count": row_count,
+                    "error_category": "none" if validation.is_valid else "quality_fail",
+                    "quality_signal": _q_signal,
+                    "is_valid": validation.is_valid,
+                    "validation_feedback": (validation.feedback or "")[:300],
+                    "correction_thought": last_correction_thought[:300] if last_correction_thought else "",
+                    "timestamp": time.time(),
+                })
+                if _q_signal > _best_quality:
+                    _best_quality = _q_signal
+                    _best_sql = current_sql
+                    _best_row_count = row_count
+                    _satisfaction_score = 1.0 if validation.is_valid else 0.5
+                # ─────────────────────────────────────────────────────────────
+
+                if validation.is_valid:
+                    _termination_reason = "VALIDATION_PASSED"
+                    _final_verdict = "SOLVED"
                     self.sql_manager.cache_success(
                         instance_id, current_sql, validation.audit_reasoning
                     )
 
                     if (
-                        validation.is_valid
-                        and attempts > 0
+                        attempts > 0
                         and initial_failed_sql
                         and initial_error_context
                     ):
@@ -1386,6 +1427,7 @@ class SemanticDINOrchestrator:
                     total_time = time.time() - start_time
                     telemetry.end_stage("execution_and_audit")
                     telemetry.log_summary()
+                    self._log_evolution_summary(_evolution, _final_verdict, _termination_reason, _satisfaction_score)
                     logger.log_final_results(
                         sql=current_sql,
                         row_count=row_count,
@@ -1397,14 +1439,49 @@ class SemanticDINOrchestrator:
                     record_query_event(user_query, current_sql, total_time, success=True)
                     _record_quality(csv_path)
                     _record_determinism(user_query, current_sql)
+                    self._save_pipeline_run_metrics(
+                        instance_id=instance_id,
+                        evolution=_evolution,
+                        final_verdict=_final_verdict,
+                        termination_reason=_termination_reason,
+                        best_sql=current_sql,
+                        best_row_count=row_count,
+                        satisfaction_score=_satisfaction_score,
+                        total_latency_s=total_time,
+                    )
                     return current_sql
-                else:
-                    error_context = f"DATA QUALITY FAIL: {validation.feedback}"
-                    logger.warning(f"Data IQ Check Failed! {validation.feedback}")
+
+                # Not yet valid — check if we should terminate early before next retry
+                _should_stop, _stop_reason = self._should_terminate(_evolution, self.max_retries)
+                if _should_stop:
+                    _termination_reason = _stop_reason
+                    _final_verdict = "PARTIAL" if _best_row_count > 0 else "FAILED"
+                    logger.warning(f"[SmartTermination] Exiting loop early: {_stop_reason}")
+                    break
+
+                error_context = f"DATA QUALITY FAIL: {validation.feedback}"
+                logger.warning(f"Data IQ Check Failed! {validation.feedback}")
             else:
                 _emit("execution", "error")
                 logger.error(f"Execution failed: {result_msg}")
                 logger.info("Bypassing Data IQ audit due to execution error.")
+                # ── Record execution-failure snapshot ────────────────────────
+                _err_cat = "syntax" if any(k in result_msg.lower() for k in ["syntax", "parse"]) else \
+                           "hallucination" if "does not exist" in result_msg.lower() or "invalid identifier" in result_msg.lower() else \
+                           "execution"
+                _evolution.append({
+                    "attempt": attempts + 1,
+                    "sql_hash": self.stabilizer.get_sql_hash(current_sql),
+                    "success": False,
+                    "row_count": 0,
+                    "error_category": _err_cat,
+                    "quality_signal": 0.0,
+                    "is_valid": False,
+                    "validation_feedback": result_msg[:300],
+                    "correction_thought": last_correction_thought[:300] if last_correction_thought else "",
+                    "timestamp": time.time(),
+                })
+                # ─────────────────────────────────────────────────────────────
 
                 missing_obj_match = re.search(
                     r"(?:Object|Table|View)\s+'?([a-zA-Z0-9_\.]+)'?\s+(?:does not exist|not found)",
@@ -1640,10 +1717,20 @@ class SemanticDINOrchestrator:
 
             attempts += 1
 
+            # ── Smart termination check (execution-error path) ───────────────
+            _should_stop, _stop_reason = self._should_terminate(_evolution, self.max_retries)
+            if _should_stop and attempts <= self.max_retries:
+                _termination_reason = _stop_reason
+                _final_verdict = "PARTIAL" if _best_row_count > 0 else "FAILED"
+                logger.warning(f"[SmartTermination] Exiting loop early: {_stop_reason}")
+                break
+            # ─────────────────────────────────────────────────────────────────
+
+        # Determine if best cached SQL (from sql_manager) outperforms current
         best_sql = self.sql_manager.get_best_sql(instance_id)
         if best_sql and best_sql != current_sql:
             logger.warning(
-                f"FALLBACK: Max retries exceeded. Reverting to cached best_sql for {instance_id}"
+                f"FALLBACK: Loop ended. Reverting to cached best_sql for {instance_id}"
             )
             fb_success, fb_msg, fb_row_count = self.executor.execute(
                 best_sql, instance_id
@@ -1652,9 +1739,14 @@ class SemanticDINOrchestrator:
                 logger.success(
                     f"FALLBACK SUCCESS: Restored best_sql result ({fb_row_count} rows)"
                 )
+                _final_verdict = "PARTIAL" if fb_row_count > 0 else "FAILED"
+                if not _termination_reason or _termination_reason == "MAX_RETRIES_REACHED":
+                    _termination_reason = "FALLBACK_BEST_SQL"
+                _satisfaction_score = 0.6 if fb_row_count > 0 else 0.1
                 total_time = time.time() - start_time
                 telemetry.end_stage("execution_and_audit")
                 telemetry.log_summary()
+                self._log_evolution_summary(_evolution, _final_verdict, _termination_reason, _satisfaction_score)
                 logger.log_final_results(
                     sql=best_sql,
                     row_count=fb_row_count,
@@ -1664,28 +1756,218 @@ class SemanticDINOrchestrator:
                 record_query_event(user_query, best_sql, total_time, success=True)
                 _record_determinism(user_query, best_sql)
                 _save_telemetry()
+                self._save_pipeline_run_metrics(
+                    instance_id=instance_id,
+                    evolution=_evolution,
+                    final_verdict=_final_verdict,
+                    termination_reason=_termination_reason,
+                    best_sql=best_sql,
+                    best_row_count=fb_row_count,
+                    satisfaction_score=_satisfaction_score,
+                    total_latency_s=total_time,
+                )
                 return best_sql
 
+        # Final failed/partial exit
+        _final_verdict = _final_verdict if _final_verdict != "FAILED" else (
+            "PARTIAL" if _best_row_count > 0 else "FAILED"
+        )
+        _err = error_context if "error_context" in locals() else "Loop ended with no solution"
         total_time = time.time() - start_time
         telemetry.end_stage("execution_and_audit")
         telemetry.log_summary()
+        self._log_evolution_summary(_evolution, _final_verdict, _termination_reason, _satisfaction_score)
         logger.log_final_results(
             sql=current_sql,
             row_count=row_count if success else 0,
-            error=error_context
-            if "error_context" in locals()
-            else "Max retries exceeded",
+            error=_err,
             latency=f"{total_time:.2f}s",
         )
         record_query_latency(total_time)
-        _err = error_context if "error_context" in locals() else "Max retries exceeded"
         record_query_event(user_query, current_sql, total_time, success=False, error=_err)
         _record_failure(user_query, current_sql, _err, stage="execute_query")
         _record_determinism(user_query, current_sql)
         _save_telemetry()
+        self._save_pipeline_run_metrics(
+            instance_id=instance_id,
+            evolution=_evolution,
+            final_verdict=_final_verdict,
+            termination_reason=_termination_reason,
+            best_sql=_best_sql,
+            best_row_count=_best_row_count,
+            satisfaction_score=_satisfaction_score,
+            total_latency_s=total_time,
+        )
         return current_sql
 
+    def _should_terminate(self, evolution: list[dict], max_retries: int) -> tuple[bool, str]:
+        """Determine whether the self-correction loop should exit early.
+
+        Termination triggers (in priority order):
+          1. Stagnation: same SQL hash + same error category + no quality improvement
+             across two consecutive attempts.
+          2. Error Plateau: identical error category for 3+ consecutive attempts
+             with no quality gain.
+          3. Hard Cap: attempts have hit max_retries (caller already handles this
+             via the while condition, but we double-check here for safety).
+
+        Returns
+        -------
+        (should_stop, reason_string)
+        """
+        n = len(evolution)
+        if n < 2:
+            return False, ""
+
+        last = evolution[-1]
+        prev = evolution[-2]
+
+        # Stagnation: same SQL, same error, no improvement
+        same_sql = last.get("sql_hash") == prev.get("sql_hash")
+        same_err = last.get("error_category") == prev.get("error_category")
+        no_improve = last.get("quality_signal", 0.0) <= prev.get("quality_signal", 0.0)
+        if same_sql and same_err and no_improve:
+            return True, (
+                f"STAGNATION: SQL unchanged and error_category='{last.get('error_category')}' "
+                "repeated with no quality improvement."
+            )
+
+        # Error Plateau: same category 3+ times in a row, still failing
+        if n >= 3:
+            last_3_cats = [e.get("error_category", "") for e in evolution[-3:]]
+            last_3_valid = [e.get("is_valid", False) for e in evolution[-3:]]
+            plateau_cat = last_3_cats[0]
+            all_same = len(set(last_3_cats)) == 1
+            none_valid = not any(last_3_valid)
+            not_trivial = plateau_cat not in ("none",)
+            if all_same and none_valid and not_trivial:
+                return True, (
+                    f"ERROR_PLATEAU: error_category='{plateau_cat}' repeated 3 consecutive "
+                    "attempts with no valid result."
+                )
+
+        # Hard cap fallback (belt-and-suspenders)
+        if n > max_retries + 1:
+            return True, "MAX_RETRIES_EXCEEDED"
+
+        return False, ""
+
+    def _log_evolution_summary(
+        self,
+        evolution: list[dict],
+        final_verdict: str,
+        termination_reason: str,
+        satisfaction_score: float | None,
+    ) -> None:
+        """Emit a compact evolution summary to the run log."""
+        try:
+            n = len(evolution)
+            best_q = max((e.get("quality_signal", 0.0) for e in evolution), default=0.0)
+            sat_str = f"{satisfaction_score:.2f}" if satisfaction_score is not None else "N/A"
+            rows_summary = ", ".join(
+                f"A{e['attempt']}:{e.get('row_count', 0)}r" for e in evolution
+            )
+            cats_summary = ", ".join(
+                f"A{e['attempt']}:{e.get('error_category','?')}" for e in evolution
+            )
+            logger.info(
+                f"\n{'='*60}\n"
+                f"  PIPELINE EVOLUTION SUMMARY\n"
+                f"{'='*60}\n"
+                f"  Attempts         : {n}\n"
+                f"  Evolution Score  : {best_q:.2f} / 1.30\n"
+                f"  Final Verdict    : {final_verdict}\n"
+                f"  Termination      : {termination_reason}\n"
+                f"  Satisfaction     : {sat_str}\n"
+                f"  Rows per attempt : {rows_summary}\n"
+                f"  Error categories : {cats_summary}\n"
+                f"{'='*60}"
+            )
+        except Exception as _le:
+            logger.warning(f"[EvolutionSummary] Could not emit summary: {_le}")
+
+    def _save_pipeline_run_metrics(
+        self,
+        instance_id: str,
+        evolution: list[dict],
+        final_verdict: str,
+        termination_reason: str,
+        best_sql: str | None,
+        best_row_count: int,
+        satisfaction_score: float | None,
+        total_latency_s: float,
+    ) -> None:
+        """Persist per-run evolution metrics to the pipeline_runs DB table.
+
+        Also computes the smartness score (0-100) via PipelineSmartScorer,
+        records it to the DB, and appends to smartness_history.json for
+        cumulative trending over time.
+
+        Fails silently so it never disrupts the main pipeline flow.
+        """
+        try:
+            import json as _j
+            from agent.app.db.models import PipelineRun
+            from agent.app.db.database import SessionLocal
+            from datetime import datetime as _dt
+            from agent.app.core.meta.pipeline_smart_scorer import PipelineSmartScorer
+            from agent.app.core.config import MEMORY_DIR
+
+            best_q = max((e.get("quality_signal", 0.0) for e in evolution), default=0.0)
+            dataset = instance_id.split("_q")[0] if "_q" in instance_id else instance_id
+
+            # -- Compute smartness score --
+            smartness = PipelineSmartScorer.score(evolution, final_verdict, termination_reason)
+            grade = PipelineSmartScorer.grade_label(smartness)
+            logger.info(
+                f"[SmartScore] {instance_id}: {smartness:.1f}/100 ({grade}) | "
+                f"verdict={final_verdict} attempts={len(evolution)}"
+            )
+
+            run_row = PipelineRun(
+                instance_id=instance_id,
+                dataset=dataset,
+                run_suffix="",
+                total_attempts=len(evolution),
+                evolution_score=round(best_q, 4),
+                final_verdict=final_verdict,
+                satisfaction_score=round(satisfaction_score, 4) if satisfaction_score is not None else None,
+                termination_reason=termination_reason,
+                best_sql=(best_sql or "")[:10000],
+                best_row_count=best_row_count,
+                total_latency_s=round(total_latency_s, 2),
+                evolution_json=_j.dumps(evolution, default=str)[:50000],
+                smartness_score=smartness,
+                smartness_grade=grade,
+                timestamp=_dt.utcnow(),
+            )
+            db = SessionLocal()
+            try:
+                db.add(run_row)
+                db.commit()
+                logger.info(
+                    f"[PipelineRun] Saved: {instance_id} smartness={smartness:.1f} ({grade}) "
+                    f"verdict={final_verdict} score={best_q:.2f} attempts={len(evolution)}"
+                )
+            finally:
+                db.close()
+
+            # ── Append to cumulative smartness history ────────────────
+            cum_avg = PipelineSmartScorer.record_to_history(
+                instance_id=instance_id,
+                smartness_score=smartness,
+                final_verdict=final_verdict,
+                total_attempts=len(evolution),
+                evolution_score=best_q,
+                memory_dir=MEMORY_DIR,
+            )
+            logger.info(f"[SmartScore] Global cumulative avg: {cum_avg:.1f}/100")
+
+        except Exception as _pe:
+            logger.warning(f"[PipelineRun] Failed to save metrics (non-fatal): {_pe}")
+
     def _build_inline_diagnosis(self, error_context: str) -> str:
+
         """
         When Data IQ returns a failure, extract the precise feedback and surface it as a
         prominently-labeled self-diagnosis block injected at the top of the corrector's

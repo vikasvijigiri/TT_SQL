@@ -763,12 +763,8 @@ def run_dab_query(
                 orchestrator.executor.close()
         logger.stop_live_task_log()
 
-    # Inline rule extraction on query failure
-    if (
-        res
-        and not res.get("passed")
-        and os.environ.get("INLINE_RULE_EXTRACTION") == "1"
-    ):
+    # Inline rule extraction on query failure — always enabled for continuous self-improvement
+    if res and not res.get("passed"):
         try:
             # 1. Read only the latest log tail
             log_tail = ""
@@ -816,6 +812,7 @@ def run_dab_query(
                         category=rule["category"],
                         source_failure=f"{dataset}_q{query_id}",
                         db_name=dataset.upper(),
+                        llm_client=llm_client,
                     )
                     if lid:
                         new_ids.append(lid)

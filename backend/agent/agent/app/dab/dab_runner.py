@@ -183,12 +183,14 @@ def run_all(
         results = asyncio.run(run_all_concurrent(work, llm_client, max_concurrent=_max_conc))
         for result in results:
             if isinstance(result, dict):
+                reason_safe = result.get('reason', '')[:80].encode('ascii', 'replace').decode('ascii')
+                error_safe = result.get('error', '')[:80].encode('ascii', 'replace').decode('ascii')
                 if result["status"] == "passed":
-                    print(f"\n  [PASS] {result.get('reason', '')[:80]}")
+                    print(f"\n  [PASS] {reason_safe}")
                 elif result["status"] == "error":
-                    print(f"\n  [ERROR] {result.get('error', '')[:80]}")
+                    print(f"\n  [ERROR] {error_safe}")
                 else:
-                    print(f"\n  [FAIL] {result.get('reason', '')[:80]}")
+                    print(f"\n  [FAIL] {reason_safe}")
         print_summary(results, queries)
         return results
 
@@ -248,7 +250,7 @@ def print_summary(
     accuracy.get("queries_passed_atk", 0)
 
     print("\n" + "=" * 72)
-    print("  DAB BENCHMARK RESULTS Ã¢â‚¬â€ SpiderDIN / TT_SQL_V2")
+    print("  DAB BENCHMARK RESULTS - SpiderDIN / TT_SQL_V2")
     print("=" * 72)
     print(f"  Total Queries  : {accuracy['total_queries']}")
     print(
@@ -277,6 +279,13 @@ def print_summary(
     with open(out_path, "w", encoding="utf-8") as f:
         json.dump(accuracy, f, indent=2)
     print(f"  [Report] Saved to: {out_path}\n")
+
+    # Generate Dynamic Analytics Dashboard
+    try:
+        from agent.app.core.meta.analytics_engine import generate_analytics_report
+        generate_analytics_report(_results)
+    except ImportError as e:
+        print(f"  [Analytics] Could not load Analytics Engine: {e}")
 
 
 def main():
@@ -402,6 +411,14 @@ def main():
         return
 
     print_summary(results, all_queries)
+
+    # Trigger Post-Batch Meta-Learner
+    try:
+        from agent.app.core.meta.post_batch_meta_learner import PostBatchMetaLearner
+        learner = PostBatchMetaLearner()
+        learner.run_post_batch_analysis()
+    except Exception as e:
+        print(f"\n[Warning] Post-Batch Meta-Learner failed: {e}")
 
 
 if __name__ == "__main__":

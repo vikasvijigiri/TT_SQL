@@ -839,6 +839,139 @@ def get_dab_agent_analytics(request: Request, date: str = "all", run_id: Optiona
         db.close()
 
 
+@router.get("/api/dab/smartness_timeseries")
+def get_smartness_timeseries():
+    """Return per-run smartness scores and per-batch accuracy for time-series charts.
+
+    Smartness scores come from PipelineRun (internal orchestrator metric).
+    Accuracy comes from the Evaluation table (ground-truth benchmark comparison).
+    No hallucinated values — every number is derived from actual stored data.
+    """
+    import re as _re
+    from agent.app.db.models import PipelineRun, Evaluation
+    from agent.app.db.database import SessionLocal
+
+    db = SessionLocal()
+    try:
+        # ── Smartness time-series (PipelineRun) ──────────────────────────────
+        runs = (
+            db.query(PipelineRun)
+            .filter(PipelineRun.smartness_score.isnot(None))
+            .order_by(PipelineRun.timestamp.asc())
+            .all()
+        )
+
+        smartness_rows: list[dict] = []
+        all_scores: list[float] = []
+
+        for i, run in enumerate(runs):
+            all_scores.append(run.smartness_score)
+            n = len(all_scores)
+            weights = list(range(1, n + 1))
+            cumulative_avg = round(
+                sum(s * w for s, w in zip(all_scores, weights)) / sum(weights), 2
+            )
+            date_str = run.timestamp.strftime("%Y-%m-%d") if run.timestamp else ""
+            smartness_rows.append({
+                "run_num": i + 1,
+                "label": f"Run {i + 1}",
+                "date": date_str,
+                "instance_id": run.instance_id,
+                "smartness_score": round(run.smartness_score, 1),
+                "cumulative_avg": cumulative_avg,
+                "grade": run.smartness_grade or "",
+                "final_verdict": run.final_verdict or "",
+                "attempts": run.total_attempts or 1,
+            })
+
+        # ── Accuracy time-series (Evaluation — ground truth) ─────────────────
+        # Group Evaluation rows into batches using a 30-min gap heuristic,
+        # then produce one accuracy point per batch.
+        all_evals = (
+            db.query(Evaluation)
+            .filter(Evaluation.timestamp.isnot(None))
+            .order_by(Evaluation.timestamp.asc())
+            .all()
+        )
+
+        accuracy_rows: list[dict] = []
+        latest_batch: dict = {}
+
+        if all_evals:
+            # Split into time-batches (gap > 30 min between consecutive rows = new batch)
+            batches: list[list] = [[all_evals[0]]]
+            for ev in all_evals[1:]:
+                gap_min = (ev.timestamp - batches[-1][-1].timestamp).total_seconds() / 60
+                if gap_min > 30:
+                    batches.append([])
+                batches[-1].append(ev)
+
+            for b_idx, batch in enumerate(batches):
+                total = len(batch)
+                passed = sum(1 for e in batch if e.passed)
+                acc = round(passed / total * 100, 1) if total else 0.0
+                date_str = batch[0].timestamp.strftime("%Y-%m-%d") if batch[0].timestamp else ""
+                label = f"Batch {b_idx + 1} ({date_str})"
+
+                # Per-dataset breakdown for this batch
+                by_ds: dict[str, dict] = {}
+                for e in batch:
+                    ds = e.dataset or "unknown"
+                    if ds not in by_ds:
+                        by_ds[ds] = {"passed": 0, "total": 0}
+                    by_ds[ds]["total"] += 1
+                    if e.passed:
+                        by_ds[ds]["passed"] += 1
+
+                row = {
+                    "batch_num": b_idx + 1,
+                    "label": label,
+                    "date": date_str,
+                    "total": total,
+                    "passed": passed,
+                    "failed": total - passed,
+                    "accuracy": acc,
+                    "by_dataset": {
+                        ds: {
+                            "passed": v["passed"],
+                            "total": v["total"],
+                            "accuracy": round(v["passed"] / v["total"] * 100, 1),
+                        }
+                        for ds, v in sorted(by_ds.items())
+                    },
+                }
+                accuracy_rows.append(row)
+
+            # Latest batch summary (most recent batch, sorted newest first)
+            lb = accuracy_rows[-1] if accuracy_rows else {}
+            latest_batch = {
+                "batch_num": lb.get("batch_num"),
+                "date": lb.get("date"),
+                "total": lb.get("total", 0),
+                "passed": lb.get("passed", 0),
+                "failed": lb.get("failed", 0),
+                "accuracy": lb.get("accuracy", 0.0),
+                "by_dataset": lb.get("by_dataset", {}),
+            }
+
+        return {
+            "smartness": smartness_rows,
+            "accuracy": accuracy_rows,
+            "latest_batch": latest_batch,
+            "total_runs": len(runs),
+            "total_batches": len(accuracy_rows),
+        }
+
+    except Exception as e:
+        logger.error(f"Failed to build smartness timeseries: {e}")
+        return {
+            "smartness": [], "accuracy": [], "latest_batch": {},
+            "total_runs": 0, "total_batches": 0, "error": str(e),
+        }
+    finally:
+        db.close()
+
+
 @router.get("/api/dab/results/{dataset}/{query_id}")
 def get_dab_result(dataset: str, query_id: str, request: Request, date: str = "all", run_id: Optional[str] = None):
     """Get full result details for a specific DAB query."""
