@@ -3,7 +3,7 @@ import warnings
 warnings.filterwarnings("ignore")
 
 import typing
-from agent.app.utils import logger
+from agent.app.utils.logger import logger
 import os
 import sys
 import json
@@ -310,8 +310,7 @@ async def security_and_access_log_middleware(request: Request, call_next):
     response = await call_next(request)
     latency_ms = (time.time() - start) * 1000
     client_ip = request.client.host if request.client else "unknown"
-    # logger is the module; the singleton lives at logger.logger
-    logger.logger.info(
+    logger.info(
         f"ACCESS {request.method} {request.url.path} "
         f"→ {response.status_code} ({latency_ms:.1f}ms) ip={client_ip}"
     )
@@ -347,23 +346,40 @@ def _warmup_caches():
 async def startup_event():
     _warmup_caches()
     # Clean up stale running tasks from DB on startup
-    try:
-        from agent.app.db.database import SessionLocal
-        from agent.app.db.models import TaskRun
-        db = SessionLocal()
+    import time
+    import random
+    for attempt in range(5):
         try:
-            stale_tasks = db.query(TaskRun).filter(TaskRun.status == "RUNNING").all()
-            for t in stale_tasks:
-                t.status = "FAILED"
-                t.error_message = "Stale task: backend restarted"
-                t.updated_at = datetime.utcnow()
-            if stale_tasks:
-                db.commit()
-                logger.info(f"Purged {len(stale_tasks)} stale running tasks from DB on startup.")
-        finally:
-            db.close()
+            from agent.app.db.database import SessionLocal
+            from agent.app.db.models import TaskRun
+            db = SessionLocal()
+            try:
+                stale_tasks = db.query(TaskRun).filter(TaskRun.status == "RUNNING").all()
+                for t in stale_tasks:
+                    t.status = "FAILED"
+                    t.error_message = "Stale task: backend restarted"
+                    t.updated_at = datetime.utcnow()
+                if stale_tasks:
+                    db.commit()
+                    logger.info(f"Purged {len(stale_tasks)} stale running tasks from DB on startup.")
+                break
+            finally:
+                db.close()
+        except Exception as e:
+            if "locked" in str(e).lower() and attempt < 4:
+                time.sleep(random.uniform(0.1, 0.5))
+                continue
+            logger.error(f"Failed to purge stale running tasks on startup (attempt {attempt + 1}): {e}")
+            break
+
+    # Clear stale DAB running and executing task sets from Redis on startup
+    try:
+        from agent.app.utils.cache import RedisSet
+        RedisSet("shared_DAB_RUNNING_TASKS").clear()
+        RedisSet("shared_DAB_EXECUTING_TASKS").clear()
+        logger.info("Cleared stale DAB running and executing task sets from Redis on startup.")
     except Exception as e:
-        logger.error(f"Failed to purge stale running tasks on startup: {e}")
+        logger.error(f"Failed to clear Redis DAB task sets on startup: {e}")
 
     # Initialize query analytics JSONL store
     _qa_module.initialize(store_path=MEMORY_DIR / "query_analytics.jsonl")
@@ -1362,7 +1378,7 @@ Question: {query_text}"""
         # Block destructive SQL before it reaches the database
         sql_violation = SecurityValidator.check_generated_sql(sql)
         if sql_violation:
-            logger.logger.warning(
+            logger.warning(
                 f"[Security] Destructive SQL blocked: {sql_violation.pattern} — {sql_violation.details}"
             )
             return {

@@ -22,3 +22,6 @@ uvicorn
 requests
 sqlalchemy
 redis
+matplotlib
+seaborn
+tabulate

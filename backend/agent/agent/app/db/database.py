@@ -27,31 +27,39 @@ def get_db():
         db.close()
 
 def migrate_db():
-    try:
-        # Check if evaluations table exists and apply any pending migrations
-        with engine.connect() as conn:
-            res_tables = conn.execute(text("SELECT name FROM sqlite_master WHERE type='table' AND name='evaluations'"))
-            if res_tables.fetchone():
-                res = conn.execute(text("PRAGMA table_info(evaluations)"))
-                columns = [row[1] for row in res.fetchall()]
+    import time
+    import random
+    for attempt in range(5):
+        try:
+            # Check if evaluations table exists and apply any pending migrations
+            with engine.connect() as conn:
+                res_tables = conn.execute(text("SELECT name FROM sqlite_master WHERE type='table' AND name='evaluations'"))
+                if res_tables.fetchone():
+                    res = conn.execute(text("PRAGMA table_info(evaluations)"))
+                    columns = [row[1] for row in res.fetchall()]
 
-                # Migration: add run_id column (original migration)
-                if "run_id" not in columns:
-                    conn.execute(text("ALTER TABLE evaluations ADD COLUMN run_id VARCHAR DEFAULT NULL"))
-                    conn.execute(text("CREATE INDEX IF NOT EXISTS ix_evaluations_run_id ON evaluations (run_id)"))
-                    conn.commit()
-                    print("Migrated DB: added run_id column.")
+                    # Migration: add run_id column (original migration)
+                    if "run_id" not in columns:
+                        conn.execute(text("ALTER TABLE evaluations ADD COLUMN run_id VARCHAR DEFAULT NULL"))
+                        conn.execute(text("CREATE INDEX IF NOT EXISTS ix_evaluations_run_id ON evaluations (run_id)"))
+                        conn.commit()
+                        print("Migrated DB: added run_id column.")
 
-                # Migration: add username column to separate data per user
-                if "username" not in columns:
-                    conn.execute(text(f"ALTER TABLE evaluations ADD COLUMN username VARCHAR DEFAULT '{DEFAULT_USERNAME}'"))
-                    conn.execute(text("CREATE INDEX IF NOT EXISTS ix_evaluations_username ON evaluations (username)"))
-                    # Backfill all existing rows to the current owner
-                    conn.execute(text(f"UPDATE evaluations SET username = '{DEFAULT_USERNAME}' WHERE username IS NULL"))
-                    conn.commit()
-                    print(f"Migrated DB: added username column and backfilled existing rows to '{DEFAULT_USERNAME}'.")
-    except Exception as e:
-        print(f"Database migration failed: {e}")
+                    # Migration: add username column to separate data per user
+                    if "username" not in columns:
+                        conn.execute(text(f"ALTER TABLE evaluations ADD COLUMN username VARCHAR DEFAULT '{DEFAULT_USERNAME}'"))
+                        conn.execute(text("CREATE INDEX IF NOT EXISTS ix_evaluations_username ON evaluations (username)"))
+                        # Backfill all existing rows to the current owner
+                        conn.execute(text(f"UPDATE evaluations SET username = '{DEFAULT_USERNAME}' WHERE username IS NULL"))
+                        conn.commit()
+                        print(f"Migrated DB: added username column and backfilled existing rows to '{DEFAULT_USERNAME}'.")
+            break
+        except Exception as e:
+            if "locked" in str(e).lower() and attempt < 4:
+                time.sleep(random.uniform(0.1, 0.5))
+                continue
+            print(f"Database migration failed (attempt {attempt + 1}): {e}")
+            break
 
 migrate_db()
 

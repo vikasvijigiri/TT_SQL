@@ -64,5 +64,15 @@ class PipelineRun(Base):
     timestamp = Column(DateTime, default=datetime.utcnow)
 
 
-Base.metadata.create_all(bind=engine)
+for attempt in range(5):
+    try:
+        Base.metadata.create_all(bind=engine)
+        break
+    except Exception as e:
+        if "locked" in str(e).lower() and attempt < 4:
+            import time
+            import random
+            time.sleep(random.uniform(0.1, 0.5))
+            continue
+        raise e
 

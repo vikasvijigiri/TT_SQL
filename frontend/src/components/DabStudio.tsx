@@ -630,6 +630,8 @@ const DabStudio = ({ onBack, onHome, autoOpenDetails, clearAutoOpenDetails, user
   const selectedDbRef = useRef(selectedDb);
   const rtPollRef = useRef(null);
 
+  const isRunInteractive = dateFilter === 'live' || !!allDates.find(r => r.id === dateFilter)?.is_active;
+
   const dabMascotQuotes = [
     "Spinning up localized DuckDB nodes... 🦆",
     "Running multi-step logical operations... 🧩",
@@ -642,10 +644,9 @@ const DabStudio = ({ onBack, onHome, autoOpenDetails, clearAutoOpenDetails, user
 
   // Fetch dates on mount — with a 7s global safety net so spinner never gets stuck
   useEffect(() => {
-    // Safety: if fetchDates hangs beyond 7s, force dateFilter='all' so the page unblocks
+    // Safety: if fetchDates hangs beyond 7s, just clear the spinner and leave filter as-is
     const safetyFallback = setTimeout(() => {
       setLoading(false);
-      setDateFilter(prev => prev || 'all');
     }, 7000);
 
     fetchDates().finally(() => clearTimeout(safetyFallback));
@@ -850,36 +851,21 @@ const DabStudio = ({ onBack, onHome, autoOpenDetails, clearAutoOpenDetails, user
     try {
       // 6s timeout so a hung backend doesn't freeze the UI forever
       const res = await axios.get(`${API_BASE}/dab/runs`, { timeout: 6000 });
-      const dates = res.data || [];
+      // Filter out the legacy "All Runs" sentinel — metrics must always be scoped to a specific run
+      const dates = (res.data || []).filter(r => r.id !== 'all');
+      setAllDates(dates);
 
-      // Always inject a "Live" option at position 1 so active runs are always visible
-      const liveEntry = { id: 'live', label: '⚡ Live View', date: '', is_active: true };
-      const withLive = [
-        dates[0] || { id: 'all', label: 'All Runs', date: 'All', is_active: false },
-        liveEntry,
-        ...dates.slice(1),
-      ];
-      setAllDates(withLive);
-
-      if (dateFilter === '') {
-        // Check if backend flagged an actively running archived run
-        const activeRun = dates.find(r => r.is_active && r.id !== 'all');
-        if (activeRun) {
-          setDateFilter(activeRun.id);
-        } else {
-          // Default to Live — always shows whatever is currently being written
-          setDateFilter('live');
-        }
+      if (dateFilter === '' || dateFilter === 'live' || dateFilter === 'all') {
+        // Prefer the actively-running batch; otherwise the most recent completed run
+        const activeRun = dates.find(r => r.is_active);
+        const mostRecent = dates.find(r => !r.is_active && r.id !== 'live' && r.id !== 'all');
+        const target = activeRun || mostRecent;
+        if (target) setDateFilter(target.id);
+        // If no runs exist yet, leave dateFilter empty — page shows the empty state
       }
     } catch (err) {
       console.error("Failed to load execution dates", err);
-      // On failure, still inject Live option so user can try
-      const liveEntry = { id: 'live', label: '⚡ Live View', date: '', is_active: true };
-      setAllDates([
-        { id: 'all', label: 'All Runs', date: 'All', is_active: false },
-        liveEntry,
-      ]);
-      if (dateFilter === '') setDateFilter('live');
+      setAllDates([]);
     }
   };
 
@@ -930,10 +916,11 @@ const DabStudio = ({ onBack, onHome, autoOpenDetails, clearAutoOpenDetails, user
   };
 
   const checkGlobalRunStatus = async () => {
-    // If looking at a historical run, it should be completely static (no active polling)
+    // If looking at a historical completed run, it should be completely static (no active polling)
     const today = new Date().toISOString().split('T')[0];
-    // Don't early exit if dateFilter is still loading (empty string)
-    if (dateFilter && dateFilter.startsWith('run_')) {
+    // Don't early exit if dateFilter is still loading (empty string) or if the selected run is currently active
+    const isSelectedRunActive = allDates.find(r => r.id === dateFilter)?.is_active;
+    if (dateFilter && dateFilter.startsWith('run_') && !isSelectedRunActive) {
         setIsGlobalRunning(false);
         setRunningInstances({});
         return;
@@ -1076,7 +1063,8 @@ const DabStudio = ({ onBack, onHome, autoOpenDetails, clearAutoOpenDetails, user
     const runStart = Date.now();
     axios.post(`${API_BASE}/dab/run/${dataset}/${instanceId}`, {
       model: selectedModel,
-      temperature: temperature
+      temperature: temperature,
+      run_id: dateFilter && dateFilter !== 'live' ? dateFilter : undefined
     })
       .catch(err => {
         console.error("Failed to trigger single DAB run", err);
@@ -1234,14 +1222,16 @@ const DabStudio = ({ onBack, onHome, autoOpenDetails, clearAutoOpenDetails, user
         }
         return today;
       };
-      const targetDate = getRunDateStr(dateFilter);
-      
-      const runIdToPass = dateFilter && dateFilter.startsWith('run_') ? dateFilter : undefined;
-      const payload = { 
-        force_rerun: true, 
-        workers: workers, 
+      // Fresh runs always use today's date and get a new run_id from the backend.
+      // Continue runs pass the original run's date and run_id so records stay in the same batch.
+      const targetDate = mode === 'fresh' ? today : getRunDateStr(dateFilter);
+      const runIdToPass = mode === 'continue' && dateFilter && dateFilter.startsWith('run_') ? dateFilter : undefined;
+
+      const payload = {
+        force_rerun: true,
+        workers: workers,
         runs: runs,
-        mode, 
+        mode,
         date: targetDate,
         run_id: runIdToPass,
         model: selectedModel,
@@ -1357,6 +1347,7 @@ const DabStudio = ({ onBack, onHome, autoOpenDetails, clearAutoOpenDetails, user
         csvHeaders: detailsRes.data.csv_headers,
         csvData: detailsRes.data.csv_data,
         agentAnswer: detailsRes.data.agent_answer,
+        groundTruth: detailsRes.data.ground_truth,
         complexity: "Standard",
         complexity_type: "Standard",
         complexity_score: 0.2,
@@ -2157,10 +2148,10 @@ const DabStudio = ({ onBack, onHome, autoOpenDetails, clearAutoOpenDetails, user
               <input
                 type="range"
                 min="1"
-                max="5"
+                max="10"
                 step="1"
                 value={runs}
-                onChange={e => setRuns(Math.min(5, Math.max(1, Number(e.target.value))))}
+                onChange={e => setRuns(Math.min(10, Math.max(1, Number(e.target.value))))}
                 className="w-full h-1 bg-[#1b2738] rounded-lg appearance-none cursor-pointer accent-violet-500"
               />
             </div>
@@ -2201,7 +2192,7 @@ const DabStudio = ({ onBack, onHome, autoOpenDetails, clearAutoOpenDetails, user
       {/* Main Panel */}
       <main className="flex-1 flex flex-col min-w-0 bg-[#1b2738] relative overflow-hidden">
         {/* Header Bar */}
-        <header className="h-16 border-b border-[#2c3e55] bg-[#162030]/90 backdrop-blur-lg flex items-center justify-between px-6 z-10 shrink-0 gap-4">
+        <header className="relative h-16 border-b border-[#2c3e55] bg-[#162030]/90 backdrop-blur-lg flex items-center justify-between px-6 z-20 shrink-0 gap-4">
           <div className="flex items-center gap-3 min-w-0">
             <span className="text-sm font-mono font-bold text-white tracking-tight truncate">
               {currentView === 'dashboard' && 'DataAgentBench · Forensic Telemetry & Audit Matrix'}
@@ -2224,7 +2215,7 @@ const DabStudio = ({ onBack, onHome, autoOpenDetails, clearAutoOpenDetails, user
                   return (
                     <span className="flex items-center gap-2">
                       {isActive && <span className="pulsing-dot-green" title="Active Run" />}
-                      <span>{selectedRun?.label || (dateFilter === 'all' ? 'All Runs' : dateFilter)}</span>
+                      <span>{selectedRun?.label || dateFilter || 'Select Run'}</span>
                     </span>
                   );
                 })()}
@@ -2289,7 +2280,7 @@ const DabStudio = ({ onBack, onHome, autoOpenDetails, clearAutoOpenDetails, user
               {theme === 'light' ? <Moon className="w-4 h-4 text-violet-400" /> : <Sun className="w-4 h-4 text-amber-400" />}
             </button>
 
-            {currentView === 'dashboard' && dateFilter !== 'all' && (
+            {currentView === 'dashboard' && dateFilter && dateFilter !== 'live' && (
               <button
                 onClick={handleDeleteRun}
                 className="px-3 py-1.5 rounded-lg font-mono font-bold text-xs shadow-lg transition-all border flex items-center gap-1.5 bg-rose-600/10 text-rose-400 border-rose-500/30 hover:bg-rose-600/20"
@@ -2329,13 +2320,14 @@ const DabStudio = ({ onBack, onHome, autoOpenDetails, clearAutoOpenDetails, user
               <span className="text-purple-500">◈</span>
               <span className="text-purple-400 uppercase tracking-widest text-[10px]">Active Run</span>
               <span className="text-slate-200">
-                {allDates.find(r => r.id === dateFilter)?.label || (dateFilter === 'all' ? 'All Runs' : dateFilter)}
+                {allDates.find(r => r.id === dateFilter)?.label || dateFilter || 'No Run Selected'}
               </span>
             </div>
             
             {(() => {
-              const totalQueries = metrics.total_queries || 54;
-              const totalSlots = totalQueries * 5;
+              const totalQueries = metrics.total_queries || 0;
+              const numRuns = metrics.num_runs || runs;
+              const totalSlots = totalQueries * numRuns;
               const completedSlots = metrics.total_run_slots || 0;
               const pct = totalSlots > 0 ? Math.round((completedSlots / totalSlots) * 100) : 0;
               
@@ -2356,7 +2348,7 @@ const DabStudio = ({ onBack, onHome, autoOpenDetails, clearAutoOpenDetails, user
               <span>
                 <span className="text-purple-200 font-bold">{metrics.total_run_slots || 0}</span>
                 <span className="text-slate-500"> / </span>
-                <span className="text-purple-400 font-bold">{(metrics.total_queries || 54) * 5}</span> evaluations done
+                <span className="text-purple-400 font-bold">{(metrics.total_queries || 0) * (metrics.num_runs || runs)}</span> evaluations done
               </span>
             </div>
           </div>
@@ -2401,9 +2393,9 @@ const DabStudio = ({ onBack, onHome, autoOpenDetails, clearAutoOpenDetails, user
                     theme={theme}
                     metrics={[
                         { label: 'TOTAL', value: metrics.total_queries || 0, color: 'blue', type: 'total', sub: 'QUERIES' },
-                        { label: 'EVALUATED', value: metrics.evaluated || 0, color: 'indigo', type: 'evaluated', sub: 'RUNS' },
-                        { label: 'PASSED', value: metrics.passed || 0, color: 'emerald', type: 'succeeded', sub: 'PASS' },
-                        { label: 'FAILED', value: metrics.failed || 0, color: 'rose', type: 'errored', sub: 'FAIL' },
+                        { label: 'EVALUATED', value: metrics.total_run_slots || 0, color: 'indigo', type: 'evaluated', sub: 'RUNS' },
+                        { label: 'PASSED', value: metrics.passing_run_slots || 0, color: 'emerald', type: 'succeeded', sub: 'PASS' },
+                        { label: 'FAILED', value: (metrics.total_run_slots || 0) - (metrics.passing_run_slots || 0), color: 'rose', type: 'errored', sub: 'FAIL' },
                         { label: 'PASS@1', value: String(metrics.pass_at_1_pct || metrics.gold_accuracy || '0.0%').replace('%', ''), color: 'violet', type: 'gold', sub: 'ACC %' },
                         { label: 'LATENCY', value: String(metrics.avg_latency || '0.0s').replace('s', ''), color: 'cyan', type: 'latency', sub: 'AVG' },
                         { label: 'TOKENS', value: String(metrics.avg_tokens_per_agent || '0 tokens').replace(' tokens', ''), color: 'fuchsia', type: 'tokens', sub: '/AGENT' },
@@ -2499,7 +2491,6 @@ const DabStudio = ({ onBack, onHome, autoOpenDetails, clearAutoOpenDetails, user
                                 <Info size={14} className="animate-pulse" />
                               </button>
 
-                              {dateFilter === 'live' && (
                                 <button
                                   className={`p-2 rounded-md bg-[#1d1b32] border border-[#2d284a] hover:bg-purple-600 hover:text-white transition-all cursor-pointer shrink-0 ${runningDbs[db.name] ? 'animate-spin bg-purple-500 text-white' : 'text-slate-300'}`}
                                   onClick={(e) => { e.stopPropagation(); handleRunDb(db.name); }}
@@ -2507,7 +2498,6 @@ const DabStudio = ({ onBack, onHome, autoOpenDetails, clearAutoOpenDetails, user
                                 >
                                   {runningDbs[db.name] ? <Activity className="w-3.5 h-3.5 animate-pulse" /> : <Play className="w-3.5 h-3.5" />}
                                 </button>
-                              )}
                             </div>
                           </div>
                         );
@@ -2581,7 +2571,6 @@ const DabStudio = ({ onBack, onHome, autoOpenDetails, clearAutoOpenDetails, user
                     </h1>
                   </div>
 
-                  {dateFilter === 'live' && (
                     <div className="flex items-center gap-2 font-mono text-xs shrink-0">
                       <button
                         onClick={() => handleRunDb(selectedDb)}
@@ -2591,7 +2580,6 @@ const DabStudio = ({ onBack, onHome, autoOpenDetails, clearAutoOpenDetails, user
                         {runningDbs[selectedDb] ? 'RUNNING...' : 'RUN ALL PROBES'}
                       </button>
                     </div>
-                  )}
                 </header>
 
                 {/* Probe List Grid */}
@@ -2658,7 +2646,6 @@ const DabStudio = ({ onBack, onHome, autoOpenDetails, clearAutoOpenDetails, user
                             >
                               <Activity className="w-3.5 h-3.5 text-purple-400 animate-pulse" />
                             </button>
-                            {dateFilter === 'live' && (
                               <button
                                 className={`p-1.5 rounded bg-[#181820] border border-[#262632] hover:bg-emerald-600 hover:text-white transition-all ${runningInstances[res.id] ? 'animate-spin bg-purple-500 text-white' : 'text-slate-300'}`}
                                 onClick={(e) => { e.stopPropagation(); handleRunSingle(res.db_id, res.id.split('_q')[1]); }}
@@ -2667,7 +2654,6 @@ const DabStudio = ({ onBack, onHome, autoOpenDetails, clearAutoOpenDetails, user
                               >
                                 {runningInstances[res.id] ? <Activity className="w-3.5 h-3.5 animate-pulse" /> : <Play className="w-3.5 h-3.5" />}
                               </button>
-                            )}
                           </div>
                         </div>
 
@@ -2864,18 +2850,19 @@ const DabStudio = ({ onBack, onHome, autoOpenDetails, clearAutoOpenDetails, user
               {/* Sub-tabs */}
               <div className="flex border-b border-[#1f1f2e] bg-[#0c0c11] px-4 shrink-0">
                 {[
-                  { id: 'flow', icon: <Sparkles className="w-3.5 h-3.5 inline mr-1" /> },
-                  { id: 'sql', icon: <FileCode className="w-3.5 h-3.5 inline mr-1" /> },
-                  { id: 'log', icon: <Activity className="w-3.5 h-3.5 inline mr-1" /> },
-                  { id: 'csv', icon: <FileSpreadsheet className="w-3.5 h-3.5 inline mr-1" /> },
-                  { id: 'insights', icon: <Lightbulb className="w-3.5 h-3.5 inline mr-1" /> },
-                ].map(({ id, icon }) => (
+                  { id: 'flow', label: 'FLOW', icon: <Sparkles className="w-3.5 h-3.5 inline mr-1" /> },
+                  { id: 'sql', label: 'SQL', icon: <FileCode className="w-3.5 h-3.5 inline mr-1" /> },
+                  { id: 'log', label: 'LOG', icon: <Activity className="w-3.5 h-3.5 inline mr-1" /> },
+                  { id: 'csv', label: 'CSV', icon: <FileSpreadsheet className="w-3.5 h-3.5 inline mr-1" /> },
+                  { id: 'ground_truth', label: 'GROUND TRUTH', icon: <Trophy className="w-3.5 h-3.5 inline mr-1" /> },
+                  { id: 'insights', label: 'INSIGHTS', icon: <Lightbulb className="w-3.5 h-3.5 inline mr-1" /> },
+                ].map(({ id, label, icon }) => (
                   <button
                     key={id}
                     onClick={() => setDetailsTab(id)}
                     className={`px-4 py-2 font-mono font-bold text-xs uppercase border-b-2 tracking-wider transition-all ${detailsTab === id ? 'border-purple-500 text-purple-400 font-extrabold' : 'border-transparent text-slate-500 hover:text-slate-300'}`}
                   >
-                    {icon}{id}
+                    {icon}{label}
                   </button>
                 ))}
               </div>
@@ -3006,6 +2993,92 @@ const DabStudio = ({ onBack, onHome, autoOpenDetails, clearAutoOpenDetails, user
                         </div>
                       </div>
                     )}
+
+                    {detailsTab === 'ground_truth' && (() => {
+                      const parseCSV = (csvText) => {
+                        if (!csvText) return { headers: [], data: [] };
+                        const lines = csvText.split(/\r?\n/).map(line => line.trim()).filter(Boolean);
+                        if (lines.length === 0) return { headers: [], data: [] };
+                        
+                        const splitLine = (text) => {
+                          const result = [];
+                          let current = '';
+                          let inQuotes = false;
+                          for (let i = 0; i < text.length; i++) {
+                            const char = text[i];
+                            if (char === '"') {
+                              inQuotes = !inQuotes;
+                            } else if (char === ',' && !inQuotes) {
+                              result.push(current.trim());
+                              current = '';
+                            } else {
+                              current += char;
+                            }
+                          }
+                          result.push(current.trim());
+                          return result;
+                        };
+
+                        const headers = splitLine(lines[0]);
+                        const data = lines.slice(1).map(line => {
+                          const values = splitLine(line);
+                          const row = {};
+                          headers.forEach((header, index) => {
+                            row[header] = values[index] !== undefined ? values[index] : '';
+                          });
+                          return row;
+                        });
+
+                        return { headers, data };
+                      };
+
+                      const { headers, data } = parseCSV(selectedDetails.groundTruth);
+                      const isTable = headers.length > 0 && data.length > 0 && headers.some(h => h.length > 0);
+
+                      return (
+                        <div className="space-y-4 h-full flex flex-col">
+                          <div className="flex justify-between items-center shrink-0">
+                            <span className="text-[10px] font-mono text-slate-500 uppercase tracking-widest">Expected Ground Truth Answer</span>
+                            {selectedDetails.groundTruth && (
+                              <button
+                                onClick={() => handleCopy(selectedDetails.groundTruth, 'ground_truth')}
+                                className="flex items-center gap-1.5 px-2.5 py-1 rounded bg-[#101017] border border-[#262638] text-slate-400 hover:text-white transition-colors text-[10px] font-mono font-bold"
+                              >
+                                {copiedType === 'ground_truth' ? <Check className="w-3 h-3 text-emerald-400" /> : <Copy className="w-3 h-3" />}
+                                {copiedType === 'ground_truth' ? 'COPIED' : 'COPY'}
+                              </button>
+                            )}
+                          </div>
+                          
+                          {isTable ? (
+                            <div className="flex-1 border border-[#1e1e2d] bg-[#0c0c11]/50 rounded-xl overflow-auto select-text">
+                              <table className="w-full text-left font-mono text-xs border-collapse">
+                                <thead className="sticky top-0 z-10">
+                                  <tr className="bg-[#12121c] border-b border-[#20202d] text-slate-400 uppercase text-[10px]">
+                                    {headers.map(h => (
+                                      <th key={h} className="p-3 font-extrabold">{h}</th>
+                                    ))}
+                                  </tr>
+                                </thead>
+                                <tbody>
+                                  {data.map((row, idx) => (
+                                    <tr key={idx} className="border-b border-[#181822] hover:bg-white/5 transition-colors">
+                                      {headers.map(h => (
+                                        <td key={h} className="p-3 text-slate-300 truncate max-w-[200px]">{String(row[h] ?? 'NULL')}</td>
+                                      ))}
+                                    </tr>
+                                  ))}
+                                </tbody>
+                              </table>
+                            </div>
+                          ) : (
+                            <pre className="flex-1 bg-black/40 border border-[#1a1a24] p-4 rounded-xl font-mono text-xs text-emerald-400 overflow-auto whitespace-pre-wrap select-text selection:bg-emerald-600/30">
+                              {selectedDetails.groundTruth || 'No ground truth data available for this query.'}
+                            </pre>
+                          )}
+                        </div>
+                      );
+                    })()}
 
                     {detailsTab === 'insights' && (() => {
                       const insights = generateInsights(selectedDetails.csvHeaders, selectedDetails.csvData);
@@ -3149,7 +3222,6 @@ const DabStudio = ({ onBack, onHome, autoOpenDetails, clearAutoOpenDetails, user
                     </div>
 
                     {/* Repair Sandbox */}
-                    {dateFilter === 'live' && (
                       <div className="pt-4 border-t border-[#1a1a24] space-y-4 font-mono text-xs">
                         <div className="flex justify-between items-center">
                           <span className="text-[10px] font-mono text-slate-500 uppercase tracking-wider">Autonomous Repair Sandbox</span>
@@ -3201,7 +3273,6 @@ const DabStudio = ({ onBack, onHome, autoOpenDetails, clearAutoOpenDetails, user
                           </div>
                         )}
                       </div>
-                    )}
                   </>
                 )}
               </div>
@@ -3274,7 +3345,7 @@ const DabStudio = ({ onBack, onHome, autoOpenDetails, clearAutoOpenDetails, user
                 <div>
                   <h3 className="text-lg font-bold text-slate-100 font-mono">DAB Execution Setup</h3>
                   <p className="text-sm text-slate-400 font-mono mt-1">
-                    Today's Run Status: <span className="text-purple-400">{completedSlots} / 270 evaluations completed</span>
+                    Today's Run Status: <span className="text-purple-400">{completedSlots} / {(metrics?.total_queries || 0) * (metrics?.num_runs || runs)} evaluations completed</span>
                   </p>
                 </div>
               </div>
@@ -3292,7 +3363,7 @@ const DabStudio = ({ onBack, onHome, autoOpenDetails, clearAutoOpenDetails, user
                     <ChevronRight className="w-4 h-4 text-purple-500 transition-transform group-hover:translate-x-1" />
                   </div>
                   <p className="text-xs text-slate-400 font-mono">
-                    Resume the existing run, executing only the remaining {270 - completedSlots} pending queries. This preserves your completed evaluations and metrics.
+                    Resume the existing run, executing only the remaining {(metrics?.total_queries || 0) * (metrics?.num_runs || runs) - completedSlots} pending queries. This preserves your completed evaluations and metrics.
                   </p>
                 </button>
 

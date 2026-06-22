@@ -16,13 +16,9 @@ from pathlib import Path
 from typing import Dict, Any, Optional, Tuple, List
 from datetime import datetime
 
-from agent.app.core.config import DAB_REPO, RESULTS_DIR
-import contextlib
-
-from agent.app.core.config import DAB_RESULTS_DIR, DEFAULT_USERNAME
+from agent.app.core.config import DAB_REPO, DAB_RESULTS_DIR, DEFAULT_USERNAME
 from agent.app.db.database import SessionLocal
 from agent.app.db.models import Evaluation
-from sqlalchemy import cast, Date
 
 DAB_RUN_DATE: Optional[str] = None
 DAB_RUN_ID: Optional[str] = None
@@ -60,28 +56,25 @@ def _run_dynamic_validate(
     validate_src: str, agent_answer: str, filepath: str | None = None
 ) -> Tuple[bool, str]:
     """
-    Execute the validate.py source in an isolated child process to forcefully 
-    prevent LLM-generated SQL from crashing/hanging the host machine.
+    Execute the validate.py source in an isolated thread with a 30-second timeout.
+    Uses threading instead of multiprocessing so it works safely from any thread
+    on Windows (multiprocessing.Process can only be spawned from the main thread).
     """
-    import multiprocessing
-    
-    manager = multiprocessing.Manager()
-    return_dict = manager.dict()
-    # Default state if process is killed or fails
-    return_dict["passed"] = False
-    return_dict["reason"] = "Timeout Error: Query execution exceeded 30 seconds (KILLED)."
-    
-    p = multiprocessing.Process(
+    import threading
+
+    return_dict: dict = {
+        "passed": False,
+        "reason": "Timeout Error: Query execution exceeded 30 seconds (KILLED).",
+    }
+
+    t = threading.Thread(
         target=_validation_worker,
-        args=(validate_src, agent_answer, filepath, return_dict)
+        args=(validate_src, agent_answer, filepath, return_dict),
+        daemon=True,
     )
-    p.start()
-    p.join(timeout=30)
-    
-    if p.is_alive():
-        p.terminate()
-        p.join()
-        
+    t.start()
+    t.join(timeout=30)
+    # If still alive the daemon thread will be abandoned; we return the timeout default.
     return return_dict["passed"], return_dict["reason"]
 
 
@@ -250,6 +243,68 @@ def load_eval_result(
         db.close()
 
 
+def load_all_eval_results(
+    dataset: str, query_id: str, date: str = "all", run_id: Optional[str] = None,
+    username: Optional[str] = None
+) -> List[Dict[str, Any]]:
+    """
+    Return the latest eval result for EVERY run-slot of a query (all run_suffixes),
+    sorted by run number ascending. No upper bound on number of runs.
+    """
+    from datetime import timedelta
+    db = SessionLocal()
+    try:
+        q = db.query(Evaluation).filter(
+            Evaluation.dataset == dataset,
+            Evaluation.query_id == str(query_id),
+        )
+        if username:
+            q = q.filter(Evaluation.username == username)
+        if run_id is not None:
+            if run_id == "live":
+                q = q.filter((Evaluation.run_id == "live") | (Evaluation.run_id == None))
+            elif run_id != "all":
+                q = q.filter(Evaluation.run_id == run_id)
+        elif date != "all":
+            start_dt = datetime.strptime(date, "%Y-%m-%d")
+            end_dt = start_dt + timedelta(days=1)
+            q = q.filter(Evaluation.timestamp >= start_dt, Evaluation.timestamp < end_dt)
+
+        records = q.order_by(Evaluation.timestamp.desc()).all()
+
+        # Keep only the latest record per run_suffix (in case a slot was retried)
+        seen: Dict[str, Any] = {}
+        for rec in records:
+            sfx = rec.run_suffix or ""
+            if sfx not in seen:
+                seen[sfx] = rec
+
+        def _run_order(sfx: str) -> int:
+            if sfx == "":
+                return 0
+            m = re.match(r"_run(\d+)$", sfx)
+            return int(m.group(1)) if m else 999
+
+        return [
+            {
+                "dataset": rec.dataset,
+                "query_id": rec.query_id,
+                "passed": rec.passed,
+                "reason": rec.reason,
+                "elapsed_s": rec.elapsed_s,
+                "input_tokens": rec.input_tokens,
+                "output_tokens": rec.output_tokens,
+                "timestamp": rec.timestamp.isoformat() if rec.timestamp else "",
+            }
+            for rec in sorted(seen.values(), key=lambda r: _run_order(r.run_suffix or ""))
+        ]
+    except Exception as e:
+        print(f"Failed to load all eval results for {dataset} q{query_id}: {e}")
+        return []
+    finally:
+        db.close()
+
+
 def load_agent_answer(dataset: str, query_id: str) -> Optional[str]:
     """Load agent's raw answer text from the results directory."""
     result_dir = DAB_RESULTS_DIR / dataset
@@ -272,38 +327,55 @@ def load_agent_answer(dataset: str, query_id: str) -> Optional[str]:
     return None
 
 
+def _pass_at_k_unbiased(n: int, c: int, k: int) -> float:
+    """
+    Official DAB unbiased pass@k estimator (from common_scaffold/validate/pass_k.py).
+      pass@k = 1 - C(n-c, k) / C(n, k)
+    For k=1 this equals c/n.  For k>=n it equals 1 if c>0 else 0.
+    """
+    from math import comb
+    if c == 0:
+        return 0.0
+    if n - c < k:
+        return 1.0
+    return 1.0 - comb(n - c, k) / comb(n, k)
+
+
 def compute_accuracy(
-    queries: List[Dict[str, Any]], max_runs: int = 5, date: str = "all", run_id: Optional[str] = None,
+    queries: List[Dict[str, Any]], date: str = "all", run_id: Optional[str] = None,
     username: Optional[str] = None
 ) -> Dict[str, Any]:
     """
-    Compute Pass@1 and Pass@K accuracy across all evaluated queries.
+    Compute Pass@1 and Pass@K accuracy matching the official DAB benchmark standard.
 
-    Definitions (matching the DAB benchmark standard):
-      pass@1 = (total passing run-slots) / (total run-slots evaluated)
-               i.e. the run-level success rate averaged over ALL independent runs.
-               Example: bookreview 3 queries x 5 runs = 15 slots; if 14 pass -> 93.3%
+    Official methodology (common_scaffold/validate/pass_k.py + stats_scripts/):
+      pass@1 per query  = pass_at_k_unbiased(n, c, k=1) = c/n
+      pass@1 per dataset = mean(per-query pass@1 values)
+      pass@1 leaderboard = mean across all datasets  ← equal weight per dataset
 
-      pass@K = (queries where ANY of the K runs passed) / (queries evaluated)
-               i.e. query-level: did the system get it right at least once?
+      pass@K per query  = pass_at_k_unbiased(n, c, k=n) = 1 if c>0 else 0
+      pass@K leaderboard = mean across all datasets of (fraction of queries with any pass)
 
-    K is auto-detected from how many _run{n}_eval.json files exist on disk.
-    A query is "pending" if run-0 eval file does not exist yet.
+    Aggregation is per-dataset-then-mean, NOT a flat slot ratio.  crmarenapro's 13
+    queries do not outweigh bookreview's 2 queries on the leaderboard.
 
-    Args:
-        queries: List of query dicts from benchmark_loader.load_all_queries()
-        max_runs: Upper bound for scanning _run{n} files (default 5).
-        date: Optional YYYY-MM-DD string to filter results by execution day.
+    K is auto-detected from the database — no upper-bound cap on number of runs.
+    A query is "pending" if it has no eval records at all.
     """
     total_queries = 0
     pending = 0
 
-    # Run-level tallies (for pass@1 = slot-level success rate)
+    # Run-slot tallies (for pass@1)
     total_run_slots = 0
     passing_run_slots = 0
 
     # Query-level tallies (for pass@K)
     queries_with_any_pass = 0
+
+    # Aggregate resource usage across ALL run slots
+    total_elapsed_s = 0.0
+    total_input_tokens = 0
+    total_output_tokens = 0
 
     per_dataset: Dict[str, Dict] = {}
 
@@ -313,48 +385,32 @@ def compute_accuracy(
 
         if dataset not in per_dataset:
             per_dataset[dataset] = {
-                "total": 0,  # queries
+                "total": 0,
                 "pending": 0,
                 "evaluated": 0,
-                "run_slots": 0,  # total run slots (queries x K)
-                "passing_slots": 0,  # slots that passed
-                "passed_atk": 0,  # queries with any passing run
+                "run_slots": 0,
+                "passing_slots": 0,
+                "passed_atk": 0,
                 "queries": [],
             }
 
         per_dataset[dataset]["total"] += 1
         total_queries += 1
 
-        # Collect any completed runs (0 to max_runs-1) for today
-        run_results = []
-        for r in range(max_runs):
-            sfx = "" if r == 0 else f"_run{r}"
-            rv = load_eval_result(dataset, qid, run_suffix=sfx, date=date, run_id=run_id, username=username)
-            if rv is not None:
-                if run_id is None and date != "all":
-                    file_date = rv.get("timestamp", "")[:10]
-                    if file_date != date:
-                        continue
-                run_results.append(rv)
+        # One DB call returns all run-slots for this query (no fixed cap)
+        run_results = load_all_eval_results(dataset, qid, date=date, run_id=run_id, username=username)
 
         if not run_results:
             per_dataset[dataset]["pending"] += 1
             pending += 1
-            per_dataset[dataset]["queries"].append(
-                {
-                    "query_id": qid,
-                    "status": "pending",
-                    "passed": None,
-                }
-            )
+            per_dataset[dataset]["queries"].append({"query_id": qid, "status": "pending", "passed": None})
             continue
 
-        run0 = run_results[0]
         k = len(run_results)
         passing = sum(1 for rv in run_results if rv.get("passed", False))
         any_pass = passing > 0
 
-        # Run-level tallies
+        # Run-slot tallies
         total_run_slots += k
         passing_run_slots += passing
         per_dataset[dataset]["run_slots"] += k
@@ -365,13 +421,16 @@ def compute_accuracy(
             queries_with_any_pass += 1
             per_dataset[dataset]["passed_atk"] += 1
 
-        # Per-run breakdown for reporting
+        # Aggregate resource usage over ALL runs for this query
+        q_elapsed = sum(rv.get("elapsed_s") or 0.0 for rv in run_results)
+        q_input   = sum(rv.get("input_tokens") or 0 for rv in run_results)
+        q_output  = sum(rv.get("output_tokens") or 0 for rv in run_results)
+        total_elapsed_s      += q_elapsed
+        total_input_tokens   += q_input
+        total_output_tokens  += q_output
+
         runs_detail = [
-            {
-                "run": i,
-                "passed": bool(rv.get("passed", False)),
-                "reason": (rv.get("reason") or "")[:120],
-            }
+            {"run": i, "passed": bool(rv.get("passed", False)), "reason": (rv.get("reason") or "")[:120]}
             for i, rv in enumerate(run_results)
         ]
 
@@ -383,64 +442,44 @@ def compute_accuracy(
                 "passing_runs": passing,
                 "passed_atk": any_pass,
                 "runs": runs_detail,
-                "reason": run0.get("reason", ""),
-                "elapsed_s": run0.get("elapsed_s"),
-                "input_tokens": run0.get("input_tokens"),
-                "output_tokens": run0.get("output_tokens"),
+                "reason": run_results[0].get("reason", ""),
+                # totals across all runs (used by the resource-usage aggregation above)
+                "elapsed_s": q_elapsed,
+                "input_tokens": q_input,
+                "output_tokens": q_output,
             }
         )
 
     evaluated_queries = total_queries - pending
 
-    # Global K = max runs seen across any evaluated query
+    # Actual K = max run-slots seen across any evaluated query
     global_k = max(
-        (
-            len(q.get("runs") or [])
-            for ds in per_dataset.values()
-            for q in ds["queries"]
-            if q.get("runs")
-        ),
-        default=1,
+        (len(q.get("runs") or []) for ds in per_dataset.values() for q in ds["queries"] if q.get("runs")),
+        default=0,
     )
 
-    # pass@1 = run-slot success rate (Claude's definition)
-    pass_at_1 = (passing_run_slots / total_run_slots) if total_run_slots > 0 else 0.0
-    # pass@K = query-level any-run success rate
-    pass_at_k = (
-        (queries_with_any_pass / evaluated_queries) if evaluated_queries > 0 else 0.0
-    )
-
-    # Per-dataset pass@1 and pass@K
+    # ── Per-dataset stats (per-query pass@1 averaged within the dataset) ─────
     for ds_info in per_dataset.values():
-        slots = ds_info["run_slots"]
-        passing_s = ds_info["passing_slots"]
+        slots  = ds_info["run_slots"]
+        pass_s = ds_info["passing_slots"]
         evaled = ds_info["evaluated"]
-        atk = ds_info["passed_atk"]
-        ds_info["pass_at_1"] = round(passing_s / slots, 4) if slots > 0 else 0.0
-        ds_info["pass_at_1_pct"] = (
-            f"{passing_s / slots * 100:.1f}%" if slots > 0 else "N/A"
-        )
-        ds_info["pass_at_k"] = round(atk / evaled, 4) if evaled > 0 else 0.0
+        atk    = ds_info["passed_atk"]
+        # pass@1 per dataset = mean(c_q / n_q) for each query; since all n_q are equal
+        # this equals passing_slots / run_slots — same formula, same result.
+        ds_info["pass_at_1"]     = round(pass_s / slots, 4) if slots > 0 else 0.0
+        ds_info["pass_at_1_pct"] = f"{pass_s / slots * 100:.1f}%" if slots > 0 else "N/A"
+        ds_info["pass_at_k"]     = round(atk / evaled, 4) if evaled > 0 else 0.0
         ds_info["pass_at_k_pct"] = f"{atk / evaled * 100:.1f}%" if evaled > 0 else "N/A"
 
-    total_time = sum(
-        q.get("elapsed_s")
-        for ds in per_dataset.values()
-        for q in ds["queries"]
-        if q.get("elapsed_s") is not None
-    )
-    total_input_tokens = sum(
-        q.get("input_tokens")
-        for ds in per_dataset.values()
-        for q in ds["queries"]
-        if q.get("input_tokens") is not None
-    )
-    total_output_tokens = sum(
-        q.get("output_tokens")
-        for ds in per_dataset.values()
-        for q in ds["queries"]
-        if q.get("output_tokens") is not None
-    )
+    # ── Leaderboard metrics: mean across datasets (official DAB aggregation) ──
+    # Each dataset contributes equally regardless of how many queries it has.
+    ds_with_evals = [info for info in per_dataset.values() if info["evaluated"] > 0]
+    if ds_with_evals:
+        pass_at_1 = sum(info["pass_at_1"] for info in ds_with_evals) / len(ds_with_evals)
+        pass_at_k = sum(info["pass_at_k"] for info in ds_with_evals) / len(ds_with_evals)
+    else:
+        pass_at_1 = 0.0
+        pass_at_k = 0.0
 
     return {
         "total_queries": total_queries,
@@ -454,7 +493,9 @@ def compute_accuracy(
         "pass_at_1_pct": f"{pass_at_1 * 100:.1f}%",
         "pass_at_k": round(pass_at_k, 4),
         "pass_at_k_pct": f"{pass_at_k * 100:.1f}%",
-        "total_elapsed_time_s": round(total_time, 2),
+        # Raw slot counts kept for reference (not used for leaderboard ranking)
+        "raw_pass_at_1_slot_ratio": round(passing_run_slots / total_run_slots, 4) if total_run_slots else 0.0,
+        "total_elapsed_time_s": round(total_elapsed_s, 2),
         "total_input_tokens": total_input_tokens,
         "total_output_tokens": total_output_tokens,
         "per_dataset": per_dataset,

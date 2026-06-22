@@ -163,6 +163,21 @@ class QualityMonitor:
             "alert_threshold": self._alert_threshold,
         }
 
+    def check_anomaly(self, window: int = 10, drop_threshold: float = 0.20) -> bool:
+        """Return True if recent quality dropped significantly vs baseline.
+
+        Compares the avg of the last *window* scores against the overall avg.
+        A drop of more than *drop_threshold* (default 20%) signals an anomaly.
+        Returns False when fewer than 2×window samples are available.
+        """
+        with self._lock:
+            scores = list(self._scores)
+        if len(scores) < 2 * window:
+            return False
+        baseline = sum(scores[:-window]) / len(scores[:-window])
+        recent = sum(scores[-window:]) / window
+        return (baseline - recent) / max(baseline, 1e-9) > drop_threshold
+
     def reset(self) -> None:
         """Clear all scores.  Use in tests only."""
         with self._lock:
@@ -184,10 +199,15 @@ def get_quality_stats() -> dict:
     return _monitor.stats()
 
 
+def check_quality_anomaly() -> bool:
+    """Return True if recent result quality has dropped significantly from baseline."""
+    return _monitor.check_anomaly()
+
+
 def record_quality_event(csv_path: str) -> None:
     """
     Convenience helper for the orchestrator: read the result CSV at *csv_path*,
-    audit it, and record the quality score into the process-wide monitor.
+    audit it, record the quality score, and emit a warning if an anomaly is detected.
 
     Silently no-ops when the file does not exist or cannot be read.
     """
@@ -200,5 +220,11 @@ def record_quality_event(csv_path: str) -> None:
             rows: list[dict[str, Any]] = list(reader)
         report = audit(rows)
         _monitor.record_score(report.quality_score)
+        if _monitor.check_anomaly():
+            import logging as _log
+            _log.getLogger(__name__).warning(
+                "[QUALITY ALERT] Recent result quality has dropped >20%% from baseline. "
+                "Review recent SQL corrections and dynamic lessons for regressions."
+            )
     except Exception:
         pass

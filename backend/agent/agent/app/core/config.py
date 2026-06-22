@@ -29,6 +29,8 @@ INPUT_DIR     = RESOURCES_DIR / "input_data"
 
 # ── Results paths (runtime-written; volume-mounted in Docker) ────────────────
 RESULTS_DIR     = BACKEND_DIR / "results" / "evaluations"
+# DAB_RESULTS_DIR is kept for legacy compatibility but all active writes use
+# get_user_dab_results_dir(username). New code should not reference this directly.
 DAB_RESULTS_DIR = RESULTS_DIR / "dab"
 
 # ── DataAgentBench repo ───────────────────────────────────────────────────────

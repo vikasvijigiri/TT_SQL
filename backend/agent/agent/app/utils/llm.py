@@ -186,14 +186,14 @@ def reset_token_counters():
     thread_local.output_tokens = 0
 
 
-def add_tokens(input_tokens: int, output_tokens: int):
+def add_tokens(input_tokens: int, output_tokens: int, component: Optional[str] = None):
     if not hasattr(thread_local, "input_tokens"):
         thread_local.input_tokens = 0
     if not hasattr(thread_local, "output_tokens"):
         thread_local.output_tokens = 0
     thread_local.input_tokens += input_tokens
     thread_local.output_tokens += output_tokens
-    _record_token_call(input_tokens, output_tokens)  # aggregate to process-level monitor
+    _record_token_call(input_tokens, output_tokens, component=component)  # aggregate to process-level monitor
 
 
 def get_tokens() -> tuple:
@@ -231,12 +231,16 @@ class LLMClient:
             self._max_tokens = int(llm_cfg.get("max_tokens", 8000))
             self._max_retries = int(llm_cfg.get("max_retries", 5))
             self._retry_base_delay = float(llm_cfg.get("retry_base_delay_s", 3.0))
+            self._caching_models: tuple = tuple(
+                llm_cfg.get("prompt_caching_models", ["claude-3-5", "claude-3-haiku", "claude-3-7", "claude-4", "nova"])
+            )
         except Exception:
             sys_temp = 0.0
             sys_model = "bedrock/openai.gpt-oss-safeguard-120b"
             self._max_tokens = 8000
             self._max_retries = 5
             self._retry_base_delay = 3.0
+            self._caching_models = ("claude-3-5", "claude-3-haiku", "claude-3-7", "claude-4", "nova")
 
         temp = temperature if temperature is not None else sys_temp
         self.full_model_name = model or os.getenv("LLM_MODEL", sys_model)
@@ -495,7 +499,7 @@ class LLMClient:
             logger.info(f"[ContextCaching] Input: {in_t} | Cache Read: {cache_read} | Cache Creation: {cache_creation}")
         return final_str, in_t, out_t
 
-    def generate(self, system_prompt: str, user_prompt: str) -> str:
+    def generate(self, system_prompt: str, user_prompt: str, component: Optional[str] = None) -> str:
         """Simple text completion with exponential-backoff retry on transient Bedrock errors."""
         try:
             from agent.app.utils.cache import DAB_CANCEL_FLAG, SPIDER_CANCEL_FLAG
@@ -508,13 +512,33 @@ class LLMClient:
         # This keeps the pipeline thread alive so the log keeps accumulating.
         _cb_wait_until_clear()
 
+        # Hard safety cap: model context window is 131 072 tokens.
+        # gpt-oss-safeguard-120b tokenises at ~2.48 chars/token, so:
+        #   131 072 tokens × 2.48 = 325 058 chars max total.
+        # Reserve ~12 000 tokens (≈29 760 chars) for response + system overhead,
+        # leaving 280 000 chars as a safe combined cap.
+        _MAX_PROMPT_CHARS = 280_000
+        total_chars = len(system_prompt) + len(user_prompt)
+        if total_chars > _MAX_PROMPT_CHARS:
+            _keep = _MAX_PROMPT_CHARS - len(system_prompt)
+            _head = _keep * 2 // 3
+            _tail = _keep - _head
+            user_prompt = (
+                user_prompt[:_head]
+                + f"\n\n[... {total_chars - _MAX_PROMPT_CHARS} chars truncated to fit context window ...]\n\n"
+                + user_prompt[-_tail:]
+            )
+            logger.warning(
+                f"[LLM] Prompt truncated: total {total_chars} chars exceeded {_MAX_PROMPT_CHARS} cap. "
+                f"Kept {_head} head + {_tail} tail of user prompt."
+            )
+
         logger.debug(
             f"LLM Prompt lengths | System: {len(system_prompt)} | User: {len(user_prompt)}"
         )
 
-        # Bedrock supports prompt caching on Claude 3.5 (Sonnet/Opus), Claude 3 Haiku, and Nova
-        supported_caching_models = ("claude-3-5", "claude-3-haiku", "nova")
-        use_cache = len(system_prompt) > 4000 and any(m in self.model_id.lower() for m in supported_caching_models)
+        # Bedrock prompt caching — models list is configurable in system_params.yaml (llm.prompt_caching_models)
+        use_cache = len(system_prompt) > 4000 and any(m in self.model_id.lower() for m in self._caching_models)
 
         last_exc: Optional[Exception] = None
         for attempt in range(self._max_retries + 1):
@@ -534,7 +558,7 @@ class LLMClient:
 
                 response = self.llm.invoke(messages)
                 final_str, in_t, out_t = self._parse_response(response)
-                add_tokens(in_t, out_t)
+                add_tokens(in_t, out_t, component=component)
                 metrics = {"input_tokens": in_t, "output_tokens": out_t}
                 full_prompt = f"=== SYSTEM PROMPT ===\n{system_prompt}\n\n=== USER PROMPT ===\n{user_prompt}"
                 agent_name = getattr(logger.logger, "name", "AGENT")
@@ -646,7 +670,7 @@ class LLMClient:
                 logger.error(f"Async Pydantic Validation Failed on retry for {response_model.__name__}: {e2!s}")
                 raise e2
 
-    async def agenerate(self, system_prompt: str, user_prompt: str) -> str:
+    async def agenerate(self, system_prompt: str, user_prompt: str, component: Optional[str] = None) -> str:
         """Asynchronous text completion with exponential-backoff retry."""
         try:
             from agent.app.utils.cache import DAB_CANCEL_FLAG, SPIDER_CANCEL_FLAG
@@ -672,11 +696,25 @@ class LLMClient:
             await asyncio.sleep(_sleep)
             _waited += _sleep
 
+        _MAX_PROMPT_CHARS = 280_000
+        total_chars = len(system_prompt) + len(user_prompt)
+        if total_chars > _MAX_PROMPT_CHARS:
+            _keep = _MAX_PROMPT_CHARS - len(system_prompt)
+            _head = _keep * 2 // 3
+            _tail = _keep - _head
+            user_prompt = (
+                user_prompt[:_head]
+                + f"\n\n[... {total_chars - _MAX_PROMPT_CHARS} chars truncated to fit context window ...]\n\n"
+                + user_prompt[-_tail:]
+            )
+            logger.warning(
+                f"[LLM] Prompt truncated (async): total {total_chars} chars exceeded {_MAX_PROMPT_CHARS} cap."
+            )
+
         logger.debug(f"LLM Prompt lengths | System: {len(system_prompt)} | User: {len(user_prompt)}")
 
-        # Bedrock supports prompt caching on Claude 3.5 (Sonnet/Opus), Claude 3 Haiku, and Nova
-        supported_caching_models = ("claude-3-5", "claude-3-haiku", "nova")
-        use_cache = len(system_prompt) > 4000 and any(m in self.model_id.lower() for m in supported_caching_models)
+        # Bedrock prompt caching — models list is configurable in system_params.yaml (llm.prompt_caching_models)
+        use_cache = len(system_prompt) > 4000 and any(m in self.model_id.lower() for m in self._caching_models)
 
         last_exc: Optional[Exception] = None
         for attempt in range(self._max_retries + 1):
@@ -696,7 +734,7 @@ class LLMClient:
 
                 response = await self.llm.ainvoke(messages)
                 final_str, in_t, out_t = self._parse_response(response)
-                add_tokens(in_t, out_t)
+                add_tokens(in_t, out_t, component=component)
                 metrics = {"input_tokens": in_t, "output_tokens": out_t}
                 full_prompt = f"=== SYSTEM PROMPT ===\n{system_prompt}\n\n=== USER PROMPT ===\n{user_prompt}"
                 agent_name = getattr(logger.logger, "name", "AGENT")

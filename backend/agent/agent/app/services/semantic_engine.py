@@ -2,10 +2,24 @@ import typing
 import os
 import re
 import json
-from typing import List, Dict, Any
+import time
+import yaml
+from typing import List, Dict, Any, Optional
 from agent.app.models.schemas import SemanticContext, SemanticTable, SemanticColumn
 from agent.app.utils.logger import logger
 import contextlib
+
+
+def _load_homogeneous_threshold(default: int = 8) -> int:
+    """Read homogeneous_threshold from system_params.yaml; fall back to *default*."""
+    try:
+        here = os.path.dirname(__file__)
+        params_path = os.path.normpath(os.path.join(here, "..", "..", "..", "config", "system_params.yaml"))
+        with open(params_path, "r", encoding="utf-8") as f:
+            params = yaml.safe_load(f) or {}
+        return int(params.get("schema_engine", {}).get("homogeneous_threshold", default))
+    except Exception:
+        return default
 
 _CONTEXT_CACHE: Dict[str, SemanticContext] = {}
 _DISCOVERY_CACHE: Dict[tuple, List[str]] = {}
@@ -46,6 +60,8 @@ class SemanticContextEngine:
         self.max_sample_values = max_sample_values
         self.silent = silent
         self.context: SemanticContext = None  # type: ignore
+        # ISO-8601 timestamp of the last schema load; None until load_context() runs.
+        self._schema_loaded_at: Optional[str] = None
 
         # Allow callers to pass explicit names (e.g. when constructed from a connection string).
         if db_name is not None:
@@ -187,13 +203,17 @@ class SemanticContextEngine:
                                     except Exception:
                                         pass
 
-                        # Build per-column sample values from sample_rows
+                        # Build per-column sample values from sample_rows.
+                        # Cap each value at 300 chars to prevent large text columns
+                        # (source code, git diffs) from bloating the prompt.
+                        _MAX_SAMPLE_CHAR = 300
                         col_samples: dict = {n: [] for n in col_names}
                         for row in sample_rows:
                             for n in col_names:
                                 val = row.get(n)
                                 if val is not None:
-                                    col_samples[n].append(val)
+                                    s = str(val)
+                                    col_samples[n].append(s[:_MAX_SAMPLE_CHAR] if len(s) > _MAX_SAMPLE_CHAR else val)
 
                         for idx, col_name in enumerate(col_names):
                             col_type = (
@@ -258,8 +278,9 @@ class SemanticContextEngine:
 
         self.context = SemanticContext(tables=tables)  # type: ignore
         _CONTEXT_CACHE[_cache_key] = self.context
+        self._schema_loaded_at = time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime())
         if not self.silent:
-            logger.success(f"Built Semantic Context with {len(tables)} tables.")
+            logger.success(f"Built Semantic Context with {len(tables)} tables (loaded at {self._schema_loaded_at}).")
         return self.context
 
     def format_for_prompt(
@@ -680,7 +701,7 @@ class SemanticContextEngine:
                 # When many tables share the same column schema (e.g., one table per
                 # stock symbol or per entity), represent them as a single unified
                 # virtual table so the LLM can reason about the combined data.
-                HOMOGENEOUS_THRESHOLD = 8  # group size that triggers unification
+                HOMOGENEOUS_THRESHOLD = _load_homogeneous_threshold()  # configurable via system_params.yaml
                 schema_groups: Dict[str, List[str]] = {}  # col_sig -> [table_names]
                 table_col_info: Dict[str, List[Any]] = {}  # table_name -> col rows
 

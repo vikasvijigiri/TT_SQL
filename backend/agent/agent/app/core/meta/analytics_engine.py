@@ -24,6 +24,49 @@ def generate_analytics_report(results: List[Dict[str, Any]]) -> None:
     try:
         PLOTS_DIR.mkdir(parents=True, exist_ok=True)
         
+        # Enrich results with PipelineRun database records to get accurate smartness/attempts metrics
+        try:
+            from agent.app.db.database import SessionLocal
+            from agent.app.db.models import PipelineRun
+            db = SessionLocal()
+            try:
+                for r in results:
+                    instance_id = r.get("instance_id") or f"{r['dataset']}_q{r['query_id']}"
+                    # Load the latest PipelineRun for this instance
+                    run_record = db.query(PipelineRun).filter(
+                        PipelineRun.instance_id == instance_id,
+                        PipelineRun.dataset == r["dataset"]
+                    ).order_by(PipelineRun.timestamp.desc()).first()
+                    if run_record:
+                        r.setdefault("attempts", run_record.total_attempts)
+                        r.setdefault("score", run_record.smartness_score)
+                        r.setdefault("verdict", run_record.final_verdict)
+                        r.setdefault("latency", run_record.total_latency_s)
+                        # Parse error_categories if they exist, e.g. from evolution_json
+                        try:
+                            if run_record.evolution_json:
+                                ev_list = json.loads(run_record.evolution_json)
+                                errors = [
+                                    step.get("error_category")
+                                    for step in ev_list
+                                    if step.get("error_category")
+                                ]
+                                if errors:
+                                    r.setdefault("error_categories", errors)
+                        except Exception:
+                            pass
+            finally:
+                db.close()
+        except Exception as db_err:
+            logger.warning(f"Failed to enrich results with database PipelineRun info: {db_err}")
+
+        # Fallback mappings for standard keys
+        for r in results:
+            if "elapsed_s" in r:
+                r.setdefault("latency", r["elapsed_s"])
+            if "status" in r:
+                r.setdefault("verdict", r["status"])
+
         # 1. Prepare Data
         df = pd.DataFrame(results)
         

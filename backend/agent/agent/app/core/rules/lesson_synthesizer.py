@@ -144,4 +144,8 @@ class LessonSynthesizer:
         logger.info(
             f"LessonSynthesizer: Synthesized and saved ACTIVE rule '{rule_data['rule_title']}' [{lesson_id}] for {dialect}"
         )
+        # Retire stale low-performing rules after each new rule is added
+        retired = self.store.deactivate_poor_performers()
+        if retired:
+            logger.info(f"LessonSynthesizer: Retired {retired} low-performing rule(s).")
         return new_rule

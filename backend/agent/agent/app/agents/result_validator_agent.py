@@ -18,6 +18,10 @@ class ResultValidatorOutput(BaseModel):
     is_valid: bool = Field(
         description="Whether the result is semantically correct and grounded in evidence."
     )
+    confidence_score: Optional[float] = Field(
+        None,
+        description="Confidence in the result's correctness, 0.0–1.0. 1.0 = certain, 0.0 = highly suspect.",
+    )
     exploration_sql: Optional[str] = Field(
         None,
         description="Optional SQL to 'probe' the DB if the result is 0 or grain is mismatched.",

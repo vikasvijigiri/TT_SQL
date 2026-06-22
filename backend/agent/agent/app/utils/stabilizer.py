@@ -45,25 +45,11 @@ class ExecutionStabilizer:
                 # Attempt dynamic cross-database table discovery
                 semantic_engine.discover_and_load_table(base_name)
 
-        # 2. Verify column-level references
-        semantic_context = semantic_engine.context
-        # Match both quoted ("Table"."Column") and unquoted (table.column) dotted identifiers.
-        # Capture each part with or without surrounding double-quotes.
-        found_identifiers = re.findall(
-            r'"?([a-zA-Z0-9_]+)"?\."?([a-zA-Z0-9_]+)"?',
-            clean_sql,
-        )
-        table_col_map = {}
-        for t in semantic_context.tables:
-            table_col_map[t.name.upper()] = [c.name.upper() for c in t.columns]
-            # Also register by simple name to support unquoted/aliased column lookup
-            simple_name = t.name.split(".")[-1].upper()
-            table_col_map[simple_name] = [c.name.upper() for c in t.columns]
-
-        for table, col in found_identifiers:
-            t_up, c_up = table.upper(), col.upper()
-            if t_up in table_col_map and c_up not in table_col_map[t_up]:
-                return False, f"Column '{col}' does not exist in table '{table}'."
+        # Column-level check is omitted: table aliases (e.g. `si` for `stockinfo`) can
+        # shadow real table names in large schemas (e.g. a `SI` stock ticker table),
+        # causing false-positive hallucination errors. The DB execution layer will catch
+        # actual column-name errors on every attempt, making pre-flight column checking
+        # redundant and error-prone.
         return True, ""
 
     def quote_fqn(self, fqn: str) -> str:

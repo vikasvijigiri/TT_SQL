@@ -2,6 +2,7 @@ import typing
 import os
 import json
 import glob
+import yaml
 import pandas as pd
 import threading
 from typing import Tuple, List, Dict, Any, Optional
@@ -9,6 +10,17 @@ from agent.app.utils.logger import logger
 from agent.app.core.config import DATABASES_DIR, CONFIG_DIR, RESULTS_DIR
 from agent.app.core.connection import parse_connection, ConnectionConfig
 import contextlib
+
+
+def _load_homogeneous_threshold(default: int = 8) -> int:
+    """Read homogeneous_threshold from system_params.yaml; fall back to *default*."""
+    try:
+        params_path = CONFIG_DIR.parent / "config" / "system_params.yaml"
+        with open(params_path, "r", encoding="utf-8") as f:
+            params = yaml.safe_load(f) or {}
+        return int(params.get("schema_engine", {}).get("homogeneous_threshold", default))
+    except Exception:
+        return default
 
 # Thread-safe global cache for DuckDB homogeneous groups to optimize schema introspection
 _DUCKDB_HOMOGENEOUS_GROUPS_CACHE: dict[str, typing.Any] = {}
@@ -224,11 +236,6 @@ class DatabaseExecutor:
         os.makedirs(save_dir, exist_ok=True)
         csv_path = os.path.join(save_dir, f"{instance_id}.csv")
 
-        # Clear stale results
-        if os.path.exists(csv_path):
-            with contextlib.suppress(BaseException):
-                os.remove(csv_path)
-
         # Multi-statement support
         statements = [s.strip() for s in sql.split(";") if s.strip()]
         if not statements:
@@ -255,8 +262,17 @@ class DatabaseExecutor:
                 rows, columns, error = self._execute_via_sqlalchemy(  # type: ignore
                     stmt, self._conn_cfg.raw_uri
                 )
-            else:
+            elif (self.dialect or "").lower() == "snowflake":
                 rows, columns, error = self._execute_snowflake(stmt)
+            else:
+                # No execution backend resolved for this dialect. Return a clear error
+                # instead of silently falling back to a vendor-specific executor.
+                _d = self.dialect or "unknown"
+                error = (
+                    f"No execution backend resolved for dialect '{_d}'. "
+                    f"Provide a connection string, a local db file path, or configure the appropriate backend."
+                )
+                rows, columns = [], []
 
             if error:
                 return False, error, 0
@@ -387,8 +403,15 @@ class DatabaseExecutor:
             rows, columns, error = self._execute_via_sqlalchemy(  # type: ignore
                 sql, self._conn_cfg.raw_uri
             )
-        else:
+        elif (self.dialect or "").lower() == "snowflake":
             rows, _columns, error = self._execute_snowflake(sql)
+        else:
+            _d = self.dialect or "unknown"
+            error = (
+                f"No execution backend resolved for dialect '{_d}'. "
+                f"Provide a connection string, a local db file path, or configure the appropriate backend."
+            )
+            rows = []
         if error:
             return False, error, []
         return True, "Success", rows
@@ -569,7 +592,11 @@ class DatabaseExecutor:
                         continue
                     alias = os.path.splitext(os.path.basename(sqlite_file))[0] + "_db"
                     try:
-                        cur.execute(f"ATTACH DATABASE '{sqlite_file}' AS \"{alias}\";")
+                        # Use IF NOT EXISTS to survive re-attaches across sessions
+                        # (DuckDB persists ATTACH to catalog on disk).
+                        cur.execute(
+                            f"ATTACH '{sqlite_file}' AS \"{alias}\";"
+                        )
                         attached_db_names.append((alias, sqlite_file))
                     except Exception as e:
                         logger.warning(
@@ -683,7 +710,7 @@ class DatabaseExecutor:
                                     sqlite_ext_loaded = True
                                 sqlite_file_fs = sqlite_file.replace("\\", "/")
                                 conn.execute(
-                                    f"ATTACH '{sqlite_file_fs}' AS \"{alias}\" (TYPE sqlite);"
+                                    f"ATTACH IF NOT EXISTS '{sqlite_file_fs}' AS \"{alias}\" (TYPE sqlite);"
                                 )
                                 attached_sqlite_names.append((alias, sqlite_file))
                             except Exception as e:
@@ -707,7 +734,7 @@ class DatabaseExecutor:
                             try:
                                 ddb_file_fs = ddb_file.replace("\\", "/")
                                 conn.execute(
-                                    f"ATTACH '{ddb_file_fs}' AS \"{alias}\" (READ_ONLY);"
+                                    f"ATTACH IF NOT EXISTS '{ddb_file_fs}' AS \"{alias}\" (READ_ONLY);"
                                 )
                                 attached_duckdb_names.append((alias, ddb_file))
                             except Exception as e:
@@ -746,7 +773,7 @@ class DatabaseExecutor:
                                 )
 
                         # Ã¢â€â‚¬Ã¢â€â‚¬ Auto-create unified TEMP VIEWs for homogeneous table groups Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬
-                        HOMOGENEOUS_THRESHOLD = 8
+                        HOMOGENEOUS_THRESHOLD = _load_homogeneous_threshold()
                         try:
                             db_basename = os.path.splitext(os.path.basename(path))[0]
 

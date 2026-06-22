@@ -175,12 +175,20 @@ def validate(sql: str, dialect: str = "sqlite") -> SQLValidationResult:
         )
 
     # ── Extract schema references from the parse tree ─────────────────────
+    # Collect CTE-defined aliases so we can exclude them from table checks
+    cte_names: set[str] = set()
+    for cte in expression.find_all(exp.CTE):
+        if cte.alias:
+            cte_names.add(cte.alias.lower())
+
     for table in expression.find_all(exp.Table):
-        if table.name:
+        if table.name and table.name.lower() not in cte_names:
             tables.add(table.name.lower())
 
+    # Only collect qualified column references (table.column) to avoid
+    # flagging SELECT aliases reused in ORDER BY / HAVING as hallucinated
     for col in expression.find_all(exp.Column):
-        if col.name and col.name != "*":
+        if col.name and col.name != "*" and col.table:
             columns.add(col.name.lower())
 
     return SQLValidationResult(

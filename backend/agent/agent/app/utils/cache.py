@@ -6,19 +6,24 @@ from typing import Any, Optional
 import collections.abc
 
 class MemoryCache:
-    """A thread-safe in-memory cache with TTL support."""
+    """A thread-safe in-memory cache with TTL support and hit-rate monitoring."""
     def __init__(self):
         self._data = {}
         self._lock = threading.Lock()
+        self._hits = 0
+        self._misses = 0
 
     def get(self, key: str) -> Optional[Any]:
         with self._lock:
             if key not in self._data:
+                self._misses += 1
                 return None
             val, expiry = self._data[key]
             if expiry is not None and time.time() > expiry:
                 del self._data[key]
+                self._misses += 1
                 return None
+            self._hits += 1
             return val
 
     def set(self, key: str, value: Any, ttl: Optional[int] = None) -> None:
@@ -33,6 +38,22 @@ class MemoryCache:
     def clear(self) -> None:
         with self._lock:
             self._data.clear()
+
+    def hit_rate(self) -> float:
+        """Return cache hit rate as a fraction (0.0–1.0)."""
+        with self._lock:
+            total = self._hits + self._misses
+            return self._hits / total if total > 0 else 0.0
+
+    def stats(self) -> dict:
+        with self._lock:
+            total = self._hits + self._misses
+            return {
+                "hits": self._hits,
+                "misses": self._misses,
+                "total": total,
+                "hit_rate_pct": round(self._hits * 100.0 / total, 1) if total > 0 else 0.0,
+            }
 
 class RedisCache:
     """Redis cache implementation."""

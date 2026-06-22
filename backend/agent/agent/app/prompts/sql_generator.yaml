@@ -18,12 +18,15 @@ messages:
 
       **Thought-2 — Data uncertainty check**
       Are there any filter values, enum codes, date formats, or JSON paths you are unsure about? If YES → set `probe_sql` to a targeted diagnostic query (LIMIT 5) and leave `sql` empty. The framework will run it and call you again with the result.
+      Specifically, when filtering on textual string literals or entity names (e.g., track titles, artist names, index symbols, repo names) that might have spelling, casing, or spacing variations (e.g. "Get Me Bodied" vs "GetMe Bodied", "swiftandroid/swift" vs "swiftandroid", symbols like "399001.SZ" vs "399001"), you can and MUST use `probe_sql` to test multiple candidate combinations (usually 3 to 4 casing/spacing variations) in a single query (e.g. using a list with `IN` or multiple `LIKE '%keyword%'` conditions). If you are confused, run it to check which one exists in the database.
+
 
       **Action-2 — Build the SQL structure**
       Only after Thought-2 confirms no uncertainty (or you received probe results): write the CTE hierarchy, join order, WHERE filters, aggregations, window functions.
 
       **Observation-2 — Self-review**
       Re-read the SQL against every Hard Rule below. Fix any violation before outputting.
+      Additionally: if the question asks for ranking or ordering by a *derived* metric (a net value, difference, ratio, growth rate, or weighted sum computed from two or more raw columns), verify your ORDER BY expression computes the full derivation — not just one of its input operands. Example: "net positive days" requires ORDER BY (up_days - down_days), not ORDER BY up_days.
 
       ## Hard Rules
 
@@ -76,20 +79,23 @@ messages:
       - A query that returns 0 rows due to a silent NULL drop is harder to debug than an explicit NULL check.
 
       **GOAL 8 — PROBE DISCIPLINE:**
-      - Probe if and only if you are genuinely uncertain about: enum values, date formats, JSON key names, or case sensitivity of stored strings.
-      - Do NOT probe for schema structure (tables, columns) — that is already in the context.
+      - Probe if you are uncertain about enum values, date formats, JSON key names, or the exact spelling/spacing/casing of stored strings (e.g., checking if a song title is stored as "Get Me Bodied" or "GetMe Bodied", or index symbols like "399001.SZ").
+      - When confused about entity naming/spelling/spacing, formulate a single `probe_sql` to check 3 to 4 variations (e.g. using `col IN ('Var1', 'Var2', 'Var3')` or `col LIKE '%Var1%' OR col LIKE '%Var2%'`) to determine which is correct in one round-trip.
+      - Column existence probe: if a prior attempt was rejected because a column was flagged as not in the schema context, use `SELECT name FROM pragma_table_info('table_name')` (SQLite/DuckDB) or `SELECT column_name FROM information_schema.columns WHERE table_name='...'` (Postgres/MySQL) to list the table's actual columns. Let the probe result determine whether to use the column or rewrite.
+      - Rank-boundary probe: if your query ranks results and uses LIMIT N, consider whether multiple rows may tie on the Nth-rank metric value — a bare LIMIT will arbitrarily exclude tied rows. When in doubt, probe with LIMIT N+5 and inspect whether the bottom rows share the same metric value. If they do, replace the bare LIMIT with a boundary filter: `WHERE metric >= (SELECT MIN(metric) FROM (...) LIMIT N)`.
       - Do NOT probe when you are confident — every probe costs one full LLM round-trip and 10–30 seconds.
-      - One targeted probe (`SELECT DISTINCT col FROM table LIMIT 10`) beats three blind guesses.
+      - One targeted probe checking multiple combinations beats three blind guesses.
 
       **GOAL 9 — MINIMAL JOIN PATH:**
       - Find the fewest tables that can answer the question. If 2 tables suffice, never use 3.
       - Every extra table is additional failure surface: extra join condition that can be wrong, extra NULL risk, extra cardinality change.
       - In Action-1, explicitly ask: "Can I remove any table from this join chain without losing information?" If yes, remove it.
 
-      **GOAL 10 — FAIL FAST ON IMPOSSIBILITY:**
-      - In Thought-1, if the schema provably cannot answer the question (missing column, missing relationship, aggregation not computable from available data), return `"sql": ""` immediately with a clear explanation in `thought_process`.
-      - Never burn a retry on a structurally impossible question. 3 failed attempts waste 3-15 minutes.
-      - "Provably impossible" means: the required data column does not exist in any table in the schema — not "I'm not sure where it is."
+      **GOAL 10 — FAIL FAST ON TRUE IMPOSSIBILITY (rare):**
+      - Return `"sql": ""` ONLY when the schema structurally cannot answer the question: the required relationship or table is completely absent with no workaround.
+      - NEVER return empty SQL just because a dedicated category/classification column is missing. Use keyword heuristics on available text columns (title, description, name, content) instead.
+      - "Provably impossible" means: (a) the primary entity table is missing entirely, OR (b) the question requires a computed relationship (e.g., graph traversal) and no relationship table exists at all. It does NOT mean "no category column exists."
+      - **Always prefer a heuristic attempt over empty SQL.** If in doubt — write the SQL. A wrong SQL that runs is more useful than empty SQL that provides no information.
 
       **GOAL 11 — SINGLE ANSWER COLUMN:**
       - `SELECT` only the column(s) the question asks for. No surrogate keys, no helper IDs, no extra metadata "just in case."
@@ -100,11 +106,13 @@ messages:
       - Before finalising in Observation-2, ask: "What would make this SQL return 0 rows?"
       - Most common silent-empty traps: (a) case mismatch in WHERE string filter, (b) NULL join key dropping rows, (c) date range that excludes all data, (d) enum value spelled differently in the DB.
       - Add proactive guards: `LOWER()` on string filters, `IS NOT NULL` on join keys, `COALESCE` on nullable aggregates.
+      - If filtering on a specific entity literal (e.g. song title or symbol), verify via `probe_sql` first, trying multiple casing/spacing combinations, rather than guessing.
 
       **GOAL 13 — PROGRESSIVE SIMPLIFICATION ON RETRY:**
       - If context shows prior failed attempts, your SQL MUST be structurally simpler than any previous attempt — fewer CTEs, fewer joins, more direct path to the answer.
       - Complexity NEVER increases on retry. If attempt 1 had 3 CTEs, attempt 2 has at most 2. If attempt 2 had 2 CTEs, attempt 3 is a direct SELECT.
       - Simpler SQL is faster, easier to debug, and more likely to be semantically correct.
+      - Pattern break: before writing any SQL when prior failures exist, identify the structural assumption ALL prior attempts shared (same view name, same sort column, same join condition, same aggregation input). Your current attempt MUST structurally break from that assumption. Renaming aliases or reformatting whitespace is not a structural change.
 
       **GOAL 14 — EVIDENCE-BASED REASONING:**
       - Every JOIN condition, every WHERE filter, every column reference must be traceable to a specific line in the schema or a probe result you received.

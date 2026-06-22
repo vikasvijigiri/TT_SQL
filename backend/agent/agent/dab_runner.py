@@ -1,30 +1,32 @@
 """
-Run a single DAB query from the terminal with live logs.
+CLI runner for a single DAB query.
 
-Examples:
-  python run_query.py --dataset patents --id 1
-  python run_query.py --dataset music_brainz_20k --id 3
-  python run_query.py --list
+Usage:
+  python backend/agent/agent/dab_runner.py --dataset deps_dev_v1 --id 1
+  python backend/agent/agent/dab_runner.py --dataset patents --id 1
+  python backend/agent/agent/dab_runner.py --list
 """
 
 import sys, os, time, argparse, pathlib
 
-# Force line-buffered stdout so log lines appear immediately in the terminal
 os.environ["PYTHONUNBUFFERED"] = "1"
 sys.stdout.reconfigure(line_buffering=True)
 
-sys.path.insert(0, "backend/agent")
+# Make the agent package importable when running this file directly
+sys.path.insert(0, str(pathlib.Path(__file__).resolve().parents[1]))
 
 from agent.app.dab.benchmark_loader import load_all_queries
 
 DAB_PATH = pathlib.Path("c:/Users/VikasVijigiri/Documents/DataAgentBench")
 
+
 def main():
-    parser = argparse.ArgumentParser(description="Run a single DAB query")
-    parser.add_argument("--dataset", "-d", help="Dataset name (e.g. patents, music_brainz_20k)")
-    parser.add_argument("--id", "-i", help="Query ID (e.g. 1, 3)")
-    parser.add_argument("--list", "-l", action="store_true", help="List all available queries")
-    parser.add_argument("--run", "-r", type=int, default=99, help="Run slot number (default: 99 = test run, not saved to DB)")
+    parser = argparse.ArgumentParser(description="Run a single DAB query with live logs")
+    parser.add_argument("--dataset", "-d", help="Dataset name  e.g. deps_dev_v1, patents")
+    parser.add_argument("--id",      "-i", help="Query ID  e.g. 1, 2")
+    parser.add_argument("--list",    "-l", action="store_true", help="List all queries")
+    parser.add_argument("--run",     "-r", type=int, default=99,
+                        help="Run slot (default 99 = test, not saved to eval DB)")
     args = parser.parse_args()
 
     queries = load_all_queries(DAB_PATH)
@@ -37,12 +39,12 @@ def main():
         return
 
     if not args.dataset or not args.id:
-        parser.error("--dataset and --id are required (or use --list to see all queries)")
+        parser.error("--dataset and --id are required  (or --list to see all queries)")
 
     matches = [q for q in queries if q["dataset"] == args.dataset and q["query_id"] == args.id]
     if not matches:
         print(f"No query found: dataset='{args.dataset}' id='{args.id}'")
-        print("Run with --list to see all available queries.")
+        print("Use --list to see all available queries.")
         sys.exit(1)
 
     q = matches[0]
@@ -50,15 +52,21 @@ def main():
     print(f"Query ID: {q['query_id']}")
     print(f"Question: {q['question']}")
     print(f"GT      : {str(q.get('ground_truth', ''))[:200]}")
-    print(f"Run slot: {args.run}  (slot 99 = test, not written to eval DB)")
     print("=" * 70)
+
+    # Reset cancellation flags to prevent stale states from stopping the run
+    try:
+        from agent.app.utils.cache import DAB_CANCEL_FLAG, SPIDER_CANCEL_FLAG
+        DAB_CANCEL_FLAG.set(False)
+        SPIDER_CANCEL_FLAG.set(False)
+    except Exception:
+        pass
 
     from agent.app.utils.llm import LLMClient
     from agent.app.dab.dab_orchestrator import run_dab_query
 
-    llm = LLMClient(temperature=0.0)
     t0 = time.time()
-    result = run_dab_query(q, llm_client=llm, run_number=args.run)
+    result = run_dab_query(q, llm_client=LLMClient(temperature=0.0), run_number=args.run)
     elapsed = time.time() - t0
 
     print("=" * 70)
@@ -68,6 +76,7 @@ def main():
     print(f"STATUS  : {result.get('status')}")
     if result.get("error"):
         print(f"ERROR   : {result['error']}")
+
 
 if __name__ == "__main__":
     main()

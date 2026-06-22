@@ -107,7 +107,6 @@ def _get_dab_queries():
 def _dab_query_status(dataset: str, query_id: str, date: str = "all", run_id: Optional[str] = None, username: Optional[str] = None) -> Dict[str, Any]:
     """Get the live status of a specific DAB query execution, aggregating across runs."""
     query_id = query_id.lower().replace("query", "")
-    from agent.app.dab.dab_evaluator import load_eval_result
     qkey = f"{dataset}_q{query_id}"
 
     is_executing = any(k == qkey or k.startswith(f"{qkey}_run") for k in DAB_EXECUTING_TASKS)
@@ -121,16 +120,14 @@ def _dab_query_status(dataset: str, query_id: str, date: str = "all", run_id: Op
     any_passed = False
     best_result = None
 
-    for r in range(10):
-        sfx = "" if r == 0 else f"_run{r}"
-        rv = load_eval_result(dataset, query_id, run_suffix=sfx, date=date, run_id=run_id, username=username)
-        if rv is not None:
-            rv["run_num"] = r
-            runs_found.append(rv)
-            if rv.get("passed"):
-                any_passed = True
-                if not best_result or not best_result.get("passed"):
-                    best_result = rv
+    from agent.app.dab.dab_evaluator import load_all_eval_results
+    for i, rv in enumerate(load_all_eval_results(dataset, query_id, date=date, run_id=run_id, username=username)):
+        rv["run_num"] = i
+        runs_found.append(rv)
+        if rv.get("passed"):
+            any_passed = True
+            if not best_result or not best_result.get("passed"):
+                best_result = rv
 
     if not runs_found:
         return {"status": "pending", "passed": None, "reason": "", "evaluated": False, "latency": 0}
@@ -252,23 +249,39 @@ def _cached_dab_metrics(date: str, run_id: Optional[str], username: str, ttl_has
         queries = _get_dab_queries()
         metrics = compute_accuracy(queries, date=date, run_id=run_id, username=username)
         
-        # Format and attach additional fields to match Spider dashboard
-        evaluated = metrics.get("evaluated", 0)
-        total_time = metrics.get("total_elapsed_time_s", 0)
-        total_input_tokens = metrics.get("total_input_tokens", 0)
-        total_output_tokens = metrics.get("total_output_tokens", 0)
-        total_tokens = total_input_tokens + total_output_tokens
-        
-        # Bedrock pricing model cost estimate ($0.15/1M input, $0.60/1M output)
-        cost = (total_input_tokens * 0.15 / 1000000.0) + (total_output_tokens * 0.60 / 1000000.0)
-        
+        # Format and attach display fields
+        evaluated        = metrics.get("evaluated", 0)
+        total_run_slots  = metrics.get("total_run_slots", 0)
+        total_time       = metrics.get("total_elapsed_time_s", 0)
+        total_input_tok  = metrics.get("total_input_tokens", 0)
+        total_output_tok = metrics.get("total_output_tokens", 0)
+        total_tokens     = total_input_tok + total_output_tok
+
+        # Cost estimate: claude-sonnet-4-x Bedrock pricing ($3/1M input, $15/1M output)
+        cost = (total_input_tok * 3.0 / 1_000_000) + (total_output_tok * 15.0 / 1_000_000)
+
         metrics["passed"] = metrics.get("queries_passed_atk", 0)
         metrics["failed"] = evaluated - metrics["passed"]
-        metrics["avg_latency"] = f"{total_time / evaluated:.1f}s" if evaluated > 0 else "0.0s"
-        metrics["avg_tokens_per_agent"] = f"{int(total_tokens / evaluated):,} tokens" if evaluated > 0 else "0 tokens"
-        metrics["total_tokens"] = f"{total_tokens / 1000000:.2f}M" if total_tokens >= 1000000 else f"{total_tokens / 1000:.1f}K" if total_tokens > 0 else "0"
+
+        # Per-run-slot averages (each run is one independent agent invocation)
+        metrics["avg_latency"] = (
+            f"{total_time / total_run_slots:.1f}s" if total_run_slots > 0 else "0.0s"
+        )
+        metrics["avg_tokens_per_run"] = (
+            f"{int(total_tokens / total_run_slots):,} tokens" if total_run_slots > 0 else "0 tokens"
+        )
+        metrics["avg_tokens_per_agent"] = metrics["avg_tokens_per_run"]  # alias kept for UI compat
+
+        metrics["total_tokens"] = (
+            f"{total_tokens / 1_000_000:.2f}M" if total_tokens >= 1_000_000
+            else f"{total_tokens / 1_000:.1f}K" if total_tokens > 0
+            else "0"
+        )
         metrics["total_cost"] = f"${cost:.4f}"
-        metrics["avg_cost_per_query"] = f"${(cost / evaluated):.4f}" if evaluated > 0 else "$0.0000"
+        metrics["avg_cost_per_run"] = (
+            f"${cost / total_run_slots:.4f}" if total_run_slots > 0 else "$0.0000"
+        )
+        metrics["avg_cost_per_query"] = metrics["avg_cost_per_run"]  # alias kept for UI compat
         
         return metrics
     except Exception as e:
@@ -277,10 +290,16 @@ def _cached_dab_metrics(date: str, run_id: Optional[str], username: str, ttl_has
             "total_queries": 0,
             "evaluated": 0,
             "pending": 0,
+            "total_run_slots": 0,
+            "passing_run_slots": 0,
+            "num_runs": 0,
+            "queries_passed_atk": 0,
             "passed": 0,
             "failed": 0,
             "pass_at_1": 0.0,
             "pass_at_1_pct": "0.0%",
+            "pass_at_k": 0.0,
+            "pass_at_k_pct": "0.0%",
             "per_dataset": {},
             "avg_latency": "0.0s",
             "avg_tokens_per_agent": "0 tokens",
@@ -1106,6 +1125,7 @@ def get_dab_result(dataset: str, query_id: str, request: Request, date: str = "a
 class DabRunSinglePayload(BaseModel):
     model: Optional[str] = None
     temperature: Optional[float] = None
+    run_id: Optional[str] = None
 
 
 @router.post("/api/dab/run/{dataset}/{query_id}")
@@ -1142,7 +1162,7 @@ def run_dab_single(dataset: str, query_id: str, request: Request, payload: DabRu
         # Set username and ID in dab_evaluator module
         de.DAB_RUN_USERNAME = username
         de.DAB_RUN_DATE = None
-        de.DAB_RUN_ID = "live"
+        de.DAB_RUN_ID = payload.run_id or "live"
         
         try:
             run_dab_query(target, model=payload.model, temperature=payload.temperature)
@@ -1450,10 +1470,34 @@ def stop_dab_all():
     
     # Try to cancel any background tasks managed by TaskManager
     try:
-        from agent.app.services.task_manager import TaskManager
-        TaskManager.cancel_all()
-    except Exception:
-        pass
+        from agent.app.db.database import SessionLocal
+        from agent.app.db.models import TaskRun
+        from datetime import datetime
+        import time
+        import random
+        
+        for attempt in range(5):
+            db = SessionLocal()
+            try:
+                stale_tasks = db.query(TaskRun).filter(TaskRun.status == "RUNNING").all()
+                for t in stale_tasks:
+                    t.status = "FAILED"
+                    t.error_message = "Cancelled by user"
+                    t.updated_at = datetime.utcnow()
+                if stale_tasks:
+                    db.commit()
+                    logger.info(f"Marked {len(stale_tasks)} running SQL tasks as FAILED due to stop request.")
+                break
+            except Exception as e:
+                if "locked" in str(e).lower() and attempt < 4:
+                    time.sleep(random.uniform(0.1, 0.5))
+                    continue
+                logger.error(f"Failed to cancel running task runs in DB (attempt {attempt + 1}): {e}")
+                break
+            finally:
+                db.close()
+    except Exception as e:
+        logger.error(f"Failed to cancel background tasks: {e}")
         
     # Log any interrupted running tasks before clearing
     running_queries = list(DAB_RUNNING_TASKS)
@@ -1698,7 +1742,11 @@ def get_dab_runs(request: Request):
     db = SessionLocal()
     try:
         import agent.app.dab.dab_evaluator as de
-        active_run_id = de.DAB_RUN_ID
+        # A run is only "active" if tasks are genuinely executing right now.
+        # DAB_RUN_ID persists after runs finish, so checking it alone causes
+        # the green dot to stay lit forever. Gate on DAB_RUNNING_TASKS instead.
+        tasks_running = bool(DAB_RUNNING_TASKS)
+        active_run_id = de.DAB_RUN_ID if tasks_running else None
 
         # Identify runs needing rebuild without doing the rebuild synchronously
         runs_needing_rebuild = []
@@ -1727,12 +1775,20 @@ def get_dab_runs(request: Request):
                     _db.close()
             threading.Thread(target=_bg_rebuild, daemon=True).start()
         
-        runs = [
-            {"id": "all", "label": "All Runs", "date": "All", "is_active": False}
-        ]
-        
-        # If there's an active run that is not in the last 5 runs folder (e.g. just started and not yet completed)
-        # We can add it to the list of runs to display
+        runs = []
+
+        # Inject a "Live View" entry only while tasks are genuinely running.
+        # When nothing is running tasks_running is False so this block is skipped,
+        # meaning the green dot and the Live View row both disappear automatically.
+        if tasks_running:
+            runs.append({
+                "id": "live",
+                "label": "Live View",
+                "date": "",
+                "is_active": True,
+            })
+
+        # If there's an active run not yet archived, surface it in the list.
         if active_run_id and active_run_id.startswith("run_"):
             if active_run_id not in last_5_runs:
                 last_5_runs.insert(0, active_run_id)

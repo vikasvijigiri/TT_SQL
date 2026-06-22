@@ -110,6 +110,14 @@ def run_all(
     """
     from agent.app.dab.dab_evaluator import load_eval_result as _load_eval
 
+    # Reset cancellation flags to prevent stale states from stopping the run
+    try:
+        from agent.app.utils.cache import DAB_CANCEL_FLAG, SPIDER_CANCEL_FLAG
+        DAB_CANCEL_FLAG.set(False)
+        SPIDER_CANCEL_FLAG.set(False)
+    except Exception:
+        pass
+
     # Apply filters
     filtered = queries
     if skip_docker:
@@ -183,8 +191,8 @@ def run_all(
         results = asyncio.run(run_all_concurrent(work, llm_client, max_concurrent=_max_conc))
         for result in results:
             if isinstance(result, dict):
-                reason_safe = result.get('reason', '')[:80].encode('ascii', 'replace').decode('ascii')
-                error_safe = result.get('error', '')[:80].encode('ascii', 'replace').decode('ascii')
+                reason_safe = (result.get('reason') or '')[:80].encode('ascii', 'replace').decode('ascii')
+                error_safe = (result.get('error') or '')[:80].encode('ascii', 'replace').decode('ascii')
                 if result["status"] == "passed":
                     print(f"\n  [PASS] {reason_safe}")
                 elif result["status"] == "error":
@@ -201,12 +209,14 @@ def run_all(
             print_progress_bar(i - 1, total_slots, prefix="Progress")
             result = run_dab_query(q, llm_client=llm_client, run_number=r)
             results.append(result)
+            reason_str = (result.get('reason') or '')[:80]
+            error_str = (result.get('error') or '')[:80]
             if result["status"] == "passed":
-                print(f"\n  [PASS] {result['reason'][:80]}")
+                print(f"\n  [PASS] {reason_str}")
             elif result["status"] == "error":
-                print(f"\n  [ERROR] {result.get('error', '')[:80]}")
+                print(f"\n  [ERROR] {error_str}")
             else:
-                print(f"\n  [FAIL] {result['reason'][:80]}")
+                print(f"\n  [FAIL] {reason_str}")
             print_summary(results, queries)
     else:
         with ThreadPoolExecutor(max_workers=workers) as executor:
@@ -279,6 +289,33 @@ def print_summary(
     with open(out_path, "w", encoding="utf-8") as f:
         json.dump(accuracy, f, indent=2)
     print(f"  [Report] Saved to: {out_path}\n")
+
+    # Regression gate — warn if pass@1 dropped vs previous run
+    try:
+        import glob as _glob
+        _prev_reports = sorted(
+            _glob.glob(str(DAB_RESULTS_DIR / "accuracy_report_*.json"))
+        )
+        if _prev_reports:
+            import json as _json2
+            with open(_prev_reports[-1], "r", encoding="utf-8") as _f:
+                _prev = _json2.load(_f)
+            _cur_p1 = float(str(accuracy.get("pass_at_1_pct", "0")).replace("%", ""))
+            _prev_p1 = float(str(_prev.get("pass_at_1_pct", "0")).replace("%", ""))
+            if _cur_p1 < _prev_p1:
+                print(
+                    f"  [REGRESSION GATE] ⚠  pass@1 dropped: {_prev_p1:.1f}% → {_cur_p1:.1f}%  "
+                    f"({_prev_p1 - _cur_p1:.1f} pp regression vs previous report)\n"
+                )
+            else:
+                print(f"  [REGRESSION GATE] OK — pass@1 {_cur_p1:.1f}% (≥ prev {_prev_p1:.1f}%)\n")
+        # Archive this report with a timestamp for future comparisons
+        import shutil as _shutil
+        import time as _time
+        _ts = _time.strftime("%Y%m%d_%H%M%S")
+        _shutil.copy2(str(out_path), str(DAB_RESULTS_DIR / f"accuracy_report_{_ts}.json"))
+    except Exception as _rge:
+        print(f"  [REGRESSION GATE] Could not compare runs: {_rge}\n")
 
     # Generate Dynamic Analytics Dashboard
     try:

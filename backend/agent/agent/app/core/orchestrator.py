@@ -1,4 +1,4 @@
-import typing
+﻿import typing
 from agent.app.utils.logger import logger
 from agent.app.utils.llm import LLMClient
 from agent.app.services.semantic_engine import SemanticContextEngine
@@ -16,6 +16,7 @@ from agent.app.agents.sql_critic_agent import SQLCriticAgent
 from agent.app.agents.query_decomposer_agent import QueryDecomposerAgent
 from agent.app.core.observability.telemetry import PipelineTelemetry
 from agent.app.core.dialects.rule_retriever import DialectRuleRetriever
+from agent.app.core.dialects.dialect_utils import get_schema_introspection_sql as _get_introspection_sql
 from agent.app.core.retrieval.hierarchical_retriever import HierarchicalRetriever
 from agent.app.core.query_analysis.capability_detector import QueryCapabilityDetector
 
@@ -107,8 +108,15 @@ class SemanticDINOrchestrator:
             if not db_name:
                 db_name = conn_cfg.db_name
 
-        # Final fallback ÃƒÂ¢Ã¢â€šÂ¬Ã¢â‚¬Â only if nothing else supplied
-        dialect = dialect or "snowflake"
+        # Final fallback — only if nothing else supplied. "ansi" signals standard SQL
+        # with no vendor-specific syntax assumptions; executor still auto-detects sqlite/duckdb.
+        if not dialect:
+            logger.warning(
+                "No SQL dialect specified and none derivable from connection string. "
+                "Defaulting to 'ansi' (standard SQL). Pass dialect= explicitly for "
+                "vendor-specific quoting and syntax."
+            )
+            dialect = "ansi"
         db_name = db_name or "UNKNOWN"
 
         self.db_name = db_name
@@ -386,15 +394,30 @@ class SemanticDINOrchestrator:
             with contextlib.suppress(Exception):
                 _hints_text += Path(_hf).read_text(encoding="utf-8", errors="replace")[:2000] + "\n"
 
+        # Business glossary: inject domain-term → DB-literal mappings relevant to this question
+        with contextlib.suppress(Exception):
+            from agent.app.services.business_glossary import enrich_prompt_with_glossary as _glossary_enrich
+            _gl = _glossary_enrich(user_query)
+            if _gl:
+                _hints_text += f"\n{_gl}\n"
+
         # Parallelism: FeasibilityAgent only needs schema text + hints.
         # Start it as a background future so it runs concurrently with
         # ContextPruner → SchemaLinker → join probe, saving one serial LLM round-trip.
+        # Cap the schema fed to FeasibilityAgent at 200 000 chars so large datasets
+        # (e.g. stockmarket with 2 754 tables = 2.1 M chars) don't overflow the model.
+        _FEASIBILITY_SCHEMA_CAP = 200_000
+        _feasibility_schema = (
+            full_schema_str[:_FEASIBILITY_SCHEMA_CAP]
+            if len(full_schema_str) > _FEASIBILITY_SCHEMA_CAP
+            else full_schema_str
+        )
         import concurrent.futures as _cf
         _feasibility_executor = _cf.ThreadPoolExecutor(max_workers=1, thread_name_prefix="feasibility")
         _feasibility_future = _feasibility_executor.submit(
             self.feasibility_agent.analyze,
             user_query,
-            full_schema_str,
+            _feasibility_schema,
             _hints_text,
         )
         _emit("feasibility", "running")
@@ -465,23 +488,9 @@ class SemanticDINOrchestrator:
                             if _t not in linked_schema.selected_tables:
                                 try:
                                     _dialect = getattr(
-                                        self.executor, "dialect", "sqlite"
+                                        self.executor, "dialect", "ansi"
                                     )
-                                    _q = (
-                                        '"'
-                                        if _dialect in ("sqlite", "postgres", "duckdb")
-                                        else "`"
-                                    )
-                                    if _dialect == "duckdb" and "." in _t:
-                                        # Qualified name (attached DB): use DESCRIBE, fake cid so index [1] = name
-                                        _csql = f"SELECT 0 AS cid, column_name AS name FROM (DESCRIBE {_t})"
-                                    elif _dialect in ("sqlite", "duckdb"):
-                                        _csql = f"PRAGMA table_info({_q}{_t}{_q})"
-                                    else:
-                                        _csql = (
-                                            f"SELECT column_name FROM information_schema.columns "
-                                            f"WHERE table_name='{_t}' ORDER BY ordinal_position"
-                                        )
+                                    _csql = _get_introspection_sql(_dialect, _t)
                                     _ok, _, _cdata = self.executor.execute_direct(_csql, timeout=5)
                                     if _ok and _cdata:
                                         _cols = [
@@ -521,6 +530,40 @@ class SemanticDINOrchestrator:
                     if t_name not in table_columns_map:
                         table_columns_map[t_name] = []
                     table_columns_map[t_name].append(c_name)
+
+        # Backfill: for every table the schema linker selected, expose ALL of its
+        # real columns from the semantic context — not just the subset the linker
+        # happened to enumerate.  Restricting the identifier validator to only
+        # linker-chosen columns silently blocks valid column references before the
+        # agent ever gets to reason about whether it needs them.  The agent must
+        # be free to use any column of a selected table through its own reasoning.
+        if linked_schema and linked_schema.selected_tables and self.semantic_engine.context:
+            _ctx_by_base: dict = {}
+            for _st in (self.semantic_engine.context.tables or []):
+                _b = _st.name.lower().split(".")[-1].strip('"')
+                _ctx_by_base[_b] = _st
+            for _sel_t in linked_schema.selected_tables:
+                _base = _sel_t.lower().split(".")[-1].strip('"')
+                _ctx_t = _ctx_by_base.get(_base)
+                if not _ctx_t:
+                    continue
+                # Reuse the key already present in the map for this table, else use base name
+                _mk = _base
+                for _existing_k in table_columns_map:
+                    if _existing_k.lower().split(".")[-1].strip('"') == _base:
+                        _mk = _existing_k
+                        break
+                if _mk not in table_columns_map:
+                    table_columns_map[_mk] = []
+                _have = {c.lower() for c in table_columns_map[_mk]}
+                for _col in (_ctx_t.columns or []):
+                    if _col.name.lower() not in _have:
+                        table_columns_map[_mk].append(_col.name)
+                        _have.add(_col.name.lower())
+            logger.debug(
+                "[ColumnBackfill] after semantic-context backfill: "
+                + str({t: len(c) for t, c in table_columns_map.items()})
+            )
 
         telemetry.end_stage("schema_linking")
 
@@ -575,19 +618,8 @@ class SemanticDINOrchestrator:
                     for _t in (_ta, _tb):
                         if _t not in linked_schema.selected_tables:
                             try:
-                                _dialect = getattr(self.executor, "dialect", "sqlite")
-                                _q = (
-                                    '"'
-                                    if _dialect in ("sqlite", "postgres", "duckdb")
-                                    else "`"
-                                )
-                                if _dialect in ("sqlite", "duckdb"):
-                                    _csql = f"PRAGMA table_info({_q}{_t}{_q})"
-                                else:
-                                    _csql = (
-                                        f"SELECT column_name FROM information_schema.columns "
-                                        f"WHERE table_name='{_t}' ORDER BY ordinal_position"
-                                    )
+                                _dialect = getattr(self.executor, "dialect", "ansi")
+                                _csql = _get_introspection_sql(_dialect, _t)
                                 _ok, _, _cdata = self.executor.execute_direct(_csql, timeout=5)
                                 if _ok and _cdata:
                                     _cols = [
@@ -632,7 +664,7 @@ class SemanticDINOrchestrator:
                         _ok_s, _, _srows = self.executor.execute_direct(_sample_sql, timeout=5)
                         if _ok_s and _srows:
                             _quick_samples = [
-                                str(r.get("VAL", r.get("val", ""))) for r in _srows
+                                str(r.get("VAL", r.get("val", "")))[:300] for r in _srows
                             ]
                     if _quick_samples:
                         _cat_info = self.profiler._extract_description_categories(
@@ -804,14 +836,7 @@ class SemanticDINOrchestrator:
         # Retrieve Reference SQL for Convergence
         reference_context = self.sql_manager.get_reference_context(instance_id)
 
-        # Curated SQL Bypass: if a manually-verified SQL (version >= 2.0) exists, skip generation
-        curated_sql = self.sql_manager.get_curated_sql(instance_id)
-        if curated_sql:
-            logger.info(
-                f"[CuratedSQL] Using manually-verified SQL for {instance_id}. Bypassing generation."
-            )
-            current_sql = curated_sql
-        else:
+        if True:
             # Query Decomposition ÃƒÂ¢Ã¢â€šÂ¬Ã¢â‚¬Â inject CTE blueprint for multi-hop questions (zero LLM cost for simple queries)
             decomp_plan = self.decomposer.decompose(
                 user_query, linked_schema.selected_tables
@@ -879,10 +904,17 @@ class SemanticDINOrchestrator:
                 instance_id=instance_id,
             )
             if not generation_result or not generation_result.sql:
-                logger.error(
-                    f"FATAL: SQL Generator failed to produce initial SQL for {instance_id}"
+                logger.error(f"SQL Generator returned no result for {instance_id}; trying stripped-context recovery")
+                import copy as _copy_gen
+                _stripped = _copy_gen.deepcopy(linked_schema)
+                _stripped.selected_columns = []
+                generation_result = self._generate_with_react_probe(
+                    user_query, _stripped, lessons=combined_lessons, intent=intent,
+                    instance_id=instance_id,
                 )
-                return "ERROR: SQL Generation Failed"
+                if not generation_result or not generation_result.sql:
+                    logger.error(f"FATAL: All SQL generation paths failed for {instance_id}")
+                    return ""
             current_sql = generation_result.sql
 
             # Empty-SQL guard: generation produced nothing (LLM refused due to schema gaps).
@@ -912,10 +944,15 @@ class SemanticDINOrchestrator:
                         "[Generation] Full-schema recovery attempt produced SQL."
                     )
                 else:
-                    logger.error(
-                        f"FATAL: Full-schema recovery also failed for {instance_id}"
-                    )
-                    return "ERROR: SQL Generation Failed"
+                    logger.error(f"FATAL: Full-schema recovery also failed for {instance_id}")
+                    if linked_schema.selected_tables:
+                        from agent.app.core.dialects.dialect_utils import get_quote_char as _gqc
+                        _q = _gqc(self.executor.dialect)
+                        _t = linked_schema.selected_tables[0].split(".")[-1].strip(chr(34)).strip(chr(96)).strip("]").strip("[")
+                        current_sql = f"SELECT * FROM {_q}{_t}{_q} LIMIT 5"
+                        logger.warning(f"[LAST-DITCH FALLBACK] Exploration query: {current_sql}")
+                    else:
+                        return ""
 
             # Pre-flight Schema Verification
             is_valid, schema_err = self.stabilizer.verify_schema_reference(
@@ -966,8 +1003,12 @@ class SemanticDINOrchestrator:
                         )
                         error_context = (
                             f"HALLUCINATED IDENTIFIERS: {_id_check.summary}. "
-                            "All tables and columns in the SQL must exist in the schema. "
-                            "Rewrite the query using only the provided table and column names."
+                            "If you believe a flagged column genuinely exists in the database "
+                            "but was absent from the schema context, use probe_sql to verify it "
+                            "first — e.g. SELECT name FROM pragma_table_info('table_name') for "
+                            "SQLite/DuckDB, or SELECT column_name FROM information_schema.columns "
+                            "WHERE table_name='...' for Postgres/MySQL. Probe first, then decide "
+                            "whether to use the column or rewrite around it. Never guess."
                         )
                         attempts = 0
                     else:
@@ -1224,13 +1265,39 @@ class SemanticDINOrchestrator:
                 )
 
                 from agent.app.agents.result_validator_agent import ResultValidatorOutput
-                # BYPASS DATA_IQ for <60s Latency Target
-                validation = ResultValidatorOutput(
-                    is_valid=True,
-                    audit_reasoning="Bypassed Data IQ for latency optimization.",
-                    feedback="Looks good",
-                    exploration_sql=""
-                )
+                if is_zero_row:
+                    # Always run real validator on 0-row results so it can propose
+                    # exploration_sql to probe actual filter column values.
+                    try:
+                        validation = self.validator.validate_result(
+                            user_query,
+                            current_sql,
+                            preview_str,
+                            schema_context=validation_context,
+                            stats=stats,
+                            dialect=self.executor.dialect,
+                            lessons=lessons_context,
+                            empty_result_diagnostic=diag_info,
+                            relevant_tables=linked_schema.selected_tables,
+                            table_columns=table_columns_map,
+                            intent=intent,
+                        )
+                    except Exception as _ve:
+                        logger.warning(f"ResultValidator failed for 0-row result: {_ve}")
+                        validation = ResultValidatorOutput(
+                            is_valid=False,
+                            audit_reasoning="Validator error on empty result.",
+                            feedback="Query returned 0 rows. Check column names, filter literals, and JOIN conditions.",
+                            exploration_sql=""
+                        )
+                else:
+                    # Non-zero results: bypass LLM validator for latency, mark as valid.
+                    validation = ResultValidatorOutput(
+                        is_valid=True,
+                        audit_reasoning="Bypassed Data IQ for latency optimization (non-zero result).",
+                        feedback="Looks good",
+                        exploration_sql=""
+                    )
 
                 if validation.exploration_sql:
                     logger.info(
@@ -1443,6 +1510,16 @@ class SemanticDINOrchestrator:
                     else ""
                 )
                 error_context = f"EXECUTION ERROR: {result_msg}{discovery_feedback}{evidence_section}"
+                # When DuckDB suggests the correct name ("Did you mean 'X'?"), make it unmissable
+                import re as _re_did
+                _did_you_mean = _re_did.search(r"Did you mean [\"']([^\"']+)[\"']", result_msg)
+                if _did_you_mean:
+                    _correct_name = _did_you_mean.group(1)
+                    error_context = (
+                        f"CRITICAL FIX: Use EXACT identifier '{_correct_name}' "
+                        f"(the previous SQL used a wrong name — the DB engine says 'Did you mean \"{_correct_name}\"?'). "
+                        f"Do NOT guess or rename — use '{_correct_name}' verbatim.\n\n"
+                    ) + error_context
 
             if attempts < self.max_retries:
                 logger.info("Generating corrected SQL...")
@@ -1452,14 +1529,83 @@ class SemanticDINOrchestrator:
 
                 # GOAL 12 — Pre-empt empty results: tell the corrector exactly why 0 rows happened
                 if is_zero_row:
+                    _diag_section = ""
+                    if diag_info:
+                        _diag_section = f"\n\n[DIAGNOSTIC] {diag_info}"
+                    # Auto-probe DISTINCT values from string-equality-filtered columns.
+                    # Skip columns whose names suggest dates/timestamps — their values confuse
+                    # the corrector into using dialect-specific date functions.
+                    # Do NOT skip probing just because other date ops exist in the WHERE clause.
+                    _auto_probe_results = ""
+                    _DATE_COL_RE = r'(?i)(date|time|ts|stamp|created|updated|modified|closed|opened|start|end|birth|expir|since|until|from|to)'
+                    try:
+                        import re as _re_p
+                        _where_m = _re_p.search(
+                            r"WHERE\s+(.*?)(?:\s+GROUP\s+BY|\s+ORDER\s+BY|\s+LIMIT|\s+HAVING|$)",
+                            current_sql, _re_p.IGNORECASE | _re_p.DOTALL
+                        )
+                        if _where_m:
+                            _where_text = _where_m.group(1)
+                            # Match both quoted ("Field__c") and unquoted (Field__c) column names
+                            _raw_cols = _re_p.findall(r'"?([a-zA-Z_][a-zA-Z0-9_]*)"?\s*=\s*\'', _where_text)
+                            # Skip columns whose name pattern suggests a date/timestamp type
+                            _eq_cols = list(dict.fromkeys(
+                                c for c in _raw_cols
+                                if not _re_p.search(_DATE_COL_RE, c)
+                            ))[:3]
+                            # Probe up to first 2 source tables in the FROM/JOIN clause
+                            _from_tables = _re_p.findall(
+                                r'(?:FROM|JOIN)\s+"?([a-zA-Z_][a-zA-Z0-9_]*)"?', current_sql, _re_p.IGNORECASE
+                            )
+                            _probe_tbls = list(dict.fromkeys(_from_tables))[:2]
+                            if not _probe_tbls and linked_schema.selected_tables:
+                                _probe_tbls = [linked_schema.selected_tables[0].split(".")[-1]]
+                            if _probe_tbls and _eq_cols:
+                                from agent.app.core.dialects.dialect_utils import get_quote_char as _gqc2
+                                _q2 = _gqc2(self.executor.dialect)
+                                for _tbl in _probe_tbls[:2]:
+                                    for _col in _eq_cols[:2]:
+                                        _psql = f"SELECT DISTINCT {_q2}{_col}{_q2} FROM {_q2}{_tbl}{_q2} LIMIT 20"
+                                        _ps, _pm, _ = self.executor.execute(_psql, f"{instance_id}_ap_{_tbl}_{_col}")
+                                        if _ps:
+                                            _ap_csv = os.path.join(
+                                                str(RESULTS_DIR), self.db_name,
+                                                f"{instance_id}_ap_{_tbl}_{_col}.csv"
+                                            )
+                                            try:
+                                                import pandas as _pd2
+                                                _apdf = _pd2.read_csv(_ap_csv)
+                                                _vals = (
+                                                    _apdf[_col].dropna().astype(str).tolist()[:20]
+                                                    if _col in _apdf.columns else []
+                                                )
+                                                # Filter out timestamp-looking values (contain T, long ISO strings)
+                                                _clean = [
+                                                    v for v in _vals
+                                                    if len(v) < 50
+                                                    and not _re_p.match(r'\d{4}-\d{2}-\d{2}T', v)
+                                                    and not _re_p.match(r'\d{4}-\d{2}-\d{2} \d{2}:', v)
+                                                ]
+                                                if _clean:
+                                                    _auto_probe_results += f"\n  Column '{_col}' in '{_tbl}': {_clean}"
+                                            except Exception:
+                                                pass
+                    except Exception as _ape:
+                        logger.debug(f"Auto-probe failed (non-fatal): {_ape}")
+                    _probe_section = (
+                        "[PROBED DISTINCT VALUES — USE THESE EXACT LITERALS IN FILTERS]"
+                        + _auto_probe_results + "\n\n"
+                        if _auto_probe_results else ""
+                    )
                     error_context = (
                         "[GOAL 12 — SILENT EMPTY] The previous SQL executed without error but returned 0 rows. "
-                        "Root cause is almost always one of: (a) case mismatch in WHERE string filter — add LOWER(); "
-                        "(b) NULL join key silently dropping rows — switch INNER JOIN → LEFT JOIN + IS NOT NULL; "
-                        "(c) date/range filter too restrictive — probe actual values first; "
-                        "(d) enum value spelled differently in the DB — probe DISTINCT values. "
-                        "Do NOT repeat the same logic. Probe or add explicit guards.\n\n"
-                        + error_context
+                        "Root cause is almost always one of: (a) case mismatch in WHERE string filter — add LOWER() or use exact casing from PROBED VALUES; "
+                        "(b) NULL join key silently dropping rows — switch INNER JOIN to LEFT JOIN + IS NOT NULL; "
+                        "(c) date/range filter too restrictive — widen the date range; "
+                        "(d) enum/field value spelled differently in the DB — see PROBED VALUES below. "
+                        "Do NOT repeat the same logic. Do NOT introduce new functions like DATEADD.\n\n"
+                        + _probe_section
+                        + error_context + _diag_section
                     )
 
                 # GOAL 13 — Progressive simplification: count CTEs and mandate fewer on each retry
@@ -1473,9 +1619,20 @@ class SemanticDINOrchestrator:
                     )
 
                 unpruned_tables = linked_schema.selected_tables
+
+                # Inject exact unified view name so the corrector never guesses "all_tickers" etc.
+                _unified_views = [t for t in (linked_schema.selected_tables or []) if t.startswith("all_")]
+                if _unified_views:
+                    _view_list = ", ".join(f"'{v}'" for v in _unified_views)
+                    error_context = (
+                        f"[SCHEMA ANCHOR] The unified UNION ALL view(s) for this dataset are: {_view_list}. "
+                        f"You MUST use EXACTLY these names — do NOT use 'all_tickers', 'all_stocks', 'all_data', "
+                        f"or any other placeholder. The correct name(s) come from the DB file name.\n\n"
+                    ) + error_context
+
                 error_lower = error_context.lower()
-                
-                # If the error is a missing schema object, forcefully re-run the schema linker 
+
+                # If the error is a missing schema object, forcefully re-run the schema linker
                 # so it can learn from the error message and link the correct tables AND columns.
                 needs_relink = any(kw in error_lower for kw in ["catalog error", "does not exist", "invalid identifier", "unknown table"])
                 if needs_relink:
