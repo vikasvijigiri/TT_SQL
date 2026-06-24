@@ -42,10 +42,47 @@ class TablePruner:
         if intent is None:
             intent = retriever.analyze_intent(user_query)
 
-        # Retrieve candidate tables using hierarchical retrieval to avoid token overload
         full_ctx = self.semantic_engine.context or self.semantic_engine.build_context()
-        narrowed_ctx, _, _ = retriever.narrow_schema(user_query, full_ctx)
 
+        # [META-CATALOG IMPLEMENTATION]
+        if len(full_ctx.tables) > 100:
+            logger.info(f"[TablePruner] Massive schema detected ({len(full_ctx.tables)} tables). Bypassing BM25 and utilizing Meta-Catalog injection.")
+            
+            # Generate highly compressed meta-catalog string
+            catalog_lines = ["[META-CATALOG INDEX (Table Names and Descriptions)]"]
+            for t in full_ctx.tables:
+                desc = t.description[:100].replace('\n', ' ') if t.description else "No description available"
+                catalog_lines.append(f"- {t.name}: {desc}")
+            meta_catalog_str = "\n".join(catalog_lines)
+            
+            try:
+                with open(self.prompt_path, "r", encoding="utf-8") as f:
+                    sys_prompt = f.read().strip()
+            except Exception:
+                sys_prompt = "You are a TablePruner. Select the exact tables needed."
+                
+            sys_prompt += "\n\n" + meta_catalog_str
+            user_prompt = f"User Query: {user_query}\n\nBased on the META-CATALOG INDEX above, select the exact minimal set of tables needed to answer this query. Remember to include the anchor fact table and any metadata/lookup tables required."
+            
+            try:
+                result = self.llm.generate_structured(
+                    system_prompt=sys_prompt,
+                    user_prompt=user_prompt,
+                    response_model=TablePruningResult,
+                )
+                logger.info(f"[MetaCatalog] PRUNING REASONING: {result.reasoning}")
+                valid_tables = [t for t in result.selected_tables if any(t.lower() == ft.name.lower() for ft in full_ctx.tables)]
+                if valid_tables:
+                    logger.info(f"[MetaCatalog] Selected {len(valid_tables)} tables: {valid_tables}")
+                    logger.reset_agent()
+                    return valid_tables
+                else:
+                    logger.warning("[MetaCatalog] LLM selected 0 valid tables. Falling back to BM25.")
+            except Exception as e:
+                logger.error(f"[MetaCatalog] LLM refinement failed: {e}. Falling back to BM25.")
+
+        # [FALLBACK TO HIERARCHICAL BM25]
+        narrowed_ctx, _, _ = retriever.narrow_schema(user_query, full_ctx)
         selected_tables = [t.name for t in narrowed_ctx.tables]
         
         # Expand tables dynamically to include direct foreign-key-linked neighbors

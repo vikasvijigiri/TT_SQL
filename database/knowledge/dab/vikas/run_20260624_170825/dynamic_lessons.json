@@ -54,5 +54,77 @@
     "status": "ACTIVE",
     "applications": 0,
     "successes": 0
+  },
+  {
+    "lesson_id": "dyn_2301421813_e4d3b4",
+    "intent_pattern": "missing column, schema mismatch, attribute not found",
+    "rule_title": "Validate Required Columns Exist",
+    "generic_rule": "Before generating a query, confirm that all columns referenced in the user's request (e.g., name, exchange, ETF flag) are present in the available schema. If any required column is missing, either adjust the query to use available fields or return a clarification request.",
+    "category": "schema_inference",
+    "source_failures": [
+      "stockmarket_q4"
+    ],
+    "db_name": "STOCKMARKET",
+    "status": "ACTIVE",
+    "applications": 0,
+    "successes": 0
+  },
+  {
+    "lesson_id": "dyn_2301421815_b2d6d8",
+    "intent_pattern": "filtering, unknown attribute, column not found",
+    "rule_title": "Avoid Unavailable Filters",
+    "generic_rule": "Do not apply filters or conditions on attributes that are not defined in any table. Instead, check schema for those attributes and either omit the filter or provide a fallback explanation when they cannot be satisfied.",
+    "category": "filtering",
+    "source_failures": [
+      "stockmarket_q4"
+    ],
+    "db_name": "STOCKMARKET",
+    "status": "ACTIVE",
+    "applications": 0,
+    "successes": 0
+  },
+  {
+    "lesson_id": "dyn_2301433813_20bb58",
+    "intent_pattern": "string_match, filtering, name not found",
+    "rule_title": "Avoid unsupported string filters",
+    "generic_rule": "When filtering by specific string values, ensure the target column actually contains those values. Use exact matches or appropriate JSON extraction functions rather than assuming the presence of a column or data that is not defined in the schema.",
+    "category": "string_match",
+    "source_failures": [
+      "stockmarket_q3"
+    ],
+    "db_name": "STOCKMARKET",
+    "status": "ACTIVE",
+    "applications": 0,
+    "successes": 0
+  },
+  {
+    "lesson_id": "dyn_2302258154_976e71",
+    "intent_pattern": "UNION ALL, GROUP BY, DATE::DATE, entity identifier",
+    "rule_title": "Query unified view with proper grouping",
+    "error_cause": "The query referenced separate ticker tables, omitted required GROUP BY, used wrong table names, and did not cast date strings to dates.",
+    "generic_rule": "When a dataset provides a single consolidated table for multiple entities, always query that unified view, cast any string dates to proper DATE types, filter as needed, then GROUP BY the entity identifier to compute aggregates. Avoid building UNION ALL queries across individual tables and ensure column names match the schema exactly.",
+    "category": "aggregation",
+    "dialect": "duckdb",
+    "source_failures": [
+      "DAB_STOCKMARKET_dab_stockmarket_q5_run1_retry"
+    ],
+    "db_name": "DAB_STOCKMARKET",
+    "status": "ACTIVE",
+    "applications": 1,
+    "successes": 1
+  },
+  {
+    "lesson_id": "dyn_2302262418_591df5",
+    "intent_pattern": "DATE::DATE, date casting, filter",
+    "rule_title": "Cast string dates to DATE type",
+    "generic_rule": "Always cast string or text date columns to a DATE type before applying range filters. This prevents mismatches and ensures correct date comparisons in WHERE clauses.",
+    "category": "date_handling",
+    "source_failures": [
+      "stockmarket_q5"
+    ],
+    "db_name": "STOCKMARKET",
+    "status": "ACTIVE",
+    "applications": 0,
+    "successes": 0
   }
 ]
