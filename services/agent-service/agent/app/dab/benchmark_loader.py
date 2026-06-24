@@ -25,27 +25,7 @@ from typing import List, Dict, Any, Optional
 import contextlib
 
 
-# Canonical DAB dataset list (matches run_agent.py DATASET_LIST)
-DAB_DATASETS = [
-    "bookreview",
-    "crmarenapro",
-    "DEPS_DEV_V1",
-    "GITHUB_REPOS",
-    "googlelocal",
-    "PANCANCER_ATLAS",
-    "PATENTS",
-    "stockindex",
-    "stockmarket",
-    "yelp",
-    "agnews",
-    "music_brainz_20k",
-    # Omitted/unofficial datasets commented out per user request:
-    # "civic_unstructured",
-    # "cve",
-    # "imdb",
-    # "krama",
-    # "usaspending",
-]
+
 
 # DBMS support flags (True = supported without Docker)
 DBMS_NO_DOCKER = {"sqlite", "duckdb"}
@@ -170,15 +150,11 @@ def load_all_queries(dab_repo_path: str) -> List[Dict[str, Any]]:
 
     queries = []
 
-    for dataset in DAB_DATASETS:
-        dataset_lower = dataset.lower()
-        # Directory is prefixed with "query_"
-        dataset_dir = dab_root / f"query_{dataset_lower}"
-        if not dataset_dir.exists():
-            # Try original casing
-            dataset_dir = dab_root / f"query_{dataset}"
-            if not dataset_dir.exists():
-                continue
+    for item in dab_root.iterdir():
+        if not item.is_dir() or not item.name.startswith("query_"):
+            continue
+        dataset_dir = item
+        dataset_lower = dataset_dir.name[6:].lower()
 
         db_config_path = dataset_dir / "db_config.yaml"
         db_clients_raw = _load_db_config(db_config_path)
@@ -188,7 +164,7 @@ def load_all_queries(dab_repo_path: str) -> List[Dict[str, Any]]:
         db_clients = _resolve_db_paths(db_clients_raw, dataset_dir)
         any_docker = any(v.get("needs_docker", False) for v in db_clients.values())
 
-        # Load schema description — use only the hint-free description.
+        # Load schema description - use only the hint-free description.
         # db_description_withhint.txt contains ground-truth hints and MUST NOT
         # be fed into the inference pipeline.
         desc_file = dataset_dir / "db_description.txt"

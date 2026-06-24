@@ -14,8 +14,8 @@ from agent.app.db.database import SessionLocal
 from agent.app.db.models import TaskRun
 from agent.app.dab.benchmark_loader import load_all_queries
 from agent.app.dab.dab_orchestrator import run_dab_query
-from agent.app.utils.llm import LLMClient
-from agent.app.utils.logger import logger
+from agent.services.llm import LLMClient
+from agent.services.logger import logger
 from agent.app.core.config import DAB_REPO
 from concurrent.futures import ThreadPoolExecutor, as_completed
 

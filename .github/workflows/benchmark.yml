@@ -1,0 +1,22 @@
+name: TT_SQL_PLATFORM Benchmark
+
+on:
+  schedule:
+    - cron: "0 2 * * 1"   # Monday 02:00 UTC
+  workflow_dispatch:
+    inputs:
+      suite:
+        description: "Benchmark suite (bird|dab|spider2)"
+        required: false
+        default: "bird"
+
+jobs:
+  benchmark:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+      - run: pip install -r services/agent-service/requirements.txt
+      - run: bash scripts/benchmark.sh ${{ github.event.inputs.suite || 'bird' }}

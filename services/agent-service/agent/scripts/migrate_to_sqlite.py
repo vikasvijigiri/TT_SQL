@@ -3,7 +3,9 @@ import json
 import sys
 from pathlib import Path
 from datetime import datetime
-sys.path.insert(0, 'backend')
+
+# Add services/agent-service/agent/ to path so `from app.db...` resolves correctly
+sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 from app.db.database import SessionLocal, engine, Base
 from app.db.models import Evaluation
 from app.core.config import DAB_RESULTS_DIR

@@ -115,7 +115,7 @@ def test_demo_query():
 
 
 # ---------------------------------------------------------------------------
-# Security middleware — API key enforcement
+# Security middleware - API key enforcement
 # ---------------------------------------------------------------------------
 
 def test_auth_disabled_by_default_allows_run_all():
@@ -131,7 +131,7 @@ def test_auth_disabled_by_default_allows_run_all():
     try:
         # /api/run_all is a POST that starts background work; we expect 200 or 422, not 401.
         response = client.post("/api/run_all?scope=missing_only&workers=1")
-        assert response.status_code != 401, "Auth should be disabled — 401 should not be returned"
+        assert response.status_code != 401, "Auth should be disabled - 401 should not be returned"
     finally:
         api_module._ENABLE_AUTH = original_auth
         api_module._API_KEY_SECRET = original_key
@@ -174,7 +174,7 @@ def test_auth_enabled_accepts_correct_key():
 
 
 def test_auth_does_not_block_health_endpoint():
-    """Health check is never protected — must be reachable even when auth is enabled."""
+    """Health check is never protected - must be reachable even when auth is enabled."""
     import agent.app.api as api_module
     original_auth = api_module._ENABLE_AUTH
     original_key = api_module._API_KEY_SECRET
@@ -189,7 +189,7 @@ def test_auth_does_not_block_health_endpoint():
 
 
 # ---------------------------------------------------------------------------
-# Observability endpoints — latency, prompt integrity, schema drift
+# Observability endpoints - latency, prompt integrity, schema drift
 # ---------------------------------------------------------------------------
 
 def test_performance_endpoint_returns_schema():
@@ -260,7 +260,7 @@ def test_health_includes_latency_sla():
 
 
 # ---------------------------------------------------------------------------
-# Group 6 — token monitoring, query analytics, regression gate
+# Group 6 - token monitoring, query analytics, regression gate
 # ---------------------------------------------------------------------------
 
 def test_performance_includes_token_stats():
@@ -314,7 +314,7 @@ def test_regression_check_endpoint_passes():
     data = response.json()
     # If IPL DB is present, all_passed must be True
     if data.get("all_passed") is None:
-        # Database not present — skipped gracefully
+        # Database not present - skipped gracefully
         assert "note" in data
     else:
         assert data["all_passed"] is True, (
@@ -330,7 +330,7 @@ def test_regression_check_endpoint_passes():
 
 
 # ---------------------------------------------------------------------------
-# Group 7 — failure analytics, data quality, determinism
+# Group 7 - failure analytics, data quality, determinism
 # ---------------------------------------------------------------------------
 
 def test_performance_includes_determinism():

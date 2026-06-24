@@ -1,6 +1,6 @@
 import React from 'react';
 import {
-  BarChart3, CheckCircle2, XCircle, Trophy, Clock, Cpu, DollarSign,
+  BarChart3, CheckCircle2, XCircle, Target, Clock, Cpu, DollarSign,
   Activity, TrendingUp, Database, Layers, Zap,
 } from 'lucide-react';
 
@@ -23,7 +23,7 @@ const ICON_MAP: Record<string, React.ComponentType<{ className?: string }>> = {
   total:     BarChart3,
   succeeded: CheckCircle2,
   errored:   XCircle,
-  gold:      Trophy,
+  gold:      Target,
   latency:   Clock,
   tokens:    Cpu,
   cost:      DollarSign,

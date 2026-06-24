@@ -1,5 +1,7 @@
 import os
 import sys
+from pathlib import Path
+sys.path.append(str(Path(__file__).resolve().parent.parent.parent))
 
 # Force UTF-8 stdout to prevent Windows cp1252 charmap crashes
 if sys.stdout.encoding != 'utf-8':
@@ -9,12 +11,13 @@ from pathlib import Path
 from agent.app.dab.benchmark_loader import load_all_queries
 from agent.app.dab.dab_orchestrator import run_dab_query
 from agent.app.core.config import DAB_REPO
-from agent.app.utils.logger import logger
+from agent.services.logger import logger
 
 queries = load_all_queries(str(DAB_REPO))
 
 targets = [
-    ('agnews', '2')
+    ('deps_dev_v1', '1'),
+    ('patents', '1')
 ]
 
 print(f'Starting rigorous audit run on {len(targets)} failed queries...')
@@ -24,7 +27,9 @@ for q in queries:
     if (q['dataset'], q['query_id']) in targets:
         target_dicts.append(q)
 
-from agent.app.utils.llm import LLMClient
+print(f"Found {len(target_dicts)} target queries to run.")
+
+from agent.services.llm import LLMClient
 llm = LLMClient()
 
 for q in target_dicts:
@@ -39,13 +44,8 @@ for q in target_dicts:
         print(f'Passed: {res.get("passed")}')
         print(f'Reason: {res.get("reason")}')
     except Exception as e:
+        import traceback
+        traceback.print_exc()
         print(f'Exception: {e}')
 
-print('Live querying complete. Executing Self-Improving Loop...')
-
-from agent.app.core.rules.self_improving_loop import SelfImprovingLoop
-loop = SelfImprovingLoop()
-loop_res = loop.run_daily()
-print(f'Self-improving loop status: {loop_res.get("status")}')
-
-print('Audit sequence complete.')
+print('Live querying complete.')

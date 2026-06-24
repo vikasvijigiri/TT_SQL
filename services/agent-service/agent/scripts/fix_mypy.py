@@ -5,7 +5,7 @@ log_path = r'C:\Users\VikasVijigiri\.gemini\antigravity-ide\brain\0a851032-1711-
 with open(log_path, 'r', encoding='utf-8') as f:
     log_content = f.read()
 
-mypy_section = log_content.split('--- RADON COMPLEXITY ---')[0]
+mypy_section = log_content.split('"- RADON COMPLEXITY ---')[0]
 lines = mypy_section.splitlines()
 
 files_to_modify = {} # file -> list of (line_num, error_msg, full_log_line)

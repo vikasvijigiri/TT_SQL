@@ -57,4 +57,4 @@ def extract_metrics(log_path: str):
     print(f"Execution Success Rate (Data IQ Pass): {success_rate*100:.1f}%")
 
 if __name__ == "__main__":
-    extract_metrics("backend/resources/logs/math_audit.log")
+    extract_metrics("services/agent-service/agent/resources/logs/math_audit.log")

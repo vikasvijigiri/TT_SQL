@@ -16,8 +16,9 @@ type Config struct {
 	GoogleClientID string
 	JWTSecret      string
 
-	// Paths (all derived from BackendDir)
+	// Paths (BackendDir for code, DatabaseDir for state)
 	BackendDir    string
+	DatabaseDir   string
 	ResultsDir    string
 	DatabasesDir  string
 	GoldDir       string
@@ -34,8 +35,7 @@ type Config struct {
 
 func Load() *Config {
 	backendDir := envOr("BACKEND_DATA_DIR", defaultBackendDir())
-
-	resultsDir := filepath.Join(backendDir, "results", "evaluations")
+	databaseDir := envOr("DATABASE_DIR", defaultDatabaseDir(backendDir))
 
 	c := &Config{
 		Port:         envOr("GO_PORT", "3030"),
@@ -46,17 +46,18 @@ func Load() *Config {
 		JWTSecret:      envOr("JWT_SECRET", "change-me-in-production"),
 
 		BackendDir:    backendDir,
-		ResultsDir:    resultsDir,
-		DatabasesDir:  filepath.Join(backendDir, "resources", "databases"),
-		GoldDir:       filepath.Join(backendDir, "resources", "gold"),
-		InputDir:      filepath.Join(backendDir, "resources", "input_data"),
-		MemoryDir:     filepath.Join(backendDir, "resources", "memory"),
+		DatabaseDir:   databaseDir,
+		ResultsDir:    filepath.Join(databaseDir, "results"),
+		DatabasesDir:  filepath.Join(databaseDir, "resources", "spider2", "databases"),
+		GoldDir:       filepath.Join(databaseDir, "resources", "spider2", "gold"),
+		InputDir:      filepath.Join(databaseDir, "resources", "spider2", "input"),
+		MemoryDir:     filepath.Join(databaseDir, "knowledge"),
 		PromptsDir:    filepath.Join(backendDir, "app", "prompts"),
 		ConfigDir:     filepath.Join(backendDir, "config"),
-		DABResultsDir: filepath.Join(resultsDir, "dab"),
+		DABResultsDir: filepath.Join(databaseDir, "results", "dab"),
 		DABRepo:       envOr("DAB_REPO", defaultDABRepo(backendDir)),
 
-		SQLiteDBPath: filepath.Join(resultsDir, "nquire.db"),
+		SQLiteDBPath: filepath.Join(databaseDir, "evaluations", "nquire.db"),
 	}
 	return c
 }
@@ -100,4 +101,11 @@ func defaultDABRepo(backendDir string) string {
 	// backendDir is backend/agent/agent. Go up 4 levels to get the sibling folder's parent.
 	parent := filepath.Dir(filepath.Dir(filepath.Dir(filepath.Dir(backendDir))))
 	return filepath.Join(parent, "DataAgentBench")
+}
+
+func defaultDatabaseDir(backendDir string) string {
+	// Default local database dir: project_root/database
+	// backendDir is backend/agent/agent. Go up 3 levels to get the project root.
+	parent := filepath.Dir(filepath.Dir(filepath.Dir(backendDir)))
+	return filepath.Join(parent, "database")
 }

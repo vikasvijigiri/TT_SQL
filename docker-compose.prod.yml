@@ -1,0 +1,152 @@
+networks:
+  app-net:
+    driver: bridge
+
+volumes:
+  postgres-data:
+  redis-data:
+
+services:
+
+  # -- React Frontend --------------------------------------------------------
+  frontend:
+    build:
+      context: ./apps/web
+      args:
+        - VITE_GOOGLE_CLIENT_ID=${GOOGLE_CLIENT_ID:-}
+    expose:
+      - "${FRONTEND_PORT:-3000}"
+    networks:
+      - app-net
+    depends_on:
+      - gateway
+    restart: always
+    deploy:
+      replicas: 2
+      resources:
+        limits:
+          cpus: "0.5"
+          memory: 512M
+
+  # -- Go API Gateway --------------------------------------------------------
+  gateway:
+    build: ./services/gateway
+    expose:
+      - "${GO_PORT:-8002}"
+    env_file:
+      - .env
+    environment:
+      GO_PORT: "${GO_PORT:-8002}"
+      GIN_MODE: release
+      PYTHON_API_URL: "http://agent:${PYTHON_PORT:-8010}"
+      BACKEND_DATA_DIR: /data
+      DATABASE_DIR: /database
+    volumes:
+      - ./services/agent-service/agent:/data:ro
+      - ./data:/database:ro
+    networks:
+      - app-net
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+      agent:
+        condition: service_started
+    restart: always
+    deploy:
+      replicas: 2
+      resources:
+        limits:
+          cpus: "1.0"
+          memory: 1G
+    healthcheck:
+      test: [ "CMD-SHELL", "wget -qO- http://127.0.0.1:${GO_PORT:-8002}/api/health || exit 1" ]
+      interval: 15s
+      timeout: 10s
+      retries: 5
+      start_period: 10s
+
+  # -- Python AI Agent -------------------------------------------------------
+  agent:
+    build: ./services/agent-service
+    expose:
+      - "${PYTHON_PORT:-8010}"
+    env_file:
+      - .env
+    environment:
+      PYTHON_PORT: "${PYTHON_PORT:-8010}"
+      BACKEND_DATA_DIR: /app/agent
+      DATABASE_DIR: /database
+      DATABASE_HOST: postgres
+      DATABASE_PORT: "${DATABASE_PORT:-5432}"
+      REDIS_HOST: redis
+      REDIS_PORT: "${REDIS_PORT:-6379}"
+    volumes:
+      - ./data:/database:ro
+    networks:
+      - app-net
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    restart: always
+    deploy:
+      resources:
+        limits:
+          cpus: "2.0"
+          memory: 4G
+
+  # -- PostgreSQL -------------------------------------------------------------
+  postgres:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_DB: "${DATABASE_NAME:-ttsql}"
+      POSTGRES_USER: "${DATABASE_USER:-ttsql}"
+      POSTGRES_PASSWORD: "${DATABASE_PASSWORD:-changeme}"
+    volumes:
+      - postgres-data:/var/lib/postgresql/data
+    networks:
+      - app-net
+    restart: always
+    healthcheck:
+      test: [ "CMD-SHELL", "pg_isready -U ${DATABASE_USER:-ttsql} -d ${DATABASE_NAME:-ttsql}" ]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 10s
+
+  # -- Redis ------------------------------------------------------------------
+  redis:
+    image: redis:7-alpine
+    command: redis-server --maxmemory 512mb --maxmemory-policy allkeys-lru
+    volumes:
+      - redis-data:/data
+    networks:
+      - app-net
+    restart: always
+    healthcheck:
+      test: [ "CMD", "redis-cli", "ping" ]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  # -- Nginx Reverse Proxy ---------------------------------------------------
+  nginx:
+    build: ./infrastructure/nginx
+    ports:
+      - "80:80"
+      - "443:443"
+    networks:
+      - app-net
+    depends_on:
+      - frontend
+      - gateway
+    restart: always
+    healthcheck:
+      test: [ "CMD-SHELL", "wget -qO- http://127.0.0.1/api/health || exit 1" ]
+      interval: 20s
+      timeout: 10s
+      retries: 3
+      start_period: 15s

@@ -1,10 +1,10 @@
 from typing import List, Dict, Tuple
-from agent.app.models.schemas import SemanticContext
+from agent.contracts.schemas import SemanticContext
 from agent.app.core.retrieval.hierarchical_retriever import (
     HierarchicalRetriever,
     QueryIntentAnalysis,
 )
-from agent.app.utils.logger import logger
+from agent.services.logger import logger
 
 
 class ProgressiveExpansionStrategy:

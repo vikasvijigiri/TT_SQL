@@ -39,7 +39,8 @@ import {
   LogOut,
   User,
   Sun,
-  Moon
+  Moon,
+  Trash2
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import PipelinePulse from './PipelinePulse';
@@ -1219,11 +1220,10 @@ const SpiderStudio = ({ onBack, onHome, autoOpenDetails, clearAutoOpenDetails, u
             {currentView === 'dashboard' && dateFilter !== 'all' && (
               <button
                 onClick={handleDeleteRun}
-                className="px-3 py-1.5 rounded-lg font-mono font-bold text-xs shadow-lg transition-all border flex items-center gap-1.5 bg-rose-600/10 text-rose-400 border-rose-500/30 hover:bg-rose-600/20"
+                className="p-1.5 rounded-lg bg-[#0e0e14] border border-[#222232] hover:bg-rose-600/20 hover:border-rose-500/30 text-slate-400 hover:text-rose-400 transition-all shadow-sm flex items-center justify-center"
                 title="Delete this historical run"
               >
-                <X className="w-3.5 h-3.5" />
-                DELETE RUN
+                <Trash2 className="w-4 h-4" />
               </button>
             )}
 
@@ -1253,7 +1253,7 @@ const SpiderStudio = ({ onBack, onHome, autoOpenDetails, clearAutoOpenDetails, u
                 disabled={isGlobalRunning}
                 className={`px-3 py-1.5 rounded-lg font-mono font-bold text-xs shadow-lg transition-all border flex items-center gap-1.5 ${isGlobalRunning ? 'bg-slate-800 border-slate-700 text-slate-500 cursor-not-allowed' : 'bg-violet-600/10 text-violet-400 border-violet-500/30 hover:bg-violet-600/20'}`}
               >
-                <Trophy className="w-3.5 h-3.5" />
+                <ShieldCheck className="w-3.5 h-3.5" />
                 AUDIT ALL
               </button>
             )}

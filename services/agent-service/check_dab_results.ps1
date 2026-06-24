@@ -1,6 +1,6 @@
 #!/usr/bin/env pwsh
 # Check results of async DAB query runs.
-# Run from: C:\Users\VikasVijigiri\Documents\TT_SQL_V2\backend\agent
+# Run from: <repo-root>\services\agent-service
 #
 # Usage:
 #   .\check_dab_results.ps1              # check latest async_v2.log
@@ -23,7 +23,7 @@ if (-not (Test-Path $logFile)) {
 $sz  = [math]::Round((Get-Item $logFile).Length / 1024, 1)
 $mt  = (Get-Item $logFile).LastWriteTime
 $content = Get-Content $logFile -Raw -Encoding utf8 -ErrorAction SilentlyContinue
-$clean   = $content -replace '\x1B\[[0-9;]*[mK]', ''
+$clean   = $content -replace '\x1B\[[0-9;]*[mK]', --
 $lines   = $clean -split "`n"
 
 # Concurrency proof: max log lines per second

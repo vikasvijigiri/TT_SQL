@@ -180,7 +180,7 @@ const App = () => {
 
     const storedUser = localStorage.getItem('nquire_user');
     if (storedUser && storedUser !== 'null') {
-      window.location.hash = '#/dashboard';
+      window.location.hash = '#/dab';
     } else if (!window.location.hash) {
       window.history.replaceState(null, '', '#/');
     }
@@ -254,12 +254,16 @@ const App = () => {
     setUser(userData);
     localStorage.setItem('nquire_user', JSON.stringify(userData));
     if (token) localStorage.setItem('nquire_token', token);
+    window.location.hash = '#/dab';
   };
 
   const handleLogout = () => {
     setUser(null);
     localStorage.removeItem('nquire_user');
     localStorage.removeItem('nquire_token');
+    setSelectedProject(null);
+    setCurrentView('dashboard');
+    window.location.hash = '#/dashboard';
   };
 
   if (currentView === 'landing') {

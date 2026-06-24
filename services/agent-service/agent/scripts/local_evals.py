@@ -14,7 +14,7 @@ all_jsons = list(RESULTS_DIR.rglob("*_eval.json"))
 if not all_jsons:
     all_jsons = list(RESULTS_DIR.rglob("*.json"))
 
-scores = {fn.__name__.replace('eval_', ''): [] for fn in ALL_EVALUATORS}
+scores = {fn.__name__.replace('eval_', ""): [] for fn in ALL_EVALUATORS}
 
 for f in all_jsons:
     try:
@@ -29,7 +29,7 @@ for f in all_jsons:
             data["agent_answer_snippet"] = str(data.get("agent_answer", ""))
             
         for fn in ALL_EVALUATORS:
-            key = fn.__name__.replace('eval_', '')
+            key = fn.__name__.replace('eval_', "")
             res = fn(data)
             score = res.get('score')
             if score is not None:

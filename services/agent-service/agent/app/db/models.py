@@ -51,9 +51,9 @@ class PipelineRun(Base):
     dataset = Column(String, index=True)
     run_suffix = Column(String, default="")
     total_attempts = Column(Integer)
-    evolution_score = Column(Float)                    # best quality_signal across attempts (0.0–1.3)
+    evolution_score = Column(Float)                    # best quality_signal across attempts (0.0-1.3)
     final_verdict = Column(String)                     # SOLVED / PARTIAL / FAILED
-    satisfaction_score = Column(Float, nullable=True)  # 0.0–1.0, derived from validator
+    satisfaction_score = Column(Float, nullable=True)  # 0.0-1.0, derived from validator
     termination_reason = Column(String)                # why the loop exited
     best_sql = Column(Text, nullable=True)
     best_row_count = Column(Integer, nullable=True)

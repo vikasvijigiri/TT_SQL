@@ -41,6 +41,6 @@ def extract_verbose_trace(log_path: str):
         return f"Error extracting: {e}"
 
 if __name__ == "__main__":
-    res = extract_verbose_trace("backend/resources/logs/optimized_audit.log")
-    with open("backend/resources/logs/verbose_dump.txt", "w", encoding="utf-8") as f:
+    res = extract_verbose_trace("services/agent-service/agent/resources/logs/optimized_audit.log")
+    with open("services/agent-service/agent/resources/logs/verbose_dump.txt", "w", encoding="utf-8") as f:
         f.write(res)

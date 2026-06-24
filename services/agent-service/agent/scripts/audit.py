@@ -45,7 +45,7 @@ for f in all_jsons:
         if data.get('passed'):
             datasets[ds]["passed"] += 1
             
-        reason = data.get('reason', '') or data.get('error', '')
+        reason = data.get('reason', "") or data.get('error', "")
         if reason and not data.get('passed'):
             # truncate reason
             reason_short = str(reason)[:80]

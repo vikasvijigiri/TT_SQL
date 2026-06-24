@@ -1,6 +1,6 @@
 import pathlib
 
-p = pathlib.Path('backend/app/core/rules/self_improving_loop.py')
+p = pathlib.Path('services/agent-service/agent/app/core/rules/self_improving_loop.py')
 c = p.read_text('utf-8')
 c = c.replace('RESULTS_DIR / "dab"', 'DAB_RESULTS_DIR')
 c = c.replace('from agent.app.core.config import (', 'from agent.app.core.config import (\n    DAB_RESULTS_DIR,')

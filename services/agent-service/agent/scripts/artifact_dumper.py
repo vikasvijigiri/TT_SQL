@@ -4,7 +4,7 @@ from pathlib import Path
 def dump_to_artifact():
     try:
         # Read the completed math_audit log
-        content = Path("backend/resources/logs/math_audit.log").read_text(encoding='utf-16le', errors='replace')
+        content = Path("services/agent-service/agent/resources/logs/math_audit.log").read_text(encoding='utf-16le', errors='replace')
         
         # Split by query boundaries
         blocks = content.split("Starting rigorous audit run")

@@ -1,8 +1,8 @@
 import re
 import difflib
 from typing import List, Dict, Tuple
-from agent.app.models.schemas import SemanticContext, SemanticTable, SemanticColumn
-from agent.app.core.pipeline_config import PipelineModeConfig, BALANCED_CONFIG
+from agent.contracts.schemas import SemanticContext, SemanticTable, SemanticColumn
+from agent.orchestration.pipeline_config import PipelineModeConfig, BALANCED_CONFIG
 
 # Business-term synonym map: query word -> canonical schema tokens it maps to.
 # Expands query vocabulary so difflib / Jaccard can bridge surface-form gaps.
@@ -42,7 +42,7 @@ _SYNONYM_MAP: Dict[str, List[str]] = {
     # genomics / scientific
     "gene": ["variant", "mutation", "allele", "locus"],
     "sample": ["specimen", "case", "patient", "subject"],
-    # software / github
+    # software / repository
     "repo": ["repository", "project", "package"],
     "dependency": ["package", "library", "module", "requirement"],
     "version": ["release", "tag", "revision"],

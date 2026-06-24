@@ -1,8 +1,8 @@
 from sqlalchemy import create_engine, event, text
 from sqlalchemy.orm import declarative_base, sessionmaker
-from agent.app.core.config import RESULTS_DIR, DEFAULT_USERNAME
+from agent.app.core.config import EVAL_DB, DEFAULT_USERNAME
 
-DB_PATH = RESULTS_DIR / "nquire.db"
+DB_PATH = EVAL_DB
 SQLALCHEMY_DATABASE_URL = f"sqlite:///{DB_PATH}"
 
 engine = create_engine(

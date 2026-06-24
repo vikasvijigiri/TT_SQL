@@ -4,18 +4,18 @@
 # daily at 02:07 AM.
 #
 # Run once as Administrator:
-#   powershell -ExecutionPolicy Bypass -File backend\scripts\setup_daily_scheduler.ps1
+#   powershell -ExecutionPolicy Bypass -File services\agent-service\agent\scripts\setup_daily_scheduler.ps1
 
-$projectRoot = Split-Path -Parent (Split-Path -Parent $PSScriptRoot)
+$projectRoot = Split-Path -Parent (Split-Path -Parent (Split-Path -Parent (Split-Path -Parent $PSScriptRoot)))
 $pythonExe   = (Get-Command python -ErrorAction SilentlyContinue).Source
 if (-not $pythonExe) {
     Write-Error "Python not found on PATH. Install Python and re-run."
     exit 1
 }
 
-$scriptPath  = Join-Path $projectRoot "backend\scripts\run_self_improve.py"
-$logPath     = Join-Path $projectRoot "backend\resources\logs\self_improve_scheduler.log"
-$taskName    = "TT_SQL_V2_SelfImprove"
+$scriptPath  = Join-Path $projectRoot "services\agent-service\agent\scripts\run_self_improve.py"
+$logPath     = Join-Path $projectRoot "services\agent-service\agent\resources\logs\self_improve_scheduler.log"
+$taskName    = "TT_SQL_PLATFORM_SelfImprove"
 
 # Build the action: python script.py >> log.log 2>&1
 $action  = New-ScheduledTaskAction `
@@ -46,7 +46,7 @@ Register-ScheduledTask `
     -Trigger   $trigger `
     -Settings  $settings `
     -Principal $principal `
-    -Description "Runs TT_SQL_V2 daily self-improving pipeline (max 3 rounds)"
+    -Description "Runs TT_SQL_PLATFORM daily self-improving pipeline (max 3 rounds)"
 
 Write-Host ""
 Write-Host "Task '$taskName' registered successfully."

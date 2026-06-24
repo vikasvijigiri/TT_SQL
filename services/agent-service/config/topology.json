@@ -1,0 +1,128 @@
+{
+  "nodes": [
+    {
+      "id": "schema_linker.yaml",
+      "targetFile": "schema_linker.yaml",
+      "title": "Schema Linker",
+      "category": "Discovery",
+      "desc": "Performs semantic candidate grounding for queries against live tables/columns.",
+      "tools": [
+        "FQN Entity Matcher",
+        "Value-First Grounding Resolver"
+      ],
+      "x": 60,
+      "y": 40,
+      "color": "border-blue-500/50 bg-blue-500/10 text-blue-400",
+      "icon": {}
+    },
+    {
+      "id": "table_pruner.yaml",
+      "targetFile": "table_pruner.yaml",
+      "title": "Table Pruner",
+      "category": "Discovery",
+      "desc": "Prunes irrelevant tables & aggressively discovers junction/bridge tables.",
+      "tools": [
+        "Bridge Table Probe",
+        "Exact Schema Filter"
+      ],
+      "x": 60,
+      "y": 220,
+      "color": "border-indigo-500/50 bg-indigo-500/10 text-indigo-400",
+      "icon": {}
+    },
+    {
+      "id": "column_pruner.yaml",
+      "targetFile": "column_pruner.yaml",
+      "title": "Column Pruner",
+      "category": "Discovery",
+      "desc": "Filters schema columns using lexical similarity & dynamic datatype rules.",
+      "tools": [
+        "Lexical String Distance",
+        "Datatype Evaluator"
+      ],
+      "x": 60,
+      "y": 400,
+      "color": "border-indigo-500/50 bg-indigo-500/10 text-indigo-400",
+      "icon": {}
+    },
+    {
+      "id": "sql_generator.yaml",
+      "targetFile": "sql_generator.yaml",
+      "title": "Adaptive SQL Generator",
+      "category": "Execution",
+      "desc": "Assembles CTEs and Snowflake-compliant SQL drafts matching schema exact casing.",
+      "tools": [
+        "Snowflake AST Builder",
+        "Dialect FQN Rewriter"
+      ],
+      "x": 520,
+      "y": 400,
+      "color": "border-emerald-500/50 bg-emerald-500/10 text-emerald-400",
+      "icon": {}
+    },
+    {
+      "id": "result_validator.yaml",
+      "targetFile": "result_validator.yaml",
+      "title": "Data IQ Result Auditor",
+      "category": "Auditing",
+      "desc": "Validates row returns, diagnoses filter collapses, and spawns validation probes.",
+      "tools": [
+        "Variance & Null Profiler",
+        "Filter Collapse Diagnoser"
+      ],
+      "x": 520,
+      "y": 220,
+      "color": "border-rose-500/50 bg-rose-500/10 text-rose-400",
+      "icon": {}
+    },
+    {
+      "id": "self_corrector.yaml",
+      "targetFile": "self_corrector.yaml",
+      "title": "Closed-Loop Corrector",
+      "category": "Correction",
+      "desc": "Drives structured self-correction loops when execution compilation fails.",
+      "tools": [
+        "Cross-DB Cross-Table Searcher",
+        "Structured Correction Compiler"
+      ],
+      "x": 520,
+      "y": 40,
+      "color": "border-amber-500/50 bg-amber-500/10 text-amber-400",
+      "icon": {},
+      "isLoop": true
+    }
+  ],
+  "connections": [
+    {
+      "id": "c1",
+      "from": "schema_linker.yaml",
+      "to": "table_pruner.yaml"
+    },
+    {
+      "id": "c2",
+      "from": "table_pruner.yaml",
+      "to": "column_pruner.yaml"
+    },
+    {
+      "id": "c3",
+      "from": "column_pruner.yaml",
+      "to": "sql_generator.yaml"
+    },
+    {
+      "id": "c4",
+      "from": "sql_generator.yaml",
+      "to": "result_validator.yaml"
+    },
+    {
+      "id": "c5",
+      "from": "result_validator.yaml",
+      "to": "self_corrector.yaml"
+    },
+    {
+      "id": "c6",
+      "from": "self_corrector.yaml",
+      "to": "schema_linker.yaml",
+      "isFeedback": true
+    }
+  ]
+}

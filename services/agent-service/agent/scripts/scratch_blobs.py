@@ -1,11 +1,12 @@
 import json
 import os
 import re
+from pathlib import Path
 
 target_folder = r"C:\Users\VikasVijigiri\.gemini\antigravity-ide\brain\d1bbb0f8-62e2-495a-8561-4d7a4495a782"
 transcript_path = os.path.join(target_folder, ".system_generated", "logs", "transcript.jsonl")
 
-print("Writing clean topology to frontend/src/components/topology_backup.js...")
+print("Writing clean topology to apps/web/src/components/topology_backup.js...")
 
 with open(transcript_path, "r", encoding="utf-8") as f:
     for line in f:
@@ -26,7 +27,7 @@ with open(transcript_path, "r", encoding="utf-8") as f:
                     end2 = cleaned_content.find("];", cleaned_content.find("const initialConnections = ["))
                     if end2 != -1:
                         topology_code = cleaned_content[start:end2+2]
-                        backup_path = r"C:\Users\VikasVijigiri\Documents\TT_SQL_V2\frontend\src\components\topology_backup.js"
+                        backup_path = str(Path(__file__).resolve().parents[4] / "apps" / "web" / "src" / "components" / "topology_backup.js")
                         with open(backup_path, "w", encoding="utf-8") as out:
                             out.write(topology_code)
                         print("Successfully wrote backup to", backup_path)

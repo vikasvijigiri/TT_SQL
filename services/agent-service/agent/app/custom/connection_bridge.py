@@ -15,7 +15,7 @@ from __future__ import annotations
 from typing import Any, Dict
 
 from agent.app.core.connection import parse_connection, ConnectionConfig
-from agent.app.repositories.db_executor import DatabaseExecutor
+from agent.services.db_executor import DatabaseExecutor
 
 
 def project_to_connection_string(conn: Dict[str, Any]) -> str:

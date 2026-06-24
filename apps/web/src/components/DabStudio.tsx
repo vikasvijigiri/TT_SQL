@@ -29,7 +29,7 @@ import {
   TrendingUp,
   X,
   Sparkles,
-  Trophy,
+  Target,
   TerminalSquare,
   ShieldAlert,
   Link2,
@@ -43,7 +43,8 @@ import {
   Info,
   User,
   Sun,
-  Moon
+  Moon,
+  Trash
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import NQuireLogo from './NQuireLogo';
@@ -630,7 +631,7 @@ const DabStudio = ({ onBack, onHome, autoOpenDetails, clearAutoOpenDetails, user
   const selectedDbRef = useRef(selectedDb);
   const rtPollRef = useRef(null);
 
-  const isRunInteractive = dateFilter === 'live' || !!allDates.find(r => r.id === dateFilter)?.is_active;
+  const isRunInteractive = !!allDates.find(r => r.id === dateFilter)?.is_active;
 
   const dabMascotQuotes = [
     "Spinning up localized DuckDB nodes... 🦆",
@@ -695,9 +696,6 @@ const DabStudio = ({ onBack, onHome, autoOpenDetails, clearAutoOpenDetails, user
   // Fetch metrics and databases when date filter changes
   useEffect(() => {
     fetchInitialData();
-    if (selectedDbRef.current) {
-      handleRefresh(selectedDbRef.current);
-    }
   }, [dateFilter]);
 
   // Sync run/evaluate tickers — runs every 5 s to keep frontend in sync with backend
@@ -706,10 +704,10 @@ const DabStudio = ({ onBack, onHome, autoOpenDetails, clearAutoOpenDetails, user
     let timer: any;
     const loop = async () => {
       if (!isMounted) return;
-      await checkGlobalRunStatus();
-      if (isMounted && currentView === 'agents') {
-        await fetchAgentAnalytics(false);
-      }
+      await Promise.all([
+        checkGlobalRunStatus(),
+        currentView === 'agents' ? fetchAgentAnalytics(false) : Promise.resolve(),
+      ]);
       if (isMounted) timer = setTimeout(loop, 5000);
     };
     loop();
@@ -746,24 +744,24 @@ const DabStudio = ({ onBack, onHome, autoOpenDetails, clearAutoOpenDetails, user
   // Real-time probe card + metrics refresh while any instance is running
   useEffect(() => {
     clearTimeout(rtPollRef.current);
-    const hasRunning = Object.keys(runningInstances).length > 0 || isGlobalRunning;
-    if (!hasRunning) return;
+    if (!isGlobalRunning) return;
     
     let isMounted = true;
     const tick = async () => {
       if (!isMounted) return;
       const db = selectedDbRef.current;
+      const mp = `&model=${encodeURIComponent(selectedModel)}`;
       if (db) {
         try {
-          const res = await axios.get(`${API_BASE}/dab/queries/db/${db}?run_id=${dateFilter}`, { timeout: 5000 });
+          const res = await axios.get(`${API_BASE}/dab/queries/db/${db}?run_id=${dateFilter}${mp}`, { timeout: 5000 });
           setDbResults(res.data);
         } catch (_) {}
       }
       try {
         const [m, dbs, recent] = await Promise.all([
-          axios.get(`${API_BASE}/dab/metrics?run_id=${dateFilter}`, { timeout: 15000 }),
-          axios.get(`${API_BASE}/dab/databases?run_id=${dateFilter}`, { timeout: 15000 }),
-          axios.get(`${API_BASE}/dab/results/recent?limit=12&run_id=${dateFilter}`, { timeout: 15000 }),
+          axios.get(`${API_BASE}/dab/metrics?run_id=${dateFilter}${mp}`, { timeout: 15000 }),
+          axios.get(`${API_BASE}/dab/databases?run_id=${dateFilter}${mp}`, { timeout: 15000 }),
+          axios.get(`${API_BASE}/dab/results/recent?limit=12&run_id=${dateFilter}${mp}`, { timeout: 15000 }),
         ]);
         setMetrics(m.data);
         setDatabases(dbs.data);
@@ -774,7 +772,7 @@ const DabStudio = ({ onBack, onHome, autoOpenDetails, clearAutoOpenDetails, user
     };
     tick();
     return () => { isMounted = false; clearTimeout(rtPollRef.current); };
-  }, [Object.keys(runningInstances).length, isGlobalRunning, dateFilter]);
+  }, [isGlobalRunning, dateFilter]);
 
   // Poll /dab/results for live log content when the log tab is open during a run
   useEffect(() => {
@@ -847,21 +845,29 @@ const DabStudio = ({ onBack, onHome, autoOpenDetails, clearAutoOpenDetails, user
     return () => es.close();
   }, [selectedDetails?.id, selectedDetails?.status]);
 
-  const fetchDates = async () => {
+  const fetchDates = async (forceActiveRun = false) => {
     try {
-      // 6s timeout so a hung backend doesn't freeze the UI forever
       const res = await axios.get(`${API_BASE}/dab/runs`, { timeout: 6000 });
-      // Filter out the legacy "All Runs" sentinel — metrics must always be scoped to a specific run
       const dates = (res.data || []).filter(r => r.id !== 'all');
       setAllDates(dates);
 
-      if (dateFilter === '' || dateFilter === 'live' || dateFilter === 'all') {
-        // Prefer the actively-running batch; otherwise the most recent completed run
+      const knownIds = new Set(dates.map(r => r.id));
+      // Auto-select when: no filter set, or filter no longer matches any known run (e.g., just
+      // triggered a fresh run so dateFilter is today's date string, not yet a real run_id),
+      // or caller explicitly wants the active run (e.g., after pressing Run All).
+      const shouldAutoSelect =
+        forceActiveRun ||
+        !dateFilter ||
+        dateFilter === 'all' ||
+        !knownIds.has(dateFilter);
+
+      if (shouldAutoSelect) {
         const activeRun = dates.find(r => r.is_active);
-        const mostRecent = dates.find(r => !r.is_active && r.id !== 'live' && r.id !== 'all');
+        const mostRecent = dates.find(r => !r.is_active);
         const target = activeRun || mostRecent;
-        if (target) setDateFilter(target.id);
-        // If no runs exist yet, leave dateFilter empty — page shows the empty state
+        // No runs yet for this user → use 'all' so the page still loads the
+        // 12 datasets and shows zero-state metrics instead of staying blank.
+        setDateFilter(target ? target.id : 'all');
       }
     } catch (err) {
       console.error("Failed to load execution dates", err);
@@ -872,23 +878,22 @@ const DabStudio = ({ onBack, onHome, autoOpenDetails, clearAutoOpenDetails, user
   const fetchDabSubmissions = async () => { /* leaderboard removed */ };
 
   const fetchInitialData = async (showSpinner = true, force = false, forceDate?: string) => {
-    const activeDate = forceDate || dateFilter;
-    if (!activeDate) return; // Don't fetch until date filter is determined
+    const activeDate = forceDate !== undefined ? forceDate : (dateFilter || 'all');
     
     if (showSpinner) setLoading(true);
     // Hard timeout — if any call hangs longer than 10 s, clear the spinner anyway
     const safetyTimer = showSpinner ? setTimeout(() => setLoading(false), 10000) : null;
     try {
       const OPT = { timeout: 12000 };
+      const modelParam = `&model=${encodeURIComponent(selectedModel)}`;
       const [metricsRes, dbsRes, recentRes] = await Promise.all([
-        axios.get(`${API_BASE}/dab/metrics?run_id=${activeDate}${force ? '&force=true' : ''}`, OPT).catch(() => ({ data: null })),
-        axios.get(`${API_BASE}/dab/databases?run_id=${activeDate}${force ? '&force=true' : ''}`, OPT).catch(() => ({ data: [] })),
-        axios.get(`${API_BASE}/dab/results/recent?limit=12&run_id=${activeDate}${force ? '&force=true' : ''}`, OPT).catch(() => ({ data: [] })),
+        axios.get(`${API_BASE}/dab/metrics?run_id=${activeDate}${force ? '&force=true' : ''}${modelParam}`, OPT).catch(() => ({ data: null })),
+        axios.get(`${API_BASE}/dab/databases?run_id=${activeDate}${force ? '&force=true' : ''}${modelParam}`, OPT).catch(() => ({ data: [] })),
+        axios.get(`${API_BASE}/dab/results/recent?limit=12&run_id=${activeDate}${force ? '&force=true' : ''}${modelParam}`, OPT).catch(() => ({ data: [] })),
       ]);
       if (metricsRes.data) setMetrics(metricsRes.data);
       if (dbsRes.data) setDatabases(dbsRes.data);
       if (recentRes.data) setRecentRuns(recentRes.data);
-      fetchAgentAnalytics(false, activeDate);
     } catch (err) {
       console.error("Failed to load initial DAB metrics", err);
     } finally {
@@ -898,13 +903,12 @@ const DabStudio = ({ onBack, onHome, autoOpenDetails, clearAutoOpenDetails, user
   };
 
   const fetchAgentAnalytics = async (showSpinner = true, forceDate?: string) => {
-    const activeDate = forceDate || dateFilter;
-    if (!activeDate) return;
+    const activeDate = forceDate !== undefined ? forceDate : (dateFilter || 'all');
     if (showSpinner) setLoadingAgentAnalytics(true);
     try {
       const [analyticsRes, timeseriesRes] = await Promise.all([
         axios.get(`${API_BASE}/dab/agent_analytics?run_id=${activeDate}`),
-        axios.get(`${API_BASE}/dab/smartness_timeseries`).catch(() => null),
+        axios.get(`${API_BASE}/dab/smartness_timeseries?run_id=${activeDate}`).catch(() => null),
       ]);
       if (analyticsRes.data) setAgentAnalytics(analyticsRes.data);
       if (timeseriesRes?.data) setSmartnessTimeseries(timeseriesRes.data);
@@ -957,7 +961,7 @@ const DabStudio = ({ onBack, onHome, autoOpenDetails, clearAutoOpenDetails, user
     setSelectedDb(dbName);
     setCurrentView('database');
     try {
-      const res = await axios.get(`${API_BASE}/dab/queries/db/${dbName}?run_id=${dateFilter}`, { timeout: 8000 });
+      const res = await axios.get(`${API_BASE}/dab/queries/db/${dbName}?run_id=${dateFilter}&model=${encodeURIComponent(selectedModel)}`, { timeout: 8000 });
       setDbResults(res.data);
       
       // Auto-populate and sync runningInstances from backend statuses
@@ -982,24 +986,26 @@ const DabStudio = ({ onBack, onHome, autoOpenDetails, clearAutoOpenDetails, user
     const activeDate = forceDate || dateFilter;
     setIsRefreshing(true);
     try {
-    await checkGlobalRunStatus();
-    await fetchDates();
-    await fetchInitialData(false, true, forceDate);
-    await fetchAgentAnalytics(false, activeDate);
-    if (target) {
-      try {
-        const res = await axios.get(`${API_BASE}/dab/queries/db/${target}?run_id=${activeDate}`);
-        setDbResults(res.data);
-        setRunningInstances(prev => {
-          const next = { ...prev };
-          res.data.forEach(q => {
-            if (q.status === 'running') next[q.id] = true;
-            else delete next[q.id];
-          });
-          return next;
-        });
-      } catch (_) {}
-    }
+      await Promise.all([
+        checkGlobalRunStatus(),
+        fetchDates(),
+        fetchInitialData(false, true, forceDate),
+        currentView === 'agents' ? fetchAgentAnalytics(false, activeDate) : Promise.resolve(),
+        target
+          ? axios.get(`${API_BASE}/dab/queries/db/${target}?run_id=${activeDate}&model=${encodeURIComponent(selectedModel)}`, { timeout: 8000 })
+              .then(res => {
+                setDbResults(res.data);
+                setRunningInstances(prev => {
+                  const next = { ...prev };
+                  res.data.forEach(q => {
+                    if (q.status === 'running') next[q.id] = true;
+                    else delete next[q.id];
+                  });
+                  return next;
+                });
+              }).catch(() => {})
+          : Promise.resolve(),
+      ]);
     } finally {
       setIsRefreshing(false);
     }
@@ -1021,8 +1027,7 @@ const DabStudio = ({ onBack, onHome, autoOpenDetails, clearAutoOpenDetails, user
       
       let fallbackDate = 'all';
       if (newDates.length > 0) {
-        const hasLive = newDates.some(r => r.id === 'live');
-        fallbackDate = hasLive ? 'live' : newDates[0].id;
+        fallbackDate = (newDates.find(r => r.is_active) || newDates[0]).id;
       }
       
       // Optimistically clear current state to prevent flashing stale data
@@ -1064,7 +1069,7 @@ const DabStudio = ({ onBack, onHome, autoOpenDetails, clearAutoOpenDetails, user
     axios.post(`${API_BASE}/dab/run/${dataset}/${instanceId}`, {
       model: selectedModel,
       temperature: temperature,
-      run_id: dateFilter && dateFilter !== 'live' ? dateFilter : undefined
+      run_id: dateFilter || undefined
     })
       .catch(err => {
         console.error("Failed to trigger single DAB run", err);
@@ -1206,14 +1211,7 @@ const DabStudio = ({ onBack, onHome, autoOpenDetails, clearAutoOpenDetails, user
   const triggerGlobalRun = async (mode: 'fresh' | 'continue' = 'fresh') => {
     try {
       setIsGlobalRunning(true);
-      if (mode === 'fresh') {
-        // Optimistically wipe dashboard metrics and database progress
-        setMetrics({ total_queries: 0, evaluated: 0, passed: 0, failed: 0, pass_at_1_pct: '0.0%', avg_latency: '0.0s', avg_tokens_per_agent: '0 tokens', total_cost: '$0.0000' });
-        setDbResults([]);
-        setAllInstanceResults([]);
-        setDatabases(prev => prev.map(db => ({ ...db, results_count: 0, error_count: 0, status: 'pending' })));
-      }
-      
+
       const today = new Date().toISOString().split('T')[0];
       const getRunDateStr = (f) => {
         if (f && f.startsWith('run_')) {
@@ -1222,8 +1220,6 @@ const DabStudio = ({ onBack, onHome, autoOpenDetails, clearAutoOpenDetails, user
         }
         return today;
       };
-      // Fresh runs always use today's date and get a new run_id from the backend.
-      // Continue runs pass the original run's date and run_id so records stay in the same batch.
       const targetDate = mode === 'fresh' ? today : getRunDateStr(dateFilter);
       const runIdToPass = mode === 'continue' && dateFilter && dateFilter.startsWith('run_') ? dateFilter : undefined;
 
@@ -1238,12 +1234,10 @@ const DabStudio = ({ onBack, onHome, autoOpenDetails, clearAutoOpenDetails, user
         temperature: temperature
       };
       await axios.post(`${API_BASE}/dab/run_all`, payload);
-      
-      if (mode === 'fresh') {
-        setDateFilter('live');
-        fetchDates();
-      }
-      
+
+      // Set filter to today's date and let fetchDates resolve it to the active run entry.
+      setDateFilter(targetDate);
+      fetchDates(true);
       setTimeout(handleRefresh, 1500);
     } catch (err) {
       console.error("Failed to trigger global DAB run", err);
@@ -1252,7 +1246,8 @@ const DabStudio = ({ onBack, onHome, autoOpenDetails, clearAutoOpenDetails, user
 
   const handleRunAllClick = async () => {
     try {
-      const res = await axios.get(`${API_BASE}/dab/metrics?run_id=live`);
+      const mp = selectedModel ? `&model=${encodeURIComponent(selectedModel)}` : '';
+      const res = await axios.get(`${API_BASE}/dab/metrics?run_id=live${mp}`);
       const completedSlotsCount = res.data?.total_run_slots || 0;
       if (completedSlotsCount > 0) {
         setCompletedSlots(completedSlotsCount);
@@ -2019,7 +2014,7 @@ const DabStudio = ({ onBack, onHome, autoOpenDetails, clearAutoOpenDetails, user
       </AnimatePresence>
 
       {/* Sidebar Navigation */}
-      <aside className="w-16 lg:w-56 border-r border-[#2c3e55] bg-[#162030] flex flex-col p-4 gap-6 shrink-0 z-20 shadow-2xl animate-fadeIn">
+      <aside className="w-16 lg:w-56 border-r border-[#2c3e55] bg-[#162030] flex flex-col p-4 gap-6 shrink-0 z-20 shadow-2xl animate-fadeIn overflow-y-auto no-scrollbar">
         <div className="flex flex-col gap-3">
           <div className="flex items-center gap-3 px-1">
             <NQuireLogo size={32} showName nameSize="text-xs" onClick={onHome} />
@@ -2066,22 +2061,10 @@ const DabStudio = ({ onBack, onHome, autoOpenDetails, clearAutoOpenDetails, user
 
         </nav>
 
-        {/* Mascot Card */}
-        <div className="hidden lg:flex flex-col my-auto p-3.5 bg-[#162030] rounded-2xl border border-[#2c3e55] shadow-md relative overflow-hidden group select-none transition-all hover:border-violet-500/40">
-          <div className="absolute top-0 left-0 right-0 h-[2px] bg-gradient-to-r from-purple-500 via-indigo-500 to-pink-500 animate-pulse" />
-          <div className="relative mb-3 bg-[#1a2a3a] border border-[#2c3e55] p-2.5 rounded-xl rounded-bl-none shadow-lg">
-            <div className="text-[11px] font-mono text-slate-300 leading-tight min-h-[28px] flex items-center">
-              {dabQuip}
-            </div>
-            <div className="absolute -bottom-2 left-3 w-0 h-0 border-t-8 border-t-[#1a2a3a] border-r-8 border-r-transparent border-l-0" />
-          </div>
-          <div className="flex items-center justify-center py-2">
-            <Sparkles className="w-6 h-6 text-purple-400 animate-pulse" />
-          </div>
-        </div>
+
 
         {/* DIN Pipeline Settings */}
-        <div className="hidden lg:flex flex-col p-3.5 bg-[#162030] rounded-2xl border border-[#2c3e55] shadow-md relative overflow-hidden group select-none transition-all hover:border-violet-500/40 mt-4">
+        <div className="hidden lg:flex flex-col p-3.5 bg-[#162030] rounded-2xl border border-[#2c3e55] shadow-md relative overflow-hidden group select-none transition-all hover:border-violet-500/40 mt-4 shrink-0">
           <div className="absolute top-0 left-0 right-0 h-[2px] bg-gradient-to-r from-purple-500 to-indigo-500" />
           <div className="flex items-center gap-2 mb-3">
             <Sliders className="w-3.5 h-3.5 text-purple-400" />
@@ -2118,7 +2101,7 @@ const DabStudio = ({ onBack, onHome, autoOpenDetails, clearAutoOpenDetails, user
                 step="0.1"
                 value={temperature}
                 onChange={e => setTemperature(Number(e.target.value))}
-                className="w-full h-1 bg-[#1b2738] rounded-lg appearance-none cursor-pointer accent-violet-500"
+                className="w-full h-1 bg-[#1b2738] rounded-lg cursor-pointer accent-violet-500"
               />
             </div>
 
@@ -2135,7 +2118,7 @@ const DabStudio = ({ onBack, onHome, autoOpenDetails, clearAutoOpenDetails, user
                 step="1"
                 value={workers}
                 onChange={e => setWorkers(Math.min(10, Math.max(1, Number(e.target.value))))}
-                className="w-full h-1 bg-[#1b2738] rounded-lg appearance-none cursor-pointer accent-violet-500"
+                className="w-full h-1 bg-[#1b2738] rounded-lg cursor-pointer accent-violet-500"
               />
             </div>
 
@@ -2152,7 +2135,7 @@ const DabStudio = ({ onBack, onHome, autoOpenDetails, clearAutoOpenDetails, user
                 step="1"
                 value={runs}
                 onChange={e => setRuns(Math.min(10, Math.max(1, Number(e.target.value))))}
-                className="w-full h-1 bg-[#1b2738] rounded-lg appearance-none cursor-pointer accent-violet-500"
+                className="w-full h-1 bg-[#1b2738] rounded-lg cursor-pointer accent-violet-500"
               />
             </div>
           </div>
@@ -2215,7 +2198,7 @@ const DabStudio = ({ onBack, onHome, autoOpenDetails, clearAutoOpenDetails, user
                   return (
                     <span className="flex items-center gap-2">
                       {isActive && <span className="pulsing-dot-green" title="Active Run" />}
-                      <span>{selectedRun?.label || dateFilter || 'Select Run'}</span>
+                      <span>{selectedRun?.label || (allDates.length === 0 ? 'No Runs Yet' : dateFilter) || 'Select Run'}</span>
                     </span>
                   );
                 })()}
@@ -2235,6 +2218,11 @@ const DabStudio = ({ onBack, onHome, autoOpenDetails, clearAutoOpenDetails, user
                       Select Benchmark Run
                     </div>
                     <div className="space-y-0.5 max-h-60 overflow-y-auto no-scrollbar">
+                      {allDates.length === 0 && (
+                        <div className="px-3 py-3 text-[10px] font-mono text-slate-500 italic">
+                          No runs yet — press RUN ALL to start
+                        </div>
+                      )}
                       {allDates.map(run => {
                         const isSelected = dateFilter === run.id;
                         return (
@@ -2280,14 +2268,13 @@ const DabStudio = ({ onBack, onHome, autoOpenDetails, clearAutoOpenDetails, user
               {theme === 'light' ? <Moon className="w-4 h-4 text-violet-400" /> : <Sun className="w-4 h-4 text-amber-400" />}
             </button>
 
-            {currentView === 'dashboard' && dateFilter && dateFilter !== 'live' && (
+            {currentView === 'dashboard' && dateFilter && dateFilter !== 'all' && !isRunInteractive && (
               <button
                 onClick={handleDeleteRun}
-                className="px-3 py-1.5 rounded-lg font-mono font-bold text-xs shadow-lg transition-all border flex items-center gap-1.5 bg-rose-600/10 text-rose-400 border-rose-500/30 hover:bg-rose-600/20"
+                className="p-1.5 rounded-lg bg-[#0e0e14] border border-[#222232] hover:bg-rose-600/20 hover:border-rose-500/30 text-slate-400 hover:text-rose-400 transition-all shadow-sm flex items-center justify-center"
                 title="Delete this historical run"
               >
-                <X className="w-3.5 h-3.5" />
-                DELETE RUN
+                <Trash className="w-4 h-4" />
               </button>
             )}
 
@@ -2305,7 +2292,7 @@ const DabStudio = ({ onBack, onHome, autoOpenDetails, clearAutoOpenDetails, user
                   onClick={handleRunAllClick}
                   className="px-3 py-1.5 rounded-lg font-mono font-bold text-xs shadow-lg transition-all border flex items-center gap-1.5 bg-purple-600/10 text-purple-400 border-purple-500/30 hover:bg-purple-600/20"
                 >
-                  <Trophy size={14} className="mr-2" />
+                  <Play className="w-3.5 h-3.5" />
                   RUN ALL
                 </button>
               )
@@ -2314,11 +2301,13 @@ const DabStudio = ({ onBack, onHome, autoOpenDetails, clearAutoOpenDetails, user
         </header>
 
         {/* ── Run Progress Bar instead of News Ticker ─────────────────────────────── */}
-        {currentView === 'dashboard' && metrics && !isGlobalRunning && (
+        {currentView === 'dashboard' && metrics && !isGlobalRunning && dateFilter !== 'all' && (
           <div className="shrink-0 border-b border-purple-500/20 bg-gradient-to-r from-[#0d0b18] via-purple-950/20 to-[#0d0b18] px-6 py-2.5 flex items-center justify-between select-none gap-6 animate-fadeIn">
             <div className="flex items-center gap-2 text-xs font-mono font-bold text-slate-300">
               <span className="text-purple-500">◈</span>
-              <span className="text-purple-400 uppercase tracking-widest text-[10px]">Active Run</span>
+              <span className="text-purple-400 uppercase tracking-widest text-[10px]">
+                {isRunInteractive ? 'Active Run' : 'Run'}
+              </span>
               <span className="text-slate-200">
                 {allDates.find(r => r.id === dateFilter)?.label || dateFilter || 'No Run Selected'}
               </span>
@@ -2854,7 +2843,7 @@ const DabStudio = ({ onBack, onHome, autoOpenDetails, clearAutoOpenDetails, user
                   { id: 'sql', label: 'SQL', icon: <FileCode className="w-3.5 h-3.5 inline mr-1" /> },
                   { id: 'log', label: 'LOG', icon: <Activity className="w-3.5 h-3.5 inline mr-1" /> },
                   { id: 'csv', label: 'CSV', icon: <FileSpreadsheet className="w-3.5 h-3.5 inline mr-1" /> },
-                  { id: 'ground_truth', label: 'GROUND TRUTH', icon: <Trophy className="w-3.5 h-3.5 inline mr-1" /> },
+                  { id: 'ground_truth', label: 'GROUND TRUTH', icon: <Target className="w-3.5 h-3.5 inline mr-1" /> },
                   { id: 'insights', label: 'INSIGHTS', icon: <Lightbulb className="w-3.5 h-3.5 inline mr-1" /> },
                 ].map(({ id, label, icon }) => (
                   <button
