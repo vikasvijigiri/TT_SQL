@@ -5,7 +5,7 @@ from agent.orchestration.pipeline_config import PipelineModeConfig, BALANCED_CON
 from agent.app.core.prompts.compression_pipeline import CompressionPipeline
 from agent.app.core.prompting.context_scorer import ContextQualityScorer
 from agent.app.core.dialects.rule_retriever import DialectRuleRetriever
-from agent.app.core.query_analysis.capability_detector import QueryCapabilityDetector
+from core.query_analysis.capability_detector import QueryCapabilityDetector
 from agent.app.core.context.confidence_estimator import ConfidenceEstimator
 from agent.app.core.prompting.adaptive_budgeting import AdaptiveBudgetManager
 from agent.contracts.schemas import SemanticContext

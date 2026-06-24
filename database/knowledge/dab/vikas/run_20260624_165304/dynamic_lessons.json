@@ -1,0 +1,128 @@
+[
+  {
+    "lesson_id": "dyn_2300235225_7f6dad",
+    "intent_pattern": "coverage, schema, mapping, intent",
+    "rule_title": "Ensure schema coverage above threshold",
+    "generic_rule": "When generating a query, always include columns that directly map to the user's intent and verify that those columns exist in the linked schema. Validate that the coverage score meets the required threshold before finalizing the query. If coverage is low, add additional relevant tables or columns to improve mapping.",
+    "category": "schema_inference",
+    "source_failures": [
+      "stockmarket_q1"
+    ],
+    "db_name": "STOCKMARKET",
+    "status": "ACTIVE",
+    "applications": 0,
+    "successes": 0
+  },
+  {
+    "lesson_id": "dyn_2300235228_40d66b",
+    "intent_pattern": "missing table, missing column, schema validation",
+    "rule_title": "Validate required tables and columns",
+    "generic_rule": "Before executing a query, check that all referenced tables and columns are present in the available schema. If any required entity (e.g., ticker symbol or price data) is missing, flag the query as incomplete rather than proceeding. This prevents schema validation failures due to missing information.",
+    "category": "schema_inference",
+    "source_failures": [
+      "stockmarket_q1"
+    ],
+    "db_name": "STOCKMARKET",
+    "status": "ACTIVE",
+    "applications": 0,
+    "successes": 0
+  },
+  {
+    "lesson_id": "dyn_2300339414_b8d377",
+    "intent_pattern": "empty sql, sql generation, syntax validation",
+    "rule_title": "Never generate empty SQL",
+    "generic_rule": "Before execution, verify that the generated SQL string contains a valid statement (e.g., a SELECT clause) and is not empty. Implement a check that the query length > 0 and passes basic syntax validation. If the generation step yields an empty string, raise an error or fallback to a retrieval decision instead of sending it to the engine.",
+    "category": "schema_inference",
+    "source_failures": [
+      "stockmarket_q4"
+    ],
+    "db_name": "STOCKMARKET",
+    "status": "ACTIVE",
+    "applications": 0,
+    "successes": 0
+  },
+  {
+    "lesson_id": "dyn_2300339417_98c6b4",
+    "intent_pattern": "missing tables, schema mismatch, required columns",
+    "rule_title": "Validate required tables exist",
+    "generic_rule": "When building a query, first confirm that all referenced tables and columns are present in the available schema. If any required metadata tables (e.g., stockinfo, unified trade view) are missing, avoid generating a query that depends on them and instead return a retrieval decision or informative error.",
+    "category": "schema_inference",
+    "source_failures": [
+      "stockmarket_q4"
+    ],
+    "db_name": "STOCKMARKET",
+    "status": "ACTIVE",
+    "applications": 0,
+    "successes": 0
+  },
+  {
+    "lesson_id": "dyn_2300360181_735b1c",
+    "intent_pattern": "empty sql, sql string is empty, syntax validation",
+    "rule_title": "Never output empty SQL",
+    "generic_rule": "Always generate a non‑empty SQL statement that includes a valid SELECT clause before validation. If no meaningful query can be built, return a retrieval decision rather than an empty string.",
+    "category": "schema_inference",
+    "source_failures": [
+      "stockmarket_q2"
+    ],
+    "db_name": "STOCKMARKET",
+    "status": "ACTIVE",
+    "applications": 0,
+    "successes": 0
+  },
+  {
+    "lesson_id": "dyn_2300360183_1f0fc5",
+    "intent_pattern": "missing columns, schema mismatch, unavailable data",
+    "rule_title": "Verify required columns exist",
+    "generic_rule": "Check that all columns referenced by the user's request are present in the schema before building the query. If any required column is missing, adjust the query to use available fields or flag the need for external retrieval.",
+    "category": "schema_inference",
+    "source_failures": [
+      "stockmarket_q2"
+    ],
+    "db_name": "STOCKMARKET",
+    "status": "ACTIVE",
+    "applications": 0,
+    "successes": 0
+  },
+  {
+    "lesson_id": "dyn_2300419161_4b0462",
+    "intent_pattern": "empty sql, missing query",
+    "rule_title": "Never output an empty SQL string",
+    "generic_rule": "Ensure that any generated SQL contains a valid statement (e.g., SELECT, INSERT) before execution. If the system cannot produce a meaningful query, it should raise a clear error instead of returning an empty string.",
+    "category": "schema_inference",
+    "source_failures": [
+      "stockmarket_q3"
+    ],
+    "db_name": "STOCKMARKET",
+    "status": "ACTIVE",
+    "applications": 0,
+    "successes": 0
+  },
+  {
+    "lesson_id": "dyn_2300419163_4fc765",
+    "intent_pattern": "validation, sql generation",
+    "rule_title": "Validate presence of query components",
+    "generic_rule": "Check that generated SQL includes required clauses and references existing tables/columns; abort generation with an informative error if a valid query cannot be formed.",
+    "category": "schema_inference",
+    "source_failures": [
+      "stockmarket_q3"
+    ],
+    "db_name": "STOCKMARKET",
+    "status": "ACTIVE",
+    "applications": 0,
+    "successes": 0
+  },
+  {
+    "lesson_id": "dyn_2300464943_7e7912",
+    "intent_pattern": "empty query, sql generation, validation",
+    "rule_title": "Never emit an empty SQL string",
+    "generic_rule": "Before executing a generated query, verify that the SQL string is non‑empty and contains a valid SELECT clause. If the generation process cannot produce a meaningful query, return a retrieval decision or error instead of an empty string.",
+    "category": "schema_inference",
+    "source_failures": [
+      "stockmarket_q5"
+    ],
+    "db_name": "STOCKMARKET",
+    "status": "ACTIVE",
+    "applications": 0,
+    "successes": 0
+  }
+]

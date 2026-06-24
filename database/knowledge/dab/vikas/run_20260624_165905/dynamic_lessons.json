@@ -1,0 +1,142 @@
+[
+  {
+    "lesson_id": "dyn_2300629376_6369f2",
+    "intent_pattern": "entity mapping, schema lookup, missing table",
+    "rule_title": "Validate Entity Presence in Schema",
+    "generic_rule": "Before generating a query, confirm that each entity or concept mentioned in the user request maps to at least one table or column in the available schema. If no mapping is found, report missing information instead of producing an empty query.",
+    "category": "schema_inference",
+    "source_failures": [
+      "stockmarket_q1"
+    ],
+    "db_name": "STOCKMARKET",
+    "status": "ACTIVE",
+    "applications": 0,
+    "successes": 0
+  },
+  {
+    "lesson_id": "dyn_2300629378_6ae504",
+    "intent_pattern": "coverage score, schema validation, threshold",
+    "rule_title": "Require Minimum Coverage Score",
+    "generic_rule": "Ensure that the generated query includes columns from at least one relevant table, achieving a coverage score above the defined threshold. If the coverage score is zero, abort query generation and indicate insufficient schema coverage.",
+    "category": "schema_inference",
+    "source_failures": [
+      "stockmarket_q1"
+    ],
+    "db_name": "STOCKMARKET",
+    "status": "ACTIVE",
+    "applications": 0,
+    "successes": 0
+  },
+  {
+    "lesson_id": "dyn_2300669215_5f729e",
+    "intent_pattern": "empty sql, missing query, generation failure",
+    "rule_title": "Avoid empty SQL strings",
+    "generic_rule": "Always verify that the generated query contains a valid SELECT clause and is not an empty string before execution. Implement a pre‑execution check that the SQL text length is greater than zero and includes at least one column or expression. If the check fails, raise an error or generate a fallback query.",
+    "category": "schema_inference",
+    "source_failures": [
+      "stockmarket_q3"
+    ],
+    "db_name": "STOCKMARKET",
+    "status": "ACTIVE",
+    "applications": 0,
+    "successes": 0
+  },
+  {
+    "lesson_id": "dyn_2300669218_6d288c",
+    "intent_pattern": "missing column, unknown identifier, schema mismatch",
+    "rule_title": "Validate column existence",
+    "generic_rule": "Before referencing any identifier, confirm that the column exists in the current schema. Do not include columns or tables that are not present; if required data is unavailable, either adjust the query to use available fields or signal a retrieval fallback. This prevents schema‑related errors and hallucinated identifiers.",
+    "category": "schema_inference",
+    "source_failures": [
+      "stockmarket_q3"
+    ],
+    "db_name": "STOCKMARKET",
+    "status": "ACTIVE",
+    "applications": 0,
+    "successes": 0
+  },
+  {
+    "lesson_id": "dyn_2300727319_224b9c",
+    "intent_pattern": "empty sql, missing query, syntax validation",
+    "rule_title": "Never generate empty SQL",
+    "generic_rule": "Always ensure the generated query contains a valid SELECT statement before validation. If the query builder cannot produce any clause, fallback to a retrieval decision or raise a clear error instead of returning an empty string.",
+    "category": "schema_inference",
+    "source_failures": [
+      "stockmarket_q4"
+    ],
+    "db_name": "STOCKMARKET",
+    "status": "ACTIVE",
+    "applications": 0,
+    "successes": 0
+  },
+  {
+    "lesson_id": "dyn_2300727321_d1cdf6",
+    "intent_pattern": "missing columns, schema mismatch",
+    "rule_title": "Validate required columns exist",
+    "generic_rule": "Check that all columns referenced in the user's request are present in the schema before constructing the query. When required metadata (e.g., name, exchange, ETF flag) is missing, avoid generating a query and trigger a retrieval fallback.",
+    "category": "schema_inference",
+    "source_failures": [
+      "stockmarket_q4"
+    ],
+    "db_name": "STOCKMARKET",
+    "status": "ACTIVE",
+    "applications": 0,
+    "successes": 0
+  },
+  {
+    "lesson_id": "dyn_2300739374_de533b",
+    "intent_pattern": "empty sql, sql string empty, no query",
+    "rule_title": "Never output empty SQL",
+    "generic_rule": "Always generate a valid SELECT statement; if no tables or columns match the intent, return a placeholder query or raise an error instead of an empty string. Include at least one column in the SELECT clause and a FROM clause to ensure the SQL string is non‑empty.",
+    "category": "schema_inference",
+    "source_failures": [
+      "stockmarket_q2"
+    ],
+    "db_name": "STOCKMARKET",
+    "status": "ACTIVE",
+    "applications": 0,
+    "successes": 0
+  },
+  {
+    "lesson_id": "dyn_2300739377_a6da97",
+    "intent_pattern": "missing column, schema mismatch, column not found",
+    "rule_title": "Validate required columns exist",
+    "generic_rule": "Before constructing a query, confirm that every column referenced in the intent is present in the schema. If any required column is missing, adjust the query to omit those filters or flag the request as unsupported rather than producing an empty statement.",
+    "category": "schema_inference",
+    "source_failures": [
+      "stockmarket_q2"
+    ],
+    "db_name": "STOCKMARKET",
+    "status": "ACTIVE",
+    "applications": 0,
+    "successes": 0
+  },
+  {
+    "lesson_id": "dyn_2300989920_40f85d",
+    "intent_pattern": "empty sql, sql string is empty, syntax validation",
+    "rule_title": "Never output an empty SQL string",
+    "generic_rule": "Always generate a SELECT statement that references at least one table before validation. Include a sanity check that the SQL string is non‑empty and syntactically complete. If no suitable query can be formed, return a clear explanatory message instead of an empty query.",
+    "category": "schema_inference",
+    "source_failures": [
+      "stockmarket_q5"
+    ],
+    "db_name": "STOCKMARKET",
+    "status": "ACTIVE",
+    "applications": 0,
+    "successes": 0
+  },
+  {
+    "lesson_id": "dyn_2300989924_676e6d",
+    "intent_pattern": "missing columns, missing tables, schema mismatch",
+    "rule_title": "Validate required schema elements",
+    "generic_rule": "Before constructing a query, verify that all referenced tables and columns exist in the schema. If the requested attributes (e.g., market category or company name) are missing, abort query generation and provide a user‑friendly explanation rather than producing an empty or invalid SQL statement.",
+    "category": "schema_inference",
+    "source_failures": [
+      "stockmarket_q5"
+    ],
+    "db_name": "STOCKMARKET",
+    "status": "ACTIVE",
+    "applications": 0,
+    "successes": 0
+  }
+]

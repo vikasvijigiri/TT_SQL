@@ -3,7 +3,7 @@ import yaml
 from typing import List
 from config.config import get_dialect_path
 from core.retrieval.hierarchical_retriever import QueryIntentAnalysis
-from core.retrieval.capability_detector import QueryCapabilityProfile
+from core.query_analysis.capability_detector import QueryCapabilityProfile
 from core.retrieval.dialects.rule_priority_ranker import RulePriorityRanker
 from core.retrieval.dialects.rule_summarizer import RuleSummarizer
 from core.utils.logger import logger

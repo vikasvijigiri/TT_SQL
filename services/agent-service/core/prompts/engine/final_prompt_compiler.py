@@ -18,7 +18,7 @@ from core.telemetry.prompt_telemetry import (
 from core.prompts.engine.boundary_manager import PromptBoundaryManager
 from core.prompts.engine.reasoning_depth_controller import ReasoningDepthController
 from core.quality.prompt_quality_guard import PromptQualityGuard
-from core.retrieval.capability_detector import QueryCapabilityProfile
+from core.query_analysis.capability_detector import QueryCapabilityProfile
 from core.utils.logger import logger
 
 

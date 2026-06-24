@@ -1,5 +1,5 @@
 from typing import List, Dict
-from core.retrieval.capability_detector import QueryCapabilityProfile
+from core.query_analysis.capability_detector import QueryCapabilityProfile
 from core.prompts.engine.template_compactor import TemplateCompactor
 from core.utils.logger import logger
 

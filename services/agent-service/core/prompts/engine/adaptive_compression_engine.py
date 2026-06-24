@@ -1,6 +1,6 @@
 from pydantic import BaseModel
-from core.reasoning.confidence_estimator import ConfidenceMetrics
-from core.retrieval.capability_detector import QueryCapabilityProfile
+from core.context.confidence_estimator import ConfidenceMetrics
+from core.query_analysis.capability_detector import QueryCapabilityProfile
 from core.utils.logger import logger
 
 

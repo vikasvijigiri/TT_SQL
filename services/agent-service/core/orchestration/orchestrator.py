@@ -38,7 +38,7 @@ from core.retrieval.dialects.dialect_utils import get_schema_introspection_sql a
 
 from core.retrieval.hierarchical_retriever import HierarchicalRetriever
 
-from core.retrieval.capability_detector import QueryCapabilityDetector
+from core.query_analysis.capability_detector import QueryCapabilityDetector
 
 
 
@@ -372,7 +372,7 @@ class SemanticDINOrchestrator:
 
     def _get_base_lessons(self, intent, user_query: str, external_knowledge: str | None = None) -> str:
 
-        from core.utils.rag_service import DynamicRAGService
+        from core.retrieval.rag_service import DynamicRAGService
 
         rag_service = DynamicRAGService()
 
@@ -838,7 +838,7 @@ class SemanticDINOrchestrator:
 
         with contextlib.suppress(Exception):
 
-            from core.utils.business_glossary import enrich_prompt_with_glossary as _glossary_enrich
+            from core.evidence.business_glossary import enrich_prompt_with_glossary as _glossary_enrich
 
             _gl = _glossary_enrich(user_query)
 

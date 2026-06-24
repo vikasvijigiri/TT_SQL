@@ -19,8 +19,7 @@ from core.retrieval.semantic_engine import SemanticContextEngine
 from core.blackboard.dynamic_rules import FailureMemory
 
 from core.validators.deterministic_validators import DeterministicValidators
-
-
+from core.utils.logger import logger
 
 from config.config import get_prompt_path
 
@@ -327,35 +326,22 @@ class SQLGeneratorAgent:
         )
 
         try:
-
             result = self._call_llm_and_sanitize(system_prompt, user_prompt)
-
             
-
             # Deterministic Syntax Validation Gate
-
-            val_result = DeterministicValidators.validate_sql_syntax(result.sql, self.dialect)
-
-            if not val_result.is_valid and result.sql_vs_retrieval_decision != "RETRIEVAL_ONLY":
-
-                FailureMemory.record_failure(
-
-                    failure_type="Validation Rejection (SQL Syntax)",
-
-                    root_cause=val_result.rejection_reason or "Unknown",
-
-                    impact="SQL cannot be executed.",
-
-                    prevention_rule=f"Fix the syntax error: {val_result.rejection_reason}"
-
-                )
-
-                raise ValueError(f"SQL Syntax validation failed: {val_result.rejection_reason}")
-
-
+            # If probe_sql is set, the LLM correctly left sql empty to execute a probe.
+            if not result.probe_sql:
+                val_result = DeterministicValidators.validate_sql_syntax(result.sql, self.dialect)
+                if not val_result.is_valid and result.sql_vs_retrieval_decision != "RETRIEVAL_ONLY":
+                    FailureMemory.record_failure(
+                        failure_type="Validation Rejection (SQL Syntax)",
+                        root_cause=val_result.rejection_reason or "Unknown",
+                        impact="SQL cannot be executed.",
+                        prevention_rule=f"Fix the syntax error: {val_result.rejection_reason}"
+                    )
+                    logger.warning(f"SQL Syntax validation failed: {val_result.rejection_reason}")
 
             logger.log_parsed_data("Generation Output", result)
-
             return result
 
         except Exception:

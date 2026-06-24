@@ -1,5 +1,5 @@
 from typing import Dict
-from agent.app.core.query_analysis.capability_detector import QueryCapabilityProfile
+from core.query_analysis.capability_detector import QueryCapabilityProfile
 from agent.services.logger import logger
 
 

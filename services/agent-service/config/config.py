@@ -12,7 +12,7 @@ load_dotenv()
 
 # -- Backend code root (app code, prompts, config YAML - never written at runtime)
 
-_FILE_DERIVED = Path(__file__).resolve().parent.parent.parent.parent / "agent"
+_FILE_DERIVED = Path(__file__).resolve().parent.parent
 
 BACKEND_DIR = Path(os.environ.get("BACKEND_DATA_DIR", str(_FILE_DERIVED)))
 

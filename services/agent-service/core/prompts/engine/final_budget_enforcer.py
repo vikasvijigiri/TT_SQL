@@ -1,7 +1,7 @@
 from typing import List, Tuple
 from core.prompts.engine.prompt_ast import PromptAST
 from core.tokenization.final_tokenizer import FinalTokenizer
-from core.reasoning.context_value_ranker import ContextValueRanker
+from core.context.context_value_ranker import ContextValueRanker
 
 
 class FinalBudgetEnforcer:

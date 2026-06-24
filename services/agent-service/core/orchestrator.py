@@ -38,7 +38,7 @@ from agent.app.core.dialects.dialect_utils import get_schema_introspection_sql a
 
 from agent.app.core.retrieval.hierarchical_retriever import HierarchicalRetriever
 
-from agent.app.core.query_analysis.capability_detector import QueryCapabilityDetector
+from core.query_analysis.capability_detector import QueryCapabilityDetector
 
 
 

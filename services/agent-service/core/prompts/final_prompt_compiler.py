@@ -18,7 +18,7 @@ from agent.telemetry.prompt_telemetry import (
 from agent.app.core.prompts.boundary_manager import PromptBoundaryManager
 from agent.app.core.prompts.reasoning_depth_controller import ReasoningDepthController
 from agent.app.core.quality.prompt_quality_guard import PromptQualityGuard
-from agent.app.core.query_analysis.capability_detector import QueryCapabilityProfile
+from core.query_analysis.capability_detector import QueryCapabilityProfile
 from agent.services.logger import logger
 
 

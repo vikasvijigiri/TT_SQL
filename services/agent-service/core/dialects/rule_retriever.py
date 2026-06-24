@@ -3,7 +3,7 @@ import yaml
 from typing import List
 from agent.app.core.config import get_dialect_path
 from agent.app.core.retrieval.hierarchical_retriever import QueryIntentAnalysis
-from agent.app.core.query_analysis.capability_detector import QueryCapabilityProfile
+from core.query_analysis.capability_detector import QueryCapabilityProfile
 from agent.app.core.dialects.rule_priority_ranker import RulePriorityRanker
 from agent.app.core.dialects.rule_summarizer import RuleSummarizer
 from agent.services.logger import logger

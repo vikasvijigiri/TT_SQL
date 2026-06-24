@@ -1,6 +1,6 @@
 from pydantic import BaseModel
 from agent.app.core.context.confidence_estimator import ConfidenceMetrics
-from agent.app.core.query_analysis.capability_detector import QueryCapabilityProfile
+from core.query_analysis.capability_detector import QueryCapabilityProfile
 from agent.services.logger import logger
 
 

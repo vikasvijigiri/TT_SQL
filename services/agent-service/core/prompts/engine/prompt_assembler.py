@@ -3,11 +3,11 @@ from typing import List, Dict
 from pydantic import BaseModel
 from core.orchestration.pipeline_config import PipelineModeConfig, BALANCED_CONFIG
 from core.prompts.engine.compression_pipeline import CompressionPipeline
-from core.prompts.engine.context_scorer import ContextQualityScorer
+from core.prompting.context_scorer import ContextQualityScorer
 from core.retrieval.dialects.rule_retriever import DialectRuleRetriever
-from core.retrieval.capability_detector import QueryCapabilityDetector
-from core.reasoning.confidence_estimator import ConfidenceEstimator
-from core.prompts.engine.adaptive_budgeting import AdaptiveBudgetManager
+from core.query_analysis.capability_detector import QueryCapabilityDetector
+from core.context.confidence_estimator import ConfidenceEstimator
+from core.prompting.adaptive_budgeting import AdaptiveBudgetManager
 from core.contracts.schemas import SemanticContext
 from core.retrieval.hierarchical_retriever import QueryIntentAnalysis
 from core.utils.logger import logger

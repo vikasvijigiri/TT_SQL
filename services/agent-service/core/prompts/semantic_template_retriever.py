@@ -1,5 +1,5 @@
 from typing import List, Dict
-from agent.app.core.query_analysis.capability_detector import QueryCapabilityProfile
+from core.query_analysis.capability_detector import QueryCapabilityProfile
 from agent.app.core.prompts.template_compactor import TemplateCompactor
 from agent.services.logger import logger
 

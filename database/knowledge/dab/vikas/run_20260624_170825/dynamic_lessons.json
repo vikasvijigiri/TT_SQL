@@ -1,0 +1,58 @@
+[
+  {
+    "lesson_id": "dyn_2301222905_c4b7fe",
+    "intent_pattern": "coverage schema linking validation",
+    "rule_title": "Ensure High Schema Coverage",
+    "generic_rule": "When linking user intent to the database schema, select enough relevant tables and columns to cover at least the required coverage threshold (e.g., >80%). Include both identifier columns and business‑oriented columns that directly answer the query. Verify that the selected schema elements map to the user's terms before generating SQL.",
+    "category": "schema_inference",
+    "source_failures": [
+      "stockmarket_q1"
+    ],
+    "db_name": "STOCKMARKET",
+    "status": "ACTIVE",
+    "applications": 0,
+    "successes": 0
+  },
+  {
+    "lesson_id": "dyn_2301222931_85a557",
+    "intent_pattern": "value mapping term exact match",
+    "rule_title": "Map User Terms to Exact DB Values",
+    "generic_rule": "Always map user-provided entity names or identifiers to the exact column values in the schema using precise equality or appropriate lookup functions. Avoid relying solely on ID columns; include descriptive columns (e.g., Symbol, Name) to improve matching accuracy. Ensure the mapping covers all required attributes for the query.",
+    "category": "schema_inference",
+    "source_failures": [
+      "stockmarket_q1"
+    ],
+    "db_name": "STOCKMARKET",
+    "status": "ACTIVE",
+    "applications": 0,
+    "successes": 0
+  },
+  {
+    "lesson_id": "dyn_2301394284_1b5e3f",
+    "intent_pattern": "missing column, schema mismatch, unknown identifier",
+    "rule_title": "Validate column existence",
+    "generic_rule": "Before referencing any column in a generated query, cross‑check that the column name appears in the provided schema. Do not add or assume columns (e.g., ETF flag, exchange code) that are not defined, as this leads to schema mismatches and execution failures.",
+    "category": "schema_inference",
+    "source_failures": [
+      "stockmarket_q2"
+    ],
+    "db_name": "STOCKMARKET",
+    "status": "ACTIVE",
+    "applications": 0,
+    "successes": 0
+  },
+  {
+    "lesson_id": "dyn_2301394288_d537bc",
+    "intent_pattern": "empty sql, missing number, syntax error",
+    "rule_title": "Prevent empty or incomplete SQL",
+    "generic_rule": "Ensure the generated SQL contains all required clauses (SELECT, FROM, WHERE) and concrete values. Avoid producing empty statements or placeholders that result in syntax errors or missing numeric literals.",
+    "category": "filtering",
+    "source_failures": [
+      "stockmarket_q2"
+    ],
+    "db_name": "STOCKMARKET",
+    "status": "ACTIVE",
+    "applications": 0,
+    "successes": 0
+  }
+]

@@ -1,6 +1,6 @@
 from typing import List, Dict, Optional
 from core.orchestration.pipeline_config import PipelineModeConfig, BALANCED_CONFIG
-from core.prompts.engine.token_budget_manager import TokenBudgetManager
+from core.prompting.token_budget_manager import TokenBudgetManager
 from core.retrieval.dialects.rule_deduplicator import RuleDeduplicator
 from core.schema.sample_suppressor import SampleSuppressor
 from core.prompts.engine.semantic_template_retriever import (
@@ -9,11 +9,11 @@ from core.prompts.engine.semantic_template_retriever import (
 from core.prompts.engine.adaptive_compression_engine import (
     AdaptiveCompressionEngine,
 )
-from core.reasoning.confidence_estimator import ConfidenceMetrics
-from core.retrieval.capability_detector import QueryCapabilityProfile
+from core.context.confidence_estimator import ConfidenceMetrics
+from core.query_analysis.capability_detector import QueryCapabilityProfile
 from core.prompts.engine.reasoning_directives import ReasoningDirectives
 from core.prompts.engine.final_prompt_compiler import FinalPromptCompiler
-from core.reasoning.context_relevance import ContextRelevanceScorer
+from core.context.context_relevance import ContextRelevanceScorer
 from core.telemetry.prompt_telemetry import PromptTelemetrySummary
 from core.retrieval.hierarchical_retriever import QueryIntentAnalysis
 from core.contracts.schemas import SemanticContext
@@ -77,7 +77,7 @@ class CompressionPipeline:
         if not profile:
             profile = QueryCapabilityProfile()
         if not confidence:
-            from core.reasoning.confidence_estimator import (
+            from core.context.confidence_estimator import (
                 ConfidenceEstimator,
             )
 

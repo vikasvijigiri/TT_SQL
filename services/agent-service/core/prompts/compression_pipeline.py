@@ -10,7 +10,7 @@ from agent.app.core.prompts.adaptive_compression_engine import (
     AdaptiveCompressionEngine,
 )
 from agent.app.core.context.confidence_estimator import ConfidenceMetrics
-from agent.app.core.query_analysis.capability_detector import QueryCapabilityProfile
+from core.query_analysis.capability_detector import QueryCapabilityProfile
 from agent.app.core.prompts.reasoning_directives import ReasoningDirectives
 from agent.app.core.prompts.final_prompt_compiler import FinalPromptCompiler
 from agent.app.core.context.context_relevance import ContextRelevanceScorer
