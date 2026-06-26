@@ -1,4 +1,5 @@
 import typing
+from agent.services.logger import logger
 
 import sqlglot
 
@@ -8,17 +9,18 @@ from typing import List
 
 from agent.services.llm import LLMClient
 
-from agent.services.dialect_loader import DialectLoader
+from agent.app.utils.dialect_loader import DialectLoader
 
 from agent.app.core.retrieval.hierarchical_retriever import HierarchicalRetriever
 
-from agent.contracts.schemas import SQLGeneratorOutput, SchemaLinkerOutput
+from agent.app.models.schemas import SQLGeneratorOutput, SchemaLinkerOutput
 
-from agent.services.semantic_engine import SemanticContextEngine
+from agent.app.services.semantic_engine import SemanticContextEngine
 
 from agent.blackboard.dynamic_rules import FailureMemory
 
-from agent.validators.deterministic_validators import DeterministicValidators
+from agent.app.core.validation.validators import DeterministicValidators
+from agent.app.core.validation.dialect_preflight import check_and_fix as preflight_check
 
 
 
@@ -248,6 +250,27 @@ class SQLGeneratorAgent:
 
                 )
 
+        # Deterministic dialect preflight: auto-fix known violations before execution
+        if result.sql:
+
+            pf = preflight_check(result.sql, dialect=self.dialect)
+
+            if pf.auto_fixed:
+
+                logger.info(
+                    f"[DialectPreflight] Auto-fixed {len(pf.fixes_applied)} violation(s): "
+                    + "; ".join(pf.fixes_applied)
+                )
+
+                result.sql = pf.sql
+
+            if pf.unfixable:
+
+                logger.warning(
+                    f"[DialectPreflight] {len(pf.unfixable)} unfixable violation(s) flagged "
+                    f"(will surface in correction loop): " + "; ".join(pf.unfixable)
+                )
+
         return result
 
 
@@ -333,24 +356,16 @@ class SQLGeneratorAgent:
             
 
             # Deterministic Syntax Validation Gate
-
-            val_result = DeterministicValidators.validate_sql_syntax(result.sql, self.dialect)
-
-            if not val_result.is_valid and result.sql_vs_retrieval_decision != "RETRIEVAL_ONLY":
-
-                FailureMemory.record_failure(
-
-                    failure_type="Validation Rejection (SQL Syntax)",
-
-                    root_cause=val_result.rejection_reason or "Unknown",
-
-                    impact="SQL cannot be executed.",
-
-                    prevention_rule=f"Fix the syntax error: {val_result.rejection_reason}"
-
-                )
-
-                raise ValueError(f"SQL Syntax validation failed: {val_result.rejection_reason}")
+            if result.sql and result.sql.strip():
+                val_result = DeterministicValidators.validate_sql_syntax(result.sql, self.dialect)
+                if not val_result.is_valid and result.sql_vs_retrieval_decision != "RETRIEVAL_ONLY":
+                    FailureMemory.record_failure(
+                        failure_type="Validation Rejection (SQL Syntax)",
+                        root_cause=val_result.rejection_reason or "Unknown",
+                        impact="SQL cannot be executed.",
+                        prevention_rule=f"Fix the syntax error: {val_result.rejection_reason}"
+                    )
+                    raise ValueError(f"SQL Syntax validation failed: {val_result.rejection_reason}")
 
 
 

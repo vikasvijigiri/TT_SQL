@@ -2,7 +2,7 @@ import json
 from pathlib import Path
 import random
 
-results_file = Path('C:/Users/VikasVijigiri/Documents/TT_SQL_V2/dab_submission_bundle/results.json')
+results_file = Path(__file__).resolve().parent.parent.parent.parent / 'dab_submission_bundle/results.json'
 metrics = json.loads(results_file.read_text(encoding='utf-8'))
 
 previous = {

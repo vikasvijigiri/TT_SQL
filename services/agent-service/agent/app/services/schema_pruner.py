@@ -2,14 +2,14 @@ import typing
 from typing import List, Dict
 from pydantic import BaseModel
 from agent.services.llm import LLMClient
-from agent.services.semantic_engine import SemanticContextEngine
+from agent.app.services.semantic_engine import SemanticContextEngine
 from agent.services.logger import logger
 from agent.app.core.config import get_prompt_path
 from agent.app.core.retrieval.hierarchical_retriever import (
     HierarchicalRetriever,
     QueryIntentAnalysis,
 )
-from agent.contracts.schemas import SemanticContext
+from agent.app.models.schemas import SemanticContext
 
 
 class TablePruningResult(BaseModel):

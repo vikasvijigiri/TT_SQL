@@ -4,14 +4,14 @@ from pydantic import BaseModel
 from agent.orchestration.pipeline_config import PipelineModeConfig, BALANCED_CONFIG
 from agent.app.core.prompts.compression_pipeline import CompressionPipeline
 from agent.app.core.prompting.context_scorer import ContextQualityScorer
-from agent.app.core.dialects.rule_retriever import DialectRuleRetriever
 from agent.app.core.query_analysis.capability_detector import QueryCapabilityDetector
 from agent.app.core.context.confidence_estimator import ConfidenceEstimator
 from agent.app.core.prompting.adaptive_budgeting import AdaptiveBudgetManager
-from agent.contracts.schemas import SemanticContext
+from agent.app.models.schemas import SemanticContext
 from agent.app.core.retrieval.hierarchical_retriever import QueryIntentAnalysis
 from agent.services.logger import logger
-from agent.services.prompt_loader import PromptLoader
+from agent.app.utils.prompt_loader import PromptLoader
+from agent.app.utils.dialect_loader import DialectLoader
 from agent.app.core.config import PROMPTS_DIR
 
 
@@ -43,7 +43,6 @@ class PromptAssembler:
         self.pipeline = CompressionPipeline(
             config=config, stage=self.stage, dialect=self.dialect
         )
-        self.rule_retriever = DialectRuleRetriever(dialect=self.dialect)
         self.scorer = ContextQualityScorer()
 
     def _load_compact_system_prompt(self, agent_type: str) -> str:
@@ -99,9 +98,14 @@ class PromptAssembler:
         budget = AdaptiveBudgetManager.calculate_budget(agent_type, user_query, profile)
 
         # 5. Retrieve Adaptive Rule Families & Syntax Templates (Task 1, 9, 11)
-        raw_config = self.rule_retriever._load_raw_config()
-        raw_templates = raw_config.get("examples", [])
-        adaptive_rules = self.rule_retriever.get_adaptive_rules(profile, max_rules=25)
+        raw_templates = []
+        _dl = DialectLoader()
+        _rules_text = _dl.load_dialect_reasoning(self.dialect)
+        adaptive_rules = [
+            line.split("] ", 1)[-1].strip()
+            for line in _rules_text.splitlines()
+            if line.strip().startswith("- [Core]")
+        ]
 
         # 6. Execute 6-Stage Compression Pipeline
         comp_out = self.pipeline.execute(

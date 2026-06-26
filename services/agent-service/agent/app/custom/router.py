@@ -510,7 +510,7 @@ async def stream_query(body: StreamRequest) -> StreamingResponse:
 
         def run_pipeline() -> None:
 
-            from agent.orchestration.orchestrator import SemanticDINOrchestrator
+            from agent.app.core.orchestrator import SemanticDINOrchestrator
 
 
 

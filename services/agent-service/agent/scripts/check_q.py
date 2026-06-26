@@ -1,6 +1,6 @@
 import sys
 from pathlib import Path
-ROOT_DIR = Path(r"c:\Users\VikasVijigiri\Documents\TT_SQL_V2")
+ROOT_DIR = Path(__file__).resolve().parent.parent.parent.parent
 sys.path.insert(0, str(ROOT_DIR))
 from agent.app.core.config import DAB_REPO
 from agent.app.dab.benchmark_loader import load_all_queries

@@ -110,39 +110,39 @@ from agent.app.core.config import (
 
 from agent.services.llm import LLMClient
 
-from agent.services.db_executor import DatabaseExecutor
+from agent.app.repositories.db_executor import DatabaseExecutor
 
-from agent.telemetry.latency_tracker import get_latency_stats
+from agent.app.core.observability.latency_tracker import get_latency_stats
 
-from agent.telemetry.cache_monitor import all_stats as get_cache_stats
+from agent.app.core.observability.cache_monitor import all_stats as get_cache_stats
 
-from agent.telemetry.prompt_registry import PromptRegistry
+from agent.app.core.observability.prompt_registry import PromptRegistry
 
-from agent.telemetry.drift_detector import SchemaDriftDetector
+from agent.app.core.observability.drift_detector import SchemaDriftDetector
 
 from agent.app.core.security.validator import SecurityValidator
 
 from agent.app.core.reliability.rate_limiter import get_query_limiter
 
-from agent.telemetry.token_monitor import get_token_stats
+from agent.app.core.observability.token_monitor import get_token_stats
 
 from agent.app.core.observability import query_analytics as _qa_module
 
 from agent.app.core.observability import failure_tracker as _ft_module
 
-from agent.telemetry.determinism_tracker import get_determinism_stats
+from agent.app.core.observability.determinism_tracker import get_determinism_stats
 
-from agent.telemetry.result_auditor import get_quality_stats
+from agent.app.core.observability.result_auditor import get_quality_stats
 
 from agent.app.core.regression.golden_gate import GoldenGate
 
-from agent.telemetry.validation_analytics import get_validation_stats
+from agent.app.core.observability.validation_analytics import get_validation_stats
 
-from agent.telemetry.retrieval_analytics import get_retrieval_stats
+from agent.app.core.observability.retrieval_analytics import get_retrieval_stats
 
 from agent.app.core.reporting.failure_report import generate_failure_report
 
-from agent.validators.schema_completeness import check_schema_completeness
+from agent.app.core.validation.schema_completeness import check_schema_completeness
 
 
 
@@ -154,7 +154,7 @@ from agent.app.core.dependencies import EXECUTION_POOL
 
 RUNNING_TASKS: set[str] = set()
 
-from agent.services.cache import SPIDER_CANCEL_FLAG
+from agent.app.utils.cache import SPIDER_CANCEL_FLAG
 
 GLOBAL_AUDIT_RUNNING = False
 
@@ -750,7 +750,7 @@ async def startup_event():
 
     try:
 
-        from agent.services.cache import RedisSet
+        from agent.app.utils.cache import RedisSet
 
         RedisSet("shared_DAB_RUNNING_TASKS").clear()
 
@@ -1190,7 +1190,7 @@ def _cached_get_metrics(date: str, ttl_hash: int):
 
 
 
-    from agent.services.archive import get_target_dirs_for_date
+    from agent.app.utils.archive import get_target_dirs_for_date
 
     target_dirs = get_target_dirs_for_date(RESULTS_DIR, date)
 
@@ -2162,7 +2162,7 @@ def get_schema_completeness(db_name: str = "IPL"):
 
 
 
-from agent.services.semantic_engine import SemanticContextEngine
+from agent.app.services.semantic_engine import SemanticContextEngine
 
 
 
@@ -2202,7 +2202,7 @@ def _cached_get_databases(date: str, ttl_hash: int):
 
 
 
-    from agent.services.archive import get_target_dirs_for_date
+    from agent.app.utils.archive import get_target_dirs_for_date
 
     target_dirs = get_target_dirs_for_date(RESULTS_DIR, date)
 
@@ -2326,7 +2326,7 @@ def get_databases(date: str = "all", force: bool = False):
 
 def _cached_get_recent_results(limit: int, date: str, ttl_hash: int):
 
-    from agent.services.archive import get_target_dirs_for_date
+    from agent.app.utils.archive import get_target_dirs_for_date
 
     recent_runs = []
 
@@ -2580,7 +2580,7 @@ def run_demo_query(payload: DemoQueryRequest):
 
     """
 
-    from agent.services.db_executor import DatabaseExecutor
+    from agent.app.repositories.db_executor import DatabaseExecutor
 
     from agent.services.llm import LLMClient
 
@@ -2802,7 +2802,7 @@ Question: {query_text}"""
 
 def _cached_get_all_results(date: str, ttl_hash: int):
 
-    from agent.services.archive import get_target_dirs_for_date
+    from agent.app.utils.archive import get_target_dirs_for_date
 
     all_runs = []
 
@@ -2922,7 +2922,7 @@ def get_db_results(db_name: str, date: str = "all"):
 
     """Returns detailed results and questions for all instances in a specific database."""
 
-    from agent.services.archive import get_target_dirs_for_date
+    from agent.app.utils.archive import get_target_dirs_for_date
 
     results = []
 
@@ -3098,7 +3098,7 @@ def get_instance_details(db_name: str, instance_id: str, date: str = "all"):
 
     """Returns the raw log, extracted SQL, and CSV data for a specific instance."""
 
-    from agent.services.archive import get_target_dirs_for_date
+    from agent.app.utils.archive import get_target_dirs_for_date
 
     db_name_upper = db_name.strip().upper()
 
@@ -4340,7 +4340,7 @@ def delete_spider_run(date: str):
 
     
 
-    from agent.services.archive import force_delete_dir, force_delete_file
+    from agent.app.utils.archive import force_delete_dir, force_delete_file
 
     
 

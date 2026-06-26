@@ -1,5 +1,5 @@
 from typing import List, Dict, Tuple
-from agent.contracts.schemas import SemanticContext
+from agent.app.models.schemas import SemanticContext
 from agent.app.core.retrieval.hierarchical_retriever import (
     HierarchicalRetriever,
     QueryIntentAnalysis,

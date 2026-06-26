@@ -1,5 +1,5 @@
 import json
-from agent.learning.sqlite_memory import SQLiteMemoryDB
+from agent.app.core.learning.sqlite_memory import SQLiteMemoryDB
 from agent.blackboard.run_blackboard import get_blackboard
 from agent.services.logger import logger
 

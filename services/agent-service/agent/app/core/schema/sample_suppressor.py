@@ -1,6 +1,6 @@
 import re
 from typing import List, Any
-from agent.contracts.schemas import SemanticColumn
+from agent.app.models.schemas import SemanticColumn
 from agent.services.logger import logger
 
 

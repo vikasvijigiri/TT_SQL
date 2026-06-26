@@ -22,7 +22,7 @@ from agent.app.core.connection import parse_connection, ConnectionConfig
 
 from agent.blackboard.dynamic_rules import FailureMemory
 
-from agent.validators.deterministic_validators import DeterministicValidators
+from agent.app.core.validation.validators import DeterministicValidators
 
 import contextlib
 
@@ -1468,10 +1468,12 @@ class DatabaseExecutor:
 
                         duckdb_files = []
 
-                        for ext in ("*.duckdb", "*.ddb"):
+                        for ext in ("*.duckdb", "*.ddb", "*.db"):
 
                             duckdb_files.extend(glob.glob(os.path.join(db_dir, ext)))
 
+                        # Exclude SQLite-format .db files — DuckDB cannot open them
+                        duckdb_files = [f for f in duckdb_files if not is_sqlite_file(f)]
                         duckdb_files = list(set(duckdb_files))
 
 
@@ -1539,11 +1541,8 @@ class DatabaseExecutor:
                                     try:
 
                                         conn.execute(
-
-                                            f'CREATE OR REPLACE TEMPORARY TABLE "{t_name}" AS '
-
+                                            f'CREATE OR REPLACE TEMPORARY VIEW "{t_name}" AS '
                                             f'SELECT * FROM "{db_alias}"."{t_name}";'
-
                                         )
 
                                         attached_view_names.add(t_name)

@@ -20,7 +20,8 @@ sys.path.insert(0, str(pathlib.Path(__file__).resolve().parents[1]))
 
 from agent.app.dab.benchmark_loader import load_all_queries
 
-DAB_PATH = pathlib.Path("c:/Users/VikasVijigiri/Documents/DataAgentBench")
+from config.config import DAB_REPO
+DAB_PATH = pathlib.Path(DAB_REPO)
 
 
 def main():
@@ -34,8 +35,8 @@ def main():
         "String run identifier stored under database/results/dab/vikas/<run-id>/. "
         "Auto-generated as run_YYYYMMDD_HHMM if omitted."
     ))
-    parser.add_argument("--username", "-u", default="vikas",
-                        help="Username subfolder (default: vikas)")
+    parser.add_argument("--username", "-u", default=os.environ.get("DEFAULT_USERNAME", "anonymous"),
+                        help="Username subfolder")
     args = parser.parse_args()
 
     queries = load_all_queries(DAB_PATH)
@@ -61,7 +62,7 @@ def main():
 
     # Inject into shared cache so get_active_results_dir() picks it up
     try:
-        from agent.services.cache import cache_service
+        from agent.app.utils.cache import cache_service
         cache_service.set("shared_DAB_RUN_ID", run_id, ttl=86400)
         cache_service.set("shared_DAB_RUN_USERNAME", args.username, ttl=86400)
         cache_service.set("shared_BENCHMARK", "dab", ttl=86400)
@@ -79,7 +80,7 @@ def main():
 
     # Reset cancellation flags to prevent stale states from stopping the run
     try:
-        from agent.services.cache import DAB_CANCEL_FLAG, SPIDER_CANCEL_FLAG
+        from agent.app.utils.cache import DAB_CANCEL_FLAG, SPIDER_CANCEL_FLAG
         DAB_CANCEL_FLAG.set(False)
         SPIDER_CANCEL_FLAG.set(False)
     except Exception:

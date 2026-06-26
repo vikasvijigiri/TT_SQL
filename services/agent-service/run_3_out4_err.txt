@@ -1,0 +1,4 @@
+C:\Users\VikasVijigiri\AppData\Roaming\Python\Python314\site-packages\requests\__init__.py:113: RequestsDependencyWarning: urllib3 (2.6.2) or chardet (7.1.0)/charset_normalizer (3.4.4) doesn't match a supported version!
+  warnings.warn(
+C:\Users\VikasVijigiri\AppData\Roaming\Python\Python314\site-packages\langchain_core\utils\pydantic.py:41: UserWarning: Core Pydantic V1 functionality isn't compatible with Python 3.14 or greater.
+  from pydantic.v1 import BaseModel as BaseModelV1

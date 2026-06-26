@@ -11,7 +11,7 @@ from agent.app.core.prompts.directive_compactor import DirectiveCompactor
 from agent.app.core.prompts.lesson_overlap_resolver import LessonRuleOverlapResolver
 from agent.app.core.tokenization.final_tokenizer import FinalTokenizer
 from agent.app.core.prompts.final_budget_enforcer import FinalBudgetEnforcer
-from agent.telemetry.prompt_telemetry import (
+from agent.app.core.observability.prompt_telemetry import (
     PromptTelemetryLogger,
     PromptTelemetrySummary,
 )

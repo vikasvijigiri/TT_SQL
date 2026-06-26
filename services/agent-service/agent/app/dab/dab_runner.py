@@ -28,6 +28,7 @@ import json
 
 import asyncio
 
+import os
 import argparse
 
 from pathlib import Path
@@ -226,7 +227,7 @@ def run_all(
 
     try:
 
-        from agent.services.cache import DAB_CANCEL_FLAG, SPIDER_CANCEL_FLAG
+        from agent.app.utils.cache import DAB_CANCEL_FLAG, SPIDER_CANCEL_FLAG
 
         DAB_CANCEL_FLAG.set(False)
 
@@ -706,7 +707,7 @@ def main():
 
     parser.add_argument("--run_id", type=str, default=None, help="Run ID for tracking (default: auto-generated timestamp)")
 
-    parser.add_argument("--username", type=str, default="vikas", help="Username for result scoping (default: vikas)")
+    parser.add_argument("--username", type=str, default=os.environ.get("DEFAULT_USERNAME", "anonymous"), help="Username for result scoping")
 
     parser.add_argument("--workers", type=int, default=1)
 
@@ -812,7 +813,7 @@ def main():
 
     _run_id = args.run_id or f"run_{_time.strftime('%Y%m%d_%H%M%S')}"
 
-    _username = getattr(args, "username", "vikas") or "vikas"
+    _username = getattr(args, "username", "anonymous") or "anonymous"
 
     _de.DAB_RUN_ID = _run_id
 
@@ -820,7 +821,7 @@ def main():
 
     try:
 
-        from agent.services.cache import cache_service
+        from agent.app.utils.cache import cache_service
 
         cache_service.set("shared_DAB_RUN_ID", _run_id, ttl=86400)
 

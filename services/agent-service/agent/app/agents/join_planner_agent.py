@@ -5,10 +5,10 @@ from pydantic import BaseModel, Field
 from agent.services.llm import LLMClient
 from agent.services.logger import logger
 from agent.app.core.prompts.prompt_assembler import PromptAssembler
-from agent.telemetry.token_budget import token_budget_enforcer
+from agent.app.core.observability.token_budget import token_budget_enforcer
 from agent.blackboard.dynamic_rules import FailureMemory
-from agent.validators.deterministic_validators import DeterministicValidators
-from agent.contracts.schemas import SchemaLinkerOutput
+from agent.app.core.validation.validators import DeterministicValidators
+from agent.app.models.schemas import SchemaLinkerOutput
 
 class JoinPlanOutput(BaseModel):
     joins: List[str] = Field(description="Explicit JOIN ON clauses (e.g., 'tableA JOIN tableB ON tableA.id = tableB.a_id')")

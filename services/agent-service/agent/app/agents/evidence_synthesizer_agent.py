@@ -7,8 +7,8 @@ from agent.services.logger import logger
 from agent.app.core.prompts.prompt_assembler import PromptAssembler
 from agent.blackboard.run_blackboard import get_blackboard
 from agent.blackboard.dynamic_rules import FailureMemory
-from agent.validators.llm_validators import LLMValidators
-from agent.telemetry.token_budget import token_budget_enforcer
+from agent.app.core.validation.llm_validators import LLMValidators
+from agent.app.core.observability.token_budget import token_budget_enforcer
 
 class EvidenceSynthesizerOutput(BaseModel):
     evidence_summary: str = Field(..., description="Detailed reasoning comparing facts to policies.")

@@ -7,7 +7,7 @@ from agent.services.logger import logger
 from agent.blackboard.run_blackboard import get_blackboard
 from agent.blackboard.facts_engine import FactsEngine
 from agent.blackboard.dynamic_rules import FailureMemory
-from agent.validators.deterministic_validators import DeterministicValidators
+from agent.app.core.validation.validators import DeterministicValidators
 
 class ResultAnalyzerOutput(BaseModel):
     discovered_facts: List[str] = Field(default_factory=list, description="Specific facts discovered from the data")

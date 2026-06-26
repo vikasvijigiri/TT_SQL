@@ -5,7 +5,7 @@ set -e
 
 ACTION=${1:-up}
 ROOT="$(cd "$(dirname "$0")/.." && pwd)"
-MIGRATIONS_DIR="${ROOT}/data/migrations"
+MIGRATIONS_DIR="${ROOT}/database/migrations"
 
 if [[ -z "${DATABASE_URL:-}" ]]; then
     # Construct from individual vars (matches .env convention)

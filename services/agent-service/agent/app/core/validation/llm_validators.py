@@ -9,7 +9,7 @@ from pydantic import BaseModel, Field
 
 from agent.services.llm import LLMClient
 from agent.services.logger import logger
-from agent.contracts.schemas import EvidenceValidatorOutput, AnswerabilityValidatorOutput
+from agent.app.models.schemas import EvidenceValidatorOutput, AnswerabilityValidatorOutput
 from agent.blackboard.run_blackboard import get_blackboard
 
 class LLMValidators:

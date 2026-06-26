@@ -2,7 +2,7 @@ from agent.app.core.config import get_active_knowledge_dir
 
 import asyncio
 
-from agent.learning.lesson_rollback import LessonRollback
+from agent.app.core.learning.lesson_rollback import LessonRollback
 
 from fastapi import APIRouter, HTTPException, BackgroundTasks, Request
 
@@ -172,7 +172,7 @@ def _model_cost(input_tokens: float, output_tokens: float, model: str) -> float:
 
 
 
-from agent.services.cache import (
+from agent.app.utils.cache import (
 
     RedisBool,
 
@@ -2078,7 +2078,7 @@ def get_dab_result(dataset: str, query_id: str, request: Request, date: str = "a
 
     from agent.app.dab.dab_evaluator import load_eval_result
 
-    from agent.services.archive import get_target_dirs_for_date
+    from agent.app.utils.archive import get_target_dirs_for_date
 
     from agent.app.core.config import get_user_dab_results_dir
 
@@ -3744,7 +3744,7 @@ def delete_dab_run(date: str, request: Request):
 
     from datetime import datetime
 
-    from agent.services.archive import force_delete_dir, force_delete_file
+    from agent.app.utils.archive import force_delete_dir, force_delete_file
 
     from agent.app.db.database import SessionLocal
 

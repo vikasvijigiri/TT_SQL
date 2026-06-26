@@ -1,6 +1,6 @@
 from typing import Optional
 from pydantic import BaseModel
-from agent.contracts.schemas import SemanticContext
+from agent.app.models.schemas import SemanticContext
 from agent.app.core.retrieval.hierarchical_retriever import QueryIntentAnalysis
 from agent.services.logger import logger
 

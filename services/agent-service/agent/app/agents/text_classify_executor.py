@@ -824,7 +824,14 @@ class TextClassifyExecutor:
 
         if sql_sort and not has_existing_order:
 
-            sorted_fetch_sql = f"{fetch_sql.rstrip(';')}{sql_sort}"
+            # Strip trailing LIMIT so ORDER BY is injected before it (ORDER BY must precede LIMIT in SQL)
+            _limit_match = re.search(r'(\s+LIMIT\s+\d+)\s*$', fetch_sql.rstrip(';'), re.IGNORECASE)
+            if _limit_match:
+                _base = fetch_sql.rstrip(';')[:_limit_match.start()]
+                _limit_clause = _limit_match.group(1)
+                sorted_fetch_sql = f"{_base.rstrip()}{sql_sort}{_limit_clause}"
+            else:
+                sorted_fetch_sql = f"{fetch_sql.rstrip(';')}{sql_sort}"
 
             logger.info(f"[TextClassifyExecutor] Attempting sorted fetch: {sorted_fetch_sql[:120]}...")
 
@@ -1124,7 +1131,7 @@ class TextClassifyExecutor:
 
             try:
 
-                from agent.services.cache import DAB_CANCEL_FLAG, SPIDER_CANCEL_FLAG
+                from agent.app.utils.cache import DAB_CANCEL_FLAG, SPIDER_CANCEL_FLAG
 
                 if DAB_CANCEL_FLAG or SPIDER_CANCEL_FLAG:
 
@@ -1380,19 +1387,17 @@ class TextClassifyExecutor:
 
             subset = subset.sort_values(sort_col, ascending=ascending)
 
-            # Project relevant columns: group_col, text_cols, and length cols
-
-            cols_to_show = [
-
-                c
-
-                for c in [group_col, *text_cols, sort_col]
-
-                if c and c in subset.columns
-
+            # Include all data columns so the answer LLM sees title, description, etc.
+            # Start with preferred order (group_col, text_cols, sort_col), then append any
+            # remaining data columns (excluding internal _category and per-col _length cols).
+            preferred = [c for c in [group_col, *text_cols, sort_col] if c and c in subset.columns]
+            extra = [
+                c for c in subset.columns
+                if c not in preferred
+                and not str(c).startswith("_")
+                and not str(c).endswith("_length")
             ]
-
-            cols_to_show = list(dict.fromkeys(cols_to_show))
+            cols_to_show = list(dict.fromkeys(preferred + extra))
 
             agg = subset[cols_to_show].head(30)
 

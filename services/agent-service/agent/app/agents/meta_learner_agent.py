@@ -4,7 +4,7 @@ from pydantic import BaseModel, Field
 from agent.services.llm import LLMClient
 from agent.services.logger import logger
 from agent.app.core.prompts.prompt_assembler import PromptAssembler
-from agent.learning.sqlite_memory import SQLiteMemoryDB
+from agent.app.core.learning.sqlite_memory import SQLiteMemoryDB
 
 class MetaLearnerOutput(BaseModel):
     new_permanent_rules: list[str] = Field(description="Rules that should be permanently added to the system prompts")

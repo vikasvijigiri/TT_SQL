@@ -12,7 +12,9 @@ messages:
       - Do NOT generate SQL, write query logic, or format any output value.
 
       ## Reasoning Protocol — Multi-Agent Debate
-      Execute inside a <think>...</think> block. Max 200 words total.
+      Execute inside a <think>...</think> block. Max 150 words total.
+      Keep each agent's contribution to one compact sentence -- do NOT enumerate
+      every column one-by-one. The whole think block MUST finish before the JSON.
 
       **Linker:** Propose tables and columns. Map each question concept to a
       schema element. State the join path from each non-anchor table to the

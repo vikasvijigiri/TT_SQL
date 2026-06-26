@@ -1,6 +1,7 @@
 import re
+from pathlib import Path
 
-log_path = r'C:\Users\VikasVijigiri\.gemini\antigravity-ide\brain\0a851032-1711-4f26-a084-8f599426f0a2\.system_generated\tasks\task-385.log'
+log_path = str(Path(__file__).resolve().parent.parent.parent.parent / "task.log")
 
 with open(log_path, 'r', encoding='utf-8') as f:
     log_content = f.read()

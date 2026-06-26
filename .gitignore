@@ -36,6 +36,8 @@ ENV/
 .coverage
 coverage.xml
 htmlcov/
+database/
+docs/
 
 *.log
 
@@ -109,11 +111,7 @@ credentials/
 
 # =============================================================================
 
-data/
-
-# If you want folder structure tracked:
-
-!data/.gitkeep
+database/
 
 # =============================================================================
 

@@ -12,7 +12,7 @@ import yaml
 
 from typing import List, Dict, Any, Optional
 
-from agent.contracts.schemas import SemanticContext, SemanticTable, SemanticColumn
+from agent.app.models.schemas import SemanticContext, SemanticTable, SemanticColumn
 
 from agent.services.logger import logger
 
@@ -220,9 +220,9 @@ class SemanticContextEngine:
 
                 continue
 
-            if len(val_str) > 100:
+            if len(val_str) > 300:
 
-                val_str = val_str[:97] + "..."
+                val_str = val_str[:297] + "..."
 
             if val_str not in cleaned:
 

@@ -44,7 +44,7 @@ from agent.services.logger import logger
 
 from agent.services.llm import LLMClient, reset_token_counters, get_tokens
 
-from agent.app.core.config import RESULTS_DIR, DAB_REPO, DOCUMENTS_DIR
+from agent.app.core.config import DAB_REPO, DOCUMENTS_DIR, get_active_results_dir
 
 from agent.app.dab.answer_extractor import extract_answer, save_answer
 
@@ -1098,7 +1098,7 @@ def run_dab_query(
 
     try:
 
-        from agent.services.cache import DAB_CANCEL_FLAG, SPIDER_CANCEL_FLAG
+        from agent.app.utils.cache import DAB_CANCEL_FLAG, SPIDER_CANCEL_FLAG
 
         if DAB_CANCEL_FLAG or SPIDER_CANCEL_FLAG:
 
@@ -1110,8 +1110,8 @@ def run_dab_query(
 
 
 
-    from agent.orchestration.orchestrator import SemanticDINOrchestrator
-
+    from agent.app.core.orchestrator import SemanticDINOrchestrator
+    
 
 
     dataset = query["dataset"]
@@ -1127,8 +1127,6 @@ def run_dab_query(
     validate_src = query["validate_src"]
 
     db_clients = query["db_clients"]
-
-    db_description = query["db_description"]
 
     Path(query["query_dir"])
 
@@ -1334,7 +1332,7 @@ def run_dab_query(
 
         try:
 
-            from agent.services.cache import cache_service as _cs
+            from agent.app.utils.cache import cache_service as _cs
 
             _run_ctx = _cs.get("shared_DAB_RUN_ID") or "run_live"
 
@@ -1409,10 +1407,6 @@ def run_dab_query(
         # Inject schema description as external knowledge
 
         external_knowledge_text = ""
-
-        if db_description:
-
-            external_knowledge_text = db_description
 
 
 
@@ -1584,15 +1578,10 @@ def run_dab_query(
 
 
 
-        # -- IMPROVEMENT 3: Output format hint derived from question text only --
-
-        fmt_hint = _derive_answer_format_hint(question)
-
-        if fmt_hint:
-
-            external_knowledge_text += f"\n\n=== OUTPUT FORMAT REQUIREMENT ===\n{fmt_hint}\n=== END FORMAT ===\n"
-
-            logger.info(f"[Learning] Injected answer format hint: {fmt_hint[:80]}")
+        # Output format hints are NOT injected into external_knowledge_text.
+        # The block would be forwarded to ALL pipeline agents (schema_linker, self_corrector,
+        # etc.) which need to produce structured JSON, not plain-text answers -- causing
+        # format confusion and empty agent_answer. The answer extractor handles formatting.
 
 
 
@@ -1769,13 +1758,9 @@ def run_dab_query(
         # Determine if the returned value is a SQL query or a direct text answer
 
         is_sql = (
-
             final_sql.strip()
-
             .lower()
-
-            .startswith(("select", "with", "show", "explain", "pragma", "describe"))
-
+            .startswith(("select", "with", "show", "explain", "pragma", "describe", "install", "load", "attach"))
         )
 
         if is_sql:
@@ -1786,11 +1771,11 @@ def run_dab_query(
 
 
 
-            # CSV is auto-saved by executor under RESULTS_DIR/{db_name}/{instance_id}.csv
+            # CSV is auto-saved by executor under get_active_results_dir()/{db_name}/{instance_id}.csv
 
             # Move it to our DAB results dir
 
-            src_csv = RESULTS_DIR / db_name / f"dab_{dataset}_q{query_id}{_run_sfx}.csv"
+            src_csv = get_active_results_dir() / db_name / f"dab_{dataset}_q{query_id}{_run_sfx}.csv"
 
             if src_csv.exists():
 
@@ -1862,11 +1847,11 @@ def run_dab_query(
 
 
 
-        # Schema-grounded retry: when the first pass returns empty results OR non-SQL text,
+        # Schema-grounded retry: when the first pass returns empty results.
+        # NOTE: non-SQL text from text_classify_aggregate is a valid direct answer —
+        # do NOT retry it, only retry when the extracted answer is actually empty.
 
-        # inject real sample data from the live DB so the LLM can see actual table/column names.
-
-        if _is_empty_answer(agent_answer) or not is_sql:
+        if _is_empty_answer(agent_answer):
 
             logger.info(
 
@@ -1936,7 +1921,7 @@ def run_dab_query(
 
                     sql_path.write_text(retry_sql, encoding="utf-8")
 
-                    retry_src_csv = RESULTS_DIR / db_name / f"{retry_instance_id}.csv"
+                    retry_src_csv = get_active_results_dir() / db_name / f"{retry_instance_id}.csv"
 
                     if retry_src_csv.exists():
 

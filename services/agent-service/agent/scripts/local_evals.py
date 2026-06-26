@@ -3,7 +3,7 @@ import json
 import statistics
 from pathlib import Path
 
-ROOT_DIR = Path(r"c:\Users\VikasVijigiri\Documents\TT_SQL_V2")
+ROOT_DIR = Path(__file__).resolve().parent.parent.parent.parent
 import sys
 sys.path.insert(0, str(ROOT_DIR))
 

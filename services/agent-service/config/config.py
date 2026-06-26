@@ -29,11 +29,8 @@ CONFIG_DIR  = BACKEND_DIR / "config"
 # -- Database root (single source of truth for all runtime data) --------------
 
 # Override with DATABASE_DIR env var (Docker: volume-mount a path here).
-
 # Locally: defaults to <repo_root>/database/
-
-_REPO_ROOT   = Path(__file__).resolve().parent.parent.parent.parent.parent.parent
-
+_REPO_ROOT   = Path(__file__).resolve().parent.parent.parent.parent
 DATABASE_DIR = Path(os.environ.get("DATABASE_DIR", str(_REPO_ROOT / "database")))
 
 
@@ -170,7 +167,7 @@ def _get_run_context():
 
     try:
 
-        from core.utils.cache import cache_service
+        from agent.app.core.utils.cache import cache_service
 
         c_user = cache_service.get("shared_DAB_RUN_USERNAME")
 
@@ -252,9 +249,7 @@ def get_active_knowledge_dir() -> "Path":
 
     safe_user = re.sub(r'[^a-z0-9_\-]', "", user) or "anonymous"
 
-    safe_run = re.sub(r'[^a-z0-9_\-]', "", run) or "run_live"
-
-    d = DATABASE_DIR / "knowledge" / bench / safe_user / safe_run
+    d = DATABASE_DIR / "knowledge" / bench / safe_user
 
     d.mkdir(parents=True, exist_ok=True)
 

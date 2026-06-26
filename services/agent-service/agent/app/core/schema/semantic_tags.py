@@ -1,5 +1,5 @@
 from typing import List, Dict
-from agent.contracts.schemas import SemanticColumn, SemanticTable
+from agent.app.models.schemas import SemanticColumn, SemanticTable
 
 
 class SemanticTagger:

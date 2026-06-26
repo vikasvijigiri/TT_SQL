@@ -3,7 +3,7 @@ import os
 import re
 from pathlib import Path
 
-target_folder = r"C:\Users\VikasVijigiri\.gemini\antigravity-ide\brain\d1bbb0f8-62e2-495a-8561-4d7a4495a782"
+target_folder = str(Path(__file__).resolve().parent.parent.parent.parent / "scratch")
 transcript_path = os.path.join(target_folder, ".system_generated", "logs", "transcript.jsonl")
 
 print("Writing clean topology to apps/web/src/components/topology_backup.js...")

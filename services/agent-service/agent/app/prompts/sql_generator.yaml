@@ -47,15 +47,38 @@ messages:
 
       | Rule | Requirement |
       |---|---|
-      | **No backslashes** | Raw SQL only — no `\n`, `\t`, `\/` |
+      | **No backslashes in SQL text** | Raw SQL only — no `\n`, `\t`, `\/` escape sequences in the SQL string itself |
+      | **Regex — character classes only** | NEVER use `\d`, `\s`, `\w`, `\D`, `\S`, `\W` inside regex strings. Use: `[0-9]` for `\d`, `[ \t]` for `\s`, `[a-zA-Z0-9_]` for `\w`, `[^0-9]` for `\D`, `[^ \t]` for `\S`, `[^a-zA-Z0-9_]` for `\W`. DuckDB uses RE2/POSIX ERE — backslash meta-sequences are silently wrong. |
+      | **No PCRE constructs** | NEVER use `(?=`, `(?!`, `(?<`, `(?P<` in any regex. DuckDB RE2 does not support lookaheads, lookbehinds, or named groups. Rewrite using capturing groups + post-filter. |
+      | **chr() not char()** | DuckDB uses `chr(N)` for Unicode code points. `char()` does NOT exist and causes a syntax error. Replace every `char(N)` with `chr(N)`. |
+      | **TRY_CAST on REGEXP_EXTRACT** | When casting REGEXP_EXTRACT output to a numeric type ALWAYS write `TRY_CAST(REGEXP_EXTRACT(col, pattern, group) AS BIGINT)`. Plain `CAST` raises a conversion error when the regex returns empty string. NEVER write `CAST(REGEXP_EXTRACT(...))`. |
+      | **CTE before join on extracted value** | NEVER write `ON REGEXP_EXTRACT(...) = col` or `JOIN ON any_function(...)`. Extract the computed value into a CTE column, then join on that column verbatim: `WITH t AS (SELECT REGEXP_EXTRACT(col,'([^/]+)',1) AS k ...) JOIN other ON other.id = t.k` |
+      | **Verbatim column joins** | All joins on non-extracted columns must use direct pk/fk column equality (`tableA.key = tableB.key`). |
       | **Alias audit** | Every alias used must be declared in FROM/JOIN |
-      | **Integer division** | Cast numerator or denominator to a float type before dividing. Integer division truncates silently. |
+      | **Integer division** | Cast numerator or denominator to DOUBLE before dividing. Integer division truncates silently. |
       | **Denominator guard** | Wrap every denominator in `NULLIF(expr, 0)` |
       | **Pre-filter pattern** | For many-to-many bridge filters: create a CTE with DISTINCT keys first, then INNER JOIN back to the fact table |
       | **Dirty data** | Use flexible matches (`OR`, `REPLACE`, `IN` list) when probe results show variant values |
       | **Exclusion fan-out** | When excluding parent entities based on a child table, use `NOT IN (subquery)` or `NOT EXISTS` — never `WHERE child.col != X` on a multi-row-per-parent table |
       | **Anchor obedience** | If context contains `ANCHOR:` or `*** NARROW JOIN`, the FROM clause MUST start with that exact join |
-      | **Dialect compliance** | All functions and syntax must conform to `{DIALECT}` as documented in `{DIALECT_RULES}`. Do not use functions from other dialects. |
+
+      ## DuckDB Dialect Quick-Reference (mandatory when dialect = DuckDB)
+
+      ```
+      ✅  chr(65279)                          ❌  char(65279)
+      ✅  '[0-9]+'                            ❌  '\\d+'
+      ✅  '[ \t]+'                            ❌  '\\s+'
+      ✅  '[a-zA-Z0-9_]+'                    ❌  '\\w+'
+      ✅  TRY_CAST(REGEXP_EXTRACT(col,'([0-9]+)',1) AS BIGINT)
+          ❌  CAST(REGEXP_EXTRACT(col,'\\d+') AS BIGINT)
+      ✅  WITH cte AS (SELECT REGEXP_EXTRACT(col,'([^/]+)',1) AS key ...)
+              JOIN tbl ON tbl.id = cte.key
+          ❌  JOIN tbl ON REGEXP_EXTRACT(col,'([^/]+)',1) = tbl.id
+      ✅  ILIKE '%value%'                    ❌  LOWER(col) LIKE '%value%'
+      ✅  json_extract_string(col,'$.key')   ❌  col::JSON->>'key'
+      ✅  QUALIFY ROW_NUMBER() OVER (...) = 1
+          ❌  WHERE rn = 1  (rn from subquery when QUALIFY is available)
+      ```
 
       ## 15 Goals — active on every generation
 
@@ -140,6 +163,13 @@ messages:
       - Add proactive guards: LOWER() on string filters, IS NOT NULL on join
         keys, COALESCE on nullable aggregates.
       - If filtering on a specific entity literal, verify via probe first.
+      - **String literal matching**: Any human-readable label taken verbatim
+        from the question (a name, title, code, description, or other entity
+        reference) may not match stored values exactly due to whitespace,
+        punctuation, extra qualifiers, or unicode normalization differences.
+        Default to ILIKE '%value%' for free-text string columns unless a
+        probe has confirmed the exact stored form. Use exact equality only
+        when a prior probe result or schema sample value guarantees the match.
 
       **GOAL 13 — PROGRESSIVE SIMPLIFICATION ON RETRY**
       - If context shows prior failed attempts, your SQL MUST be structurally

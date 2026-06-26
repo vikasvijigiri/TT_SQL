@@ -1,7 +1,7 @@
 import re
 import difflib
 from typing import List, Dict, Tuple
-from agent.contracts.schemas import SemanticContext, SemanticTable, SemanticColumn
+from agent.app.models.schemas import SemanticContext, SemanticTable, SemanticColumn
 from agent.orchestration.pipeline_config import PipelineModeConfig, BALANCED_CONFIG
 
 # Business-term synonym map: query word -> canonical schema tokens it maps to.

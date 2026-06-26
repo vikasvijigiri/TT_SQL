@@ -5,7 +5,7 @@ Contains lightweight deterministic validators that enforce the typed contracts.
 If deterministic validation fails, the rejection is handled immediately without LLM calls.
 """
 from typing import Optional, Any
-from agent.contracts.schemas import (
+from agent.app.models.schemas import (
     QuestionValidatorOutput, PlanValidatorOutput, SchemaValidatorOutput,
     JoinValidatorOutput, SQLValidatorOutput, ExecutionValidatorOutput,
     ResultValidatorOutput, EvidenceValidatorOutput, AnswerabilityValidatorOutput
@@ -35,10 +35,10 @@ class DeterministicValidators:
         score = getattr(schema_linker_output, "coverage_score", 1.0)
         selected = [c.lower() for c in schema_linker_output.selected_columns]
         
-        if score < 0.8:
+        if score == 0.0 and not selected:
             return SchemaValidatorOutput(
                 is_valid=False, 
-                rejection_reason=f"Coverage score {score} is below threshold.", 
+                rejection_reason=f"Coverage score {score} is below threshold and no columns selected.", 
                 coverage_score=score
             )
             

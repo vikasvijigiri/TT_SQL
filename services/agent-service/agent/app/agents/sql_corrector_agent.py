@@ -6,11 +6,11 @@ from typing import List, Dict, Optional, Tuple
 
 from agent.services.llm import LLMClient
 
-from agent.services.dialect_loader import DialectLoader
+from agent.app.utils.dialect_loader import DialectLoader
 
 from agent.app.core.retrieval.hierarchical_retriever import HierarchicalRetriever
 
-from agent.contracts.schemas import SelfCorrectorOutput, SchemaLinkerOutput
+from agent.app.models.schemas import SelfCorrectorOutput, SchemaLinkerOutput
 
 from agent.services.logger import logger
 
@@ -37,6 +37,16 @@ PROMPT_PATH = get_prompt_path("self_corrector.yaml")
 # ---------------------------------------------------------------------------
 
 _ERROR_PATTERNS: List[Tuple[re.Pattern, str]] = [
+
+    (
+        re.compile(r"attempted to access index 0 within vector of size 0", re.I),
+        "ROOT CAUSE DETECTED: DuckDB internal assertion failure triggered by using a "
+        "function expression (e.g. TRY_CAST, json_extract) DIRECTLY inside a JOIN ON "
+        "clause.  MANDATORY FIX: move every derived/computed value into a CTE or "
+        "subquery first, then JOIN on the plain scalar column.  "
+        "Example (WRONG):  JOIN t ON TRY_CAST(json_extract(t.col, '$.key') AS BOOLEAN) = true  "
+        "Example (CORRECT): WITH filtered AS (SELECT * FROM t WHERE TRY_CAST(json_extract(col, '$.key') AS BOOLEAN) = true) ... JOIN filtered ON ...",
+    ),
 
     (
 
@@ -357,6 +367,21 @@ class SQLCorrectorAgent:
             logger.log_parsed_data("Correction Output", result)
 
             return result
+
+        except ValueError as json_err:
+            # LLM output truncated before JSON completed (think-block too long).
+            # Return the original failed SQL so the retry loop can pivot rather
+            # than crashing the entire pipeline with an unhandled exception.
+            logger.warning(
+                f"[SelfCorrector] JSON generation failed ({json_err}). "
+                "Falling back to original SQL — retry loop will pivot."
+            )
+            return SelfCorrectorOutput(
+                error_analysis="Corrector output truncated; returning original SQL for retry pivot.",
+                thought_process="JSON self-repair failed — passing original SQL through unchanged.",
+                probe_sql=None,
+                sql=failed_sql,
+            )
 
         except Exception:
 

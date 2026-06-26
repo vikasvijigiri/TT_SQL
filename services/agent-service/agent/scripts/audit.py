@@ -3,7 +3,7 @@ import json
 import statistics
 from pathlib import Path
 
-ROOT_DIR = Path(r"c:\Users\VikasVijigiri\Documents\TT_SQL_V2")
+ROOT_DIR = Path(__file__).resolve().parent.parent.parent.parent
 RESULTS_DIR = ROOT_DIR / "backend" / "results"
 
 all_jsons = list(RESULTS_DIR.rglob("*_eval.json"))

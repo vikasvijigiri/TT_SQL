@@ -40,6 +40,15 @@ class ReasoningDirectives:
 - Use CAST(expr AS INTEGER/REAL/TEXT) in SQLite and avoid PostgreSQL-style ::TYPE casts."""
 
     @classmethod
+    def get_variant_extraction(cls, dialect: str) -> str:
+        d = dialect.lower()
+        if d in ("sqlite", "duckdb"):
+            return """[VARIANT & JSON DIRECTIVES]:
+- When extracting keys from semi-structured VARIANT/JSON columns, use json_extract(col, '$.nested_key') or json_extract_string(col, '$.nested_key') and cast using CAST(json_extract(...) AS TYPE).
+- Never use Snowflake-specific colon notation (e.g., col:"key"::type) or ::type casts on JSON columns, as this will cause syntax errors in SQLite/DuckDB."""
+        return cls.VARIANT_EXTRACTION
+
+    @classmethod
     def get_dialect_safety(cls, dialect: str) -> str:
         d = dialect.lower()
         if d == "snowflake":
@@ -56,7 +65,7 @@ class ReasoningDirectives:
             cls.JOIN_SAFETY,
             cls.AGGREGATION,
             cls.NULL_HANDLING,
-            cls.VARIANT_EXTRACTION,
+            cls.get_variant_extraction(dialect),
             cls.GEOSPATIAL,
             cls.get_dialect_safety(dialect),
         ]

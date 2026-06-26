@@ -5,7 +5,7 @@ from pathlib import Path
 from typing import List, Dict, Any
 from agent.app.core.config import get_active_knowledge_dir
 from agent.services.logger import logger
-from agent.telemetry.retrieval_analytics import record_retrieval
+from agent.app.core.observability.retrieval_analytics import record_retrieval
 
 class DynamicRAGService:
     """

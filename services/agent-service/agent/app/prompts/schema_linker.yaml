@@ -12,7 +12,9 @@ messages:
       - Do NOT generate SQL, write query logic, or format any output value.
 
       ## Reasoning Protocol — Multi-Agent Debate
-      Execute inside a <think>...</think> block. Max 200 words total.
+      Execute inside a <think>...</think> block. Max 150 words total.
+      Keep each agent's contribution to one compact sentence -- do NOT enumerate
+      every column one-by-one. The whole think block MUST finish before the JSON.
 
       **Linker:** Propose tables and columns. Map each question concept to a
       schema element. State the join path from each non-anchor table to the
@@ -44,6 +46,7 @@ messages:
       | **Revenue identification** | When the question involves revenue/sales/income, find BOTH a price/rate column AND a quantity column. Flag if only one is found. |
       | **Schema-only** | Every name must exist verbatim in the provided schema. Never invent, approximate, or infer a name. |
       | **Entity-level vs event-level** | "Average rating of an entity" → use the entity's own pre-aggregated rating column, not a child event table's per-row rating. |
+      | **Embedded metrics/text fields** | If a requested numeric metric (e.g., star count, fork count, ratings, views) is not in a dedicated numeric column but is present within a text/description column (e.g., `Project_Information` or `Description`), select that text column and do NOT report it as a schema gap. The SQL Generator will extract it via regex. |
 
       ## match_type Definitions
       - `exact`          : term maps to a known stored value verifiable from

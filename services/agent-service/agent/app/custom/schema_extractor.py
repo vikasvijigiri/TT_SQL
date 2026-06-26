@@ -44,7 +44,7 @@ from typing import Any, Dict, List, Tuple
 
 
 
-from agent.services.db_executor import DatabaseExecutor
+from agent.app.repositories.db_executor import DatabaseExecutor
 
 from agent.services.logger import logger
 

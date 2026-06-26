@@ -141,8 +141,6 @@ def load_all_queries(dab_repo_path: str) -> List[Dict[str, Any]]:
       needs_docker : bool (True if any DB needs Docker)
       query_dir    : str  (absolute path to query folder)
       dataset_dir  : str  (absolute path to dataset folder)
-      has_hint     : bool (db_description_withhint.txt exists)
-      db_description: str (schema description text)
     """
     dab_root = Path(dab_repo_path)
     if not dab_root.exists():
@@ -163,18 +161,6 @@ def load_all_queries(dab_repo_path: str) -> List[Dict[str, Any]]:
         # Resolve DB paths
         db_clients = _resolve_db_paths(db_clients_raw, dataset_dir)
         any_docker = any(v.get("needs_docker", False) for v in db_clients.values())
-
-        # Load schema description - use only the hint-free description.
-        # db_description_withhint.txt contains ground-truth hints and MUST NOT
-        # be fed into the inference pipeline.
-        desc_file = dataset_dir / "db_description.txt"
-        hint_file = dataset_dir / "db_description_withhint.txt"
-        db_description = ""
-        if desc_file.exists():
-            with contextlib.suppress(Exception):
-                db_description = desc_file.read_text(encoding="utf-8").strip()
-
-        has_hint = hint_file.exists()
 
         # Find all query subdirectories (query1, query2, ...)
         for item in sorted(dataset_dir.iterdir()):
@@ -209,8 +195,6 @@ def load_all_queries(dab_repo_path: str) -> List[Dict[str, Any]]:
                     "needs_docker": any_docker,
                     "query_dir": str(item),
                     "dataset_dir": str(dataset_dir),
-                    "has_hint": has_hint,
-                    "db_description": db_description,
                 }
             )
 

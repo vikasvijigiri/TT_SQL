@@ -30,7 +30,7 @@ def dump_to_artifact():
 ```
 """
             # Write to the artifact
-            Path("C:/Users/VikasVijigiri/.gemini/antigravity-ide/brain/2b37392a-cfad-49c1-aa04-a79e7de81a66/analysis_results.md").write_text(artifact_content, encoding='utf-8')
+            Path(str(Path(__file__).resolve().parent.parent.parent.parent / "analysis_results.md")).write_text(artifact_content, encoding='utf-8')
             
     except Exception as e:
         print(f"Failed: {e}")

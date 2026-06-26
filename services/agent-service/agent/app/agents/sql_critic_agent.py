@@ -4,7 +4,7 @@ from typing import List, Optional, Dict, Tuple
 
 from agent.services.llm import LLMClient
 
-from agent.contracts.schemas import CriticOutput
+from agent.app.models.schemas import CriticOutput
 
 from agent.services.logger import logger
 
@@ -203,11 +203,8 @@ class SQLCriticAgent:
         # safe no-op rather than burning LLM tokens on garbage input.
 
         _stripped = (proposed_sql or "").strip()
-
         _looks_like_sql = bool(_stripped) and _stripped.upper().lstrip('(').startswith(
-
-            ('SELECT', 'WITH', 'INSERT', 'UPDATE', 'DELETE', 'VALUES', 'CREATE', 'EXPLAIN')
-
+            ('SELECT', 'WITH', 'INSERT', 'UPDATE', 'DELETE', 'VALUES', 'CREATE', 'EXPLAIN', 'INSTALL', 'LOAD', 'ATTACH')
         )
 
         if not _looks_like_sql:
@@ -220,7 +217,7 @@ class SQLCriticAgent:
 
             )
 
-            from agent.contracts.schemas import CriticOutput as _CO
+            from agent.app.models.schemas import CriticOutput as _CO
 
             return _CO(is_valid=False, criticism='No valid SQL was provided for audit.', proposed_fix="")
 
@@ -259,13 +256,9 @@ class SQLCriticAgent:
         probe_warnings = ""
 
         _sql_looks_valid = (
-
             proposed_sql
-
             and proposed_sql.strip()
-
-            and proposed_sql.strip().upper().lstrip("(").startswith(("SELECT", "WITH", "VALUES"))
-
+            and proposed_sql.strip().upper().lstrip("(").startswith(("SELECT", "WITH", "VALUES", "INSTALL", "LOAD", "ATTACH"))
         )
 
         if executor and _sql_looks_valid:

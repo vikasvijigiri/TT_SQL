@@ -576,10 +576,11 @@ class CustomLogger:
 
         self.logger.info(f"Prompt: {_prompt_len:,} chars | Response: {_result_len:,} chars")
 
-        preview = result.strip()[:400]
-
+        raw_result = result.strip()
+        preview = raw_result[:1000]
+        if len(raw_result) > 1000:
+            preview += "\n... [Console Preview Truncated for Brevity. Full response is complete and logged to markdown file.]"
         if preview:
-
             self.logger.info(f"Response preview:\n{preview}")
 
 

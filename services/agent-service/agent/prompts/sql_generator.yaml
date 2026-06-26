@@ -140,6 +140,13 @@ messages:
       - Add proactive guards: LOWER() on string filters, IS NOT NULL on join
         keys, COALESCE on nullable aggregates.
       - If filtering on a specific entity literal, verify via probe first.
+      - **String literal matching**: Any human-readable label taken verbatim
+        from the question (a name, title, code, description, or other entity
+        reference) may not match stored values exactly due to whitespace,
+        punctuation, extra qualifiers, or unicode normalization differences.
+        Default to ILIKE '%value%' for free-text string columns unless a
+        probe has confirmed the exact stored form. Use exact equality only
+        when a prior probe result or schema sample value guarantees the match.
 
       **GOAL 13 — PROGRESSIVE SIMPLIFICATION ON RETRY**
       - If context shows prior failed attempts, your SQL MUST be structurally

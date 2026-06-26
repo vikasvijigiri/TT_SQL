@@ -2,7 +2,7 @@ import re
 
 from typing import List
 
-from agent.services.db_executor import DatabaseExecutor
+from agent.app.repositories.db_executor import DatabaseExecutor
 
 from agent.services.logger import logger
 
@@ -464,11 +464,15 @@ class ProfilerAgent:
 
             col_name = clean_parts[-1]
 
-
+            table_parts = clean_parts[:-1]
+            # Strip common SQL schema prefixes (public, main, dbo) that don't exist
+            # as actual schemas in DuckDB/SQLite — temp views are created without prefix.
+            if len(table_parts) > 1 and table_parts[0].lower() in ("public", "main", "dbo", "default"):
+                table_parts = table_parts[1:]
 
             quoted_col = f'"{col_name}"'
 
-            quoted_table = ".".join(f'"{p}"' for p in clean_parts[:-1])
+            quoted_table = ".".join(f'"{p}"' for p in table_parts)
 
 
 

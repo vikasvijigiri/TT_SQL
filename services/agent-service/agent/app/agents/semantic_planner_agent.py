@@ -5,10 +5,10 @@ from pydantic import BaseModel, Field
 from agent.services.llm import LLMClient
 from agent.services.logger import logger
 from agent.app.core.prompts.prompt_assembler import PromptAssembler
-from agent.telemetry.token_budget import token_budget_enforcer
+from agent.app.core.observability.token_budget import token_budget_enforcer
 from agent.blackboard.run_blackboard import get_blackboard
 from agent.blackboard.dynamic_rules import FailureMemory
-from agent.validators.deterministic_validators import DeterministicValidators
+from agent.app.core.validation.validators import DeterministicValidators
 
 class SemanticPlannerOutput(BaseModel):
     goal: str = Field(..., description="Brief description of the goal")

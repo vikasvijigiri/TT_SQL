@@ -10,7 +10,7 @@ if [[ -z "${BACKUP_FILE}" ]]; then
 fi
 
 ROOT="$(cd "$(dirname "$0")/.." && pwd)"
-DATA_DIR="${ROOT}/data"
+DATA_DIR="${ROOT}/database"
 
 echo "==> Restoring from: ${BACKUP_FILE}"
 read -r -p "This will overwrite ${DATA_DIR}. Continue? [y/N] " confirm

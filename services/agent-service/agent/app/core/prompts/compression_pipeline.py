@@ -14,9 +14,9 @@ from agent.app.core.query_analysis.capability_detector import QueryCapabilityPro
 from agent.app.core.prompts.reasoning_directives import ReasoningDirectives
 from agent.app.core.prompts.final_prompt_compiler import FinalPromptCompiler
 from agent.app.core.context.context_relevance import ContextRelevanceScorer
-from agent.telemetry.prompt_telemetry import PromptTelemetrySummary
+from agent.app.core.observability.prompt_telemetry import PromptTelemetrySummary
 from agent.app.core.retrieval.hierarchical_retriever import QueryIntentAnalysis
-from agent.contracts.schemas import SemanticContext
+from agent.app.models.schemas import SemanticContext
 from agent.services.logger import logger
 
 

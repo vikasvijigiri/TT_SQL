@@ -1,6 +1,6 @@
 from typing import List
 from pydantic import BaseModel
-from agent.contracts.schemas import SemanticColumn
+from agent.app.models.schemas import SemanticColumn
 
 
 class ColumnStatsSummary(BaseModel):

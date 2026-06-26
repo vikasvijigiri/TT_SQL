@@ -5,7 +5,7 @@ from pydantic import BaseModel, Field
 from agent.services.llm import LLMClient
 from agent.services.logger import logger
 from agent.blackboard.run_blackboard import get_blackboard
-from agent.contracts.schemas import SchemaLinkerOutput
+from agent.app.models.schemas import SchemaLinkerOutput
 
 class SchemaCriticOutput(BaseModel):
     approved: bool = Field(..., description="True if the schema provides all necessary columns to answer the question")

@@ -4,55 +4,54 @@ from agent.services.logger import logger
 
 from agent.services.llm import LLMClient
 
-from agent.services.semantic_engine import SemanticContextEngine
+from agent.app.services.semantic_engine import SemanticContextEngine
 
-from agent.agents.schema_linker_agent import SchemaLinkerAgent
+from agent.app.agents.schema_linker_agent import SchemaLinkerAgent
 
-from agent.agents.sql_generator_agent import SQLGeneratorAgent
+from agent.app.agents.sql_generator_agent import SQLGeneratorAgent
 
-from agent.agents.sql_corrector_agent import SQLCorrectorAgent
+from agent.app.agents.sql_corrector_agent import SQLCorrectorAgent
 
-from agent.services.db_executor import DatabaseExecutor
+from agent.app.repositories.db_executor import DatabaseExecutor
 
-from agent.agents.result_validator_agent import ResultValidatorAgent
+from agent.app.agents.result_validator_agent import ResultValidatorAgent
 
 
 
-from agent.services.knowledge_service import WebKnowledgeService
+from agent.app.services.knowledge_service import WebKnowledgeService
 
-from agent.services.sql_manager import SQLManager
+from agent.app.services.sql_manager import SQLManager
 
-from agent.services.stabilizer import ExecutionStabilizer
+from agent.app.utils.stabilizer import ExecutionStabilizer
 
-from agent.agents.profiler_agent import ProfilerAgent
+from agent.app.agents.profiler_agent import ProfilerAgent
 
-from agent.agents.sql_critic_agent import SQLCriticAgent
+from agent.app.agents.sql_critic_agent import SQLCriticAgent
 
-from agent.agents.query_decomposer_agent import QueryDecomposerAgent
+from agent.app.core.query_analysis.capability_detector import QueryCapabilityDetector
 
-from agent.telemetry.telemetry import PipelineTelemetry
+from agent.app.agents.query_decomposer_agent import QueryDecomposerAgent
 
-from agent.app.core.dialects.rule_retriever import DialectRuleRetriever
+from agent.app.core.observability.telemetry import PipelineTelemetry
 
 from agent.app.core.dialects.dialect_utils import get_schema_introspection_sql as _get_introspection_sql
 
 from agent.app.core.retrieval.hierarchical_retriever import HierarchicalRetriever
 
-from agent.app.core.query_analysis.capability_detector import QueryCapabilityDetector
-
 
 
 # Diagnostic reasoning layer: feasibility ' ' exploration ' ' strategy ' ' (classify if needed)
 
-from agent.agents.feasibility_agent import FeasibilityAgent
+from agent.app.agents.feasibility_agent import FeasibilityAgent
 
-from agent.agents.schema_explorer import SchemaExplorer
+from agent.app.agents.schema_explorer import SchemaExplorer
+from agent.app.agents.tool_router import ToolRouterAgent
 
-from agent.agents.strategy_router import StrategyRouter
+from agent.app.agents.strategy_router import StrategyRouter
 
-from agent.agents.text_classify_executor import TextClassifyExecutor
+from agent.app.agents.text_classify_executor import TextClassifyExecutor
 
-from agent.services.schema_pruner import ContextPruner
+from agent.app.services.schema_pruner import ContextPruner
 
 
 
@@ -70,25 +69,25 @@ from pathlib import Path
 
 from agent.app.core.config import get_active_results_dir, CONFIG_DIR, get_active_knowledge_dir, DOCUMENTS_DIR
 
-from agent.services.dialect_loader import DialectLoader
+from agent.app.utils.dialect_loader import DialectLoader
 
 from agent.app.core.connection import parse_connection
 
 import contextlib
 
-from agent.telemetry.latency_tracker import record_query_latency
+from agent.app.core.observability.latency_tracker import record_query_latency
 
-from agent.telemetry.query_analytics import record_query_event
+from agent.app.core.observability.query_analytics import record_query_event
 
-from agent.telemetry.failure_tracker import record_failure as _record_failure
+from agent.app.core.observability.failure_tracker import record_failure as _record_failure
 
-from agent.telemetry.determinism_tracker import record as _record_determinism
+from agent.app.core.observability.determinism_tracker import record as _record_determinism
 
-from agent.telemetry.result_auditor import record_quality_event as _record_quality, audit as _audit_quality
+from agent.app.core.observability.result_auditor import record_quality_event as _record_quality, audit as _audit_quality
 
-from agent.validators.sql_validator import validate as _ast_validate, validate_against_schema as _schema_id_check
+from agent.app.core.validation.sql_validator import validate as _ast_validate, validate_against_schema as _schema_id_check
 
-from agent.telemetry.validation_analytics import (
+from agent.app.core.observability.validation_analytics import (
 
     record_validation_event as _record_val,
 
@@ -376,19 +375,10 @@ class SemanticDINOrchestrator:
 
         rag_service = DynamicRAGService()
 
-        rule_retriever = DialectRuleRetriever(self.executor.dialect)
+        # Removed DialectRuleRetriever for pure ReAct reasoning
+        lessons = ""
 
-        # Use adaptive in-code rule families -- works for every dialect without requiring a YAML handbook.
-
-        # retrieve_relevant_rules() is YAML-only and returns "not found" for DuckDB, Postgres, etc.
-
-        _query_str = intent.filter_conditions[0] if intent.filter_conditions else ""
-
-        profile = QueryCapabilityDetector.detect(_query_str, intent)
-
-        rule_list = rule_retriever.get_adaptive_rules(profile, max_rules=15)
-
-        lessons = "=== DIALECT RULES ===\n" + "\n".join(f"- {r}" for r in rule_list)
+        _query_str = user_query
 
 
 
@@ -720,7 +710,7 @@ class SemanticDINOrchestrator:
 
             try:
 
-                from agent.services.cache import DAB_CANCEL_FLAG, SPIDER_CANCEL_FLAG
+                from agent.app.utils.cache import DAB_CANCEL_FLAG, SPIDER_CANCEL_FLAG
 
                 if DAB_CANCEL_FLAG or SPIDER_CANCEL_FLAG:
 
@@ -1380,11 +1370,19 @@ class SemanticDINOrchestrator:
 
                     if _quick_samples:
 
-                        _cat_info = self.profiler._extract_description_categories(
+                        try:
 
-                            _quick_samples
+                            _cat_info = self.profiler._extract_description_categories(
 
-                        )
+                                _quick_samples
+
+                            )
+
+                        except Exception as _pce:
+
+                            logger.debug(f"[PreRoutingProbe] _extract_description_categories unavailable: {_pce}")
+
+                            _cat_info = None
 
                         if _cat_info:
 
@@ -1798,111 +1796,67 @@ class SemanticDINOrchestrator:
 
                 for m in (linked_schema.value_mappings or [])
 
-                if not m.db_value
+                if not m.db_value or m.match_type == "approximate"
 
             ]
 
-            if unclear_terms:
-
+                        # Let the Intelligent Tool Router analyze the gaps and unclear terms
+            gap_summary = feasibility.get("gap_summary", "") if feasibility else ""
+            if not gap_summary and getattr(linked_schema, "missing_information", None): gap_summary = "; ".join(linked_schema.missing_information)
+            if unclear_terms or gap_summary:
                 limit = self.params["orchestrator"]["research_term_limit"]
+                logger.info(f"Unclear terms ({unclear_terms}) or schema gaps ({gap_summary}) detected. Launching Intelligent Tool Router...")
 
-                logger.info(
+                # If the DECOMPOSER already produced a concrete CTE plan, share it with
+                # TOOL_ROUTER so it can route already-resolved terms to IGNORE instead
+                # of launching wasteful WEB_SEARCHes for things the plan already handles.
+                effective_gap_summary = gap_summary
+                if decomp_section:
+                    decomp_note = (
+                        "\n\nIMPORTANT: A DECOMPOSER agent has already built a concrete "
+                        "multi-step CTE plan for this query (shown below). Any gap or term "
+                        "that is addressed in the plan should be routed to IGNORE — "
+                        "do NOT launch WEB_SEARCH for things the plan already resolves.\n"
+                        + decomp_section
+                    )
+                    effective_gap_summary = (gap_summary or "") + decomp_note
 
-                    f"Unclear terms detected: {unclear_terms}. Probing DB text columns (web search disabled)."
-
-                )
-
-                # Web search replaced with direct DB text-column probe.
-
-                # Web results (e.g. "65 Million Businesses database") are irrelevant noise
-
-                # that bloats every downstream agent prompt without helping SQL generation.
-
-                for term in unclear_terms[:limit]:
-
-                    term_safe = term.replace("'", "--")
-
-                    found_in_db = False
-
-                    for tbl in (linked_schema.selected_tables or [])[:6]:
-
-                        if found_in_db:
-
-                            break
-
+                tool_router = ToolRouterAgent(self.llm)
+                route_response = tool_router.route_gaps(user_query, effective_gap_summary, unclear_terms[:limit])
+                
+                for route in route_response.routes:
+                    if route.action == "WEB_SEARCH":
+                        logger.info(f"[ToolRouter] Executing WEB_SEARCH for: {route.target_term} (Reason: {route.reasoning})")
                         try:
-
-                            _ok0, _, _rows0 = self.executor.execute_direct(
-
-                                f'SELECT * FROM "{tbl}" LIMIT 1', timeout=8
-
-                            )
-
-                            if not _ok0 or not _rows0:
-
+                            search_result = self.knowledge_tool.search_term(route.target_term)
+                            if search_result:
+                                lessons_context += f"\n\n[Web Search Result for '{route.target_term}']\n{search_result}"
+                        except Exception as e:
+                            logger.error(f"[ToolRouter] WEB_SEARCH failed: {e}")
+                    
+                    elif route.action == "DB_PROBE":
+                        logger.info(f"[ToolRouter] Executing DB_PROBE for: {route.target_term} (Reason: {route.reasoning})")
+                        term_safe = route.target_term.replace("'", "--")
+                        found_in_db = False
+                        for tbl in (linked_schema.selected_tables or [])[:6]:
+                            if found_in_db: break
+                            try:
+                                _ok0, _, _rows0 = self.executor.execute_direct(f'SELECT * FROM "{tbl}" LIMIT 1', timeout=8)
+                                if not _ok0 or not _rows0: continue
+                                text_cols = [c for c in _rows0[0].keys() if isinstance(_rows0[0][c], str)]
+                                for col in text_cols[:8]:
+                                    _probe = f'SELECT DISTINCT "{col}" FROM "{tbl}" WHERE LOWER(CAST("{col}" AS VARCHAR)) LIKE LOWER(\'%{term_safe}%\') LIMIT 5'
+                                    _ok2, _, _rows2 = self.executor.execute_direct(_probe, timeout=8)
+                                    if _ok2 and _rows2:
+                                        vals = [str(list(r.values())[0]) for r in _rows2 if list(r.values())[0] is not None]
+                                        if vals:
+                                            lessons_context += f"\nNote: '{route.target_term}' matched in {tbl}.{col} - exact DB values: {vals}. Use these exact strings in WHERE clauses.\n"
+                                            found_in_db = True
+                                            break
+                            except Exception:
                                 continue
 
-                            text_cols = [
-
-                                c for c in _rows0[0].keys()
-
-                                if isinstance(_rows0[0][c], str)
-
-                            ]
-
-                            for col in text_cols[:8]:
-
-                                _probe = (
-
-                                    f'SELECT DISTINCT "{col}" FROM "{tbl}" '
-
-                                    f"WHERE LOWER(CAST(\"{col}\" AS VARCHAR)) LIKE LOWER('%{term_safe}%') LIMIT 5"
-
-                                )
-
-                                _ok2, _, _rows2 = self.executor.execute_direct(_probe, timeout=8)
-
-                                if _ok2 and _rows2:
-
-                                    vals = [
-
-                                        str(list(r.values())[0])
-
-                                        for r in _rows2
-
-                                        if list(r.values())[0] is not None
-
-                                    ]
-
-                                    if vals:
-
-                                        lessons_context += (
-
-                                            f"\nNote: '{term}' matched in {tbl}.{col} - "
-
-                                            f"exact DB values: {vals}. Use these exact strings in WHERE clauses.\n"
-
-                                        )
-
-                                        logger.info(f"[DBProbe] '{term}' -> {tbl}.{col}: {vals}")
-
-                                        found_in_db = True
-
-                                        break
-
-                        except Exception:
-
-                            continue
-
-                    if not found_in_db:
-
-                        logger.info(
-
-                            f"[DBProbe] '{term}' not found in selected tables - skipping (web search removed)."
-
-                        )
-
-                lessons_context = self._safeguard_lessons(lessons_context)
+            lessons_context = self._safeguard_lessons(lessons_context)
 
 
 
@@ -2044,7 +1998,22 @@ class SemanticDINOrchestrator:
 
 
 
-            combined_lessons = f"{lessons_context}\n{reference_context}"
+            # Witness hunting: probe DB before generation to confirm real data patterns
+            _witness_block = ""
+            try:
+                from agent.app.services.witness_hunter import hunt as _witness_hunt
+                _wb = _witness_hunt(
+                    question=user_query,
+                    schema_context=self.semantic_engine.context,
+                    relevant_tables=linked_schema.selected_tables if linked_schema else [],
+                    db_directory=self.semantic_engine.db_directory,
+                    max_probes=5,
+                )
+                _witness_block = _wb.as_context_block()
+            except Exception as _wh_err:
+                logger.debug(f"[WitnessHunter] Skipped (non-fatal): {_wh_err}")
+
+            combined_lessons = "\n".join(filter(None, [_witness_block, lessons_context, reference_context]))
 
             # Skip 3-candidate diverse generation globally - generate a single candidate SQL only
 
@@ -2852,7 +2821,7 @@ class SemanticDINOrchestrator:
 
 
 
-                from agent.agents.result_validator_agent import ResultValidatorOutput
+                from agent.app.agents.result_validator_agent import ResultValidatorOutput
 
                 try:
 
@@ -3688,6 +3657,13 @@ class SemanticDINOrchestrator:
 
                 )  # type: ignore
 
+                # Detect recurring DuckDB dialect violations in the failed SQL and
+                # prepend them as explicit BANNED patterns.  This surfaces dialect-class
+                # dead-ends to the MCTS corrector so it tracks more than just structural
+                # topology — preventing the same char()/backslash/regex-join mistakes
+                # from re-appearing across attempts.
+                error_context = self._extract_dialect_violations(error_context, current_sql)
+
                 strategy = self._get_correction_strategy(error_context, attempts)
 
 
@@ -3738,6 +3714,38 @@ class SemanticDINOrchestrator:
 
                 _elapsed = time.time() - start_time
 
+                # Hard wall-clock exit: if the pipeline is already past 60s AND we have
+                # at least one row from a prior attempt, stop the correction loop now.
+                # Burning another LLM round-trip rarely improves on a partial result and
+                # just adds latency.  The target is ≤60s total per question.
+                if _elapsed > 60 and _best_row_count > 0 and attempts >= 1:
+
+                    _termination_reason = (
+
+                        f"BUDGET_TIMEOUT: {_elapsed:.0f}s elapsed, returning best available result "
+
+                        f"({_best_row_count} rows)."
+
+                    )
+
+                    _final_verdict = (
+
+                        "SOLVED"
+
+                        if any(e.get("is_valid") for e in _evolution)
+
+                        else "PARTIAL"
+
+                    )
+
+                    logger.warning(
+
+                        f"[BudgetTimeout] {_termination_reason}"
+
+                    )
+
+                    break
+
                 _budget_note = (
 
                     f"\n\n TIME BUDGET: {_elapsed:.0f}s elapsed on this query. "
@@ -3746,11 +3754,11 @@ class SemanticDINOrchestrator:
 
                 )
 
-                if _elapsed > 90:
+                if _elapsed > 45:
 
                     _budget_note += (
 
-                        "CRITICAL: over 90s elapsed. You MUST produce the simplest possible SQL - "
+                        "CRITICAL: over 45s elapsed. You MUST produce the simplest possible SQL — "
 
                         "no recursive CTEs, no correlated subqueries, no multi-hop joins. "
 
@@ -3758,13 +3766,13 @@ class SemanticDINOrchestrator:
 
                     )
 
-                elif _elapsed > 45:
+                elif _elapsed > 20:
 
                     _budget_note += (
 
-                        "WARNING: over 45s elapsed. Simplify the approach - avoid recursive CTEs and correlated subqueries. "
+                        "WARNING: over 20s elapsed. Simplify the approach — avoid recursive CTEs and "
 
-                        "Prefer window functions and direct joins."
+                        "correlated subqueries. Prefer window functions and direct joins."
 
                     )
 
@@ -4116,6 +4124,81 @@ class SemanticDINOrchestrator:
 
         return current_sql
 
+
+
+    def _extract_dialect_violations(self, error_context: str, sql: str) -> str:
+        """Detect DuckDB-specific dialect violations in `sql` and prepend them as
+        explicit BANNED patterns to `error_context`.
+
+        The self-corrector's MCTS dead-end mapping prunes structural patterns (join
+        topology, CTE count) but previously ignored dialect error class — so the same
+        char()/backslash-regex/regex-join mistakes reappeared every run.  Surfacing
+        them here as named bans closes that gap without touching the corrector prompt.
+        """
+
+        import re as _re
+
+        violations: list[str] = []
+
+        ec_lower = error_context.lower()
+        sql_lower = sql.lower() if sql else ""
+
+        # char() vs chr() — DuckDB only has chr()
+        if _re.search(r'\bchar\s*\(', sql, _re.IGNORECASE) and "chr(" not in sql_lower:
+            violations.append(
+                "BANNED: char() does not exist in DuckDB. Replace every char(N) with chr(N)."
+            )
+
+        # Backslash escape sequences in regex strings (\d, \s, \w, \D, \S, \W)
+        if _re.search(r"'[^']*\\[dswDSW][^']*'", sql):
+            violations.append(
+                r"BANNED: Backslash escapes in regex (\d, \s, \w). DuckDB uses RE2/POSIX ERE. "
+                r"Use character classes instead: [0-9] for \d, [ \t] for \s, [a-zA-Z0-9_] for \w."
+            )
+
+        # PCRE lookahead / lookbehind — DuckDB does not support them
+        if "(?=" in sql or "(?!" in sql or "(?<" in sql or "(?P" in sql:
+            violations.append(
+                "BANNED: PCRE lookahead/lookbehind ((?=), (?!), (?<), (?P)). "
+                "DuckDB uses RE2/POSIX ERE which does not support these constructs. "
+                "Rewrite using capturing groups and post-filter instead."
+            )
+
+        # CAST(REGEXP_EXTRACT(...)) without TRY_CAST — fails when regex returns ''
+        if (
+            _re.search(r'\bCAST\s*\(\s*REGEXP_EXTRACT\b', sql, _re.IGNORECASE)
+            and not _re.search(r'\bTRY_CAST\s*\(\s*REGEXP_EXTRACT\b', sql, _re.IGNORECASE)
+        ):
+            violations.append(
+                "BANNED: CAST(REGEXP_EXTRACT(...)) without TRY_CAST. When the regex finds "
+                "no match it returns '' (empty string), which causes a cast error. "
+                "Always use TRY_CAST(REGEXP_EXTRACT(...) AS <type>) to handle non-matching rows safely."
+            )
+
+        # Join predicate directly on REGEXP_EXTRACT expression
+        if (
+            _re.search(r'\bON\s+REGEXP_EXTRACT\b', sql, _re.IGNORECASE)
+            or _re.search(r'=\s*REGEXP_EXTRACT\s*\(', sql, _re.IGNORECASE)
+        ):
+            violations.append(
+                "BANNED: Join predicate that calls REGEXP_EXTRACT inside ON/WHERE directly. "
+                "This violates the verbatim-column-join rule and typically returns 0 rows. "
+                "Extract the value into a CTE column first, then join on that plain column name."
+            )
+
+        if violations:
+            block = (
+                "⛔ DIALECT VIOLATIONS IN LAST SQL — EXPLICITLY BANNED FROM ALL FUTURE ATTEMPTS:\n"
+                + "\n".join(f"  • {v}" for v in violations)
+                + "\n\n"
+            )
+            logger.warning(
+                f"[DialectViolationExtractor] {len(violations)} violation(s) detected and banned: "
+                + "; ".join(v.split(".")[0] for v in violations)
+            )
+            return block + error_context
+
+        return error_context
 
 
     def _should_terminate(self, evolution: list[dict], max_retries: int) -> tuple[bool, str]:

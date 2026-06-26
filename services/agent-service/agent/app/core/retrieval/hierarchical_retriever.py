@@ -1,7 +1,7 @@
 import re
 from typing import List, Dict, Tuple
 from pydantic import BaseModel
-from agent.contracts.schemas import SemanticContext, SemanticTable
+from agent.app.models.schemas import SemanticContext, SemanticTable
 from agent.orchestration.pipeline_config import PipelineModeConfig, BALANCED_CONFIG
 from agent.app.core.retrieval.schema_retriever import SchemaRetriever
 from agent.app.core.schema.semantic_tags import SemanticTagger

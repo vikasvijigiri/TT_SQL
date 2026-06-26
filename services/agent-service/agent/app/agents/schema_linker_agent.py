@@ -1,18 +1,19 @@
+import re
 import typing
 
 from agent.services.llm import LLMClient
 
-from agent.contracts.schemas import SchemaLinkerOutput
+from agent.app.models.schemas import SchemaLinkerOutput
 
 from agent.services.logger import logger
 
-from agent.services.semantic_engine import SemanticContextEngine
+from agent.app.services.semantic_engine import SemanticContextEngine
 
 from agent.blackboard.dynamic_rules import FailureMemory
 
-from agent.validators.deterministic_validators import DeterministicValidators
+from agent.app.core.validation.validators import DeterministicValidators
 
-from agent.services.schema_pruner import TablePruner, ColumnPruner
+from agent.app.services.schema_pruner import TablePruner, ColumnPruner
 
 from agent.app.core.retrieval.hierarchical_retriever import HierarchicalRetriever
 
@@ -354,7 +355,32 @@ class SchemaLinkerAgent:
 
         return result
 
+    def _sanitize_dialect_schemas(self, result: SchemaLinkerOutput, dialect: str) -> SchemaLinkerOutput:
+        """
+        Strip 'public.' or 'PUBLIC.' prefixes from selected tables, selected columns,
+        and value mappings if the target dialect is SQLite or DuckDB, since they do not
+        contain a public schema.
+        """
+        d = dialect.lower().strip()
+        if d not in ("sqlite", "duckdb"):
+            return result
 
+        def strip_public(fqn: str) -> str:
+            if not fqn:
+                return fqn
+            parts = fqn.split(".")
+            new_parts = [p for p in parts if p.lower() != "public"]
+            if not new_parts:
+                return fqn
+            return ".".join(new_parts)
+
+        result.selected_tables = [strip_public(t) for t in result.selected_tables]
+        result.selected_columns = [strip_public(c) for c in result.selected_columns]
+        for vm in result.value_mappings:
+            if vm.column:
+                vm.column = strip_public(vm.column)
+
+        return result
 
     def link_schema(
 
@@ -375,6 +401,16 @@ class SchemaLinkerAgent:
     ) -> SchemaLinkerOutput:
 
         logger.set_agent("SCHEMA_LINKER")
+
+        # Strip final-answer output-format blocks — they're meant for FINAL_ANSWER
+        # stage only and confuse the schema linker into returning plain text instead
+        # of the required SchemaLinkerOutput JSON.
+        lessons = re.sub(
+            r"=== OUTPUT FORMAT REQUIREMENT ===.*?=== END FORMAT ===\n?",
+            "",
+            lessons,
+            flags=re.DOTALL,
+        )
 
         logger.info(f"Linking schema for query: '{user_query}'")
 
@@ -554,7 +590,37 @@ class SchemaLinkerAgent:
 
 
 
-        # 4. Assemble surgical prompt using PromptAssembler
+        # 4. Small-schema bypass: skip LLM entirely for tiny schemas.
+        # When total columns is small, LLM schema selection introduces errors (wrong column
+        # choices, false schema-gap reports). Send the full schema directly to downstream
+        # agents instead so the SQL Generator can reason about ALL columns itself.
+        if self.semantic_engine.context:
+            _relevant_tbl_objs = [
+                t for t in self.semantic_engine.context.tables
+                if t.name in relevant_tables
+            ]
+            _total_cols = sum(len(t.columns) for t in _relevant_tbl_objs)
+            if len(relevant_tables) <= 5 and _total_cols <= 35:
+                _all_fqn_cols = [
+                    f"{t.name}.{col.name}"
+                    for t in _relevant_tbl_objs
+                    for col in t.columns
+                ]
+                logger.info(
+                    f"[SchemaLinker] Small schema ({len(relevant_tables)} tables, "
+                    f"{_total_cols} cols) — bypassing LLM, returning full schema to SQL Generator."
+                )
+                logger.reset_agent()
+                return SchemaLinkerOutput(
+                    reasoning="Small schema: full schema passed to SQL Generator for direct reasoning.",
+                    selected_tables=relevant_tables,
+                    selected_columns=_all_fqn_cols,
+                    value_mappings=[],
+                    coverage_score=1.0,
+                    missing_information=[],
+                )
+
+        # 5. Assemble surgical prompt using PromptAssembler
 
         from agent.app.core.prompts.prompt_assembler import PromptAssembler
 
@@ -597,8 +663,10 @@ class SchemaLinkerAgent:
                 user_prompt=user_prompt,
 
                 response_model=SchemaLinkerOutput,
-
             )
+
+            # Post-processing: strip PostgreSQL "public" schema prefix for SQLite/DuckDB
+            result = self._sanitize_dialect_schemas(result, dialect)
 
             # 4. Post-processing: restore any join-key columns the LLM omitted
 

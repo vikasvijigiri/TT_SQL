@@ -112,25 +112,21 @@ Execution strategy planner. Choose HOW to answer a question given a schema and l
 
 ## KEYWORD/PATTERN DETECTION vs SEMANTIC CLASSIFICATION -- critical distinction
 
-`text_classify_aggregate` requires genuine LLM semantic understanding. Use it ONLY when a concept
+`text_classify_aggregate` requires genuine LLM semantic understanding. Use it ALWAYS for abstract concepts,
+even if a naive keyword filter might theoretically be possible.
+Examples of when to MANDATE `text_classify_aggregate`:
+- Classifying news articles into topics (e.g., "Business", "Sports", "World") from unstructured text.
+- Extracting abstract sales factors (e.g., "BANT" - Budget, Authority, Need, Timeline) from transcripts.
+- Evaluating sentiment, nuance, or implicit tone.
 
-CANNOT be detected by any text-matching rule (e.g. sentiment polarity, implicit industry classification).
-
-
-
-Use `enriched_sql` instead whenever the concept is detectable by pattern matching:
-
-- "contains word X" (copyright, license, TODO, error) => `enriched_sql` + `LIKE '%word%'`
-
+Use `enriched_sql` ONLY when the concept is purely structural or literal pattern matching:
+- "contains the exact word 'TODO' or 'error'" => `enriched_sql` + `LIKE '%TODO%'`
 - "file path ends with README.md" => `enriched_sql` + `LIKE '%README.md'`
-
 - "starts with 'Copyright'" => `enriched_sql` + regex or LIKE pattern
-
 - "does not use Python" on a language description column => `enriched_sql` + anti-join with `NOT IN`
 
-
-
-In short: if a SQL LIKE/ILIKE/regex filter can reliably detect the concept, use `enriched_sql`.
+In short: Do not use naive LIKE/REGEX filters for complex conceptual categories. If the question involves 
+high-level topics, categories, or complex criteria (like BANT), YOU MUST USE `text_classify_aggregate`.
 
 
 
@@ -194,22 +190,13 @@ If SchemaExplorer reports `*** NARROW JOIN` between table A and table B on colum
 
 ## text_classify_aggregate rules
 
-- Use ONLY when ALL four conditions hold:
-
+- Use ONLY when ALL three conditions hold:
   (a) No dedicated category/label column exists in the schema
-
-  (b) Genuine LLM semantic understanding is required (not just pattern matching)
-
+  (b) Genuine LLM semantic understanding is required (e.g. topic classification, BANT extraction)
   (c) fetch_sql is complete and runnable
-
-  (d) The exact category list is known from the question or exploration
-
-- NEVER for keyword/substring presence -- use `enriched_sql` instead
-
+- Do not let the theoretical presence of a keyword (e.g. the word "business" might be in a business article) deter you from using this. Topic classification ALWAYS requires this strategy.
 - NEVER for numeric extraction -- use `enriched_sql` instead
-
 - NEVER when concept is stored in a JSON/serialized-text column -- use `enriched_sql` instead
-
 - Missing fetch_sql or categories => downgrade to `enriched_sql`
 
 
