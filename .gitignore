@@ -36,7 +36,6 @@ ENV/
 .coverage
 coverage.xml
 htmlcov/
-database/
 docs/
 
 *.log
@@ -111,7 +110,9 @@ credentials/
 
 # =============================================================================
 
-database/
+database/**/*
+!database/**/
+!database/**/*.gitkeep
 
 # =============================================================================
 
